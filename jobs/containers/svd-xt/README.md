@@ -8,7 +8,7 @@ pip install huggingface_hub[cli]
 
 ```
 ./dl-checkpoints.sh
-cog build -t svd
+cog build -t svd-xt
 ```
 
 `--separate-weights` is omitted because we load weights from a Diffusers repo which includes other config files besides just model weights files.
@@ -16,5 +16,5 @@ cog build -t svd
 ## Run
 
 ```
-docker run --network="host" --gpus all svd
+docker run --network="host" --gpus all svd-xt
 ```
