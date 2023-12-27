@@ -1,3 +1,4 @@
 .cog
 checkpoints
 cache
+__pycache__
