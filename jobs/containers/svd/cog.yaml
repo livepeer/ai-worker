@@ -1,0 +1,11 @@
+build:
+  gpu: true
+
+  python_version: "3.11"
+
+  python_packages:
+    - diffusers
+    - transformers
+    - accelerate
+
+predict: "predict.py:Predictor"
