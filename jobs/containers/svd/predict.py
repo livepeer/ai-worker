@@ -5,8 +5,8 @@ import torch
 
 class Predictor(BasePredictor):
   def setup(self):
-    local_repo = "checkpoints"
-    self.pipeline = StableVideoDiffusionPipeline.from_pretrained(local_repo, torch_dtype=torch.float16, variant="fp16")
+    repo_id = "stabilityai/stable-video-diffusion-img2vid-xt"
+    self.pipeline = StableVideoDiffusionPipeline.from_pretrained(repo_id, torch_dtype=torch.float16, variant="fp16", cache_dir="./cache")
     self.pipeline.enable_model_cpu_offload()
 
   def predict(
