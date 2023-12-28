@@ -1,12 +1,12 @@
-package executor
+package cog
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
-	"time"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/replicate/cog/pkg/docker"
@@ -15,64 +15,47 @@ import (
 	"github.com/vincent-petithory/dataurl"
 )
 
-type Executor struct {
-	predictor     predict.Predictor
-	idleTimeout   time.Duration
-	lastExecuteAt time.Time
-	executeCh     chan (time.Time)
+type Config struct {
+	ContainerImageID string
+	GPUs             string
 }
 
-type Config struct {
-	CogImage    string
-	GPUs        string
-	IdleTimeout time.Duration
+type Executor struct {
+	predictor predict.Predictor
 }
 
 func NewExecutor(config Config) *Executor {
 	predictor := predict.NewPredictor(docker.RunOptions{
 		GPUs:    config.GPUs,
-		Image:   config.CogImage,
+		Image:   config.ContainerImageID,
 		Volumes: []docker.Volume{},
 		Env:     []string{},
 	})
 
 	return &Executor{
-		predictor:   predictor,
-		idleTimeout: config.IdleTimeout,
+		predictor: predictor,
 	}
 }
 
 func (e *Executor) Start(ctx context.Context) error {
-	// if e.IsWarm() {
-	// 	return errors.New("executor is already warm")
-	// }
+	// TODO: Add support for stopping on idle timeout
+	go func() {
+		<-ctx.Done()
 
-	// e.lastExecuteAt = time.Now()
-	// e.executeCh = make(chan time.Time, 1)
-
-	// go func() {
-	// 	for {
-	// 		select {
-	// 		case executedAt := <-e.executeCh:
-	// 			e.lastExecuteAt = executedAt
-	// 			continue
-	// 		case <-ctx.Done():
-	// 			if err := e.predictor.Stop(); err != nil {
-
-	// 			}
-	// 			return
-	// 		default:
-	// 		}
-	// 	}
-	// }()
+		if err := e.Stop(); err != nil {
+			slog.Error("Error stopping executor", slog.String("error", err.Error()))
+		}
+	}()
 
 	return e.predictor.Start(os.Stderr)
 }
 
+func (e *Executor) Stop() error {
+	return e.predictor.Stop()
+}
+
 // Based on https://github.com/replicate/cog/blob/main/pkg/cli/predict.go
 func (e *Executor) Execute(inputs map[string]string, outputPath string) error {
-	// e.executeCh <- time.Now()
-
 	schema, err := e.predictor.GetSchema()
 	if err != nil {
 		return err
@@ -132,14 +115,6 @@ func (e *Executor) Execute(inputs map[string]string, outputPath string) error {
 	}
 
 	return writeOutput(outputPath, out)
-}
-
-func (e *Executor) IsWarm() bool {
-	if (e.lastExecuteAt == time.Time{}) {
-		return false
-	}
-
-	return time.Now().Sub(e.lastExecuteAt) < e.idleTimeout
 }
 
 func writeOutput(outputPath string, output []byte) error {
