@@ -1,13 +1,13 @@
 import tempfile
 from cog import BasePredictor, Input, Path
-from diffusers import StableDiffusionXLPipeline
+from diffusers import AutoPipelineForText2Image
 import torch
 
 class Predictor(BasePredictor):
   def setup(self):
-    ckpt_file = "checkpoints/sd_xl_turbo_1.0_fp16.safetensors"
-    self.pipeline = StableDiffusionXLPipeline.from_single_file(ckpt_file, torch_dtype=torch.float16)
-    self.pipeline.to("cuda")
+    repo_id = "stabilityai/sdxl-turbo"
+    self.pipeline = AutoPipelineForText2Image.from_pretrained(repo_id, torch_dtype=torch.float16, variant="fp16", cache_dir="./cache")
+    self.pipeline = self.pipeline.to("cuda")
 
   def predict(
     self,

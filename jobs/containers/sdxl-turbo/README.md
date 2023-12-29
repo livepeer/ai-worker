@@ -4,8 +4,10 @@
 
 ```
 ./dl-checkpoints.sh
-cog build --separate-weights -t sdxl-turbo
+cog build -t sdxl-turbo
 ```
+
+`--separate-weights` is omitted because we load weights from a Diffusers repo which includes other config files besides just model weights files.
 
 ## Run
 
