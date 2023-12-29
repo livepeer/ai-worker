@@ -12,11 +12,13 @@ class Predictor(BasePredictor):
   def predict(
     self,
     prompt: str = Input(description="The prompt to guide image generation"),
-    num_inference_steps: int = Input(description="The number of denoising steps", default=1)
+    num_inference_steps: int = Input(description="The number of denoising steps", default=1),
+    width: int = Input(description="Width of generated image", default=1024),
+    height: int = Input(description="Height of generated image", default=576)
   ) -> Path:
     # https://huggingface.co/docs/diffusers/using-diffusers/sdxl_turbo
     # guidance_scale is set to 0 because the model was trained without it
-    image = self.pipeline(prompt=prompt, guidance_scale=0.0, num_inference_steps=num_inference_steps).images[0]
+    image = self.pipeline(prompt=prompt, guidance_scale=0.0, num_inference_steps=num_inference_steps, width=width, height=height).images[0]
     # TODO: Ensure that these temp files are cleared
     output_path = Path(tempfile.mkdtemp()) / "output.png"
     image.save(output_path)
