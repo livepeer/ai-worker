@@ -5,6 +5,7 @@ import (
 	"ai-worker/worker"
 	"context"
 	"log/slog"
+	"os"
 	"strconv"
 	"time"
 )
@@ -33,8 +34,9 @@ func main() {
 
 	slog.Info("Warm container is up")
 
+	image := os.Args[1:][0]
 	params := worker.GenerateVideoParams{
-		Image:            "@rocket.png",
+		Image:            image,
 		MotionBucketID:   127.0,
 		NoiseAugStrength: 0.02,
 	}

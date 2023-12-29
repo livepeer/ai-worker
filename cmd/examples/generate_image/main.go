@@ -5,6 +5,7 @@ import (
 	"ai-worker/worker"
 	"context"
 	"log/slog"
+	"os"
 	"strconv"
 	"time"
 )
@@ -33,8 +34,9 @@ func main() {
 
 	slog.Info("Warm container is up")
 
+	prompt := os.Args[1:][0]
 	params := worker.GenerateImageParams{
-		Prompt:            "Miyamoto Musashi riding a horse",
+		Prompt:            prompt,
 		GuidanceScale:     0.0,
 		NumInferenceSteps: 1,
 	}
