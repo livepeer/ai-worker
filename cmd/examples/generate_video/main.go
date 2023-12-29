@@ -1,9 +1,9 @@
 package main
 
 import (
+	"ai-worker/executor/cog"
+	"ai-worker/worker"
 	"context"
-	"ffai-worker/executor/cog"
-	"ffai-worker/worker"
 	"log/slog"
 	"strconv"
 	"time"

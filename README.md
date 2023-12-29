@@ -1,1 +1,1 @@
-# ffai-worker
+# ai-worker

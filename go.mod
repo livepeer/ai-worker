@@ -1,4 +1,4 @@
-module ffai-worker
+module ai-worker
 
 go 1.21.5
 
