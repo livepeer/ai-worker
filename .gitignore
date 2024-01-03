@@ -2,4 +2,5 @@
 checkpoints
 cache
 __pycache__
+input
 output

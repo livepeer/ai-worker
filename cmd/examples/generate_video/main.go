@@ -11,7 +11,9 @@ import (
 )
 
 func main() {
-	containerImageID := "svd-xt"
+	args := os.Args[1:]
+	containerImageID := args[0]
+	image := args[1]
 
 	gpus := "all"
 	outputDir := "output"
@@ -34,14 +36,13 @@ func main() {
 
 	slog.Info("Warm container is up")
 
-	image := os.Args[1:][0]
 	params := worker.GenerateVideoParams{
 		Image:            image,
 		MotionBucketID:   127.0,
 		NoiseAugStrength: 0.02,
 	}
 
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 1; i++ {
 		slog.Info("Generating video", slog.Int("num", i))
 
 		jobID := strconv.Itoa(i)

@@ -1,0 +1,17 @@
+build:
+  gpu: true
+
+  python_version: "3.11"
+
+  system_packages:
+    - ffmpeg
+
+  python_packages:
+    - diffusers
+    - transformers
+    - accelerate
+    - torchvision
+    - torchaudio
+    - tqdm
+
+predict: "predict.py:Predictor"
