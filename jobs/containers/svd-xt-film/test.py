@@ -15,7 +15,17 @@ def main():
 
     image = "input/1.png"
 
-    runs = 3
+    if svd_config["sfast"]:
+        # Warm up
+        begin = time.time()
+        pipeline(output_path="output/output.mp4", image=image)
+        end = time.time()
+
+        print(f"warm up time: {end - begin:.3f}s")
+
+    image = "input/svd_kitten_init.png"
+
+    runs = 2
 
     run_times = []
     for _ in range(runs):
