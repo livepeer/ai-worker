@@ -27,7 +27,7 @@ class StableVideoDiffusionFILMPipeline:
         generator = torch.manual_seed(42)
 
         frames = self.svd_xt_pipeline(
-            Image.open(image),
+            Image.open(image).convert("RGB"),
             decode_chunk_size=8,
             generator=generator,
             motion_bucket_id=motion_bucket_id,
