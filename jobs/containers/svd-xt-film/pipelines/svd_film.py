@@ -7,12 +7,39 @@ import einops
 
 
 class StableVideoDiffusionFILMPipeline:
-    def __init__(self, cache_dir: str):
+    def __init__(
+        self,
+        cache_dir: str,
+        svd_config: dict = {
+            "sfast": False,
+            "quantize": False,
+            "no_fusion": False,
+        },
+    ):
         repo_id = "stabilityai/stable-video-diffusion-img2vid-xt"
         self.svd_xt_pipeline = StableVideoDiffusionPipeline.from_pretrained(
-            repo_id, torch_dtype=torch.float16, variant="fp16", cache_dir=cache_dir
+            repo_id, cache_dir=cache_dir, variant="fp16", torch_dtype=torch.float16
         )
-        self.svd_xt_pipeline.enable_model_cpu_offload()
+        self.svd_xt_pipeline = self.svd_xt_pipeline.to("cuda")
+
+        if svd_config["quantize"]:
+            from diffusers.utils import USE_PEFT_BACKEND
+
+            assert USE_PEFT_BACKEND
+            self.svd_xt_pipeline.unet = torch.quantization.quantize_dynamic(
+                self.svd_xt_pipeline.unet,
+                {torch.nn.Linear},
+                dtype=torch.qint8,
+                inplace=True,
+            )
+
+        if svd_config["no_fusion"]:
+            torch.jit.set_fusion_strategy([("STATIC", 0), ("DYNAMIC", 0)])
+
+        if svd_config["sfast"]:
+            from pipelines.sfast import compile_model
+
+            self.svd_xt_pipeline = compile_model(self.svd_xt_pipeline)
 
         self.film_pipeline = FILMPipeline(f"{cache_dir}/film_net_fp16.pt")
         self.film_pipeline = self.film_pipeline.to(device="cuda", dtype=torch.float16)
