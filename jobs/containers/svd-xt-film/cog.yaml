@@ -14,12 +14,6 @@ build:
     - torchaudio
     - tqdm
     - einops
-    - stable-fast
-    # For stable-fast
-    - peft
-    - wheel
-    - xformers>=0.022
-    - triton>=2.1.0
 
 
 predict: "predict.py:Predictor"
