@@ -1,11 +1,15 @@
 from cog import BasePredictor, Input, Path
 from pipelines.svd_film import StableVideoDiffusionFILMPipeline
 import os
+from PIL import Image
 
 
 class Predictor(BasePredictor):
     def setup(self):
-        self.pipeline = StableVideoDiffusionFILMPipeline(cache_dir="./cache")
+        svd_config = {"sfast": True, "quantize": False, "no_fusion": False}
+        self.pipeline = StableVideoDiffusionFILMPipeline(cache_dir="./cache", svd_config=svd_config)
+        # Trigger stable-fast compilation with a warm up call
+        self.pipeline(output_path=None, image="test.png", inter_frames=0)
 
     def predict(
         self,
