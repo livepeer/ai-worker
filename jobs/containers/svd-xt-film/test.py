@@ -13,12 +13,10 @@ def main():
         cache_dir="./cache", svd_config=svd_config
     )
 
-    image = "input/1.png"
-
     if svd_config["sfast"]:
         # Warm up
         begin = time.time()
-        pipeline(output_path="output/output.mp4", image=image)
+        pipeline(output_path=None, image="test.png", inter_frames=0)
         end = time.time()
 
         print(f"warm up time: {end - begin:.3f}s")

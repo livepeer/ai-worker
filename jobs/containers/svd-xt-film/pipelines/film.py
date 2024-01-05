@@ -3,6 +3,7 @@ from torchvision.transforms import v2
 from tqdm import tqdm
 import bisect
 import numpy as np
+from typing import List
 
 
 class FILMPipeline:
@@ -31,17 +32,9 @@ class FILMPipeline:
     def __call__(
         self,
         reader,
-        writer,
         inter_frames: int = 2,
-    ):
-        transforms = v2.Compose(
-            [
-                v2.ToDtype(torch.uint8, scale=True),
-            ]
-        )
-
-        writer.open()
-
+    ) -> List[torch.Tensor]:
+        output_frames = []
         while True:
             frame_1 = reader.get_frame()
             if frame_1 is None:
@@ -49,18 +42,16 @@ class FILMPipeline:
 
             frame_2 = reader.get_frame()
             if frame_2 is None:
-                writer.write_frame(transforms(frame_1))
+                output_frames.append(frame_1)
                 break
 
             frames = inference(
                 self.model, frame_1, frame_2, inter_frames, self.device, self.dtype
             )
 
-            frames = [transforms(frame.detach().cpu()) for frame in frames]
-            for frame in frames:
-                writer.write_frame(frame)
+            output_frames.extend([frame.detach().cpu() for frame in frames])
 
-        writer.close()
+        return output_frames
 
 
 def inference(

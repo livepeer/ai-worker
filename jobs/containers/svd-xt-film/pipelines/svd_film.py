@@ -50,6 +50,7 @@ class StableVideoDiffusionFILMPipeline:
         image: str,
         motion_bucket_id: float = 127,
         noise_aug_strength: float = 0.02,
+        inter_frames: int = 2
     ):
         generator = torch.manual_seed(42)
 
@@ -65,21 +66,31 @@ class StableVideoDiffusionFILMPipeline:
         frames = [torch.from_numpy(frame) for frame in frames]
         frames = einops.rearrange(frames, "n h w c -> n c h w")
 
-        # svd-xt outputs 25 frames by default
-        # If we generate 2 intermediate frames for each pair of frames, we will have 24 intermediate frames
-        # 25 + 24 = 49 frames
-        # At fps = 24.0, this will be a ~2 second video
-        fps = 24.0
-        inter_frames = 2
+        # 12 fps for 25 frames -> ~2s video
+        fps = 12.0
 
-        reader = ListReader(frames)
-        height, width = reader.get_resolution()
-        writer = VideoWriter(
-            output_path=output_path,
-            height=height,
-            width=width,
-            fps=fps,
-            format="rgb24",
-        )
+        if inter_frames > 0:
+            tot_frames = 25 + (25 // 2) * inter_frames
+            fps = tot_frames // 2
 
-        self.film_pipeline(reader, writer, inter_frames=inter_frames)
+            reader = ListReader(frames)
+            frames = self.film_pipeline(reader, inter_frames=inter_frames)
+
+        if output_path is not None:
+            reader = ListReader(frames)
+            height, width = reader.get_resolution()
+            writer = VideoWriter(
+                output_path=output_path,
+                height=height,
+                width=width,
+                fps=fps,
+                format="rgb24",
+            )
+
+            writer.open()
+
+            for frame in frames:
+                writer.write_frame(frame)
+
+            writer.close()
+

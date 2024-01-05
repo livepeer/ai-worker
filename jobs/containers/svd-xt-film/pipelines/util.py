@@ -16,7 +16,7 @@ class ListReader:
         assert self.nb_frames > 0, "no frames found in list"
 
         transforms = v2.Compose([v2.ToPILImage()])
-        first_img = transforms(frames[0])
+        first_img = transforms(frames[0].squeeze(0))
         self.height = first_img.height
         self.width = first_img.width
 
@@ -99,4 +99,9 @@ class VideoWriter:
         self.writer.close()
 
     def write_frame(self, frame: torch.Tensor):
-        self.writer.write_video_chunk(0, frame)
+        transforms = v2.Compose(
+            [
+                v2.ToDtype(torch.uint8, scale=True),
+            ]
+        )
+        self.writer.write_video_chunk(0, transforms(frame))
