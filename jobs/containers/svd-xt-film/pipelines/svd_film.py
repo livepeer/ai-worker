@@ -4,6 +4,8 @@ from pipelines.film import FILMPipeline
 from pipelines.util import ListReader, VideoWriter
 from PIL import Image
 import einops
+from typing import Union, List
+import os
 
 
 class StableVideoDiffusionFILMPipeline:
@@ -47,24 +49,36 @@ class StableVideoDiffusionFILMPipeline:
     def __call__(
         self,
         output_path: str,
-        image: str,
+        image: Union[str, List[str]],
         motion_bucket_id: float = 127,
         noise_aug_strength: float = 0.02,
-        inter_frames: int = 2
+        inter_frames: int = 2,
     ):
         generator = torch.manual_seed(42)
 
-        frames = self.svd_xt_pipeline(
-            Image.open(image).convert("RGB"),
+        if isinstance(image, str):
+            batch_size = 1
+            input_image = Image.open(image).convert("RGB")
+        else:
+            batch_size = len(image)
+            input_image = [Image.open(i).convert("RGB") for i in image]
+
+        batch_frames = self.svd_xt_pipeline(
+            input_image,
             decode_chunk_size=8,
             generator=generator,
             motion_bucket_id=motion_bucket_id,
             noise_aug_strength=noise_aug_strength,
             output_type="np",
-        ).frames[0]
+        ).frames
 
-        frames = [torch.from_numpy(frame) for frame in frames]
-        frames = einops.rearrange(frames, "n h w c -> n c h w")
+        # batch_frames is a List[np.ndarray] (ideally it would be np.ndarray)
+        # Each np.ndarray in the list has the shape f h w c i.e. (25, 576, 1024, 3)
+
+        batch_frames = torch.stack(
+            [torch.from_numpy(frames) for frames in batch_frames]
+        )
+        batch_frames = einops.rearrange(batch_frames, "n f h w c -> n f c h w")
 
         # 12 fps for 25 frames -> ~2s video
         fps = 12.0
@@ -73,24 +87,36 @@ class StableVideoDiffusionFILMPipeline:
             tot_frames = 25 + (25 // 2) * inter_frames
             fps = tot_frames // 2
 
-            reader = ListReader(frames)
-            frames = self.film_pipeline(reader, inter_frames=inter_frames)
+            # TODO: Refactor FILMPipeline so it can accept a batch instead of reading frame by frame
+            output_frames = []
+            for i in range(batch_size):
+                frames = batch_frames[i]
+                reader = ListReader(frames)
+                frames = self.film_pipeline(reader, inter_frames=inter_frames)
+                output_frames.append(einops.rearrange(frames, "b 1 c h w -> b c h w"))
+
+            batch_frames = einops.rearrange(output_frames, "b f c h w -> b f c h w")
 
         if output_path is not None:
-            reader = ListReader(frames)
-            height, width = reader.get_resolution()
-            writer = VideoWriter(
-                output_path=output_path,
-                height=height,
-                width=width,
-                fps=fps,
-                format="rgb24",
-            )
+            for i in range(batch_size):
+                frames = batch_frames[i]
+                reader = ListReader(frames)
+                height, width = reader.get_resolution()
+                writer = VideoWriter(
+                    output_path=os.path.join(output_path, f"{i}_out.mp4"),
+                    height=height,
+                    width=width,
+                    fps=fps,
+                    format="rgb24",
+                )
 
-            writer.open()
+                writer.open()
 
-            for frame in frames:
-                writer.write_frame(frame)
+                while True:
+                    frame = reader.get_frame()
+                    if frame is None:
+                        break
 
-            writer.close()
+                    writer.write_frame(frame)
 
+                writer.close()

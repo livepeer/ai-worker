@@ -21,14 +21,14 @@ def main():
 
         print(f"warm up time: {end - begin:.3f}s")
 
-    image = "input/svd_kitten_init.png"
+    image = ["input/svd_kitten_init.png"]
 
     runs = 2
 
     run_times = []
     for _ in range(runs):
         begin = time.time()
-        pipeline(output_path="output/output.mp4", image=image)
+        pipeline(output_path="output", image=image)
         end = time.time()
 
         run_times.append(end - begin)
