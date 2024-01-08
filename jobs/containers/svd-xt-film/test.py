@@ -36,8 +36,10 @@ def main():
     for idx, run_time in enumerate(run_times):
         print(f"run time {idx}: {run_time:.3f}s")
 
-    peak_mem = torch.cuda.max_memory_allocated()
-    print(f"peak GPU memory: {peak_mem / 1024**3:.3f}GiB")
+    peak_mem_allocated = torch.cuda.max_memory_allocated()
+    peak_mem_reserved = torch.cuda.max_memory_reserved()
+    print(f"peak GPU memory allocated: {peak_mem_allocated / 1024**3:.3f}GiB")
+    print(f"peak GPU memory reserved: {peak_mem_reserved / 1024**3:.3f}GiB")
 
 
 if __name__ == "__main__":
