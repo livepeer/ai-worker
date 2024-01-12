@@ -14,7 +14,7 @@ async def image_to_image(
     image: Annotated[UploadFile, File()],
     pipeline: ImageToImagePipeline = Depends(get_pipeline),
 ):
-    images = pipeline(prompt, PIL.Image.open(image.file))
+    images = pipeline(prompt, PIL.Image.open(image.file).convert("RGB"))
 
     output_images = []
     for img in images:
