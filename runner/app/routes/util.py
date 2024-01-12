@@ -13,6 +13,10 @@ class ImageResponse(BaseModel):
     images: List[Media]
 
 
+class VideoResponse(BaseModel):
+    frames: List[List[Media]]
+
+
 def image_to_base64(img: PIL.Image, format: str = "png") -> str:
     buffered = io.BytesIO()
     img.save(buffered, format=format)
