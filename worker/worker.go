@@ -3,125 +3,142 @@ package worker
 import (
 	"context"
 	"fmt"
-	"path"
-	"strconv"
+
+	"github.com/docker/cli/opts"
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
+	"github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
 )
 
-type GenerateImageParams struct {
-	Prompt            string  `json:"prompt"`
-	GuidanceScale     float64 `json:"guidance_scale"`
-	NumInferenceSteps int64   `json:"num_inference_steps"`
-}
+const containerModelDir = "/models"
+const containerPort = "8000/tcp"
 
-type GenerateImageRequest struct {
-	Params           GenerateImageParams
-	JobID            string
-	ContainerImageID string
+var containerHostPorts = map[string]string{
+	"text-to-image":  "8000",
+	"image-to-image": "8001",
+	"image-to-video": "8002",
 }
-
-type GenerateVideoParams struct {
-	Image            string  `json:"image"`
-	MotionBucketID   float64 `json:"motion_bucket_id"`
-	NoiseAugStrength float64 `json:"noise_aug_strength"`
-}
-
-type GenerateVideoRequest struct {
-	Params           GenerateVideoParams
-	JobID            string
-	ContainerImageID string
-}
-
-type Executor interface {
-	Start(context.Context) error
-	Stop() error
-	Execute(map[string]string, string) error
-}
-
-type ExecutorConfig struct {
-	ContainerImageID string
-	GPUs             string
-}
-
-type NewExecutorFn func(config ExecutorConfig) Executor
 
 type Worker struct {
-	gpus          string
-	outputDir     string
-	newExecutorFn NewExecutorFn
+	containerImageID string
+	gpus             string
+	modelDir         string
+	outputDir        string
 
-	executors map[string]Executor
+	dockerClient *client.Client
+	containerIDs map[string]string
 }
 
-func NewWorker(gpus string, outputDir string, newExecutorFn NewExecutorFn) *Worker {
+func NewWorker(containerImageID string, gpus string, modelDir string, outputDir string) (*Worker, error) {
+	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return nil, err
+	}
+
 	return &Worker{
-		gpus:          gpus,
-		outputDir:     outputDir,
-		newExecutorFn: newExecutorFn,
-		executors:     make(map[string]Executor),
-	}
+		containerImageID: containerImageID,
+		gpus:             gpus,
+		modelDir:         modelDir,
+		outputDir:        outputDir,
+		dockerClient:     dockerClient,
+		containerIDs:     make(map[string]string),
+	}, nil
 }
 
-func (w *Worker) GenerateImage(ctx context.Context, req GenerateImageRequest) (string, error) {
-	exec, err := w.getWarmExecutor(ctx, req.ContainerImageID)
-	if err != nil {
-		return "", err
-	}
-
-	inputs := map[string]string{
-		"prompt":              req.Params.Prompt,
-		"guidance_scale":      fmt.Sprintf("%f", req.Params.GuidanceScale),
-		"num_inference_steps": strconv.FormatInt(req.Params.NumInferenceSteps, 10),
-	}
-	outputPath := path.Join(w.outputDir, req.JobID+"_out.png")
-	if err := exec.Execute(inputs, outputPath); err != nil {
-		return "", err
-	}
-
-	return outputPath, nil
+func (w *Worker) TextToImage(ctx context.Context, modelID string, req TextToImageJSONRequestBody) ([]string, error) {
+	return nil, nil
 }
 
-func (w *Worker) GenerateVideo(ctx context.Context, req GenerateVideoRequest) (string, error) {
-	exec, err := w.getWarmExecutor(ctx, req.ContainerImageID)
-	if err != nil {
-		return "", err
-	}
-
-	inputs := map[string]string{
-		"image":              req.Params.Image,
-		"motion_bucket_id":   fmt.Sprintf("%f", req.Params.MotionBucketID),
-		"noise_aug_strength": fmt.Sprintf("%f", req.Params.NoiseAugStrength),
-	}
-	outputPath := path.Join(w.outputDir, req.JobID+"_out.mp4")
-	if err := exec.Execute(inputs, outputPath); err != nil {
-		return "", err
-	}
-
-	return outputPath, nil
+func (w *Worker) ImageToImage(ctx context.Context, modelID string, req ImageToImageMultipartRequestBody) ([]string, error) {
+	return nil, nil
 }
 
-func (w *Worker) Warm(ctx context.Context, containerImageID string) error {
-	_, err := w.getWarmExecutor(ctx, containerImageID)
-	return err
+func (w *Worker) ImageToVideo(ctx context.Context, modelID string, req ImageToVideoMultipartRequestBody) ([]string, error) {
+	return nil, nil
 }
 
-// Returns a warm executor for the containerImageID and creates one if it does not exist.
-func (w *Worker) getWarmExecutor(ctx context.Context, containerImageID string) (Executor, error) {
-	exec, ok := w.executors[containerImageID]
+func (w *Worker) Warm(ctx context.Context, containerName, modelID string) error {
+	return w.warmContainer(ctx, containerName, modelID)
+}
+
+func (w *Worker) Stop(ctx context.Context, containerName string) error {
+	containerID, ok := w.containerIDs[containerName]
 	if !ok {
-		exec = w.newExecutorFn(ExecutorConfig{
-			ContainerImageID: containerImageID,
-			GPUs:             w.gpus,
-		})
-		w.executors[containerImageID] = exec
-
-		// Ensures that:
-		// - The image exists (i.e. was pulled from a registry)
-		// - The container is up
-		// - The models have been pre-loaded
-		if err := exec.Start(ctx); err != nil {
-			return nil, err
-		}
+		return fmt.Errorf("container %v is not running", containerName)
 	}
 
-	return exec, nil
+	// TODO: Handle if container fails to stop
+	delete(w.containerIDs, containerName)
+
+	return w.dockerClient.ContainerStop(ctx, containerID, container.StopOptions{})
+}
+
+func (w *Worker) warmContainer(ctx context.Context, containerName string, modelID string) error {
+	if _, ok := w.containerIDs[containerName]; ok {
+		return nil
+	}
+
+	// TODO: Pull image to ensure it exists
+
+	containerConfig := &container.Config{
+		Image: w.containerImageID,
+		Env: []string{
+			"PIPELINE=" + containerName,
+			"MODEL_ID=" + modelID,
+		},
+		Volumes: map[string]struct{}{
+			containerModelDir: {},
+		},
+		ExposedPorts: nat.PortSet{
+			containerPort + "/tcp": struct{}{},
+		},
+	}
+
+	gpuOpts := opts.GpuOpts{}
+	gpuOpts.Set(w.gpus)
+
+	hostConfig := &container.HostConfig{
+		Resources: container.Resources{
+			DeviceRequests: gpuOpts.Value(),
+		},
+		Mounts: []mount.Mount{
+			{
+				Type:   mount.TypeBind,
+				Source: w.modelDir,
+				Target: containerModelDir,
+			},
+		},
+		PortBindings: nat.PortMap{
+			containerPort: []nat.PortBinding{
+				{
+					HostIP:   "0.0.0.0",
+					HostPort: containerHostPorts[containerName],
+				},
+			},
+		},
+	}
+
+	resp, err := w.dockerClient.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, "")
+	if err != nil {
+		return err
+	}
+
+	if err := w.dockerClient.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
+		return err
+	}
+
+	statusCh, errCh := w.dockerClient.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
+	select {
+	case err := <-errCh:
+		if err != nil {
+			return err
+		}
+	case <-statusCh:
+	}
+
+	w.containerIDs[containerName] = resp.ID
+
+	return nil
 }
