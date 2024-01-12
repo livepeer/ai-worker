@@ -21,7 +21,18 @@ class TextToImagePipeline(Pipeline):
         self.ldm.to(get_torch_device())
 
     def __call__(self, prompt: str, **kwargs) -> List[PIL.Image]:
-        return self.ldm(prompt, **kwargs)
+        if (
+            self.model_id == "stabilityai/sdxl-turbo"
+            or self.model_id == "stabilityai/sd-turbo"
+        ):
+            # SD turbo models were trained without guidance_scale so
+            # it should be set to 0
+            kwargs["guidance_scale"] = 0.0
+
+            if "num_inference_steps" not in kwargs:
+                kwargs["num_inference_steps"] = 1
+
+        return self.ldm(prompt, **kwargs).images
 
     def __str__(self) -> str:
         return f"TextToImagePipeline model_id={self.model_id}"
