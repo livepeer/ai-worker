@@ -1,0 +1,62 @@
+# runner
+
+## Build Docker image
+
+```
+docker build -t runner .
+```
+
+## Download models
+
+The runner app within the container expects model checkpoints to be stored in a `/models` directory which we can mount with a local `models` directory.
+
+See the `dl-checkpoints.sh` script for how to download model checkpoints to a local `models` directory.
+
+To use `dl-checkpoints.sh` to download model checkpoints:
+
+```
+pip install "huggingface_hub[cli]"
+./dl-checkpoints.sh
+```
+
+## text-to-image
+
+Run container:
+
+```
+docker run --name text-to-image -e PIPELINE=text-to-image -e MODEL_ID=<MODEL_ID> --gpus <GPU_IDS> -p 8000:8000 -v ./models:/models runner
+```
+
+Query API:
+
+```
+curl -X POST -H "Content-Type: application/json" localhost:8000/text-to-image -d '{"prompt":"a mountain lion"}'
+```
+
+## Run image-to-image container
+
+Run container:
+
+```
+docker run --name image-to-image -e PIPELINE=image-to-image -e MODEL_ID=<MODEL_ID> --gpus <GPU_IDS> -p 8000:8000 -v ./models:/models runner
+```
+
+Query API:
+
+```
+curl -X POST localhost:8000/image-to-image -F prompt="a mountain lion" -F image=@<IMAGE_FILE>
+```
+
+## Run image-to-video container
+
+Run container
+
+```
+docker run --name image-to-video -e PIPELINE=image-to-video -e MODEL_ID=<MODEL_ID> --gpus <GPU_IDS> -p 8000:8000 -v ./models:/models runner
+```
+
+Query API:
+
+```
+curl -X POST localhost:8000/image-to-video -F image=@<IMAGE_FILE>
+```
