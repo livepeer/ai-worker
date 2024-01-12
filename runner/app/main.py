@@ -46,7 +46,11 @@ def load_pipeline() -> PipelineConfig:
             config["pipeline"] = ImageToImagePipeline(model_id)
             config["route"] = image_to_image.router
         case "image-to-video":
-            raise NotImplementedError("image-to-video pipeline not implemented")
+            from app.pipelines import ImageToVideoPipeline
+            from app.routes import image_to_video
+
+            config["pipeline"] = ImageToVideoPipeline(model_id)
+            config["route"] = image_to_video.router
         case "frame-interpolation":
             raise NotImplementedError("frame-interpolation pipeline not implemented")
         case "upscale":
