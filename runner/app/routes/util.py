@@ -2,10 +2,15 @@ import io
 import PIL
 import base64
 from pydantic import BaseModel
+from typing import List
 
 
 class Media(BaseModel):
     url: str
+
+
+class ImageResponse(BaseModel):
+    images: List[Media]
 
 
 def image_to_base64(img: PIL.Image, format: str = "png") -> str:
