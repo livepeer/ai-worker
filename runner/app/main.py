@@ -29,7 +29,7 @@ async def lifespan(app: FastAPI):
     app.pipeline = get_pipeline()
     logger.info(f"Started up with pipeline {app.pipeline}")
     yield
-    print("Shutting down")
+    logger.info("Shutting down")
 
 
 def get_pipeline() -> Pipeline:
