@@ -2,8 +2,7 @@ from pydantic import BaseModel
 from fastapi import Depends, APIRouter
 from app.pipelines import TextToImagePipeline
 from app.dependencies import get_pipeline
-from app.routes.util import image_to_data_url, Media
-from typing import List
+from app.routes.util import image_to_data_url, ImageResponse
 
 router = APIRouter()
 
@@ -12,12 +11,8 @@ class TextToImageParams(BaseModel):
     prompt: str
 
 
-class TextToImageResponse(BaseModel):
-    images: List[Media]
-
-
-@router.post("/text-to-image", response_model=TextToImageResponse)
-def text_to_image(
+@router.post("/text-to-image", response_model=ImageResponse)
+async def text_to_image(
     params: TextToImageParams, pipeline: TextToImagePipeline = Depends(get_pipeline)
 ):
     images = pipeline(params.prompt)
