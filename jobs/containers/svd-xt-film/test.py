@@ -23,7 +23,7 @@ def main():
 
     image = ["input/svd_kitten_init.png"]
 
-    runs = 2
+    runs = 1
 
     run_times = []
     for _ in range(runs):
