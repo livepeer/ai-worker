@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.routing import APIRoute
 from contextlib import asynccontextmanager
 import os
 import logging
@@ -16,6 +17,8 @@ async def lifespan(app: FastAPI):
     config = load_pipeline()
     app.pipeline = config["pipeline"]
     app.include_router(config["route"])
+
+    use_route_names_as_operation_ids(app)
 
     logger.info(f"Started up with pipeline {app.pipeline}")
     yield
@@ -71,9 +74,10 @@ def config_logging():
     )
 
 
+def use_route_names_as_operation_ids(app: FastAPI) -> None:
+    for route in app.routes:
+        if isinstance(route, APIRoute):
+            route.operation_id = route.name
+
+
 app = FastAPI(lifespan=lifespan)
-
-
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
