@@ -96,10 +96,15 @@ func (w *Worker) Stop(ctx context.Context, containerName string) error {
 		return fmt.Errorf("container %v is not running", containerName)
 	}
 
-	// TODO: Handle if container fails to stop
+	// TODO: Handle if container fails to stop or be removed
 	delete(w.containers, containerName)
 
-	return w.dockerClient.ContainerStop(ctx, c.ID, container.StopOptions{})
+	if err := w.dockerClient.ContainerStop(ctx, c.ID, container.StopOptions{}); err != nil {
+		return err
+	}
+
+	// Is there a reason to not remove the container?
+	return w.dockerClient.ContainerRemove(ctx, c.ID, types.ContainerRemoveOptions{})
 }
 
 func (w *Worker) getWarmContainer(ctx context.Context, containerName string, modelID string) (*RunnerContainer, error) {
