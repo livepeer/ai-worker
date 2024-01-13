@@ -1,10 +1,11 @@
 from fastapi.openapi.utils import get_openapi
 from app.main import app, use_route_names_as_operation_ids
-from app.routes import text_to_image, image_to_image, image_to_video
+from app.routes import health, text_to_image, image_to_image, image_to_video
 import json
 
 
 def write_openapi_json(fname):
+    app.include_router(health.router)
     app.include_router(text_to_image.router)
     app.include_router(image_to_image.router)
     app.include_router(image_to_video.router)
