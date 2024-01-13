@@ -12,6 +12,7 @@ class TextToImageParams(BaseModel):
 
 
 @router.post("/text-to-image", response_model=ImageResponse)
+@router.post("/text-to-image/", response_model=ImageResponse, include_in_schema=False)
 async def text_to_image(
     params: TextToImageParams, pipeline: TextToImagePipeline = Depends(get_pipeline)
 ):

@@ -9,6 +9,7 @@ router = APIRouter()
 
 
 @router.post("/image-to-video", response_model=VideoResponse)
+@router.post("/image-to-video/", response_model=VideoResponse, include_in_schema=False)
 async def image_to_video(
     image: Annotated[UploadFile, File()],
     pipeline: ImageToVideoPipeline = Depends(get_pipeline),
