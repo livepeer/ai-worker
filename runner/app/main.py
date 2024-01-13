@@ -5,6 +5,7 @@ import os
 import logging
 from typing import Any
 from pydantic import BaseModel
+from app.routes import health
 
 
 logger = logging.getLogger(__name__)
@@ -13,6 +14,8 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     config_logging()
+
+    app.include_router(health.router)
 
     config = load_pipeline()
     app.pipeline = config["pipeline"]
