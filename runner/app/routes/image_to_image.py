@@ -9,6 +9,7 @@ router = APIRouter()
 
 
 @router.post("/image-to-image", response_model=ImageResponse)
+@router.post("/image-to-image/", response_model=ImageResponse, include_in_schema=False)
 async def image_to_image(
     prompt: Annotated[str, Form()],
     image: Annotated[UploadFile, File()],
