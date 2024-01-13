@@ -2,7 +2,9 @@ package worker
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/docker/cli/opts"
 	"github.com/docker/docker/api/types"
@@ -14,6 +16,7 @@ import (
 
 const containerModelDir = "/models"
 const containerPort = "8000/tcp"
+const pollingInterval = 500 * time.Millisecond
 
 var containerHostPorts = map[string]string{
 	"text-to-image":  "8000",
@@ -21,17 +24,21 @@ var containerHostPorts = map[string]string{
 	"image-to-video": "8002",
 }
 
+type RunnerContainer struct {
+	ID     string
+	Client *ClientWithResponses
+}
+
 type Worker struct {
 	containerImageID string
 	gpus             string
 	modelDir         string
-	outputDir        string
 
 	dockerClient *client.Client
-	containerIDs map[string]string
+	containers   map[string]*RunnerContainer
 }
 
-func NewWorker(containerImageID string, gpus string, modelDir string, outputDir string) (*Worker, error) {
+func NewWorker(containerImageID string, gpus string, modelDir string) (*Worker, error) {
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, err
@@ -41,14 +48,33 @@ func NewWorker(containerImageID string, gpus string, modelDir string, outputDir 
 		containerImageID: containerImageID,
 		gpus:             gpus,
 		modelDir:         modelDir,
-		outputDir:        outputDir,
 		dockerClient:     dockerClient,
-		containerIDs:     make(map[string]string),
+		containers:       make(map[string]*RunnerContainer),
 	}, nil
 }
 
 func (w *Worker) TextToImage(ctx context.Context, modelID string, req TextToImageJSONRequestBody) ([]string, error) {
-	return nil, nil
+	c, err := w.getWarmContainer(ctx, "text-to-image", modelID)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.Client.TextToImageWithResponse(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.JSON422 != nil {
+		// TODO: Handle JSON422 struct
+		return nil, errors.New("text-to-image container returned 422")
+	}
+
+	urls := make([]string, len(resp.JSON200.Images))
+	for i, media := range resp.JSON200.Images {
+		urls[i] = media.Url
+	}
+
+	return urls, nil
 }
 
 func (w *Worker) ImageToImage(ctx context.Context, modelID string, req ImageToImageMultipartRequestBody) ([]string, error) {
@@ -60,24 +86,26 @@ func (w *Worker) ImageToVideo(ctx context.Context, modelID string, req ImageToVi
 }
 
 func (w *Worker) Warm(ctx context.Context, containerName, modelID string) error {
-	return w.warmContainer(ctx, containerName, modelID)
+	_, err := w.getWarmContainer(ctx, containerName, modelID)
+	return err
 }
 
 func (w *Worker) Stop(ctx context.Context, containerName string) error {
-	containerID, ok := w.containerIDs[containerName]
+	c, ok := w.containers[containerName]
 	if !ok {
 		return fmt.Errorf("container %v is not running", containerName)
 	}
 
 	// TODO: Handle if container fails to stop
-	delete(w.containerIDs, containerName)
+	delete(w.containers, containerName)
 
-	return w.dockerClient.ContainerStop(ctx, containerID, container.StopOptions{})
+	return w.dockerClient.ContainerStop(ctx, c.ID, container.StopOptions{})
 }
 
-func (w *Worker) warmContainer(ctx context.Context, containerName string, modelID string) error {
-	if _, ok := w.containerIDs[containerName]; ok {
-		return nil
+func (w *Worker) getWarmContainer(ctx context.Context, containerName string, modelID string) (*RunnerContainer, error) {
+	c, ok := w.containers[containerName]
+	if ok {
+		return c, nil
 	}
 
 	// TODO: Pull image to ensure it exists
@@ -92,13 +120,14 @@ func (w *Worker) warmContainer(ctx context.Context, containerName string, modelI
 			containerModelDir: {},
 		},
 		ExposedPorts: nat.PortSet{
-			containerPort + "/tcp": struct{}{},
+			containerPort: struct{}{},
 		},
 	}
 
 	gpuOpts := opts.GpuOpts{}
 	gpuOpts.Set(w.gpus)
 
+	containerHostPort := containerHostPorts[containerName]
 	hostConfig := &container.HostConfig{
 		Resources: container.Resources{
 			DeviceRequests: gpuOpts.Value(),
@@ -114,31 +143,85 @@ func (w *Worker) warmContainer(ctx context.Context, containerName string, modelI
 			containerPort: []nat.PortBinding{
 				{
 					HostIP:   "0.0.0.0",
-					HostPort: containerHostPorts[containerName],
+					HostPort: containerHostPort,
 				},
 			},
 		},
 	}
 
-	resp, err := w.dockerClient.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, "")
+	resp, err := w.dockerClient.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, containerName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := w.dockerClient.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
-		return err
+		return nil, err
 	}
 
-	statusCh, errCh := w.dockerClient.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
-	select {
-	case err := <-errCh:
-		if err != nil {
-			return err
+	// TODO: Add timeout with context
+	if err := dockerWaitUntilRunning(ctx, w.dockerClient, resp.ID, pollingInterval); err != nil {
+		return nil, err
+	}
+
+	client, err := NewClientWithResponses("http://localhost:" + containerHostPort)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: Add timeout with context
+	if err := runnerWaitUntilReady(ctx, client, pollingInterval); err != nil {
+		return nil, err
+	}
+
+	c = &RunnerContainer{
+		ID:     resp.ID,
+		Client: client,
+	}
+
+	w.containers[containerName] = c
+
+	return c, nil
+}
+
+func dockerWaitUntilRunning(ctx context.Context, client *client.Client, containerID string, pollingInterval time.Duration) error {
+	ticker := time.NewTicker(pollingInterval)
+	defer ticker.Stop()
+
+tickerLoop:
+	for range ticker.C {
+		select {
+		case <-ctx.Done():
+			return errors.New("timed out waiting for container")
+		default:
+			json, err := client.ContainerInspect(ctx, containerID)
+			if err != nil {
+				return err
+			}
+
+			if json.State.Running {
+				break tickerLoop
+			}
 		}
-	case <-statusCh:
 	}
 
-	w.containerIDs[containerName] = resp.ID
+	return nil
+}
+
+func runnerWaitUntilReady(ctx context.Context, client *ClientWithResponses, pollingInterval time.Duration) error {
+	ticker := time.NewTicker(pollingInterval)
+	defer ticker.Stop()
+
+tickerLoop:
+	for range ticker.C {
+		select {
+		case <-ctx.Done():
+			return errors.New("timed out waiting for runner")
+		default:
+			if _, err := client.HealthWithResponse(ctx); err == nil {
+				break tickerLoop
+			}
+		}
+	}
 
 	return nil
 }
