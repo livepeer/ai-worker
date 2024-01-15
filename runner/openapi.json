@@ -151,6 +151,11 @@
             "type": "string",
             "format": "binary",
             "title": "Image"
+          },
+          "model_id": {
+            "type": "string",
+            "title": "Model Id",
+            "default": ""
           }
         },
         "type": "object",
@@ -166,6 +171,11 @@
             "type": "string",
             "format": "binary",
             "title": "Image"
+          },
+          "model_id": {
+            "type": "string",
+            "title": "Model Id",
+            "default": ""
           }
         },
         "type": "object",
@@ -229,6 +239,11 @@
       },
       "TextToImageParams": {
         "properties": {
+          "model_id": {
+            "type": "string",
+            "title": "Model Id",
+            "default": ""
+          },
           "prompt": {
             "type": "string",
             "title": "Prompt"
