@@ -1,4 +1,4 @@
-module ai-worker
+module github.com/livepeer/ai-worker
 
 go 1.21.5
 

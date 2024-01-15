@@ -1,7 +1,6 @@
 package main
 
 import (
-	"ai-worker/worker"
 	"context"
 	"log/slog"
 	"os"
@@ -9,6 +8,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"time"
+
+	"github.com/livepeer/ai-worker/worker"
 )
 
 func main() {
