@@ -55,13 +55,14 @@ func main() {
 	prompt := args[1]
 
 	req := worker.TextToImageJSONRequestBody{
-		Prompt: prompt,
+		ModelId: &modelID,
+		Prompt:  prompt,
 	}
 
 	for i := 0; i < runs; i++ {
 		slog.Info("Running text-to-image", slog.Int("num", i))
 
-		urls, err := w.TextToImage(ctx, modelID, req)
+		urls, err := w.TextToImage(ctx, req)
 		if err != nil {
 			slog.Error("Error running text-to-image", slog.String("error", err.Error()))
 			return

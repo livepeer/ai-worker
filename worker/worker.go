@@ -53,8 +53,8 @@ func NewWorker(containerImageID string, gpus string, modelDir string) (*Worker, 
 	}, nil
 }
 
-func (w *Worker) TextToImage(ctx context.Context, modelID string, req TextToImageJSONRequestBody) ([]string, error) {
-	c, err := w.getWarmContainer(ctx, "text-to-image", modelID)
+func (w *Worker) TextToImage(ctx context.Context, req TextToImageJSONRequestBody) ([]string, error) {
+	c, err := w.getWarmContainer(ctx, "text-to-image", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
@@ -77,11 +77,11 @@ func (w *Worker) TextToImage(ctx context.Context, modelID string, req TextToImag
 	return urls, nil
 }
 
-func (w *Worker) ImageToImage(ctx context.Context, modelID string, req ImageToImageMultipartRequestBody) ([]string, error) {
+func (w *Worker) ImageToImage(ctx context.Context, req ImageToImageMultipartRequestBody) ([]string, error) {
 	return nil, nil
 }
 
-func (w *Worker) ImageToVideo(ctx context.Context, modelID string, req ImageToVideoMultipartRequestBody) ([]string, error) {
+func (w *Worker) ImageToVideo(ctx context.Context, req ImageToVideoMultipartRequestBody) ([]string, error) {
 	return nil, nil
 }
 
