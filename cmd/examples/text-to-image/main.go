@@ -19,7 +19,7 @@ func main() {
 	containerImageID := "runner"
 	gpus := "all"
 
-	modelDir, err := filepath.Abs("models")
+	modelDir, err := filepath.Abs("runner/models")
 	if err != nil {
 		slog.Error("Error getting absolute path for modelDir", slog.String("error", err.Error()))
 		return
