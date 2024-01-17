@@ -62,15 +62,15 @@ func main() {
 	for i := 0; i < runs; i++ {
 		slog.Info("Running text-to-image", slog.Int("num", i))
 
-		urls, err := w.TextToImage(ctx, req)
+		resp, err := w.TextToImage(ctx, req)
 		if err != nil {
 			slog.Error("Error running text-to-image", slog.String("error", err.Error()))
 			return
 		}
 
-		for j, url := range urls {
+		for j, media := range resp.Images {
 			outputPath := path.Join(baseOutputPath, strconv.Itoa(i)+"_"+strconv.Itoa(j)+".png")
-			if err := worker.SaveImageB64DataUrl(url, outputPath); err != nil {
+			if err := worker.SaveImageB64DataUrl(media.Url, outputPath); err != nil {
 				slog.Error("Error saving b64 data url as image", slog.String("error", err.Error()))
 				return
 			}

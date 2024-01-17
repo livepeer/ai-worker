@@ -53,7 +53,7 @@ func NewWorker(containerImageID string, gpus string, modelDir string) (*Worker, 
 	}, nil
 }
 
-func (w *Worker) TextToImage(ctx context.Context, req TextToImageJSONRequestBody) ([]string, error) {
+func (w *Worker) TextToImage(ctx context.Context, req TextToImageJSONRequestBody) (*ImageResponse, error) {
 	c, err := w.getWarmContainer(ctx, "text-to-image", *req.ModelId)
 	if err != nil {
 		return nil, err
@@ -69,12 +69,7 @@ func (w *Worker) TextToImage(ctx context.Context, req TextToImageJSONRequestBody
 		return nil, errors.New("text-to-image container returned 422")
 	}
 
-	urls := make([]string, len(resp.JSON200.Images))
-	for i, media := range resp.JSON200.Images {
-		urls[i] = media.Url
-	}
-
-	return urls, nil
+	return resp.JSON200, nil
 }
 
 func (w *Worker) ImageToImage(ctx context.Context, req ImageToImageMultipartRequestBody) ([]string, error) {
