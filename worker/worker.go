@@ -1,9 +1,12 @@
 package worker
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"time"
 
 	"github.com/docker/cli/opts"
@@ -72,8 +75,53 @@ func (w *Worker) TextToImage(ctx context.Context, req TextToImageJSONRequestBody
 	return resp.JSON200, nil
 }
 
-func (w *Worker) ImageToImage(ctx context.Context, req ImageToImageMultipartRequestBody) ([]string, error) {
-	return nil, nil
+func (w *Worker) ImageToImage(ctx context.Context, req ImageToImageMultipartRequestBody) (*ImageResponse, error) {
+	c, err := w.getWarmContainer(ctx, "image-to-image", *req.ModelId)
+	if err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	writer, err := mw.CreateFormFile("image", req.Image.Filename())
+	if err != nil {
+		return nil, err
+	}
+	imageSize := req.Image.FileSize()
+	imageRdr, err := req.Image.Reader()
+	if err != nil {
+		return nil, err
+	}
+	copied, err := io.Copy(writer, imageRdr)
+	if err != nil {
+		return nil, err
+	}
+	if copied != imageSize {
+		return nil, fmt.Errorf("failed to copy image to multipart request imageBytes=%v copiedBytes=%v", imageSize, copied)
+	}
+
+	if err := mw.WriteField("prompt", req.Prompt); err != nil {
+		return nil, err
+	}
+	if err := mw.WriteField("model_id", *req.ModelId); err != nil {
+		return nil, err
+	}
+
+	if err := mw.Close(); err != nil {
+		return nil, err
+	}
+
+	resp, err := c.Client.ImageToImageWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.JSON422 != nil {
+		// TODO: Handle JSON422 struct
+		return nil, errors.New("image-to-image container returned 422")
+	}
+
+	return resp.JSON200, nil
 }
 
 func (w *Worker) ImageToVideo(ctx context.Context, req ImageToVideoMultipartRequestBody) ([]string, error) {
