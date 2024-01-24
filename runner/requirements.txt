@@ -6,3 +6,5 @@ pydantic
 Pillow
 python-multipart
 uvicorn
+torchaudio
+torchvision
