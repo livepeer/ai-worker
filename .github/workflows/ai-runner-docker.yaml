@@ -2,9 +2,13 @@ name: Build Docker image for ai-runner
 
 on:
   pull_request:
+    paths:
+      - "runner/**"
   push:
     branches:
       - main
+    paths:
+      - "runner/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
