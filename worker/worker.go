@@ -6,12 +6,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
+	"math"
 	"mime/multipart"
 	"time"
 
 	"github.com/docker/cli/opts"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
@@ -28,20 +31,23 @@ var containerHostPorts = map[string]string{
 }
 
 type RunnerContainer struct {
-	ID     string
-	Client *ClientWithResponses
+	ID      string
+	Client  *ClientWithResponses
+	ModelID string
+	GPU     string
 }
 
 type Worker struct {
 	containerImageID string
-	gpus             string
+	gpus             []string
+	gpuLoad          map[string]int
 	modelDir         string
 
 	dockerClient *client.Client
 	containers   map[string]*RunnerContainer
 }
 
-func NewWorker(containerImageID string, gpus string, modelDir string) (*Worker, error) {
+func NewWorker(containerImageID string, gpus []string, modelDir string) (*Worker, error) {
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, err
@@ -50,6 +56,7 @@ func NewWorker(containerImageID string, gpus string, modelDir string) (*Worker, 
 	return &Worker{
 		containerImageID: containerImageID,
 		gpus:             gpus,
+		gpuLoad:          make(map[string]int),
 		modelDir:         modelDir,
 		dockerClient:     dockerClient,
 		containers:       make(map[string]*RunnerContainer),
@@ -193,12 +200,55 @@ func (w *Worker) Stop(ctx context.Context, containerName string) error {
 }
 
 func (w *Worker) getWarmContainer(ctx context.Context, containerName string, modelID string) (*RunnerContainer, error) {
-	c, ok := w.containers[containerName]
-	if ok {
-		return c, nil
+	filters := filters.NewArgs(filters.Arg("name", "^"+containerName+"$"), filters.Arg("status", "running"))
+	containers, err := w.dockerClient.ContainerList(ctx, types.ContainerListOptions{Filters: filters})
+	if err != nil {
+		return nil, err
 	}
 
-	// TODO: Pull image to ensure it exists
+	if len(containers) > 0 {
+		c := containers[0]
+		rc, ok := w.containers[containerName]
+		if ok {
+			// Return the running container if it is tracked by the worker already
+			if rc.ID == c.ID {
+				slog.Info("Using warm container", slog.String("gpu", rc.GPU), slog.String("name", containerName), slog.String("modelID", modelID))
+				return rc, nil
+			}
+
+			// The worker is tracking a different container with the same name
+			// We'll stop and remove this container so the worker can start and properly track a newly started container
+			w.gpuLoad[rc.GPU] -= 1
+			delete(w.containers, containerName)
+		}
+
+		slog.Info("Removing untracked container", slog.String("name", containerName))
+
+		if err := dockerRemoveContainer(ctx, w.dockerClient, c.ID); err != nil {
+			return nil, err
+		}
+	}
+
+	// Get next available GPU
+	gpu, load := w.leastLoadedGPU()
+	if load > 0 {
+		// For simplicity, if there are already containers using this GPU, stop and remove them
+		// In the future, we can more intelligently decide when to stop containers that are using this GPU (i.e. based on low VRAM)
+		for name, rc := range w.containers {
+			if rc.GPU == gpu {
+				slog.Info("Removing container", slog.String("gpu", gpu), slog.String("name", name), slog.String("modelID", rc.ModelID))
+
+				w.gpuLoad[rc.GPU] -= 1
+				delete(w.containers, name)
+
+				if err := dockerRemoveContainer(ctx, w.dockerClient, rc.ID); err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
+
+	slog.Info("Starting container", slog.String("gpu", gpu), slog.String("name", containerName), slog.String("modelID", modelID))
 
 	containerConfig := &container.Config{
 		Image: w.containerImageID,
@@ -215,7 +265,7 @@ func (w *Worker) getWarmContainer(ctx context.Context, containerName string, mod
 	}
 
 	gpuOpts := opts.GpuOpts{}
-	gpuOpts.Set(w.gpus)
+	gpuOpts.Set(gpu)
 
 	containerHostPort := containerHostPorts[containerName]
 	hostConfig := &container.HostConfig{
@@ -263,14 +313,39 @@ func (w *Worker) getWarmContainer(ctx context.Context, containerName string, mod
 		return nil, err
 	}
 
-	c = &RunnerContainer{
-		ID:     resp.ID,
-		Client: client,
+	rc := &RunnerContainer{
+		ID:      resp.ID,
+		Client:  client,
+		ModelID: modelID,
+		GPU:     gpu,
 	}
 
-	w.containers[containerName] = c
+	w.containers[containerName] = rc
+	w.gpuLoad[gpu] += 1
 
-	return c, nil
+	return rc, nil
+}
+
+func (w *Worker) leastLoadedGPU() (string, int) {
+	minGPU := "0"
+	minLoad := math.MaxInt64
+
+	for _, gpu := range w.gpus {
+		if w.gpuLoad[gpu] < minLoad {
+			minLoad = w.gpuLoad[gpu]
+			minGPU = gpu
+		}
+	}
+
+	return minGPU, minLoad
+}
+
+func dockerRemoveContainer(ctx context.Context, client *client.Client, containerID string) error {
+	if err := client.ContainerStop(ctx, containerID, container.StopOptions{}); err != nil {
+		return err
+	}
+
+	return client.ContainerRemove(ctx, containerID, types.ContainerRemoveOptions{})
 }
 
 func dockerWaitUntilRunning(ctx context.Context, client *client.Client, containerID string, pollingInterval time.Duration) error {
