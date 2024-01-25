@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"math"
 	"mime/multipart"
+	"sync"
 	"time"
 
 	"github.com/docker/cli/opts"
@@ -45,6 +46,7 @@ type Worker struct {
 
 	dockerClient *client.Client
 	containers   map[string]*RunnerContainer
+	mu           *sync.Mutex
 }
 
 func NewWorker(containerImageID string, gpus []string, modelDir string) (*Worker, error) {
@@ -60,6 +62,7 @@ func NewWorker(containerImageID string, gpus []string, modelDir string) (*Worker
 		modelDir:         modelDir,
 		dockerClient:     dockerClient,
 		containers:       make(map[string]*RunnerContainer),
+		mu:               &sync.Mutex{},
 	}, nil
 }
 
@@ -200,6 +203,9 @@ func (w *Worker) Stop(ctx context.Context, containerName string) error {
 }
 
 func (w *Worker) getWarmContainer(ctx context.Context, containerName string, modelID string) (*RunnerContainer, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
 	filters := filters.NewArgs(filters.Arg("name", "^"+containerName+"$"), filters.Arg("status", "running"))
 	containers, err := w.dockerClient.ContainerList(ctx, types.ContainerListOptions{Filters: filters})
 	if err != nil {
