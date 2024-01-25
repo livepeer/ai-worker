@@ -185,21 +185,27 @@ func (w *Worker) Warm(ctx context.Context, containerName, modelID string) error 
 	return err
 }
 
-func (w *Worker) Stop(ctx context.Context, containerName string) error {
-	c, ok := w.containers[containerName]
-	if !ok {
-		return fmt.Errorf("container %v is not running", containerName)
+func (w *Worker) Stop(ctx context.Context) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	var stopContainerWg sync.WaitGroup
+	for name, rc := range w.containers {
+		stopContainerWg.Add(1)
+		go func(containerID string) {
+			defer stopContainerWg.Done()
+			if err := dockerRemoveContainer(ctx, w.dockerClient, containerID); err != nil {
+				slog.Error("Error removing container", slog.String("name", name), slog.String("id", containerID))
+			}
+		}(rc.ID)
+
+		w.gpuLoad[rc.GPU] -= 1
+		delete(w.containers, name)
 	}
 
-	// TODO: Handle if container fails to stop or be removed
-	delete(w.containers, containerName)
+	stopContainerWg.Wait()
 
-	if err := w.dockerClient.ContainerStop(ctx, c.ID, container.StopOptions{}); err != nil {
-		return err
-	}
-
-	// Is there a reason to not remove the container?
-	return w.dockerClient.ContainerRemove(ctx, c.ID, types.ContainerRemoveOptions{})
+	return nil
 }
 
 func (w *Worker) getWarmContainer(ctx context.Context, containerName string, modelID string) (*RunnerContainer, error) {
