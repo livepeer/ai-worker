@@ -2,9 +2,13 @@ from app.pipelines import Pipeline
 from app.pipelines.util import get_torch_device, get_model_dir
 
 from diffusers import AutoPipelineForImage2Image
+from huggingface_hub import model_info
 import torch
 import PIL
 from typing import List
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ImageToImagePipeline(Pipeline):
@@ -12,7 +16,13 @@ class ImageToImagePipeline(Pipeline):
         kwargs = {"cache_dir": get_model_dir()}
 
         torch_device = get_torch_device()
-        if torch_device != "cpu":
+        model_data = model_info(model_id)
+        has_fp16_variant = any(
+            ".fp16.safetensors" in file.rfilename for file in model_data.siblings
+        )
+        if torch_device != "cpu" and has_fp16_variant:
+            logger.info("ImageToImagePipeline loading fp16 variant for %s", model_id)
+
             kwargs["torch_dtype"] = torch.float16
             kwargs["variant"] = "fp16"
 
