@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"math"
 	"mime/multipart"
+	"strings"
 	"sync"
 	"time"
 
@@ -24,7 +25,10 @@ import (
 const containerModelDir = "/models"
 const containerPort = "8000/tcp"
 const pollingInterval = 500 * time.Millisecond
+const containerTimeout = 30 * time.Second
 
+// This only works right now on a single GPU because if there is another container
+// using the GPU we stop it so we don't have to worry about having enough ports
 var containerHostPorts = map[string]string{
 	"text-to-image":  "8000",
 	"image-to-image": "8001",
@@ -208,12 +212,13 @@ func (w *Worker) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (w *Worker) getWarmContainer(ctx context.Context, containerName string, modelID string) (*RunnerContainer, error) {
+func (w *Worker) getWarmContainer(ctx context.Context, pipeline string, modelID string) (*RunnerContainer, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	filters := filters.NewArgs(filters.Arg("name", "^"+containerName+"$"), filters.Arg("status", "running"))
-	containers, err := w.dockerClient.ContainerList(ctx, types.ContainerListOptions{Filters: filters})
+	containerName := dockerContainerName(pipeline, modelID)
+	filters := filters.NewArgs(filters.Arg("name", "^"+containerName+"$"))
+	containers, err := w.dockerClient.ContainerList(ctx, types.ContainerListOptions{All: true, Filters: filters})
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +228,7 @@ func (w *Worker) getWarmContainer(ctx context.Context, containerName string, mod
 		rc, ok := w.containers[containerName]
 		if ok {
 			// Return the running container if it is tracked by the worker already
-			if rc.ID == c.ID {
+			if rc.ID == c.ID && c.State == "running" {
 				slog.Info("Using warm container", slog.String("gpu", rc.GPU), slog.String("name", containerName), slog.String("modelID", modelID))
 				return rc, nil
 			}
@@ -265,7 +270,7 @@ func (w *Worker) getWarmContainer(ctx context.Context, containerName string, mod
 	containerConfig := &container.Config{
 		Image: w.containerImageID,
 		Env: []string{
-			"PIPELINE=" + containerName,
+			"PIPELINE=" + pipeline,
 			"MODEL_ID=" + modelID,
 		},
 		Volumes: map[string]struct{}{
@@ -279,7 +284,7 @@ func (w *Worker) getWarmContainer(ctx context.Context, containerName string, mod
 	gpuOpts := opts.GpuOpts{}
 	gpuOpts.Set(gpu)
 
-	containerHostPort := containerHostPorts[containerName]
+	containerHostPort := containerHostPorts[pipeline]
 	hostConfig := &container.HostConfig{
 		Resources: container.Resources{
 			DeviceRequests: gpuOpts.Value(),
@@ -310,20 +315,24 @@ func (w *Worker) getWarmContainer(ctx context.Context, containerName string, mod
 		return nil, err
 	}
 
-	// TODO: Add timeout with context
-	if err := dockerWaitUntilRunning(ctx, w.dockerClient, resp.ID, pollingInterval); err != nil {
+	cctx, cancel := context.WithTimeout(ctx, containerTimeout)
+	if err := dockerWaitUntilRunning(cctx, w.dockerClient, resp.ID, pollingInterval); err != nil {
+		cancel()
 		return nil, err
 	}
+	cancel()
 
 	client, err := NewClientWithResponses("http://localhost:" + containerHostPort)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: Add timeout with context
-	if err := runnerWaitUntilReady(ctx, client, pollingInterval); err != nil {
+	cctx, cancel = context.WithTimeout(ctx, containerTimeout)
+	if err := runnerWaitUntilReady(cctx, client, pollingInterval); err != nil {
+		cancel()
 		return nil, err
 	}
+	cancel()
 
 	rc := &RunnerContainer{
 		ID:      resp.ID,
@@ -350,6 +359,12 @@ func (w *Worker) leastLoadedGPU() (string, int) {
 	}
 
 	return minGPU, minLoad
+}
+
+func dockerContainerName(pipeline string, modelID string) string {
+	// text-to-image, stabilityai/sd-turbo -> text-to-image_stabilityai_sd-turbo
+	// image-to-video, stabilityai/stable-video-diffusion-img2vid-xt -> image-to-video_stabilityai_stable-video-diffusion-img2vid-xt
+	return strings.ReplaceAll(pipeline+"_"+modelID, "/", "_")
 }
 
 func dockerRemoveContainer(ctx context.Context, client *client.Client, containerID string) error {
