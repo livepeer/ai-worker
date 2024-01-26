@@ -3,7 +3,7 @@ from app.pipelines import ImageToImagePipeline
 from app.dependencies import get_pipeline
 from app.routes.util import image_to_data_url, ImageResponse
 import PIL
-from typing import Annotated, Optional
+from typing import Annotated
 
 router = APIRouter()
 
@@ -16,6 +16,10 @@ async def image_to_image(
     prompt: Annotated[str, Form()],
     image: Annotated[UploadFile, File()],
     model_id: Annotated[str, Form()] = "",
+    strength: Annotated[float, Form()] = 0.8,
+    guidance_scale: Annotated[float, Form()] = 7.5,
+    negative_prompt: Annotated[str, Form()] = "",
+    seed: Annotated[int, Form()] = None,
     pipeline: ImageToImagePipeline = Depends(get_pipeline),
 ):
     if model_id != "" and model_id != pipeline.model_id:
@@ -23,7 +27,14 @@ async def image_to_image(
             f"pipeline configured with {pipeline.model_id} but called with {model_id}"
         )
 
-    images = pipeline(prompt, PIL.Image.open(image.file).convert("RGB"))
+    images = pipeline(
+        prompt,
+        PIL.Image.open(image.file).convert("RGB"),
+        strength=strength,
+        guidance_scale=guidance_scale,
+        negative_prompt=negative_prompt,
+        seed=seed,
+    )
 
     output_images = []
     for img in images:

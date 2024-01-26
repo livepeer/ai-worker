@@ -156,6 +156,25 @@
             "type": "string",
             "title": "Model Id",
             "default": ""
+          },
+          "strength": {
+            "type": "number",
+            "title": "Strength",
+            "default": 0.8
+          },
+          "guidance_scale": {
+            "type": "number",
+            "title": "Guidance Scale",
+            "default": 7.5
+          },
+          "negative_prompt": {
+            "type": "string",
+            "title": "Negative Prompt",
+            "default": ""
+          },
+          "seed": {
+            "type": "integer",
+            "title": "Seed"
           }
         },
         "type": "object",
@@ -176,6 +195,35 @@
             "type": "string",
             "title": "Model Id",
             "default": ""
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height",
+            "default": 576
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width",
+            "default": 1024
+          },
+          "fps": {
+            "type": "integer",
+            "title": "Fps",
+            "default": 7
+          },
+          "motion_bucket_id": {
+            "type": "integer",
+            "title": "Motion Bucket Id",
+            "default": 127
+          },
+          "noise_aug_strength": {
+            "type": "number",
+            "title": "Noise Aug Strength",
+            "default": 0.02
+          },
+          "seed": {
+            "type": "integer",
+            "title": "Seed"
           }
         },
         "type": "object",
@@ -247,6 +295,28 @@
           "prompt": {
             "type": "string",
             "title": "Prompt"
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height"
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width"
+          },
+          "guidance_scale": {
+            "type": "number",
+            "title": "Guidance Scale",
+            "default": 7.5
+          },
+          "negative_prompt": {
+            "type": "string",
+            "title": "Negative Prompt",
+            "default": ""
+          },
+          "seed": {
+            "type": "integer",
+            "title": "Seed"
           }
         },
         "type": "object",

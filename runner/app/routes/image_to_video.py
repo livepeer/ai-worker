@@ -3,8 +3,7 @@ from app.pipelines import ImageToVideoPipeline
 from app.dependencies import get_pipeline
 from app.routes.util import image_to_data_url, VideoResponse
 import PIL
-from typing import Annotated, Optional
-from pydantic import ConfigDict
+from typing import Annotated
 
 router = APIRouter()
 
@@ -16,6 +15,12 @@ router = APIRouter()
 async def image_to_video(
     image: Annotated[UploadFile, File()],
     model_id: Annotated[str, Form()] = "",
+    height: Annotated[int, Form()] = 576,
+    width: Annotated[int, Form()] = 1024,
+    fps: Annotated[int, Form()] = 7,
+    motion_bucket_id: Annotated[int, Form()] = 127,
+    noise_aug_strength: Annotated[float, Form()] = 0.02,
+    seed: Annotated[int, Form()] = None,
     pipeline: ImageToVideoPipeline = Depends(get_pipeline),
 ):
     if model_id != "" and model_id != pipeline.model_id:
@@ -23,7 +28,15 @@ async def image_to_video(
             f"pipeline configured with {pipeline.model_id} but called with {model_id}"
         )
 
-    batch_frames = pipeline(PIL.Image.open(image.file).convert("RGB"))
+    batch_frames = pipeline(
+        PIL.Image.open(image.file).convert("RGB"),
+        height=height,
+        width=width,
+        fps=fps,
+        motion_bucket_id=motion_bucket_id,
+        noise_aug_strength=noise_aug_strength,
+        seed=seed,
+    )
 
     output_frames = []
     for frames in batch_frames:
