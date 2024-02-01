@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"math"
 	"mime/multipart"
 	"strings"
 	"sync"
@@ -16,7 +15,6 @@ import (
 	"github.com/docker/cli/opts"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
@@ -36,21 +34,24 @@ var containerHostPorts = map[string]string{
 }
 
 type RunnerContainer struct {
-	ID      string
-	Client  *ClientWithResponses
-	ModelID string
-	GPU     string
+	ID       string
+	Client   *ClientWithResponses
+	Pipeline string
+	ModelID  string
+	GPU      string
 }
 
 type Worker struct {
 	containerImageID string
 	gpus             []string
-	gpuLoad          map[string]int
 	modelDir         string
 
 	dockerClient *client.Client
-	containers   map[string]*RunnerContainer
-	mu           *sync.Mutex
+	// gpu ID => container name
+	gpuContainers map[string]string
+	// container name => container
+	containers map[string]*RunnerContainer
+	mu         *sync.Mutex
 }
 
 func NewWorker(containerImageID string, gpus []string, modelDir string) (*Worker, error) {
@@ -62,19 +63,20 @@ func NewWorker(containerImageID string, gpus []string, modelDir string) (*Worker
 	return &Worker{
 		containerImageID: containerImageID,
 		gpus:             gpus,
-		gpuLoad:          make(map[string]int),
 		modelDir:         modelDir,
 		dockerClient:     dockerClient,
+		gpuContainers:    make(map[string]string),
 		containers:       make(map[string]*RunnerContainer),
 		mu:               &sync.Mutex{},
 	}, nil
 }
 
 func (w *Worker) TextToImage(ctx context.Context, req TextToImageJSONRequestBody) (*ImageResponse, error) {
-	c, err := w.getWarmContainer(ctx, "text-to-image", *req.ModelId)
+	c, err := w.borrowContainer(ctx, "text-to-image", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
+	defer w.returnContainer(c)
 
 	resp, err := c.Client.TextToImageWithResponse(ctx, req)
 	if err != nil {
@@ -90,10 +92,11 @@ func (w *Worker) TextToImage(ctx context.Context, req TextToImageJSONRequestBody
 }
 
 func (w *Worker) ImageToImage(ctx context.Context, req ImageToImageMultipartRequestBody) (*ImageResponse, error) {
-	c, err := w.getWarmContainer(ctx, "image-to-image", *req.ModelId)
+	c, err := w.borrowContainer(ctx, "image-to-image", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
+	defer w.returnContainer(c)
 
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
@@ -139,10 +142,11 @@ func (w *Worker) ImageToImage(ctx context.Context, req ImageToImageMultipartRequ
 }
 
 func (w *Worker) ImageToVideo(ctx context.Context, req ImageToVideoMultipartRequestBody) (*VideoResponse, error) {
-	c, err := w.getWarmContainer(ctx, "image-to-video", *req.ModelId)
+	c, err := w.borrowContainer(ctx, "image-to-video", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
+	defer w.returnContainer(c)
 
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
@@ -185,7 +189,7 @@ func (w *Worker) ImageToVideo(ctx context.Context, req ImageToVideoMultipartRequ
 }
 
 func (w *Worker) Warm(ctx context.Context, containerName, modelID string) error {
-	_, err := w.getWarmContainer(ctx, containerName, modelID)
+	_, err := w.createContainer(ctx, containerName, modelID)
 	return err
 }
 
@@ -203,7 +207,7 @@ func (w *Worker) Stop(ctx context.Context) error {
 			}
 		}(rc.ID)
 
-		w.gpuLoad[rc.GPU] -= 1
+		delete(w.gpuContainers, rc.GPU)
 		delete(w.containers, name)
 	}
 
@@ -212,57 +216,38 @@ func (w *Worker) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (w *Worker) getWarmContainer(ctx context.Context, pipeline string, modelID string) (*RunnerContainer, error) {
+func (w *Worker) borrowContainer(ctx context.Context, pipeline, modelID string) (*RunnerContainer, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
 	containerName := dockerContainerName(pipeline, modelID)
-	filters := filters.NewArgs(filters.Arg("name", "^"+containerName+"$"))
-	containers, err := w.dockerClient.ContainerList(ctx, types.ContainerListOptions{All: true, Filters: filters})
-	if err != nil {
-		return nil, err
-	}
-
-	if len(containers) > 0 {
-		c := containers[0]
-		rc, ok := w.containers[containerName]
-		if ok {
-			// Return the running container if it is tracked by the worker already
-			if rc.ID == c.ID && c.State == "running" {
-				slog.Info("Using warm container", slog.String("gpu", rc.GPU), slog.String("name", containerName), slog.String("modelID", modelID))
-				return rc, nil
-			}
-
-			// The worker is tracking a different container with the same name
-			// We'll stop and remove this container so the worker can start and properly track a newly started container
-			w.gpuLoad[rc.GPU] -= 1
-			delete(w.containers, containerName)
-		}
-
-		slog.Info("Removing untracked container", slog.String("name", containerName))
-
-		if err := dockerRemoveContainer(ctx, w.dockerClient, c.ID); err != nil {
+	rc, ok := w.containers[containerName]
+	if !ok {
+		// The container does not exist so try to create it
+		var err error
+		rc, err = w.createContainer(ctx, pipeline, modelID)
+		if err != nil {
 			return nil, err
 		}
 	}
 
-	// Get next available GPU
-	gpu, load := w.leastLoadedGPU()
-	if load > 0 {
-		// For simplicity, if there are already containers using this GPU, stop and remove them
-		// In the future, we can more intelligently decide when to stop containers that are using this GPU (i.e. based on low VRAM)
-		for name, rc := range w.containers {
-			if rc.GPU == gpu {
-				slog.Info("Removing container", slog.String("gpu", gpu), slog.String("name", name), slog.String("modelID", rc.ModelID))
+	// Remove container so it is unavailable until returnContainer is called
+	delete(w.containers, containerName)
+	return rc, nil
+}
 
-				w.gpuLoad[rc.GPU] -= 1
-				delete(w.containers, name)
+func (w *Worker) returnContainer(rc *RunnerContainer) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.containers[dockerContainerName(rc.Pipeline, rc.ModelID)] = rc
+}
 
-				if err := dockerRemoveContainer(ctx, w.dockerClient, rc.ID); err != nil {
-					return nil, err
-				}
-			}
-		}
+func (w *Worker) createContainer(ctx context.Context, pipeline string, modelID string) (*RunnerContainer, error) {
+	containerName := dockerContainerName(pipeline, modelID)
+
+	gpu, err := w.allocGPU(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	slog.Info("Starting container", slog.String("gpu", gpu), slog.String("name", containerName), slog.String("modelID", modelID))
@@ -282,7 +267,7 @@ func (w *Worker) getWarmContainer(ctx context.Context, pipeline string, modelID 
 	}
 
 	gpuOpts := opts.GpuOpts{}
-	gpuOpts.Set(gpu)
+	gpuOpts.Set("device=" + gpu)
 
 	containerHostPort := containerHostPorts[pipeline]
 	hostConfig := &container.HostConfig{
@@ -335,30 +320,48 @@ func (w *Worker) getWarmContainer(ctx context.Context, pipeline string, modelID 
 	cancel()
 
 	rc := &RunnerContainer{
-		ID:      resp.ID,
-		Client:  client,
-		ModelID: modelID,
-		GPU:     gpu,
+		ID:       resp.ID,
+		Client:   client,
+		Pipeline: pipeline,
+		ModelID:  modelID,
+		GPU:      gpu,
 	}
 
 	w.containers[containerName] = rc
-	w.gpuLoad[gpu] += 1
+	w.gpuContainers[gpu] = containerName
 
 	return rc, nil
 }
 
-func (w *Worker) leastLoadedGPU() (string, int) {
-	minGPU := "0"
-	minLoad := math.MaxInt64
-
+func (w *Worker) allocGPU(ctx context.Context) (string, error) {
+	// Is there a GPU available?
 	for _, gpu := range w.gpus {
-		if w.gpuLoad[gpu] < minLoad {
-			minLoad = w.gpuLoad[gpu]
-			minGPU = gpu
+		_, ok := w.gpuContainers[gpu]
+		if !ok {
+			return gpu, nil
 		}
 	}
 
-	return minGPU, minLoad
+	// Is there a GPU with an idle container?
+	for _, gpu := range w.gpus {
+		containerName := w.gpuContainers[gpu]
+		// If the container exists in this map then it is idle and we remove it
+		rc, ok := w.containers[containerName]
+		if ok {
+			slog.Info("Removing container", slog.String("gpu", gpu), slog.String("name", containerName), slog.String("modelID", rc.ModelID))
+
+			delete(w.gpuContainers, gpu)
+			delete(w.containers, containerName)
+
+			if err := dockerRemoveContainer(ctx, w.dockerClient, rc.ID); err != nil {
+				return "", err
+			}
+
+			return gpu, nil
+		}
+	}
+
+	return "", errors.New("insufficient capacity")
 }
 
 func dockerContainerName(pipeline string, modelID string) string {
