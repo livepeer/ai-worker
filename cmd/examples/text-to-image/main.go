@@ -16,8 +16,8 @@ func main() {
 	containerName := "text-to-image"
 	baseOutputPath := "output"
 
-	containerImageID := "runner"
-	gpus := "all"
+	containerImageID := "livepeer/ai-runner:latest"
+	gpus := []string{"0"}
 
 	modelDir, err := filepath.Abs("runner/models")
 	if err != nil {
@@ -83,7 +83,7 @@ func main() {
 
 	time.Sleep(2 * time.Second)
 
-	w.Stop(ctx, containerName)
+	w.Stop(ctx)
 
 	time.Sleep(1 * time.Second)
 }
