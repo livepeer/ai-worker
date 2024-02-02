@@ -8,6 +8,10 @@ import PIL
 from typing import List
 import logging
 
+from PIL import ImageFile
+
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
 logger = logging.getLogger(__name__)
 
 
