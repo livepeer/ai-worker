@@ -22,6 +22,11 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// APIError defines model for APIError.
+type APIError struct {
+	Msg string `json:"msg"`
+}
+
 // BodyImageToImageImageToImagePost defines model for Body_image_to_image_image_to_image_post.
 type BodyImageToImageImageToImagePost struct {
 	GuidanceScale  *float32           `json:"guidance_scale,omitempty"`
@@ -43,6 +48,11 @@ type BodyImageToVideoImageToVideoPost struct {
 	NoiseAugStrength *float32           `json:"noise_aug_strength,omitempty"`
 	Seed             *int               `json:"seed,omitempty"`
 	Width            *int               `json:"width,omitempty"`
+}
+
+// HTTPError defines model for HTTPError.
+type HTTPError struct {
+	Detail APIError `json:"detail"`
 }
 
 // HTTPValidationError defines model for HTTPValidationError.
@@ -527,7 +537,9 @@ type ImageToImageResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ImageResponse
+	JSON400      *HTTPError
 	JSON422      *HTTPValidationError
+	JSON500      *HTTPError
 }
 
 // Status returns HTTPResponse.Status
@@ -550,7 +562,9 @@ type ImageToVideoResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *VideoResponse
+	JSON400      *HTTPError
 	JSON422      *HTTPValidationError
+	JSON500      *HTTPError
 }
 
 // Status returns HTTPResponse.Status
@@ -573,7 +587,9 @@ type TextToImageResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ImageResponse
+	JSON400      *HTTPError
 	JSON422      *HTTPValidationError
+	JSON500      *HTTPError
 }
 
 // Status returns HTTPResponse.Status
@@ -683,12 +699,26 @@ func ParseImageToImageResponse(rsp *http.Response) (*ImageToImageResponse, error
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest HTTPValidationError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
 
 	}
 
@@ -716,12 +746,26 @@ func ParseImageToVideoResponse(rsp *http.Response) (*ImageToVideoResponse, error
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest HTTPValidationError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
 
 	}
 
@@ -749,12 +793,26 @@ func ParseTextToImageResponse(rsp *http.Response) (*TextToImageResponse, error) 
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest HTTPValidationError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
 
 	}
 
@@ -1006,23 +1064,24 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+xW32/bNhD+VwRuj07seO0y+C3drxpb1qDxuoeiMBjpLLOVSI48ZTUC/+/DkbZESvTs",
-	"FGsHBHuyTd+P7777eLwHlqtaKwkSLZs9MJuvoebu6wtVbJai5iUsUe2+9H5qZZFMtVEaDApwjmUjCi5z",
-	"WNqcV0AnBax4UyGbXZ4/HzEUSMfs551dduvsRgw3ms5lU9+BYdsRc1kowEqZmiObsTshudmwLsjcmbS+",
-	"Fo2QJfnWqoBqKYooPws8r8kgmxcpZwklR3EPS21UrfFgjN92dtmNt0uE6iLsnQ7bWoAitLyl362dkAil",
-	"J8aiAVniOgI2Of+uQ3a7txjQuh0xA382wlCut3t8e7LfdSFOFUCbQd29hxwJX+x6LwpQ/Z9p7ay0jQXT",
-	"wflJ2yQXaxDlOm7R88tvO7+X/v+U63+mr1qhUHJ51+QfAPtBLqaXYRSyzF44yyhaUIdUwsKSN+XygDAm",
-	"00CzZJxdNWV2WCOPkOJfouilu5hMn3Xp/nD/Dz17MjyivsMSSqjv5WJx84ZXouDE3Y/GKDNUWgHIRUXf",
-	"BELtjr42sGIz9tW4m4nj3UAc9+NtO6Q/+EgtEG4M37gCWwkmAKVwA69w/f0a8g9DvBY5NvHlYK9+YeGN",
-	"dwYDtYU4ggSJ/E7rr8FqJS0METj27cmMXUMheMjT3PsneBoIwYZKiGElcPtMA7yNqUIF/26qJDlhcnIJ",
-	"MvvAiYwL+IgL5YDdcMM9GZ/rFewG3Akj7Uk/e+2seeRw2YEJOjtsYKLLR2dIpfLoOnC5ebVis7cPgxof",
-	"BhDfBTfjV5W7NIO7MWK1LcOCr8HaAw+SP+hMHeZsQafHZE91+FQ7y4CpE+bWG5rGh+fGyvC6NzceOUB6",
-	"nLQbgQ98ZKDs0oclRXgHBVEAIVfKy9/mRmjXnBm7khnXuhK+WxmqzDQyu5pnWmiohPRg9k0V96ABDP3/",
-	"upESiLt7MNbHmpxfnE+oGqVBci3YjH3jjkZMc1w7dsZrN7DdOAF3mYhXl3xetPOcUb2+GOc1nUzoI1cS",
-	"QTqvAPT4vaX0+03/WA/CF8MRExNy2+Q5WLtqqqzlk6xsU9e0R7UQ6XDsRvsZqrN279ovgXFZ7lrubifz",
-	"zQSLtBD06qqbCoXmBse0wJ0VHPnppZ263m5jQaFpYPsZGY9fu1M5H7Fn0+m/1/XEvpJA0plke5uw9a6S",
-	"bKEy38hYAm6DOyoBd1O/lAQO75hfWALxfHoSEvCNdBJA+IgnDIHghf5HAXx6icMd4P+r/ol9JirDm77d",
-	"/h0AAP//Ghk4PFkSAAA=",
+	"H4sIAAAAAAAC/+xX227jNhD9FYLtoxM77qYp/Jb0tkabbhC724fFwmCkscxdiWTJkbuG4X8vSMoSdauc",
+	"YpOiizzFkuZyZubwcLKnkcyUFCDQ0NmemmgDGXM/r+/mP2ottf2ttFSgkYP7kpnE/kGOKdAZvTUJHVHc",
+	"KftgUHOR0MNhRDX8mXMNMZ29cy7vR6VLGbv0kw8fIEJ6GNEbGe9WPGMJrFAWPxqPShpsw0pyHjMRwcpE",
+	"zGbZ0xjWLE+Rzq7OL6vkPxd2ZOHsSggizx5AWwguiw2wljpjSGf0gQumd7QKMncmrbJHNJMxpCse1/LT",
+	"wPPWGpB53OUsIGHIt7BSWmYKe2P8VtiRO2/XEaqKcHTqtzUAcWi5sM+lHRcIiW+MQQ0iwU0N2OT8uwrZ",
+	"4mjRamuDEeqIxjc7IMepBBjkzpbHIJuP3dxZK1MnTAXnJ2U6e7EBnmzqI7q8+rbye+2/d7n+Z/zKJHIp",
+	"Vg959BGwGeRiehVGsZbkxlnWogV1CMkNrFierHqIMZkGnLXG5DpPSD9HHkHFv3jcSHcxmb6q0v3hvrc9",
+	"GzQcYF8/hTrY93q5vOuRzBiQ8dT++lrDms7oV+NKeMeF6o5LWWyiLNwDmFWuHiBvWcpjZoc4CIkjZGYI",
+	"WzPeocLyg49UAmFas52rIUTbDNCFG1iKm+83EH1s4zXIMK+fUvrmFxpKjzPouoqqM1kl6MjvDt09GCWF",
+	"gTYCRwNzcsduIeYs7NPc+3f0qcVIE866DqsDt8/UwpvrNDxKv+t08J62LkFmH7gj4xI+4VI6YHdMM9+M",
+	"p7qOK6U9QVu/6Pu3FL1HqlwBJphse4AdUx7UkFRGtePAxO7Nms7e7Vs17lsQ3wcn41cZuTStszFqLZtg",
+	"TM/N6F9Upg4zWdq3Q7S3dfhUhWXQqRN06629Fvp1Y61Z1tCNRwpIoyflauIDDwhKkT4sqYa3VZANwMVa",
+	"evqbSHPlhjOj14IwpVLup0VQEp0Lcj0niitIufBgjkPlW1AA2n6/z4UA27staONjTc4vzie2GqlAMMXp",
+	"jH7jXo2oYrhx3RlvnGA7OQF3mGxfXfJ5XOo5tfX6YpzXdDKxfyIpEITzCkCPPxib/vivztAMwhvDNabe",
+	"kEUeRWDMOk9J2U9rZfIsswtdCdG+HDtpP0N5Vi6Ax220XpY7lsXppH6YYNBuJo26sjxFrpjGsd0kz2KG",
+	"7PTSTt2zD3VCoc7h8IQdr992p/Z8RF99zqmX21VH/hsWk3s/Epd3Ov2seVuLVhtBZULKZezyucqfCwQt",
+	"WEoWoLegSbWxVqR3MyRLSTyF6+R3S/Qg+Z1GPRf5+9f8ZyZ/XZlfyP+/Jr+nsCM/wic8QfiDrewfqf/v",
+	"q2vvfS/y/sLwRzLckihU98Ph7wAAAP//uE5cIEgWAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
