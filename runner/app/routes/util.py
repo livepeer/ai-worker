@@ -17,6 +17,18 @@ class VideoResponse(BaseModel):
     frames: List[List[Media]]
 
 
+class APIError(BaseModel):
+    msg: str
+
+
+class HTTPError(BaseModel):
+    detail: APIError
+
+
+def http_error(msg: str) -> HTTPError:
+    return {"detail": {"msg": msg}}
+
+
 def image_to_base64(img: PIL.Image, format: str = "png") -> str:
     buffered = io.BytesIO()
     img.save(buffered, format=format)
