@@ -34,7 +34,7 @@ class ImageToVideoPipeline(Pipeline):
         if "decode_chunk_size" not in kwargs:
             kwargs["decode_chunk_size"] = 8
 
-        seed = kwargs.pop("seed")
+        seed = kwargs.pop("seed", None)
         if seed is not None:
             kwargs["generator"] = torch.Generator(seed)
 

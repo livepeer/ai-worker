@@ -31,7 +31,7 @@ class TextToImagePipeline(Pipeline):
         self.ldm.to(get_torch_device())
 
     def __call__(self, prompt: str, **kwargs) -> List[PIL.Image]:
-        seed = kwargs.pop("seed")
+        seed = kwargs.pop("seed", None)
         if seed is not None:
             kwargs["generator"] = torch.Generator(seed)
 
