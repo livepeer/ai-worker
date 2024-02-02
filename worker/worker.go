@@ -3,6 +3,7 @@ package worker
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -84,8 +85,30 @@ func (w *Worker) TextToImage(ctx context.Context, req TextToImageJSONRequestBody
 	}
 
 	if resp.JSON422 != nil {
-		// TODO: Handle JSON422 struct
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("text-to-image container returned 422", slog.String("err", string(val)))
 		return nil, errors.New("text-to-image container returned 422")
+	}
+
+	if resp.JSON400 != nil {
+		val, err := json.Marshal(resp.JSON400)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("text-to-image container returned 400", slog.String("err", string(val)))
+		return nil, errors.New("text-to-image container returned 400")
+	}
+
+	if resp.JSON500 != nil {
+		val, err := json.Marshal(resp.JSON500)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("text-to-image container returned 500", slog.String("err", string(val)))
+		return nil, errors.New("text-to-image container returned 500")
 	}
 
 	return resp.JSON200, nil
@@ -134,8 +157,30 @@ func (w *Worker) ImageToImage(ctx context.Context, req ImageToImageMultipartRequ
 	}
 
 	if resp.JSON422 != nil {
-		// TODO: Handle JSON422 struct
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("image-to-image container returned 422", slog.String("err", string(val)))
 		return nil, errors.New("image-to-image container returned 422")
+	}
+
+	if resp.JSON400 != nil {
+		val, err := json.Marshal(resp.JSON400)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("image-to-image container returned 400", slog.String("err", string(val)))
+		return nil, errors.New("image-to-image container returned 400")
+	}
+
+	if resp.JSON500 != nil {
+		val, err := json.Marshal(resp.JSON500)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("image-to-image container returned 500", slog.String("err", string(val)))
+		return nil, errors.New("image-to-image container returned 500")
 	}
 
 	return resp.JSON200, nil
@@ -181,8 +226,30 @@ func (w *Worker) ImageToVideo(ctx context.Context, req ImageToVideoMultipartRequ
 	}
 
 	if resp.JSON422 != nil {
-		// TODO: Handle JSON422 struct
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("image-to-video container returned 422", slog.String("err", string(val)))
 		return nil, errors.New("image-to-video container returned 422")
+	}
+
+	if resp.JSON400 != nil {
+		val, err := json.Marshal(resp.JSON400)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("image-to-video container returned 400", slog.String("err", string(val)))
+		return nil, errors.New("image-to-video container returned 400")
+	}
+
+	if resp.JSON500 != nil {
+		val, err := json.Marshal(resp.JSON500)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("image-to-video container returned 500", slog.String("err", string(val)))
+		return nil, errors.New("image-to-video container returned 500")
 	}
 
 	return resp.JSON200, nil
