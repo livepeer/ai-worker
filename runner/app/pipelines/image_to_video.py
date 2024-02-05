@@ -40,7 +40,7 @@ class ImageToVideoPipeline(Pipeline):
 
         seed = kwargs.pop("seed", None)
         if seed is not None:
-            kwargs["generator"] = torch.Generator(seed)
+            kwargs["generator"] = torch.Generator(get_torch_device()).manual_seed(seed)
 
         return self.ldm(image, **kwargs).frames
 

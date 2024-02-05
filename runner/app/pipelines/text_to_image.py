@@ -33,7 +33,7 @@ class TextToImagePipeline(Pipeline):
     def __call__(self, prompt: str, **kwargs) -> List[PIL.Image]:
         seed = kwargs.pop("seed", None)
         if seed is not None:
-            kwargs["generator"] = torch.Generator(seed)
+            kwargs["generator"] = torch.Generator(get_torch_device()).manual_seed(seed)
 
         if (
             self.model_id == "stabilityai/sdxl-turbo"
