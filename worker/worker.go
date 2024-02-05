@@ -5,10 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
 	"log/slog"
-	"mime/multipart"
 	"strings"
 	"sync"
 	"time"
@@ -122,32 +119,8 @@ func (w *Worker) ImageToImage(ctx context.Context, req ImageToImageMultipartRequ
 	defer w.returnContainer(c)
 
 	var buf bytes.Buffer
-	mw := multipart.NewWriter(&buf)
-	writer, err := mw.CreateFormFile("image", req.Image.Filename())
+	mw, err := NewImageToImageMultipartWriter(&buf, req)
 	if err != nil {
-		return nil, err
-	}
-	imageSize := req.Image.FileSize()
-	imageRdr, err := req.Image.Reader()
-	if err != nil {
-		return nil, err
-	}
-	copied, err := io.Copy(writer, imageRdr)
-	if err != nil {
-		return nil, err
-	}
-	if copied != imageSize {
-		return nil, fmt.Errorf("failed to copy image to multipart request imageBytes=%v copiedBytes=%v", imageSize, copied)
-	}
-
-	if err := mw.WriteField("prompt", req.Prompt); err != nil {
-		return nil, err
-	}
-	if err := mw.WriteField("model_id", *req.ModelId); err != nil {
-		return nil, err
-	}
-
-	if err := mw.Close(); err != nil {
 		return nil, err
 	}
 
@@ -194,29 +167,8 @@ func (w *Worker) ImageToVideo(ctx context.Context, req ImageToVideoMultipartRequ
 	defer w.returnContainer(c)
 
 	var buf bytes.Buffer
-	mw := multipart.NewWriter(&buf)
-	writer, err := mw.CreateFormFile("image", req.Image.Filename())
+	mw, err := NewImageToVideoMultipartWriter(&buf, req)
 	if err != nil {
-		return nil, err
-	}
-	imageSize := req.Image.FileSize()
-	imageRdr, err := req.Image.Reader()
-	if err != nil {
-		return nil, err
-	}
-	copied, err := io.Copy(writer, imageRdr)
-	if err != nil {
-		return nil, err
-	}
-	if copied != imageSize {
-		return nil, fmt.Errorf("failed to copy image to multipart request imageBytes=%v copiedBytes=%v", imageSize, copied)
-	}
-
-	if err := mw.WriteField("model_id", *req.ModelId); err != nil {
-		return nil, err
-	}
-
-	if err := mw.Close(); err != nil {
 		return nil, err
 	}
 
