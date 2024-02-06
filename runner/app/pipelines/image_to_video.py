@@ -7,6 +7,7 @@ import torch
 import PIL
 from typing import List
 import logging
+import os
 
 from PIL import ImageFile
 
@@ -33,6 +34,15 @@ class ImageToVideoPipeline(Pipeline):
         self.model_id = model_id
         self.ldm = StableVideoDiffusionPipeline.from_pretrained(model_id, **kwargs)
         self.ldm.to(get_torch_device())
+
+        if os.environ.get("SFAST"):
+            logger.info(
+                "ImageToVideoPipeline will be dynamicallly compiled with stable-fast for %s",
+                model_id,
+            )
+            from app.pipelines.sfast import compile_model
+
+            self.ldm = compile_model(self.ldm)
 
     def __call__(self, image: PIL.Image, **kwargs) -> List[List[PIL.Image]]:
         if "decode_chunk_size" not in kwargs:

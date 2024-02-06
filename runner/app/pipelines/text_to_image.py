@@ -7,6 +7,7 @@ import torch
 import PIL
 from typing import List
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,15 @@ class TextToImagePipeline(Pipeline):
         self.model_id = model_id
         self.ldm = AutoPipelineForText2Image.from_pretrained(model_id, **kwargs)
         self.ldm.to(get_torch_device())
+
+        if os.environ.get("SFAST"):
+            logger.info(
+                "TextToImagePipeline will be dynamicallly compiled with stable-fast for %s",
+                model_id,
+            )
+            from app.pipelines.sfast import compile_model
+
+            self.ldm = compile_model(self.ldm)
 
     def __call__(self, prompt: str, **kwargs) -> List[PIL.Image]:
         seed = kwargs.pop("seed", None)

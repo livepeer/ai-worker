@@ -3,7 +3,7 @@
 ## Build Docker image
 
 ```
-docker build -t runner .
+docker build -t livepeer/ai-runner:latest .
 ```
 
 ## Download models
@@ -18,6 +18,10 @@ To use `dl-checkpoints.sh` to download model checkpoints:
 pip install "huggingface_hub[cli]"
 ./dl-checkpoints.sh
 ```
+
+## Optimizations
+
+- Set the environment variable `SFAST=true` to enable dynamic compilation with [stable-fast](https://github.com/chengzeyi/stable-fast) to speed up inference for diffusion pipelines (the initial requests will be slower because the model will be dynamically compiled then).
 
 ## Run text-to-image container
 
