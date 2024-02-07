@@ -29,13 +29,14 @@ type APIError struct {
 
 // BodyImageToImageImageToImagePost defines model for Body_image_to_image_image_to_image_post.
 type BodyImageToImageImageToImagePost struct {
-	GuidanceScale  *float32           `json:"guidance_scale,omitempty"`
-	Image          openapi_types.File `json:"image"`
-	ModelId        *string            `json:"model_id,omitempty"`
-	NegativePrompt *string            `json:"negative_prompt,omitempty"`
-	Prompt         string             `json:"prompt"`
-	Seed           *int               `json:"seed,omitempty"`
-	Strength       *float32           `json:"strength,omitempty"`
+	GuidanceScale      *float32           `json:"guidance_scale,omitempty"`
+	Image              openapi_types.File `json:"image"`
+	ModelId            *string            `json:"model_id,omitempty"`
+	NegativePrompt     *string            `json:"negative_prompt,omitempty"`
+	NumImagesPerPrompt *int               `json:"num_images_per_prompt,omitempty"`
+	Prompt             string             `json:"prompt"`
+	Seed               *int               `json:"seed,omitempty"`
+	Strength           *float32           `json:"strength,omitempty"`
 }
 
 // BodyImageToVideoImageToVideoPost defines model for Body_image_to_video_image_to_video_post.
@@ -77,13 +78,14 @@ type Media struct {
 
 // TextToImageParams defines model for TextToImageParams.
 type TextToImageParams struct {
-	GuidanceScale  *float32 `json:"guidance_scale,omitempty"`
-	Height         *int     `json:"height,omitempty"`
-	ModelId        *string  `json:"model_id,omitempty"`
-	NegativePrompt *string  `json:"negative_prompt,omitempty"`
-	Prompt         string   `json:"prompt"`
-	Seed           *int     `json:"seed,omitempty"`
-	Width          *int     `json:"width,omitempty"`
+	GuidanceScale      *float32 `json:"guidance_scale,omitempty"`
+	Height             *int     `json:"height,omitempty"`
+	ModelId            *string  `json:"model_id,omitempty"`
+	NegativePrompt     *string  `json:"negative_prompt,omitempty"`
+	NumImagesPerPrompt *int     `json:"num_images_per_prompt,omitempty"`
+	Prompt             string   `json:"prompt"`
+	Seed               *int     `json:"seed,omitempty"`
+	Width              *int     `json:"width,omitempty"`
 }
 
 // ValidationError defines model for ValidationError.
@@ -1064,24 +1066,24 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+xX227jNhD9FYLtoxM77qYp/Jb0tkabbhC724fFwmCkscxdiWTJkbuG4X8vSMoSdauc",
-	"YpOiizzFkuZyZubwcLKnkcyUFCDQ0NmemmgDGXM/r+/mP2ottf2ttFSgkYP7kpnE/kGOKdAZvTUJHVHc",
-	"KftgUHOR0MNhRDX8mXMNMZ29cy7vR6VLGbv0kw8fIEJ6GNEbGe9WPGMJrFAWPxqPShpsw0pyHjMRwcpE",
-	"zGbZ0xjWLE+Rzq7OL6vkPxd2ZOHsSggizx5AWwguiw2wljpjSGf0gQumd7QKMncmrbJHNJMxpCse1/LT",
-	"wPPWGpB53OUsIGHIt7BSWmYKe2P8VtiRO2/XEaqKcHTqtzUAcWi5sM+lHRcIiW+MQQ0iwU0N2OT8uwrZ",
-	"4mjRamuDEeqIxjc7IMepBBjkzpbHIJuP3dxZK1MnTAXnJ2U6e7EBnmzqI7q8+rbye+2/d7n+Z/zKJHIp",
-	"Vg959BGwGeRiehVGsZbkxlnWogV1CMkNrFierHqIMZkGnLXG5DpPSD9HHkHFv3jcSHcxmb6q0v3hvrc9",
-	"GzQcYF8/hTrY93q5vOuRzBiQ8dT++lrDms7oV+NKeMeF6o5LWWyiLNwDmFWuHiBvWcpjZoc4CIkjZGYI",
-	"WzPeocLyg49UAmFas52rIUTbDNCFG1iKm+83EH1s4zXIMK+fUvrmFxpKjzPouoqqM1kl6MjvDt09GCWF",
-	"gTYCRwNzcsduIeYs7NPc+3f0qcVIE866DqsDt8/UwpvrNDxKv+t08J62LkFmH7gj4xI+4VI6YHdMM9+M",
-	"p7qOK6U9QVu/6Pu3FL1HqlwBJphse4AdUx7UkFRGtePAxO7Nms7e7Vs17lsQ3wcn41cZuTStszFqLZtg",
-	"TM/N6F9Upg4zWdq3Q7S3dfhUhWXQqRN06629Fvp1Y61Z1tCNRwpIoyflauIDDwhKkT4sqYa3VZANwMVa",
-	"evqbSHPlhjOj14IwpVLup0VQEp0Lcj0niitIufBgjkPlW1AA2n6/z4UA27staONjTc4vzie2GqlAMMXp",
-	"jH7jXo2oYrhx3RlvnGA7OQF3mGxfXfJ5XOo5tfX6YpzXdDKxfyIpEITzCkCPPxib/vivztAMwhvDNabe",
-	"kEUeRWDMOk9J2U9rZfIsswtdCdG+HDtpP0N5Vi6Ax220XpY7lsXppH6YYNBuJo26sjxFrpjGsd0kz2KG",
-	"7PTSTt2zD3VCoc7h8IQdr992p/Z8RF99zqmX21VH/hsWk3s/Epd3Ov2seVuLVhtBZULKZezyucqfCwQt",
-	"WEoWoLegSbWxVqR3MyRLSTyF6+R3S/Qg+Z1GPRf5+9f8ZyZ/XZlfyP+/Jr+nsCM/wic8QfiDrewfqf/v",
-	"q2vvfS/y/sLwRzLckihU98Ph7wAAAP//uE5cIEgWAAA=",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

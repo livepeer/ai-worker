@@ -248,6 +248,11 @@
           "seed": {
             "type": "integer",
             "title": "Seed"
+          },
+          "num_images_per_prompt": {
+            "type": "integer",
+            "title": "Num Images Per Prompt",
+            "default": 1
           }
         },
         "type": "object",
@@ -402,6 +407,11 @@
           "seed": {
             "type": "integer",
             "title": "Seed"
+          },
+          "num_images_per_prompt": {
+            "type": "integer",
+            "title": "Num Images Per Prompt",
+            "default": 1
           }
         },
         "type": "object",

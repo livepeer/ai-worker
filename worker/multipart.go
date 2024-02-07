@@ -54,6 +54,11 @@ func NewImageToImageMultipartWriter(w io.Writer, req ImageToImageMultipartReques
 			return nil, err
 		}
 	}
+	if req.NumImagesPerPrompt != nil {
+		if err := mw.WriteField("num_images_per_prompt", strconv.Itoa(*req.NumImagesPerPrompt)); err != nil {
+			return nil, err
+		}
+	}
 
 	if err := mw.Close(); err != nil {
 		return nil, err

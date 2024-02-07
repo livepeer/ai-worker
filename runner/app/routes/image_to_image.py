@@ -31,6 +31,7 @@ async def image_to_image(
     guidance_scale: Annotated[float, Form()] = 7.5,
     negative_prompt: Annotated[str, Form()] = "",
     seed: Annotated[int, Form()] = None,
+    num_images_per_prompt: Annotated[int, Form()] = 1,
     pipeline: ImageToImagePipeline = Depends(get_pipeline),
 ):
     if model_id != "" and model_id != pipeline.model_id:
@@ -49,6 +50,7 @@ async def image_to_image(
             guidance_scale=guidance_scale,
             negative_prompt=negative_prompt,
             seed=seed,
+            num_images_per_prompt=num_images_per_prompt,
         )
     except Exception as e:
         logger.error(f"ImageToImagePipeline error: {e}")
