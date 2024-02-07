@@ -49,5 +49,6 @@ ENV DIFFUSERS_CACHE=/models
 ENV MODEL_DIR=/models
 
 COPY app/ /app/app
+COPY bench.py /app/bench.py
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

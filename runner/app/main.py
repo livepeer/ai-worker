@@ -17,7 +17,10 @@ async def lifespan(app: FastAPI):
 
     app.include_router(health.router)
 
-    config = load_pipeline()
+    pipeline = os.environ["PIPELINE"]
+    model_id = os.environ["MODEL_ID"]
+
+    config = load_pipeline(pipeline, model_id)
     app.pipeline = config["pipeline"]
     app.include_router(config["route"])
 
@@ -33,10 +36,7 @@ class PipelineConfig(BaseModel):
     route: Any
 
 
-def load_pipeline() -> PipelineConfig:
-    pipeline = os.environ["PIPELINE"]
-    model_id = os.environ["MODEL_ID"]
-
+def load_pipeline(pipeline: str, model_id: str) -> PipelineConfig:
     config = {}
     match pipeline:
         case "text-to-image":
