@@ -37,6 +37,7 @@ type RunnerContainer struct {
 	Pipeline string
 	ModelID  string
 	GPU      string
+	KeepWarm bool
 }
 
 type Worker struct {
@@ -208,7 +209,7 @@ func (w *Worker) ImageToVideo(ctx context.Context, req ImageToVideoMultipartRequ
 }
 
 func (w *Worker) Warm(ctx context.Context, containerName, modelID string) error {
-	_, err := w.createContainer(ctx, containerName, modelID)
+	_, err := w.createContainer(ctx, containerName, modelID, true)
 	return err
 }
 
@@ -244,7 +245,7 @@ func (w *Worker) borrowContainer(ctx context.Context, pipeline, modelID string) 
 	if !ok {
 		// The container does not exist so try to create it
 		var err error
-		rc, err = w.createContainer(ctx, pipeline, modelID)
+		rc, err = w.createContainer(ctx, pipeline, modelID, false)
 		if err != nil {
 			return nil, err
 		}
@@ -261,7 +262,7 @@ func (w *Worker) returnContainer(rc *RunnerContainer) {
 	w.containers[dockerContainerName(rc.Pipeline, rc.ModelID)] = rc
 }
 
-func (w *Worker) createContainer(ctx context.Context, pipeline string, modelID string) (*RunnerContainer, error) {
+func (w *Worker) createContainer(ctx context.Context, pipeline string, modelID string, keepWarm bool) (*RunnerContainer, error) {
 	containerName := dockerContainerName(pipeline, modelID)
 
 	gpu, err := w.allocGPU(ctx)
@@ -344,6 +345,7 @@ func (w *Worker) createContainer(ctx context.Context, pipeline string, modelID s
 		Pipeline: pipeline,
 		ModelID:  modelID,
 		GPU:      gpu,
+		KeepWarm: keepWarm,
 	}
 
 	w.containers[containerName] = rc
@@ -364,9 +366,9 @@ func (w *Worker) allocGPU(ctx context.Context) (string, error) {
 	// Is there a GPU with an idle container?
 	for _, gpu := range w.gpus {
 		containerName := w.gpuContainers[gpu]
-		// If the container exists in this map then it is idle and we remove it
+		// If the container exists in this map then it is idle and if it not marked as keep warm we remove it
 		rc, ok := w.containers[containerName]
-		if ok {
+		if ok && !rc.KeepWarm {
 			slog.Info("Removing container", slog.String("gpu", gpu), slog.String("name", containerName), slog.String("modelID", rc.ModelID))
 
 			delete(w.gpuContainers, gpu)
