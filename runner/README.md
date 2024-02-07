@@ -1,14 +1,30 @@
 # runner
 
-## Build Docker image
+## Architecture
+
+A high level sketch of how the runner is used:
+
+![Architecture](./images/architecture.png)
+
+## Running with Docker
+
+Make sure you have Docker Installed and then pull the pre-built image from DockerHub or build the image locally in this directory.
+
+### Pull Docker image
+
+```
+docker pull livepeer/ai-runner:latest
+```
+
+### Build Docker image
 
 ```
 docker build -t livepeer/ai-runner:latest .
 ```
 
-## Download models
+### Models
 
-The runner app within the container expects model checkpoints to be stored in a `/models` directory which we can mount with a local `models` directory.
+The runner app within the container references models by their [HuggingFace](https://huggingface.co/) model ID and expects model checkpoints to be stored in a `/models` directory which we can mount with a local `models` directory.
 
 See the `dl-checkpoints.sh` script for how to download model checkpoints to a local `models` directory.
 
@@ -19,11 +35,45 @@ pip install "huggingface_hub[cli]"
 ./dl-checkpoints.sh
 ```
 
-## Optimizations
+### Optimizations
 
 - Set the environment variable `SFAST=true` to enable dynamic compilation with [stable-fast](https://github.com/chengzeyi/stable-fast) to speed up inference for diffusion pipelines (the initial requests will be slower because the model will be dynamically compiled then).
 
-## Run text-to-image container
+### Run benchmarking script
+
+```
+docker run --gpus <GPU_IDs> -v ./models:/models livepeer/ai-runner:latest python bench.py --pipeline <PIPELINE> --model_id <MODEL_ID> --runs <RUNS> --batch_size <BATCH_SIZE>
+```
+
+Example command:
+
+```
+# Benchmark the text-to-image pipeline with the stabilityai/sd-turbo model over 3 runs using GPU 0
+docker run --gpus 0 -v ./models:/models livepeer/ai-runner:latest python bench.py --pipeline text-to-image --model_id stabilityai/sd-turbo --runs 3
+```
+
+Example output:
+
+```
+----AGGREGATE METRICS----
+
+
+pipeline load time: 1.473s
+pipeline load max GPU memory allocated: 2.421GiB
+pipeline load max GPU memory reserved: 2.488GiB
+avg inference time: 0.482s
+avg inference time per output: 0.482s
+avg inference max GPU memory allocated: 3.024s
+avg inference max GPU memory reserved: 3.623s
+```
+
+For benchmarking script usage information:
+
+```
+docker run livepeer/ai-runner:latest python bench.py -h
+```
+
+### Run text-to-image container
 
 Run container:
 
@@ -37,7 +87,7 @@ Query API:
 curl -X POST -H "Content-Type: application/json" localhost:8000/text-to-image -d '{"prompt":"a mountain lion"}'
 ```
 
-## Run image-to-image container
+### Run image-to-image container
 
 Run container:
 
@@ -51,7 +101,7 @@ Query API:
 curl -X POST localhost:8000/image-to-image -F prompt="a mountain lion" -F image=@<IMAGE_FILE>
 ```
 
-## Run image-to-video container
+### Run image-to-video container
 
 Run container
 
