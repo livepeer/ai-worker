@@ -132,13 +132,13 @@ if __name__ == "__main__":
             f"avg warmup inference time per output: {warmup_metrics.inference_time_per_output:.3f}s"
         )
         print(
-            f"avg warmup inference max GPU memory allocated: {warmup_metrics.max_mem_allocated:.3f}s"
+            f"avg warmup inference max GPU memory allocated: {warmup_metrics.max_mem_allocated:.3f}GiB"
         )
         print(
-            f"avg warmup inference max GPU memory reserved: {warmup_metrics.max_mem_reserved:.3f}s"
+            f"avg warmup inference max GPU memory reserved: {warmup_metrics.max_mem_reserved:.3f}GiB"
         )
 
     print(f"avg inference time: {metrics.inference_time:.3f}s")
     print(f"avg inference time per output: {metrics.inference_time_per_output:.3f}s")
-    print(f"avg inference max GPU memory allocated: {metrics.max_mem_allocated:.3f}s")
-    print(f"avg inference max GPU memory reserved: {metrics.max_mem_reserved:.3f}s")
+    print(f"avg inference max GPU memory allocated: {metrics.max_mem_allocated:.3f}GiB")
+    print(f"avg inference max GPU memory reserved: {metrics.max_mem_reserved:.3f}GiB")
