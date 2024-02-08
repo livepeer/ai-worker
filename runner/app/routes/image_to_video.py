@@ -6,6 +6,7 @@ from app.routes.util import image_to_data_url, VideoResponse, HTTPError
 import PIL
 from typing import Annotated
 import logging
+import random
 
 router = APIRouter()
 
@@ -44,6 +45,9 @@ async def image_to_video(
             },
         )
 
+    if seed is None:
+        seed = random.randint(0, 2**32 - 1)
+
     try:
         batch_frames = pipeline(
             PIL.Image.open(image.file).convert("RGB"),
@@ -63,6 +67,8 @@ async def image_to_video(
 
     output_frames = []
     for frames in batch_frames:
-        output_frames.append([{"url": image_to_data_url(frame)} for frame in frames])
+        output_frames.append(
+            [{"url": image_to_data_url(frame), "seed": seed} for frame in frames]
+        )
 
     return {"frames": output_frames}

@@ -6,6 +6,8 @@ from app.routes.util import image_to_data_url, ImageResponse, HTTPError, http_er
 import PIL
 from typing import Annotated
 import logging
+import random
+from typing import List
 
 router = APIRouter()
 
@@ -42,10 +44,25 @@ async def image_to_image(
             ),
         )
 
+    if seed is None:
+        init_seed = random.randint(0, 2**32 - 1)
+        if num_images_per_prompt > 1:
+            seed = [i for i in range(init_seed, init_seed + num_images_per_prompt)]
+        else:
+            seed = init_seed
+
+    img = PIL.Image.open(image.file).convert("RGB")
+    # If a list of seeds/generators is passed, diffusers wants a list of images
+    # https://github.com/huggingface/diffusers/blob/17808a091e2d5615c2ed8a63d7ae6f2baea11e1e/src/diffusers/pipelines/stable_diffusion_xl/pipeline_stable_diffusion_xl_img2img.py#L715
+    if isinstance(seed, list):
+        image = [img] * num_images_per_prompt
+    else:
+        image = img
+
     try:
         images = pipeline(
             prompt,
-            PIL.Image.open(image.file).convert("RGB"),
+            image,
             strength=strength,
             guidance_scale=guidance_scale,
             negative_prompt=negative_prompt,
@@ -59,8 +76,12 @@ async def image_to_image(
             status_code=500, content=http_error("ImageToImagePipeline error")
         )
 
+    seeds = seed
+    if not isinstance(seeds, list):
+        seeds = [seeds]
+
     output_images = []
-    for img in images:
-        output_images.append({"url": image_to_data_url(img)})
+    for img, s in zip(images, seeds):
+        output_images.append({"url": image_to_data_url(img), "seed": s})
 
     return {"images": output_images}

@@ -7,6 +7,7 @@ from typing import List
 
 class Media(BaseModel):
     url: str
+    seed: int
 
 
 class ImageResponse(BaseModel):

@@ -367,11 +367,16 @@
           "url": {
             "type": "string",
             "title": "Url"
+          },
+          "seed": {
+            "type": "integer",
+            "title": "Seed"
           }
         },
         "type": "object",
         "required": [
-          "url"
+          "url",
+          "seed"
         ],
         "title": "Media"
       },
