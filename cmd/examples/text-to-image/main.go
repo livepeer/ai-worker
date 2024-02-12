@@ -38,7 +38,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if err := w.Warm(ctx, containerName, modelID); err != nil {
+	if err := w.Warm(ctx, containerName, modelID, ""); err != nil {
 		slog.Error("Error warming container", slog.String("error", err.Error()))
 		return
 	}
