@@ -1,12 +1,13 @@
 from pydantic import BaseModel
 from fastapi import Depends, APIRouter
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.pipelines import TextToImagePipeline
 from app.dependencies import get_pipeline
 from app.routes.util import image_to_data_url, ImageResponse, HTTPError, http_error
 import logging
-from typing import List
 import random
+import os
 
 router = APIRouter()
 
@@ -32,8 +33,19 @@ responses = {400: {"model": HTTPError}, 500: {"model": HTTPError}}
 @router.post("/text-to-image", response_model=ImageResponse, responses=responses)
 @router.post("/text-to-image/", response_model=ImageResponse, include_in_schema=False)
 async def text_to_image(
-    params: TextToImageParams, pipeline: TextToImagePipeline = Depends(get_pipeline)
+    params: TextToImageParams,
+    pipeline: TextToImagePipeline = Depends(get_pipeline),
+    token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
+    auth_token = os.environ.get("AUTH_TOKEN")
+    if auth_token:
+        if not token or token.credentials != auth_token:
+            return JSONResponse(
+                status_code=401,
+                headers={"WWW-Authenticate": "Bearer"},
+                content=http_error("Invalid bearer token"),
+            )
+
     if params.model_id != "" and params.model_id != pipeline.model_id:
         return JSONResponse(
             status_code=400,

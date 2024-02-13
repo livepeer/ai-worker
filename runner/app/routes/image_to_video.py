@@ -1,12 +1,14 @@
 from fastapi import Depends, APIRouter, UploadFile, File, Form
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.pipelines import ImageToVideoPipeline
 from app.dependencies import get_pipeline
-from app.routes.util import image_to_data_url, VideoResponse, HTTPError
+from app.routes.util import image_to_data_url, VideoResponse, HTTPError, http_error
 import PIL
 from typing import Annotated
 import logging
 import random
+import os
 
 router = APIRouter()
 
@@ -34,15 +36,23 @@ async def image_to_video(
     noise_aug_strength: Annotated[float, Form()] = 0.02,
     seed: Annotated[int, Form()] = None,
     pipeline: ImageToVideoPipeline = Depends(get_pipeline),
+    token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
+    auth_token = os.environ.get("AUTH_TOKEN")
+    if auth_token:
+        if not token or token.credentials != auth_token:
+            return JSONResponse(
+                status_code=401,
+                headers={"WWW-Authenticate": "Bearer"},
+                content=http_error("Invalid bearer token"),
+            )
+
     if model_id != "" and model_id != pipeline.model_id:
         return JSONResponse(
             status_code=400,
-            content={
-                "detail": {
-                    "msg": f"pipeline configured with {pipeline.model_id} but called with {model_id}"
-                }
-            },
+            content=http_error(
+                f"pipeline configured with {pipeline.model_id} but called with {model_id}"
+            ),
         )
 
     if seed is None:
@@ -62,7 +72,7 @@ async def image_to_video(
         logger.error(f"ImageToVideoPipeline error: {e}")
         logger.exception(e)
         return JSONResponse(
-            status_code=500, content={"detail": {"msg": "ImageToVideoPipeline error"}}
+            status_code=500, content=http_error("ImageToVideoPipeline error")
         )
 
     output_frames = []

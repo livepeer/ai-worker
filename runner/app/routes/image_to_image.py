@@ -1,5 +1,6 @@
 from fastapi import Depends, APIRouter, UploadFile, File, Form
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.pipelines import ImageToImagePipeline
 from app.dependencies import get_pipeline
 from app.routes.util import image_to_data_url, ImageResponse, HTTPError, http_error
@@ -7,7 +8,7 @@ import PIL
 from typing import Annotated
 import logging
 import random
-from typing import List
+import os
 
 router = APIRouter()
 
@@ -35,7 +36,17 @@ async def image_to_image(
     seed: Annotated[int, Form()] = None,
     num_images_per_prompt: Annotated[int, Form()] = 1,
     pipeline: ImageToImagePipeline = Depends(get_pipeline),
+    token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
+    auth_token = os.environ.get("AUTH_TOKEN")
+    if auth_token:
+        if not token or token.credentials != auth_token:
+            return JSONResponse(
+                status_code=401,
+                headers={"WWW-Authenticate": "Bearer"},
+                content=http_error("Invalid bearer token"),
+            )
+
     if model_id != "" and model_id != pipeline.model_id:
         return JSONResponse(
             status_code=400,
