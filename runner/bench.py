@@ -102,8 +102,7 @@ if __name__ == "__main__":
     print(f"{args.pipeline=} {args.model_id=} {args.runs=} {args.batch_size=}")
 
     start = time()
-    config = load_pipeline(args.pipeline, args.model_id)
-    pipeline = config["pipeline"]
+    pipeline = load_pipeline(args.pipeline, args.model_id)
 
     # Collect pipeline load metrics
     load_time = time() - start
