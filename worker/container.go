@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"time"
+
+	"github.com/deepmap/oapi-codegen/v2/pkg/securityprovider"
 )
 
 type RunnerContainerType int
@@ -19,11 +21,16 @@ type RunnerContainer struct {
 	Client *ClientWithResponses
 }
 
+type RunnerEndpoint struct {
+	URL   string
+	Token string
+}
+
 type RunnerContainerConfig struct {
 	Type     RunnerContainerType
 	Pipeline string
 	ModelID  string
-	Endpoint string
+	Endpoint RunnerEndpoint
 
 	// For managed containers only
 	ID       string
@@ -32,7 +39,17 @@ type RunnerContainerConfig struct {
 }
 
 func NewRunnerContainer(ctx context.Context, cfg RunnerContainerConfig) (*RunnerContainer, error) {
-	client, err := NewClientWithResponses(cfg.Endpoint)
+	var opts []ClientOption
+	if cfg.Endpoint.Token != "" {
+		bearerTokenProvider, err := securityprovider.NewSecurityProviderBearerToken(cfg.Endpoint.Token)
+		if err != nil {
+			return nil, err
+		}
+
+		opts = append(opts, WithRequestEditorFn(bearerTokenProvider.Intercept))
+	}
+
+	client, err := NewClientWithResponses(cfg.Endpoint.URL, opts...)
 	if err != nil {
 		return nil, err
 	}

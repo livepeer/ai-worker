@@ -185,7 +185,9 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 		Type:     Managed,
 		Pipeline: pipeline,
 		ModelID:  modelID,
-		Endpoint: "http://localhost:" + containerHostPort,
+		Endpoint: RunnerEndpoint{
+			URL: "http://localhost:" + containerHostPort,
+		},
 		ID:       resp.ID,
 		GPU:      gpu,
 		KeepWarm: keepWarm,

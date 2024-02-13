@@ -167,8 +167,8 @@ func (w *Worker) ImageToVideo(ctx context.Context, req ImageToVideoMultipartRequ
 	return resp.JSON200, nil
 }
 
-func (w *Worker) Warm(ctx context.Context, pipeline, modelID, endpoint string) error {
-	if endpoint == "" {
+func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endpoint RunnerEndpoint) error {
+	if endpoint.URL == "" {
 		return w.manager.Warm(ctx, pipeline, modelID)
 	}
 
