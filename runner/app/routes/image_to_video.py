@@ -1,10 +1,10 @@
 from fastapi import Depends, APIRouter, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.pipelines import Pipeline
+from app.pipelines.base import Pipeline
 from app.dependencies import get_pipeline
 from app.routes.util import image_to_data_url, VideoResponse, HTTPError, http_error
-import PIL
+from PIL import Image
 from typing import Annotated
 import logging
 import random
@@ -60,7 +60,7 @@ async def image_to_video(
 
     try:
         batch_frames = pipeline(
-            PIL.Image.open(image.file).convert("RGB"),
+            Image.open(image.file).convert("RGB"),
             height=height,
             width=width,
             fps=fps,

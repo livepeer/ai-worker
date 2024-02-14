@@ -31,15 +31,15 @@ async def lifespan(app: FastAPI):
 def load_pipeline(pipeline: str, model_id: str) -> any:
     match pipeline:
         case "text-to-image":
-            from app.pipelines import TextToImagePipeline
+            from app.pipelines.text_to_image import TextToImagePipeline
 
             return TextToImagePipeline(model_id)
         case "image-to-image":
-            from app.pipelines import ImageToImagePipeline
+            from app.pipelines.image_to_image import ImageToImagePipeline
 
             return ImageToImagePipeline(model_id)
         case "image-to-video":
-            from app.pipelines import ImageToVideoPipeline
+            from app.pipelines.image_to_video import ImageToVideoPipeline
 
             return ImageToVideoPipeline(model_id)
         case "frame-interpolation":

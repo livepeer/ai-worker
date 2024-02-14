@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from fastapi import Depends, APIRouter
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.pipelines import Pipeline
+from app.pipelines.base import Pipeline
 from app.dependencies import get_pipeline
 from app.routes.util import image_to_data_url, ImageResponse, HTTPError, http_error
 import logging

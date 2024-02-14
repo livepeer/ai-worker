@@ -1,4 +1,4 @@
-from app.pipelines import Pipeline
+from app.pipelines.base import Pipeline
 
 
 class UpscalePipeline(Pipeline):

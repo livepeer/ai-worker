@@ -4,12 +4,10 @@ from typing import List
 import torch
 from PIL import Image
 from app.main import load_pipeline
-from app.pipelines import (
-    Pipeline,
-    TextToImagePipeline,
-    ImageToImagePipeline,
-    ImageToVideoPipeline,
-)
+from app.pipelines.base import Pipeline
+from app.pipelines.text_to_image import TextToImagePipeline
+from app.pipelines.image_to_image import ImageToImagePipeline
+from app.pipelines.image_to_video import ImageToVideoPipeline
 from pydantic import BaseModel
 import os
 import numpy as np

@@ -1,10 +1,10 @@
 from fastapi import Depends, APIRouter, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.pipelines import Pipeline
+from app.pipelines.base import Pipeline
 from app.dependencies import get_pipeline
 from app.routes.util import image_to_data_url, ImageResponse, HTTPError, http_error
-import PIL
+from PIL import Image
 from typing import Annotated
 import logging
 import random
@@ -62,7 +62,7 @@ async def image_to_image(
         else:
             seed = init_seed
 
-    img = PIL.Image.open(image.file).convert("RGB")
+    img = Image.open(image.file).convert("RGB")
     # If a list of seeds/generators is passed, diffusers wants a list of images
     # https://github.com/huggingface/diffusers/blob/17808a091e2d5615c2ed8a63d7ae6f2baea11e1e/src/diffusers/pipelines/stable_diffusion_xl/pipeline_stable_diffusion_xl_img2img.py#L715
     if isinstance(seed, list):

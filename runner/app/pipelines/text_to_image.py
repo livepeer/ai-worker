@@ -1,4 +1,4 @@
-from app.pipelines import Pipeline
+from app.pipelines.base import Pipeline
 from app.pipelines.util import get_torch_device, get_model_dir
 
 from diffusers import AutoPipelineForText2Image
