@@ -1,7 +1,7 @@
 from fastapi import Depends, APIRouter, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.pipelines import ImageToVideoPipeline
+from app.pipelines import Pipeline
 from app.dependencies import get_pipeline
 from app.routes.util import image_to_data_url, VideoResponse, HTTPError, http_error
 import PIL
@@ -35,7 +35,7 @@ async def image_to_video(
     motion_bucket_id: Annotated[int, Form()] = 127,
     noise_aug_strength: Annotated[float, Form()] = 0.02,
     seed: Annotated[int, Form()] = None,
-    pipeline: ImageToVideoPipeline = Depends(get_pipeline),
+    pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
     auth_token = os.environ.get("AUTH_TOKEN")

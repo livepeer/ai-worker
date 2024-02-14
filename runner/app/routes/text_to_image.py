@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from fastapi import Depends, APIRouter
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.pipelines import TextToImagePipeline
+from app.pipelines import Pipeline
 from app.dependencies import get_pipeline
 from app.routes.util import image_to_data_url, ImageResponse, HTTPError, http_error
 import logging
@@ -34,7 +34,7 @@ responses = {400: {"model": HTTPError}, 500: {"model": HTTPError}}
 @router.post("/text-to-image/", response_model=ImageResponse, include_in_schema=False)
 async def text_to_image(
     params: TextToImageParams,
-    pipeline: TextToImagePipeline = Depends(get_pipeline),
+    pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
     auth_token = os.environ.get("AUTH_TOKEN")
