@@ -54,8 +54,8 @@ func NewRunnerContainer(ctx context.Context, cfg RunnerContainerConfig) (*Runner
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, containerTimeout)
-	if err := runnerWaitUntilReady(ctx, client, pollingInterval); err != nil {
+	cctx, cancel := context.WithTimeout(ctx, containerTimeout)
+	if err := runnerWaitUntilReady(cctx, client, pollingInterval); err != nil {
 		cancel()
 		return nil, err
 	}

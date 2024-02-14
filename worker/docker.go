@@ -19,7 +19,7 @@ import (
 const containerModelDir = "/models"
 const containerPort = "8000/tcp"
 const pollingInterval = 500 * time.Millisecond
-const containerTimeout = 30 * time.Second
+const containerTimeout = 2 * time.Minute
 
 // This only works right now on a single GPU because if there is another container
 // using the GPU we stop it so we don't have to worry about having enough ports
@@ -170,13 +170,18 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 		return nil, err
 	}
 
-	if err := m.dockerClient.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
+	cctx, cancel := context.WithTimeout(ctx, containerTimeout)
+	if err := m.dockerClient.ContainerStart(cctx, resp.ID, types.ContainerStartOptions{}); err != nil {
+		cancel()
+		dockerRemoveContainer(ctx, m.dockerClient, resp.ID)
 		return nil, err
 	}
+	cancel()
 
-	cctx, cancel := context.WithTimeout(ctx, containerTimeout)
+	cctx, cancel = context.WithTimeout(ctx, containerTimeout)
 	if err := dockerWaitUntilRunning(cctx, m.dockerClient, resp.ID, pollingInterval); err != nil {
 		cancel()
+		dockerRemoveContainer(ctx, m.dockerClient, resp.ID)
 		return nil, err
 	}
 	cancel()
@@ -195,6 +200,7 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 
 	rc, err := NewRunnerContainer(ctx, cfg)
 	if err != nil {
+		dockerRemoveContainer(ctx, m.dockerClient, resp.ID)
 		return nil, err
 	}
 
