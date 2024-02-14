@@ -11,6 +11,7 @@ import (
 	"github.com/docker/cli/opts"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
@@ -20,6 +21,8 @@ const containerModelDir = "/models"
 const containerPort = "8000/tcp"
 const pollingInterval = 500 * time.Millisecond
 const containerTimeout = 2 * time.Minute
+const containerCreatorLabel = "creator"
+const containerCreator = "ai-worker"
 
 // This only works right now on a single GPU because if there is another container
 // using the GPU we stop it so we don't have to worry about having enough ports
@@ -47,6 +50,13 @@ func NewDockerManager(containerImageID string, gpus []string, modelDir string) (
 	if err != nil {
 		return nil, err
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), containerTimeout)
+	if err := removeExistingContainers(ctx, dockerClient); err != nil {
+		cancel()
+		return nil, err
+	}
+	cancel()
 
 	return &DockerManager{
 		containerImageID: containerImageID,
@@ -137,6 +147,9 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 		},
 		ExposedPorts: nat.PortSet{
 			containerPort: struct{}{},
+		},
+		Labels: map[string]string{
+			containerCreatorLabel: containerCreator,
 		},
 	}
 
@@ -239,6 +252,23 @@ func (m *DockerManager) allocGPU(ctx context.Context) (string, error) {
 	}
 
 	return "", errors.New("insufficient capacity")
+}
+
+func removeExistingContainers(ctx context.Context, client *client.Client) error {
+	filters := filters.NewArgs(filters.Arg("label", containerCreatorLabel+"="+containerCreator))
+	containers, err := client.ContainerList(ctx, types.ContainerListOptions{All: true, Filters: filters})
+	if err != nil {
+		return err
+	}
+
+	for _, c := range containers {
+		slog.Info("Removing existing managed container", slog.String("name", c.Names[0]))
+		if err := dockerRemoveContainer(ctx, client, c.ID); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func dockerContainerName(pipeline string, modelID string) string {
