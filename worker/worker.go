@@ -12,7 +12,7 @@ import (
 type Worker struct {
 	manager *DockerManager
 
-	externalContainers map[string][]*RunnerContainer
+	externalContainers map[string]*RunnerContainer
 	mu                 *sync.Mutex
 }
 
@@ -24,7 +24,7 @@ func NewWorker(containerImageID string, gpus []string, modelDir string) (*Worker
 
 	return &Worker{
 		manager:            manager,
-		externalContainers: make(map[string][]*RunnerContainer),
+		externalContainers: make(map[string]*RunnerContainer),
 		mu:                 &sync.Mutex{},
 	}, nil
 }
@@ -188,7 +188,7 @@ func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endp
 
 	name := dockerContainerName(pipeline, modelID)
 	slog.Info("Starting external container", slog.String("name", name), slog.String("modelID", modelID))
-	w.externalContainers[name] = append(w.externalContainers[name], rc)
+	w.externalContainers[name] = rc
 
 	return nil
 }
@@ -212,11 +212,11 @@ func (w *Worker) borrowContainer(ctx context.Context, pipeline, modelID string) 
 	w.mu.Lock()
 
 	name := dockerContainerName(pipeline, modelID)
-	containers := w.externalContainers[name]
-	if len(containers) > 0 {
-		rc := containers[0]
-		w.externalContainers[name] = containers[1:]
+	rc, ok := w.externalContainers[name]
+	if ok {
 		w.mu.Unlock()
+		// We allow concurrent in-flight requests for external containers and assume that it knows
+		// how to handle them
 		return rc, nil
 	}
 
@@ -230,9 +230,6 @@ func (w *Worker) returnContainer(rc *RunnerContainer) {
 	case Managed:
 		w.manager.Return(rc)
 	case External:
-		w.mu.Lock()
-		name := dockerContainerName(rc.Pipeline, rc.ModelID)
-		w.externalContainers[name] = append(w.externalContainers[name], rc)
-		w.mu.Unlock()
+		// Noop because we allow concurrent in-flight requests for external containers
 	}
 }
