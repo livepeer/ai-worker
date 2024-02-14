@@ -1,15 +1,17 @@
 from modal import Image, Stub, asgi_app, enter, method, Secret, Volume
 import logging
 from pathlib import Path
+from app.main import (
+    config_logging,
+    load_route,
+    use_route_names_as_operation_ids,
+)
+from app.routes import health
 
 stub = Stub("livepeer-ai-runner")
-image = (
-    Image.from_registry("livepeer/ai-runner:latest")
-    .pip_install(
-        "pydantic==2.6.1",
-        "fastapi==0.109.2",
-    )
-    .workdir("/app")
+pipeline_image = Image.from_registry("livepeer/ai-runner:latest").workdir("/app")
+api_image = Image.debian_slim(python_version="3.11").pip_install(
+    "pydantic==2.6.1", "fastapi==0.109.2", "pillow"
 )
 downloader_image = (
     Image.debian_slim(python_version="3.11")
@@ -21,11 +23,6 @@ downloader_image = (
 )
 models_volume = Volume.persisted("models")
 models_path = Path("/models")
-
-with image.imports():
-    from app.main import (
-        load_pipeline,
-    )
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +54,8 @@ def download_model(model_id: str):
 
 @stub.cls(
     gpu="A10G",
-    image=image,
+    image=pipeline_image,
+    memory=1024,
     volumes={models_path: models_volume},
     container_idle_timeout=3 * 60,
 )
@@ -68,6 +66,8 @@ class Pipeline:
 
     @enter()
     def enter(self):
+        from app.main import load_pipeline
+
         model_dir = "models--" + self.model_id.replace("/", "--")
         path = models_path / model_dir
         if not path.exists():
@@ -94,15 +94,11 @@ class RunnerPipeline:
 
 
 def make_api(pipeline: str, model_id: str):
-    from app.main import (
-        app,
-        config_logging,
-        load_route,
-        use_route_names_as_operation_ids,
-    )
-    from app.routes import health
+    from fastapi import FastAPI
 
     config_logging()
+
+    app = FastAPI()
 
     app.include_router(health.router)
 
@@ -114,25 +110,25 @@ def make_api(pipeline: str, model_id: str):
     return app
 
 
-@stub.function(image=image, secrets=[Secret.from_name("api-auth-token")])
+@stub.function(image=api_image, secrets=[Secret.from_name("api-auth-token")])
 @asgi_app()
 def text_to_image_sd_turbo_api():
     return make_api("text-to-image", "stabilityai/sd-turbo")
 
 
-@stub.function(image=image, secrets=[Secret.from_name("api-auth-token")])
+@stub.function(image=api_image, secrets=[Secret.from_name("api-auth-token")])
 @asgi_app()
 def text_to_image_sdxl_turbo_api():
     return make_api("text-to-image", "stabilityai/sdxl-turbo")
 
 
-@stub.function(image=image, secrets=[Secret.from_name("api-auth-token")])
+@stub.function(image=api_image, secrets=[Secret.from_name("api-auth-token")])
 @asgi_app()
 def text_to_image_sd_1_5_api():
     return make_api("text-to-image", "runwayml/stable-diffusion-v1-5")
 
 
-@stub.function(image=image, secrets=[Secret.from_name("api-auth-token")])
+@stub.function(image=api_image, secrets=[Secret.from_name("api-auth-token")])
 @asgi_app()
 def text_to_image_sdxl_api():
     return make_api("text-to-image", "stabilityai/stable-diffusion-xl-base-1.0")
