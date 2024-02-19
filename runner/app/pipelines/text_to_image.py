@@ -17,7 +17,8 @@ class TextToImagePipeline(Pipeline):
         kwargs = {"cache_dir": get_model_dir()}
 
         torch_device = get_torch_device()
-        model_data = model_info(model_id)
+        # TODO: Move check offline so token is unnecessary when model is cached
+        model_data = model_info(model_id, token=os.environ.get("HF_TOKEN"))
         has_fp16_variant = any(
             ".fp16.safetensors" in file.rfilename for file in model_data.siblings
         )

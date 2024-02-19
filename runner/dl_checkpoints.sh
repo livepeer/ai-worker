@@ -10,3 +10,4 @@ huggingface-cli download stabilityai/stable-diffusion-xl-base-1.0 --include "*.f
 huggingface-cli download prompthero/openjourney-v4 --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
 # image-to-video
 huggingface-cli download stabilityai/stable-video-diffusion-img2vid-xt --include "*.fp16.safetensors" "*.json" --cache-dir models
+huggingface-cli download stabilityai/stable-video-diffusion-img2vid-xt-1-1 --include "*.fp16.safetensors" "*.json" --token=$HF_TOKEN --cache-dir models
