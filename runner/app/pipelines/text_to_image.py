@@ -2,7 +2,7 @@ from app.pipelines.base import Pipeline
 from app.pipelines.util import get_torch_device, get_model_dir
 
 from diffusers import AutoPipelineForText2Image
-from huggingface_hub import model_info
+from huggingface_hub import file_download
 import torch
 import PIL
 from typing import List
@@ -17,10 +17,14 @@ class TextToImagePipeline(Pipeline):
         kwargs = {"cache_dir": get_model_dir()}
 
         torch_device = get_torch_device()
-        # TODO: Move check offline so token is unnecessary when model is cached
-        model_data = model_info(model_id, token=os.environ.get("HF_TOKEN"))
+        folder_name = file_download.repo_folder_name(
+            repo_id=model_id, repo_type="model"
+        )
+        folder_path = os.path.join(get_model_dir(), folder_name)
         has_fp16_variant = any(
-            ".fp16.safetensors" in file.rfilename for file in model_data.siblings
+            ".fp16.safetensors" in fname
+            for _, _, files in os.walk(folder_path)
+            for fname in files
         )
         if torch_device != "cpu" and has_fp16_variant:
             logger.info("TextToImagePipeline loading fp16 variant for %s", model_id)
