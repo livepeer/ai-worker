@@ -21,6 +21,7 @@ const containerModelDir = "/models"
 const containerPort = "8000/tcp"
 const pollingInterval = 500 * time.Millisecond
 const containerTimeout = 2 * time.Minute
+const containerRemoveTimeout = 30 * time.Second
 const containerCreatorLabel = "creator"
 const containerCreator = "ai-worker"
 
@@ -86,7 +87,7 @@ func (m *DockerManager) Stop(ctx context.Context) error {
 		stopContainerWg.Add(1)
 		go func(containerID string) {
 			defer stopContainerWg.Done()
-			if err := dockerRemoveContainer(ctx, m.dockerClient, containerID); err != nil {
+			if err := dockerRemoveContainer(m.dockerClient, containerID); err != nil {
 				slog.Error("Error removing managed container", slog.String("name", name), slog.String("id", containerID))
 			}
 		}(rc.ID)
@@ -186,7 +187,7 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	cctx, cancel := context.WithTimeout(ctx, containerTimeout)
 	if err := m.dockerClient.ContainerStart(cctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		cancel()
-		dockerRemoveContainer(ctx, m.dockerClient, resp.ID)
+		dockerRemoveContainer(m.dockerClient, resp.ID)
 		return nil, err
 	}
 	cancel()
@@ -194,7 +195,7 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	cctx, cancel = context.WithTimeout(ctx, containerTimeout)
 	if err := dockerWaitUntilRunning(cctx, m.dockerClient, resp.ID, pollingInterval); err != nil {
 		cancel()
-		dockerRemoveContainer(ctx, m.dockerClient, resp.ID)
+		dockerRemoveContainer(m.dockerClient, resp.ID)
 		return nil, err
 	}
 	cancel()
@@ -213,7 +214,7 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 
 	rc, err := NewRunnerContainer(ctx, cfg)
 	if err != nil {
-		dockerRemoveContainer(ctx, m.dockerClient, resp.ID)
+		dockerRemoveContainer(m.dockerClient, resp.ID)
 		return nil, err
 	}
 
@@ -243,7 +244,7 @@ func (m *DockerManager) allocGPU(ctx context.Context) (string, error) {
 			delete(m.gpuContainers, gpu)
 			delete(m.containers, containerName)
 
-			if err := dockerRemoveContainer(ctx, m.dockerClient, rc.ID); err != nil {
+			if err := dockerRemoveContainer(m.dockerClient, rc.ID); err != nil {
 				return "", err
 			}
 
@@ -263,7 +264,7 @@ func removeExistingContainers(ctx context.Context, client *client.Client) error 
 
 	for _, c := range containers {
 		slog.Info("Removing existing managed container", slog.String("name", c.Names[0]))
-		if err := dockerRemoveContainer(ctx, client, c.ID); err != nil {
+		if err := dockerRemoveContainer(client, c.ID); err != nil {
 			return err
 		}
 	}
@@ -277,11 +278,16 @@ func dockerContainerName(pipeline string, modelID string) string {
 	return strings.ReplaceAll(pipeline+"_"+modelID, "/", "_")
 }
 
-func dockerRemoveContainer(ctx context.Context, client *client.Client, containerID string) error {
+func dockerRemoveContainer(client *client.Client, containerID string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), containerRemoveTimeout)
 	if err := client.ContainerStop(ctx, containerID, container.StopOptions{}); err != nil {
+		cancel()
 		return err
 	}
+	cancel()
 
+	ctx, cancel = context.WithTimeout(context.Background(), containerRemoveTimeout)
+	defer cancel()
 	return client.ContainerRemove(ctx, containerID, types.ContainerRemoveOptions{})
 }
 
