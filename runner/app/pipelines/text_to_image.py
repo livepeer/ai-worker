@@ -71,7 +71,7 @@ class TextToImagePipeline(Pipeline):
 
             unet = UNet2DConditionModel.from_config(
                 base, subfolder="unet", cache_dir=kwargs["cache_dir"]
-            ).to(torch_device, torch.float16)
+            ).to(torch_device, kwargs["torch_dtype"])
             unet.load_state_dict(
                 load_file(
                     hf_hub_download(
