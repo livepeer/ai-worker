@@ -1,8 +1,14 @@
 from app.pipelines.base import Pipeline
 from app.pipelines.util import get_torch_device, get_model_dir
 
-from diffusers import AutoPipelineForText2Image
-from huggingface_hub import file_download
+from diffusers import (
+    AutoPipelineForText2Image,
+    StableDiffusionXLPipeline,
+    UNet2DConditionModel,
+    EulerDiscreteScheduler,
+)
+from safetensors.torch import load_file
+from huggingface_hub import file_download, hf_hub_download
 import torch
 import PIL
 from typing import List
@@ -10,6 +16,8 @@ import logging
 import os
 
 logger = logging.getLogger(__name__)
+
+SDXL_LIGHTNING_MODEL_ID = "ByteDance/SDXL-Lightning"
 
 
 class TextToImagePipeline(Pipeline):
@@ -21,10 +29,16 @@ class TextToImagePipeline(Pipeline):
             repo_id=model_id, repo_type="model"
         )
         folder_path = os.path.join(get_model_dir(), folder_name)
-        has_fp16_variant = any(
-            ".fp16.safetensors" in fname
-            for _, _, files in os.walk(folder_path)
-            for fname in files
+        # Load fp16 variant if fp16 safetensors files are found in cache
+        # Special case SDXL-Lightning because the safetensors files are fp16 but are not
+        # named properly right now
+        has_fp16_variant = (
+            any(
+                ".fp16.safetensors" in fname
+                for _, _, files in os.walk(folder_path)
+                for fname in files
+            )
+            or SDXL_LIGHTNING_MODEL_ID in model_id
         )
         if torch_device != "cpu" and has_fp16_variant:
             logger.info("TextToImagePipeline loading fp16 variant for %s", model_id)
@@ -33,8 +47,49 @@ class TextToImagePipeline(Pipeline):
             kwargs["variant"] = "fp16"
 
         self.model_id = model_id
-        self.ldm = AutoPipelineForText2Image.from_pretrained(model_id, **kwargs)
-        self.ldm.to(get_torch_device())
+
+        # Special case SDXL-Lightning because the unet for SDXL needs to be swapped
+        if SDXL_LIGHTNING_MODEL_ID in model_id:
+            base = "stabilityai/stable-diffusion-xl-base-1.0"
+
+            # ByteDance/SDXL-Lightning-2step
+            if "2step" in model_id:
+                unet_id = "sdxl_lightning_2step_unet"
+            # ByteDance/SDXL-Lightning-4step
+            elif "4step" in model_id:
+                unet_id = "sdxl_lightning_4step_unet"
+            # ByteDance/SDXL-Lightning-8step
+            elif "8step" in model_id:
+                unet_id = "sdxl_lightning_8step_unet"
+            else:
+                # Default to 2step
+                unet_id = "sdxl_lightning_2step_unet"
+
+            unet = UNet2DConditionModel.from_config(
+                base, subfolder="unet", cache_dir=kwargs["cache_dir"]
+            ).to(torch_device, torch.float16)
+            unet.load_state_dict(
+                load_file(
+                    hf_hub_download(
+                        SDXL_LIGHTNING_MODEL_ID,
+                        f"{unet_id}.safetensors",
+                        cache_dir=kwargs["cache_dir"],
+                    ),
+                    device=str(torch_device),
+                )
+            )
+
+            self.ldm = StableDiffusionXLPipeline.from_pretrained(
+                base, unet=unet, **kwargs
+            ).to(torch_device)
+
+            self.ldm.scheduler = EulerDiscreteScheduler.from_config(
+                self.ldm.scheduler.config, timestep_spacing="trailing"
+            )
+        else:
+            self.ldm = AutoPipelineForText2Image.from_pretrained(model_id, **kwargs).to(
+                torch_device
+            )
 
         if os.environ.get("SFAST"):
             logger.info(
@@ -67,6 +122,20 @@ class TextToImagePipeline(Pipeline):
 
             if "num_inference_steps" not in kwargs:
                 kwargs["num_inference_steps"] = 1
+        elif SDXL_LIGHTNING_MODEL_ID in self.model_id:
+            # SDXL-Lightning models should have guidance_scale = 0 and use
+            # the correct number of inference steps for the unet checkpoint loaded
+            kwargs["guidance_scale"] = 0.0
+
+            if "2step" in self.model_id:
+                kwargs["num_inference_steps"] = 2
+            elif "4step" in self.model_id:
+                kwargs["num_inference_steps"] = 4
+            elif "8step" in self.model_id:
+                kwargs["num_inference_steps"] = 8
+            else:
+                # Default to 2step
+                kwargs["num_inference_steps"] = 2
 
         return self.ldm(prompt, **kwargs).images
 
