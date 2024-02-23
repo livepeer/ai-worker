@@ -9,3 +9,4 @@ uvicorn
 huggingface_hub
 xformers==0.0.23
 triton>=2.1.0
+peft

@@ -46,6 +46,10 @@ class TextToImagePipeline(Pipeline):
             kwargs["torch_dtype"] = torch.float16
             kwargs["variant"] = "fp16"
 
+        if os.environ.get("BFLOAT16"):
+            logger.info("TextToImagePipeline using bfloat16 precision for %s", model_id)
+            kwargs["torch_dtype"] = torch.bfloat16
+
         self.model_id = model_id
 
         # Special case SDXL-Lightning because the unet for SDXL needs to be swapped
@@ -89,6 +93,22 @@ class TextToImagePipeline(Pipeline):
         else:
             self.ldm = AutoPipelineForText2Image.from_pretrained(model_id, **kwargs).to(
                 torch_device
+            )
+
+        if os.environ.get("TORCH_COMPILE"):
+            torch._inductor.config.conv_1x1_as_mm = True
+            torch._inductor.config.coordinate_descent_tuning = True
+            torch._inductor.config.epilogue_fusion = False
+            torch._inductor.config.coordinate_descent_check_all_directions = True
+
+            self.ldm.unet.to(memory_format=torch.channels_last)
+            self.ldm.vae.to(memory_format=torch.channels_last)
+
+            self.ldm.unet = torch.compile(
+                self.ldm.unet, mode="max-autotune", fullgraph=True
+            )
+            self.ldm.vae.decode = torch.compile(
+                self.ldm.vae.decode, mode="max-autotune", fullgraph=True
             )
 
         if os.environ.get("SFAST"):
