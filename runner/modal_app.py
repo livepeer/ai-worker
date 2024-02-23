@@ -9,7 +9,11 @@ from app.main import (
 from app.routes import health
 
 stub = Stub("livepeer-ai-runner")
-pipeline_image = Image.from_registry("livepeer/ai-runner:latest").workdir("/app")
+pipeline_image = (
+    Image.from_registry("livepeer/ai-runner:latest")
+    .workdir("/app")
+    .env({"BFLOAT16": "true"})
+)
 api_image = Image.debian_slim(python_version="3.11").pip_install(
     "pydantic==2.6.1", "fastapi==0.109.2", "pillow"
 )
@@ -35,7 +39,7 @@ def download_model(model_id: str):
 
     try:
         # TODO: Handle case where there are no fp16 safetensors available
-        allow_patterns = ["*.fp16.safetensors", "*.json", "*.txt"]
+        allow_patterns = ["*unet.safetensors", "*.fp16.safetensors", "*.json", "*.txt"]
         ignore_patterns = [".onnx", ".onnx_data"]
         cache_dir = "/models"
 
@@ -112,8 +116,8 @@ def make_api(pipeline: str, model_id: str):
 
 @stub.function(image=api_image, secrets=[Secret.from_name("api-auth-token")])
 @asgi_app()
-def text_to_image_sd_turbo_api():
-    return make_api("text-to-image", "stabilityai/sd-turbo")
+def text_to_image_sdxl_lightning_api():
+    return make_api("text-to-image", "ByteDance/SDXL-Lightning")
 
 
 @stub.function(image=api_image, secrets=[Secret.from_name("api-auth-token")])
