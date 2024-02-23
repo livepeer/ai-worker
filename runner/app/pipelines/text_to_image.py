@@ -6,6 +6,8 @@ from diffusers import (
     StableDiffusionXLPipeline,
     UNet2DConditionModel,
     EulerDiscreteScheduler,
+    StableCascadePriorPipeline,
+    StableCascadeDecoderPipeline,
 )
 from safetensors.torch import load_file
 from huggingface_hub import file_download, hf_hub_download
@@ -18,6 +20,7 @@ import os
 logger = logging.getLogger(__name__)
 
 SDXL_LIGHTNING_MODEL_ID = "ByteDance/SDXL-Lightning"
+STABLE_CASCADE_MODEL_ID = "stabilityai/stable-cascade"
 
 
 class TextToImagePipeline(Pipeline):
@@ -90,6 +93,18 @@ class TextToImagePipeline(Pipeline):
             self.ldm.scheduler = EulerDiscreteScheduler.from_config(
                 self.ldm.scheduler.config, timestep_spacing="trailing"
             )
+        elif model_id == STABLE_CASCADE_MODEL_ID:
+            self.prior = (
+                StableCascadePriorPipeline.from_pretrained(model_id, **kwargs).to(
+                    torch_device
+                ),
+            )
+
+            self.ldm = (
+                StableCascadeDecoderPipeline.from_pretrained(model_id, **kwargs).to(
+                    torch_device
+                ),
+            )
         else:
             self.ldm = AutoPipelineForText2Image.from_pretrained(model_id, **kwargs).to(
                 torch_device
@@ -156,6 +171,16 @@ class TextToImagePipeline(Pipeline):
             else:
                 # Default to 2step
                 kwargs["num_inference_steps"] = 2
+        elif self.model_id == STABLE_CASCADE_MODEL_ID:
+            kwargs["guidance_scale"] = 4.0
+            kwargs["num_inference_steps"] = 20
+
+            prior_output = self.prior(prompt=prompt, **kwargs)
+
+            kwargs["image_embeddings"] = prior_output.image_embeddings.half()
+            kwargs["guidance_scale"] = 0.0
+            kwargs["output_type"] = "pil"
+            kwargs["num_inference_steps"] = 10
 
         return self.ldm(prompt, **kwargs).images
 
