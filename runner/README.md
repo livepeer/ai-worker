@@ -8,7 +8,7 @@ A high level sketch of how the runner is used:
 
 ## Running with Docker
 
-Make sure you have Docker Installed and then pull the pre-built image from DockerHub or build the image locally in this directory.
+Make sure you have Docker and the [nvidia-container-toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) installed with Docker [configured](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html#configuring-docker) properly and then pull the pre-built image from DockerHub or build the image locally in this directory.
 
 ### Pull Docker image
 
