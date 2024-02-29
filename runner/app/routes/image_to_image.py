@@ -10,6 +10,10 @@ import logging
 import random
 import os
 
+from PIL import ImageFile
+
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
