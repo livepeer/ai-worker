@@ -51,7 +51,7 @@ class ImageToVideoPipeline(Pipeline):
 
     def __call__(self, image: PIL.Image, **kwargs) -> List[List[PIL.Image]]:
         if "decode_chunk_size" not in kwargs:
-            kwargs["decode_chunk_size"] = 8
+            kwargs["decode_chunk_size"] = 4
 
         seed = kwargs.pop("seed", None)
         if seed is not None:
