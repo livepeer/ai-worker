@@ -60,7 +60,7 @@ async def image_to_video(
 
     try:
         batch_frames = pipeline(
-            Image.open(image.file).convert("RGB"),
+            image=Image.open(image.file).convert("RGB"),
             height=height,
             width=width,
             fps=fps,

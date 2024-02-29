@@ -72,8 +72,8 @@ async def image_to_image(
 
     try:
         images = pipeline(
-            prompt,
-            image,
+            prompt=prompt,
+            image=image,
             strength=strength,
             guidance_scale=guidance_scale,
             negative_prompt=negative_prompt,
