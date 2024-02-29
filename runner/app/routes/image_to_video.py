@@ -31,7 +31,7 @@ async def image_to_video(
     model_id: Annotated[str, Form()] = "",
     height: Annotated[int, Form()] = 576,
     width: Annotated[int, Form()] = 1024,
-    fps: Annotated[int, Form()] = 7,
+    fps: Annotated[int, Form()] = 6,
     motion_bucket_id: Annotated[int, Form()] = 127,
     noise_aug_strength: Annotated[float, Form()] = 0.02,
     seed: Annotated[int, Form()] = None,
