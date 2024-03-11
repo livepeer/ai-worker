@@ -6,3 +6,4 @@ input
 output
 models
 .vscode
+aiModels.json
