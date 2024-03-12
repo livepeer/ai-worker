@@ -78,7 +78,7 @@ docker run livepeer/ai-runner:latest python bench.py -h
 Run container:
 
 ```
-docker run --name text-to-image -e PIPELINE=text-to-image -e MODEL_ID=<MODEL_ID> --gpus <GPU_IDS> -p 8000:8000 -v ./models:/models runner
+docker run --name text-to-image -e PIPELINE=text-to-image -e MODEL_ID=<MODEL_ID> --gpus <GPU_IDS> -p 8000:8000 -v ./models:/models livepeer/ai-runner:latest
 ```
 
 Query API:
@@ -92,7 +92,7 @@ curl -X POST -H "Content-Type: application/json" localhost:8000/text-to-image -d
 Run container:
 
 ```
-docker run --name image-to-image -e PIPELINE=image-to-image -e MODEL_ID=<MODEL_ID> --gpus <GPU_IDS> -p 8000:8000 -v ./models:/models runner
+docker run --name image-to-image -e PIPELINE=image-to-image -e MODEL_ID=<MODEL_ID> --gpus <GPU_IDS> -p 8000:8000 -v ./models:/models livepeer/ai-runner:latest
 ```
 
 Query API:
@@ -106,7 +106,7 @@ curl -X POST localhost:8000/image-to-image -F prompt="a mountain lion" -F image=
 Run container
 
 ```
-docker run --name image-to-video -e PIPELINE=image-to-video -e MODEL_ID=<MODEL_ID> --gpus <GPU_IDS> -p 8000:8000 -v ./models:/models runner
+docker run --name image-to-video -e PIPELINE=image-to-video -e MODEL_ID=<MODEL_ID> --gpus <GPU_IDS> -p 8000:8000 -v ./models:/models livepeer/ai-runner:latest
 ```
 
 Query API:
