@@ -6,4 +6,5 @@ input
 output
 models
 .vscode
+*.code-workspace
 aiModels.json
