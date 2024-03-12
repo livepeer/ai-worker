@@ -59,6 +59,14 @@ async def image_to_video(
             ),
         )
 
+    if height % 8 != 0 or width % 8 != 0:
+        return JSONResponse(
+            status_code=400,
+            content=http_error(
+                f"`height` and `width` have to be divisible by 8 but are {height} and {width}."
+            ),
+        )
+
     if seed is None:
         seed = random.randint(0, 2**32 - 1)
 
