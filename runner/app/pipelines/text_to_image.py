@@ -94,6 +94,8 @@ class TextToImagePipeline(Pipeline):
             self.ldm = AutoPipelineForText2Image.from_pretrained(model_id, **kwargs).to(
                 torch_device
             )
+        if os.environ.get("LOWVRAM"):
+            self.ldm.enable_sequential_cpu_offload()
 
         if os.environ.get("TORCH_COMPILE"):
             torch._inductor.config.conv_1x1_as_mm = True
