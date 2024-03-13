@@ -39,6 +39,8 @@ class ImageToImagePipeline(Pipeline):
         self.model_id = model_id
         self.ldm = AutoPipelineForImage2Image.from_pretrained(model_id, **kwargs)
         self.ldm.to(get_torch_device())
+        if os.environ.get("LOWVRAM"):
+            self.ldm.enable_sequential_cpu_offload()
 
         if os.environ.get("SFAST"):
             logger.info(
