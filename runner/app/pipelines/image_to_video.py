@@ -39,6 +39,10 @@ class ImageToVideoPipeline(Pipeline):
         self.model_id = model_id
         self.ldm = StableVideoDiffusionPipeline.from_pretrained(model_id, **kwargs)
         self.ldm.to(get_torch_device())
+        if os.environ.get("LOWVRAM"):
+            self.ldm.enable_sequential_cpu_offload()
+            self.ldm.unet.enable_forward_chunking()
+        
 
         if os.environ.get("SFAST"):
             logger.info(
