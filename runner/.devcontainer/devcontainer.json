@@ -3,7 +3,7 @@
 {
 	"name": "ai-runner",
 
-	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+	// Image to use for the dev container. More info: https://containers.dev/guide/dockerfile.
 	"build": {
 		"dockerfile": "../Dockerfile"
 	},
@@ -27,8 +27,13 @@
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	"forwardPorts": [
 		8000
-	]
+	],
 	
+	// Use 'mounts' to make a list of local folders available inside the container.
+	"mounts": [
+		"source=${localWorkspaceFolder}/models,target=/models,type=bind"
+    ]
+
 	// Use 'postCreateCommand' to run commands after the container is created.
 	// "postCreateCommand": ""
 
