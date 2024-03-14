@@ -4,11 +4,13 @@ on:
   pull_request:
     paths:
       - "runner/**"
+      - "!runner/.devcontainer/**"
   push:
     branches:
       - main
     paths:
       - "runner/**"
+      - "!runner/.devcontainer/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
