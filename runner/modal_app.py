@@ -166,6 +166,24 @@ def text_to_image_sdxl_lightning_8step_api():
 
 @stub.function(image=api_image, secrets=[Secret.from_name("api-auth-token")])
 @asgi_app()
+def image_to_image_sdxl_lightning_api():
+    return make_api("image-to-image", "ByteDance/SDXL-Lightning")
+
+
+@stub.function(image=api_image, secrets=[Secret.from_name("api-auth-token")])
+@asgi_app()
+def image_to_image_sdxl_lightning_4step_api():
+    return make_api("image-to-image", "ByteDance/SDXL-Lightning-4step")
+
+
+@stub.function(image=api_image, secrets=[Secret.from_name("api-auth-token")])
+@asgi_app()
+def image_to_image_sdxl_lightning_8step_api():
+    return make_api("image-to-image", "ByteDance/SDXL-Lightning-8step")
+
+
+@stub.function(image=api_image, secrets=[Secret.from_name("api-auth-token")])
+@asgi_app()
 def text_to_image_sdxl_turbo_api():
     return make_api("text-to-image", "stabilityai/sdxl-turbo")
 
