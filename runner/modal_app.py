@@ -188,12 +188,12 @@ def text_to_image_sdxl_turbo_api():
     return make_api("text-to-image", "stabilityai/sdxl-turbo")
 
 
-@stub.function(image=api_image, secrets=[Secret.from_name("api-auth-token")])
-@asgi_app()
-def image_to_video_svd_api():
-    return make_api(
-        "image-to-video", "stabilityai/stable-video-diffusion-img2vid-xt", "A100"
-    )
+# @stub.function(image=api_image, secrets=[Secret.from_name("api-auth-token")])
+# @asgi_app()
+# def image_to_video_svd_api():
+#     return make_api(
+#         "image-to-video", "stabilityai/stable-video-diffusion-img2vid-xt", "A100"
+#     )
 
 
 @stub.function(image=api_image, secrets=[Secret.from_name("api-auth-token")])
