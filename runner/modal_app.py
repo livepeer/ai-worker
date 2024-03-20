@@ -91,6 +91,21 @@ class Pipeline:
         return self.pipe(**kwargs)
 
 
+# Separate class without __init__ params are required to use keep_warm
+@stub.cls(
+    gpu="A10G",
+    image=pipeline_image,
+    memory=1024,
+    volumes={models_path: models_volume},
+    container_idle_timeout=5 * 60,
+    keep_warm=2,
+    concurrency_limit=2,
+)
+class A10G_TextToImage_SDXL_Lightning_Pipeline(Pipeline):
+    def __init__(self):
+        super().__init__("text-to-image", "ByteDance/SDXL-Lightning")
+
+
 @stub.cls(
     gpu="A10G",
     image=pipeline_image,
@@ -123,7 +138,21 @@ class RunnerPipeline:
         return self.pipeline.predict.remote(**kwargs)
 
 
-def make_api(pipeline: str, model_id: str, gpu: str = "A10G"):
+def make_pipeline(pipeline: str, model_id: str) -> any:
+    if pipeline == "text-to-image":
+        if model_id == "ByteDance/SDXL-Lightning":
+            return A10G_TextToImage_SDXL_Lightning_Pipeline()
+        else:
+            return A10G_Pipeline(pipeline, model_id)
+    elif pipeline == "image-to-image":
+        return A10G_Pipeline(pipeline, model_id)
+    elif pipeline == "image-to-video":
+        return A100_Pipeline(pipeline, model_id)
+    else:
+        raise Exception(f"invalid pipeline {pipeline} and model_id {model_id}")
+
+
+def make_api(pipeline: str, model_id: str):
     from fastapi import FastAPI
 
     config_logging()
@@ -132,13 +161,7 @@ def make_api(pipeline: str, model_id: str, gpu: str = "A10G"):
 
     app.include_router(health.router)
 
-    if gpu == "A10G":
-        app.pipeline = RunnerPipeline(A10G_Pipeline(pipeline, model_id))
-    elif gpu == "A100":
-        app.pipeline = RunnerPipeline(A100_Pipeline(pipeline, model_id))
-    else:
-        raise Exception(f"invalid gpu value {gpu}")
-
+    app.pipeline = RunnerPipeline(make_pipeline(pipeline, model_id))
     app.include_router(load_route(pipeline))
 
     use_route_names_as_operation_ids(app)
@@ -146,7 +169,11 @@ def make_api(pipeline: str, model_id: str, gpu: str = "A10G"):
     return app
 
 
-@stub.function(image=api_image, secrets=[Secret.from_name("api-auth-token")])
+@stub.function(
+    image=api_image,
+    secrets=[Secret.from_name("api-auth-token")],
+    allow_concurrent_inputs=100,
+)
 @asgi_app()
 def text_to_image_sdxl_lightning_api():
     return make_api("text-to-image", "ByteDance/SDXL-Lightning")
