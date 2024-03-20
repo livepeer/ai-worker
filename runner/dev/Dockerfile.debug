@@ -1,0 +1,11 @@
+# A Dockerfile for attaching a debugger to the app using debugpy. For more information, see
+# https://code.visualstudio.com/docs/python/debugging#_command-line-debugging.
+FROM livepeer/ai-runner:base
+
+RUN pip install debugpy
+
+# Expose the debugpy port and start the app as usual.
+CMD ["python", "-m", "debugpy", "--listen", "0.0.0.0:5678", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+# If you want to wait for the debugger to attach before starting the app, use the --wait-for-client option.
+# CMD ["python", "-m", "debugpy", "--listen", "0.0.0.0:5678", "--wait-for-client", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
