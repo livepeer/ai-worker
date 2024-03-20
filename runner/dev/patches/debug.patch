@@ -1,0 +1,25 @@
+diff --git a/worker/docker.go b/worker/docker.go
+index e7dcca1..7ad026a 100644
+--- a/worker/docker.go
++++ b/worker/docker.go
+@@ -148,6 +148,7 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
+ 		},
+ 		ExposedPorts: nat.PortSet{
+ 			containerPort: struct{}{},
++			"5678/tcp":    struct{}{},
+ 		},
+ 		Labels: map[string]string{
+ 			containerCreatorLabel: containerCreator,
+@@ -176,6 +177,12 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
+ 					HostPort: containerHostPort,
+ 				},
+ 			},
++			"5678/tcp": []nat.PortBinding{
++				{
++					HostIP:   "0.0.0.0",
++					HostPort: "5678",
++				},
++			},
+ 		},
+ 	}
+ 
