@@ -25,6 +25,9 @@ class TextToImageParams(BaseModel):
     negative_prompt: str = ""
     seed: int = None
     num_images_per_prompt: int = 1
+    # Model specific parameters.
+    # These are not used by all models.
+    num_inference_steps: int = 1
 
 
 responses = {400: {"model": HTTPError}, 500: {"model": HTTPError}}

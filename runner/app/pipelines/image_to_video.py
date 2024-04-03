@@ -8,12 +8,16 @@ import PIL
 from typing import List
 import logging
 import os
+import time
 
 from PIL import ImageFile
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 logger = logging.getLogger(__name__)
+
+WARMUP_ITERATIONS = 3  # Warm-up calls count when SFAST is enabled.
+WARMUP_BATCH_SIZE = 3  # Max batch size for warm-up calls when SFAST is enabled.
 
 
 class ImageToVideoPipeline(Pipeline):
@@ -49,6 +53,32 @@ class ImageToVideoPipeline(Pipeline):
 
             self.ldm = compile_model(self.ldm)
 
+            # Retrieve default model params.
+            warmup_kwargs = {
+                "image": PIL.Image.new("RGB", (512, 512)),
+                "height": 512,
+                "width": 512,
+            }
+
+            # NOTE: Warmup pipeline.
+            # The initial calls will trigger compilation and might be very slow.
+            # After that, it should be very fast.
+            # FIXME: This will crash the pipeline if there is not enough VRAM available.
+            logger.info("Warming up pipeline...")
+            import time
+            for ii in range(WARMUP_ITERATIONS):
+                logger.info(f"Warmup iteration {ii + 1}...")
+                t = time.time()
+                try:
+                    self.ldm(**warmup_kwargs).frames
+                except Exception as e:
+                    logger.error(f"ImageToVideoPipeline warmup error: {e}")
+                    logger.exception(e)
+                    # FIXME: When cuda out of memory, we need to reload the full model before it works again :(. torch.cuda.clear_cache() does not work.
+                    # continue
+                    raise e
+                logger.info("Warmup iteration took %s seconds", time.time() - t)
+
     def __call__(self, image: PIL.Image, **kwargs) -> List[List[PIL.Image]]:
         if "decode_chunk_size" not in kwargs:
             kwargs["decode_chunk_size"] = 4
@@ -64,7 +94,12 @@ class ImageToVideoPipeline(Pipeline):
                     torch.Generator(get_torch_device()).manual_seed(s) for s in seed
                 ]
 
-        return self.ldm(image, **kwargs).frames
+        t = time.time()
+        frames = self.ldm(image, **kwargs).frames
+        logger.info("TextToImagePipeline took %s seconds", time.time() - t)
+
+        return frames
+        # return self.ldm(image, **kwargs).frames
 
     def __str__(self) -> str:
         return f"ImageToVideoPipeline model_id={self.model_id}"
