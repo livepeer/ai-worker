@@ -1,0 +1,42 @@
+name: AI model request
+description: Request a model to be added to a given AI pipeline.
+labels:
+  - "enhancement"
+  - "model"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## AI Model Request
+        Please fill out the following information to help us understand your needs.
+  - type: textarea
+    attributes:
+      label: Which model do you want us to add support for?
+      description: "I would like to request support for the following model: [model name]".
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Hugging Face model hub link
+      description: "Please provide a link to the model on the Hugging Face model hub".
+    validations:
+      required: true
+  - type: dropdown
+    id: pipeline
+    attributes:
+      label: Pipeline
+      description: To which pipeline should we add this model?
+      options:
+        - text-to-image
+        - image-to-image
+        - image-to-video
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Use Case
+      description: "Please describe why you want this model to be added. This will help us prioritize your request".
+  - type: textarea
+    attributes:
+      label: Additional context
+      description: Add any other context or screenshots about the feature request here.
