@@ -3,14 +3,14 @@ description: Create a report to help us improve.
 labels:
   - "bug"
 body:
-- type: markdown
-  attributes:
-    value: |
-      ## Bug report
-      Please fill out the following information to help us understand your issue.
+  - type: markdown
+    attributes:
+      value: |
+        ## Bug report
+        Please fill out the following information to help us understand your issue.
 
-      > [!IMPORTANT]
-      > This repository is only related to the AI pipelines and AI models used on the AI subnet. For core bugs with the AI branch of the go-livepeer subnet software, please report them at the [go-livepeer issues page](https://github.com/livepeer/go-livepeer/issues).
+        > [!IMPORTANT]
+        > This repository is only related to the AI pipelines and AI models used on the AI subnet. For core bugs with the AI branch of the go-livepeer subnet software, please report them at the [go-livepeer issues page](https://github.com/livepeer/go-livepeer/issues).
   - type: textarea
     attributes:
       label: Describe the bug
