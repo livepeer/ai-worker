@@ -93,6 +93,19 @@ type TextToImageParams struct {
 	Width              *int     `json:"width,omitempty"`
 }
 
+// TextToVideoParams defines model for TextToVideoParams.
+type TextToVideoParams struct {
+	Prompt           string             `json:"prompt"`
+	GuidanceScale    *float32           `json:"guidance_scale,omitempty"`
+	Fps              *int               `json:"fps,omitempty"`
+	Height           *int               `json:"height,omitempty"`
+	ModelId          *string            `json:"model_id,omitempty"`
+	MotionBucketId   *int               `json:"motion_bucket_id,omitempty"`
+	NoiseAugStrength *float32           `json:"noise_aug_strength,omitempty"`
+	Seed             *int               `json:"seed,omitempty"`
+	Width            *int               `json:"width,omitempty"`
+}
+
 // ValidationError defines model for ValidationError.
 type ValidationError struct {
 	Loc  []ValidationError_Loc_Item `json:"loc"`
@@ -124,6 +137,9 @@ type ImageToVideoMultipartRequestBody = BodyImageToVideoImageToVideoPost
 
 // TextToImageJSONRequestBody defines body for TextToImage for application/json ContentType.
 type TextToImageJSONRequestBody = TextToImageParams
+
+// ImageToVideoMultipartRequestBody defines body for ImageToVideo for multipart/form-data ContentType.
+type TextToVideoJSONRequestBody = TextToVideoParams
 
 // AsValidationErrorLoc0 returns the union data inside the ValidationError_Loc_Item as a ValidationErrorLoc0
 func (t ValidationError_Loc_Item) AsValidationErrorLoc0() (ValidationErrorLoc0, error) {
@@ -273,6 +289,8 @@ type ClientInterface interface {
 	TextToImageWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	TextToImage(ctx context.Context, body TextToImageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	TextToVideo(ctx context.Context, body TextToVideoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) Health(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -325,6 +343,18 @@ func (c *Client) TextToImageWithBody(ctx context.Context, contentType string, bo
 
 func (c *Client) TextToImage(ctx context.Context, body TextToImageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewTextToImageRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) TextToVideo(ctx context.Context, body TextToVideoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTextToVideoRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -431,6 +461,17 @@ func NewTextToImageRequest(server string, body TextToImageJSONRequestBody) (*htt
 	return NewTextToImageRequestWithBody(server, "application/json", bodyReader)
 }
 
+// NewTextToVideoRequest calls the generic TextToVideo builder with application/json body
+func NewTextToVideoRequest(server string, body TextToVideoJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewTextToVideoRequestWithBody(server, "application/json", bodyReader)
+}
+
 // NewTextToImageRequestWithBody generates requests for TextToImage with any type of body
 func NewTextToImageRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
@@ -441,6 +482,35 @@ func NewTextToImageRequestWithBody(server string, contentType string, body io.Re
 	}
 
 	operationPath := fmt.Sprintf("/text-to-image")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewTextToVideoRequestWithBody generates requests for TextToVideo with any type of body
+func NewTextToVideoRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/text-to-video")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -516,6 +586,8 @@ type ClientWithResponsesInterface interface {
 	TextToImageWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TextToImageResponse, error)
 
 	TextToImageWithResponse(ctx context.Context, body TextToImageJSONRequestBody, reqEditors ...RequestEditorFn) (*TextToImageResponse, error)
+
+	TextToVideoWithResponse(ctx context.Context, body TextToVideoJSONRequestBody, reqEditors ...RequestEditorFn) (*TextToVideoResponse, error)
 }
 
 type HealthResponse struct {
@@ -615,6 +687,31 @@ func (r TextToImageResponse) StatusCode() int {
 	return 0
 }
 
+type TextToVideoResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *VideoResponse
+	JSON400      *HTTPError
+	JSON422      *HTTPValidationError
+	JSON500      *HTTPError
+}
+
+// Status returns HTTPResponse.Status
+func (r TextToVideoResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r TextToVideoResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 // HealthWithResponse request returning *HealthResponse
 func (c *ClientWithResponses) HealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*HealthResponse, error) {
 	rsp, err := c.Health(ctx, reqEditors...)
@@ -657,6 +754,15 @@ func (c *ClientWithResponses) TextToImageWithResponse(ctx context.Context, body 
 		return nil, err
 	}
 	return ParseTextToImageResponse(rsp)
+}
+
+// TextToVideoWithResponse request with arbitrary body returning *TextToVideoResponse
+func (c *ClientWithResponses) TextToVideoWithResponse(ctx context.Context, body TextToVideoJSONRequestBody, reqEditors ...RequestEditorFn) (*TextToVideoResponse, error) {
+	rsp, err := c.TextToVideo(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTextToVideoResponse(rsp)
 }
 
 // ParseHealthResponse parses an HTTP response from a HealthWithResponse call
@@ -826,6 +932,53 @@ func ParseTextToImageResponse(rsp *http.Response) (*TextToImageResponse, error) 
 	return response, nil
 }
 
+// ParseTextToVideoResponse parses an HTTP response from a TextToVideoWithResponse call
+func ParseTextToVideoResponse(rsp *http.Response) (*TextToVideoResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &TextToVideoResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest VideoResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest HTTPValidationError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Health
@@ -840,6 +993,9 @@ type ServerInterface interface {
 	// Text To Image
 	// (POST /text-to-image)
 	TextToImage(w http.ResponseWriter, r *http.Request)
+	// Text To Video
+	// (POST /text-to-video)
+	TextToVideo(w http.ResponseWriter, r *http.Request)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -867,6 +1023,12 @@ func (_ Unimplemented) ImageToVideo(w http.ResponseWriter, r *http.Request) {
 // Text To Image
 // (POST /text-to-image)
 func (_ Unimplemented) TextToImage(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Text To Video
+// (POST /text-to-video)
+func (_ Unimplemented) TextToVideo(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -936,6 +1098,23 @@ func (siw *ServerInterfaceWrapper) TextToImage(w http.ResponseWriter, r *http.Re
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.TextToImage(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// TextToVideo operation middleware
+func (siw *ServerInterfaceWrapper) TextToVideo(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, HTTPBearerScopes, []string{})
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.TextToVideo(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1069,6 +1248,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/text-to-image", wrapper.TextToImage)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/text-to-video", wrapper.TextToVideo)
 	})
 
 	return r
