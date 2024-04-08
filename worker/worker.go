@@ -250,6 +250,48 @@ func (w *Worker) Upscale(ctx context.Context, req UpscaleMultipartRequestBody) (
 	return resp.JSON200, nil
 }
 
+func (w *Worker) TextToVideo(ctx context.Context, req TextToVideoJSONRequestBody) (*VideoResponse, error) {
+	c, err := w.borrowContainer(ctx, "text-to-video", *req.ModelId)
+	if err != nil {
+		return nil, err
+	}
+	defer w.returnContainer(c)
+
+	resp, err := c.Client.TextToVideoWithResponse(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("text-to-video container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("text-to-video container returned 422")
+	}
+
+	if resp.JSON400 != nil {
+		val, err := json.Marshal(resp.JSON400)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("text-to-video container returned 400", slog.String("err", string(val)))
+		return nil, errors.New("text-to-video container returned 400")
+	}
+
+	if resp.JSON500 != nil {
+		val, err := json.Marshal(resp.JSON500)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("text-to-video container returned 500", slog.String("err", string(val)))
+		return nil, errors.New("text-to-video container returned 500")
+	}
+
+	return resp.JSON200, nil
+}
+
 func (w *Worker) AudioToText(ctx context.Context, req AudioToTextMultipartRequestBody) (*TextResponse, error) {
 	c, err := w.borrowContainer(ctx, "audio-to-text", *req.ModelId)
 	if err != nil {
