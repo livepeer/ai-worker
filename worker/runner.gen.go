@@ -95,16 +95,16 @@ type TextToImageParams struct {
 
 // TextToVideoParams defines model for TextToVideoParams.
 type TextToVideoParams struct {
-	Prompt           string             `json:"prompt"`
-	GuidanceScale    *float32           `json:"guidance_scale,omitempty"`
-	NegativePrompt   string             `json:"negative_prompt"`
-	Fps              *int               `json:"fps,omitempty"`
-	Height           *int               `json:"height,omitempty"`
-	ModelId          *string            `json:"model_id,omitempty"`
-	MotionBucketId   *int               `json:"motion_bucket_id,omitempty"`
-	NoiseAugStrength *float32           `json:"noise_aug_strength,omitempty"`
-	Seed             *int               `json:"seed,omitempty"`
-	Width            *int               `json:"width,omitempty"`
+	Fps              *int     `json:"fps,omitempty"`
+	GuidanceScale    *float32 `json:"guidance_scale,omitempty"`
+	Height           *int     `json:"height,omitempty"`
+	ModelId          *string  `json:"model_id,omitempty"`
+	MotionBucketId   *int     `json:"motion_bucket_id,omitempty"`
+	NegativePrompt   *string  `json:"negative_prompt,omitempty"`
+	NoiseAugStrength *float32 `json:"noise_aug_strength,omitempty"`
+	Prompt           string   `json:"prompt"`
+	Seed             *int     `json:"seed,omitempty"`
+	Width            *int     `json:"width,omitempty"`
 }
 
 // ValidationError defines model for ValidationError.
@@ -139,7 +139,7 @@ type ImageToVideoMultipartRequestBody = BodyImageToVideoImageToVideoPost
 // TextToImageJSONRequestBody defines body for TextToImage for application/json ContentType.
 type TextToImageJSONRequestBody = TextToImageParams
 
-// ImageToVideoMultipartRequestBody defines body for ImageToVideo for multipart/form-data ContentType.
+// TextToVideoJSONRequestBody defines body for TextToVideo for application/json ContentType.
 type TextToVideoJSONRequestBody = TextToVideoParams
 
 // AsValidationErrorLoc0 returns the union data inside the ValidationError_Loc_Item as a ValidationErrorLoc0
@@ -291,6 +291,9 @@ type ClientInterface interface {
 
 	TextToImage(ctx context.Context, body TextToImageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// TextToVideoWithBody request with any body
+	TextToVideoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	TextToVideo(ctx context.Context, body TextToVideoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
@@ -344,6 +347,18 @@ func (c *Client) TextToImageWithBody(ctx context.Context, contentType string, bo
 
 func (c *Client) TextToImage(ctx context.Context, body TextToImageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewTextToImageRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) TextToVideoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTextToVideoRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -462,17 +477,6 @@ func NewTextToImageRequest(server string, body TextToImageJSONRequestBody) (*htt
 	return NewTextToImageRequestWithBody(server, "application/json", bodyReader)
 }
 
-// NewTextToVideoRequest calls the generic TextToVideo builder with application/json body
-func NewTextToVideoRequest(server string, body TextToVideoJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewTextToVideoRequestWithBody(server, "application/json", bodyReader)
-}
-
 // NewTextToImageRequestWithBody generates requests for TextToImage with any type of body
 func NewTextToImageRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
@@ -500,6 +504,17 @@ func NewTextToImageRequestWithBody(server string, contentType string, body io.Re
 	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
+}
+
+// NewTextToVideoRequest calls the generic TextToVideo builder with application/json body
+func NewTextToVideoRequest(server string, body TextToVideoJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewTextToVideoRequestWithBody(server, "application/json", bodyReader)
 }
 
 // NewTextToVideoRequestWithBody generates requests for TextToVideo with any type of body
@@ -587,6 +602,9 @@ type ClientWithResponsesInterface interface {
 	TextToImageWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TextToImageResponse, error)
 
 	TextToImageWithResponse(ctx context.Context, body TextToImageJSONRequestBody, reqEditors ...RequestEditorFn) (*TextToImageResponse, error)
+
+	// TextToVideoWithBodyWithResponse request with any body
+	TextToVideoWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TextToVideoResponse, error)
 
 	TextToVideoWithResponse(ctx context.Context, body TextToVideoJSONRequestBody, reqEditors ...RequestEditorFn) (*TextToVideoResponse, error)
 }
@@ -691,7 +709,7 @@ func (r TextToImageResponse) StatusCode() int {
 type TextToVideoResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *VideoResponse
+	JSON200      *ImageResponse
 	JSON400      *HTTPError
 	JSON422      *HTTPValidationError
 	JSON500      *HTTPError
@@ -757,7 +775,15 @@ func (c *ClientWithResponses) TextToImageWithResponse(ctx context.Context, body 
 	return ParseTextToImageResponse(rsp)
 }
 
-// TextToVideoWithResponse request with arbitrary body returning *TextToVideoResponse
+// TextToVideoWithBodyWithResponse request with arbitrary body returning *TextToVideoResponse
+func (c *ClientWithResponses) TextToVideoWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TextToVideoResponse, error) {
+	rsp, err := c.TextToVideoWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTextToVideoResponse(rsp)
+}
+
 func (c *ClientWithResponses) TextToVideoWithResponse(ctx context.Context, body TextToVideoJSONRequestBody, reqEditors ...RequestEditorFn) (*TextToVideoResponse, error) {
 	rsp, err := c.TextToVideo(ctx, body, reqEditors...)
 	if err != nil {
@@ -948,7 +974,7 @@ func ParseTextToVideoResponse(rsp *http.Response) (*TextToVideoResponse, error) 
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest VideoResponse
+		var dest ImageResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1260,25 +1286,26 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
