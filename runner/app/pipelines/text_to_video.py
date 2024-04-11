@@ -59,10 +59,10 @@ class TextToVideoPipeline(Pipeline):
         ):
             if "fps" in kwargs:
                 del kwargs["fps"]
-            if "MotionBucketId" in kwargs:
-                del kwargs["MotionBucketId"]
-            if "NoiseAugStrength" in kwargs:
-                del kwargs["NoiseAugStrength"]
+            if "motion_bucket_id" in kwargs:
+                del kwargs["motion_bucket_id"]
+            if "noise_aug_strength" in kwargs:
+                del kwargs["noise_aug_strength"]
 
         seed = kwargs.pop("seed", None)
         if seed is not None:
