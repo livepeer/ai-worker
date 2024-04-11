@@ -53,6 +53,17 @@ class TextToVideoPipeline(Pipeline):
         if "decode_chunk_size" not in kwargs:
             kwargs["decode_chunk_size"] = 4
 
+        # ali-vilab/text-to-video-ms-1.7b has a limited parameter set
+        if (
+            self.model_id == "ali-vilab/text-to-video-ms-1.7b"
+        ):
+            if "fps" in kwargs:
+                del kwargs["fps"]
+            if "MotionBucketId" in kwargs:
+                del kwargs["MotionBucketId"]
+            if "NoiseAugStrength" in kwargs:
+                del kwargs["NoiseAugStrength"]
+
         seed = kwargs.pop("seed", None)
         if seed is not None:
             if isinstance(seed, int):
