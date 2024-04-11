@@ -3,7 +3,7 @@ from PIL import Image
 import base64
 from pydantic import BaseModel
 from typing import List
-
+import numpy as np
 
 class Media(BaseModel):
     url: str
@@ -37,4 +37,6 @@ def image_to_base64(img: Image, format: str = "png") -> str:
 
 
 def image_to_data_url(img: Image, format: str = "png") -> str:
+    if isinstance(img, np.ndarray):
+        img = Image.fromarray((img * 255).astype(np.uint8))
     return "data:image/png;base64," + image_to_base64(img, format=format)
