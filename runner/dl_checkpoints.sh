@@ -60,6 +60,7 @@ if [ "$MODE" = "alpha" ]; then
     
     # Download text-to-image and image-to-image models.
     huggingface-cli download ByteDance/SDXL-Lightning --include "*unet.safetensors" --exclude "*lora.safetensors*" --cache-dir models
+    huggingface-cli download timbrooks/instruct-pix2pix --include "*fp16.safetensors" --exclude "*lora.safetensors*" --cache-dir models
     
     # Download image-to-video models (token-gated).
     printf "\nDownloading token-gated models...\n"
@@ -80,6 +81,9 @@ else
     # Download image-to-video models.
     huggingface-cli download stabilityai/stable-video-diffusion-img2vid-xt --include "*.fp16.safetensors" "*.json" --cache-dir models
     
+    # Download text-to-video models.
+    huggingface-cli download ali-vilab/text-to-video-ms-1.7b --include "*.fp16.safetensors" "*.json" --cache-dir models
+
     # Download image-to-video models (token-gated).
     printf "\nDownloading token-gated models...\n"
     check_hf_auth

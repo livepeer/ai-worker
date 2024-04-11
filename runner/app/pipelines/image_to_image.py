@@ -3,6 +3,7 @@ from app.pipelines.util import get_torch_device, get_model_dir
 
 from diffusers import (
     AutoPipelineForImage2Image,
+    StableDiffusionInstructPix2PixPipeline,
     StableDiffusionXLPipeline,
     UNet2DConditionModel,
     EulerDiscreteScheduler,
@@ -22,6 +23,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 logger = logging.getLogger(__name__)
 
 SDXL_LIGHTNING_MODEL_ID = "ByteDance/SDXL-Lightning"
+PIX2PIX_MODEL_ID = "timbrooks/instruct-pix2pix"
 
 
 class ImageToImagePipeline(Pipeline):
@@ -87,6 +89,10 @@ class ImageToImagePipeline(Pipeline):
             self.ldm.scheduler = EulerDiscreteScheduler.from_config(
                 self.ldm.scheduler.config, timestep_spacing="trailing"
             )
+        elif PIX2PIX_MODEL_ID in model_id:
+            self.ldm = StableDiffusionInstructPix2PixPipeline.from_pretrained(
+                model_id, **kwargs
+            ).to(torch_device)
         else:
             self.ldm = AutoPipelineForImage2Image.from_pretrained(
                 model_id, **kwargs
