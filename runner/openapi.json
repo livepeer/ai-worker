@@ -212,6 +212,69 @@
           }
         ]
       }
+    },
+    "/text-to-video": {
+      "post": {
+        "summary": "Text To Video",
+        "operationId": "text_to_video",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextToVideoParams"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPError"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -439,6 +502,61 @@
           "prompt"
         ],
         "title": "TextToImageParams"
+      },
+      "TextToVideoParams": {
+        "properties": {
+          "model_id": {
+            "type": "string",
+            "title": "Model Id",
+            "default": ""
+          },
+          "prompt": {
+            "type": "string",
+            "title": "Prompt"
+          },
+          "height": {
+            "type": "integer",
+            "title": "Height"
+          },
+          "width": {
+            "type": "integer",
+            "title": "Width"
+          },
+          "guidance_scale": {
+            "type": "number",
+            "title": "Guidance Scale",
+            "default": 7.5
+          },
+          "negative_prompt": {
+            "type": "string",
+            "title": "Negative Prompt",
+            "default": ""
+          },
+          "seed": {
+            "type": "integer",
+            "title": "Seed"
+          },
+          "fps": {
+            "type": "integer",
+            "title": "Fps",
+            "default": 7
+          },
+          "motion_bucket_id": {
+            "type": "integer",
+            "title": "Motion Bucket Id",
+            "default": 127
+          },
+          "noise_aug_strength": {
+            "type": "number",
+            "title": "Noise Aug Strength",
+            "default": 0.02
+          }
+        },
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "title": "TextToVideoParams"
       },
       "ValidationError": {
         "properties": {

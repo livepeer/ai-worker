@@ -97,6 +97,7 @@ type TextToImageParams struct {
 type TextToVideoParams struct {
 	Prompt           string             `json:"prompt"`
 	GuidanceScale    *float32           `json:"guidance_scale,omitempty"`
+	NegativePrompt   string             `json:"negative_prompt"`
 	Fps              *int               `json:"fps,omitempty"`
 	Height           *int               `json:"height,omitempty"`
 	ModelId          *string            `json:"model_id,omitempty"`
