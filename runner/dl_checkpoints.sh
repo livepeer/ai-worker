@@ -82,6 +82,8 @@ else
     
     # Download text-to-video models.
     huggingface-cli download ali-vilab/text-to-video-ms-1.7b --include "*.fp16.safetensors" "*.json" --cache-dir models
+    huggingface-cli download ByteDance/AnimateDiff-Lightning --include "*.fp16.safetensors" "*.json" --cache-dir models
+    huggingface-cli download Lykon/DreamShaper --include "*.fp16.safetensors" "*.json" --cache-dir models
 
     # Download image-to-video models (token-gated).
     printf "\nDownloading token-gated models...\n"

@@ -1,8 +1,9 @@
 from app.pipelines.base import Pipeline
 from app.pipelines.util import get_torch_device, get_model_dir
 
-from diffusers import DiffusionPipeline
-from huggingface_hub import file_download
+from diffusers import AnimateDiffPipeline, MotionAdapter, DiffusionPipeline, EulerDiscreteScheduler
+from huggingface_hub import file_download, hf_hub_download
+from safetensors.torch import load_file
 import torch
 import PIL
 from typing import List
@@ -37,8 +38,17 @@ class TextToVideoPipeline(Pipeline):
             kwargs["variant"] = "fp16"
 
         self.model_id = model_id
-        self.ldm = DiffusionPipeline.from_pretrained(model_id, **kwargs)
-        self.ldm.to(get_torch_device())
+
+        if self.model_id == "ByteDance/AnimateDiff-Lightning":
+            adapter = MotionAdapter().to(torch_device, torch.float16)
+            adapter.load_state_dict(load_file(hf_hub_download("ByteDance/AnimateDiff-Lightning" ,f"animatediff_lightning_4step_diffusers.safetensors"), device="cuda"))
+            kwargs["motion_adapter"] = adapter
+            self.ldm = AnimateDiffPipeline.from_pretrained("Lykon/DreamShaper", **kwargs)
+            self.ldm.scheduler = EulerDiscreteScheduler.from_config(self.ldm.scheduler.config, timestep_spacing="trailing", beta_schedule="linear")
+            self.ldm.to(torch_device)
+        else:
+            self.ldm = DiffusionPipeline.from_pretrained(model_id, **kwargs)
+            self.ldm.to(torch_device)
 
         if os.environ.get("SFAST"):
             logger.info(
@@ -51,9 +61,15 @@ class TextToVideoPipeline(Pipeline):
 
     def __call__(self, prompt: str, **kwargs) -> List[List[PIL.Image]]:
         # ali-vilab/text-to-video-ms-1.7b has a limited parameter set
-        if (
-            self.model_id == "ali-vilab/text-to-video-ms-1.7b"
-        ):
+        if self.model_id == "ali-vilab/text-to-video-ms-1.7b":
+            if "fps" in kwargs:
+                del kwargs["fps"]
+            if "motion_bucket_id" in kwargs:
+                del kwargs["motion_bucket_id"]
+            if "noise_aug_strength" in kwargs:
+                del kwargs["noise_aug_strength"]
+        elif self.model_id == "ByteDance/AnimateDiff-Lightning":
+            kwargs["step"] = 4
             if "fps" in kwargs:
                 del kwargs["fps"]
             if "motion_bucket_id" in kwargs:
