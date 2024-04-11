@@ -709,7 +709,7 @@ func (r TextToImageResponse) StatusCode() int {
 type TextToVideoResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *ImageResponse
+	JSON200      *VideoResponse
 	JSON400      *HTTPError
 	JSON422      *HTTPValidationError
 	JSON500      *HTTPError
@@ -974,7 +974,7 @@ func ParseTextToVideoResponse(rsp *http.Response) (*TextToVideoResponse, error) 
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ImageResponse
+		var dest VideoResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1305,7 +1305,7 @@ var swaggerSpec = []string{
 	"he1XwqpbbijtZhP2fACl7XpQ8yszqaaCSD2069xZTDQ53LVDl928ykktDeQvGPHqlfPQmA/wm2NmvVhx",
 	"WuzfkBjd+5Q4u+PxUe02tp0mglIEFRvR5Wu5P2UaJCMpmoFcg0Tl2rjvO26GhB3n4TF/DGvCpRjNub9I",
 	"1mrDLbq9teG64GvVRvcq/sq1Ue39p9r4mmvDM9zVhoZP+oCxEWw0/1kZn+98c2c6DYdTARy3ACzHarNh",
-	"z/+e0RCsRS/K/3DxOvH/xP+X4f++/+f5vwEAAP//awpyLoEdAAA=",
+	"z/+e0RCsRS/K/3DxOg2AE/9fhv/7/p/n/wYAAP//dvZ1HIEdAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
