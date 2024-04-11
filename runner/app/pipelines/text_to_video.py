@@ -50,9 +50,6 @@ class TextToVideoPipeline(Pipeline):
             self.ldm = compile_model(self.ldm)
 
     def __call__(self, prompt: str, **kwargs) -> List[List[PIL.Image]]:
-        if "decode_chunk_size" not in kwargs:
-            kwargs["decode_chunk_size"] = 4
-
         # ali-vilab/text-to-video-ms-1.7b has a limited parameter set
         if (
             self.model_id == "ali-vilab/text-to-video-ms-1.7b"
