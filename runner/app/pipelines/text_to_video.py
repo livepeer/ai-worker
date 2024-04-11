@@ -49,7 +49,7 @@ class TextToVideoPipeline(Pipeline):
 
             self.ldm = compile_model(self.ldm)
 
-    def __call__(self, image: PIL.Image, **kwargs) -> List[List[PIL.Image]]:
+    def __call__(self, prompt: str, **kwargs) -> List[List[PIL.Image]]:
         if "decode_chunk_size" not in kwargs:
             kwargs["decode_chunk_size"] = 4
 
@@ -64,7 +64,7 @@ class TextToVideoPipeline(Pipeline):
                     torch.Generator(get_torch_device()).manual_seed(s) for s in seed
                 ]
 
-        return self.ldm(image, **kwargs).frames
+        return self.ldm(prompt, **kwargs).frames
 
     def __str__(self) -> str:
         return f"TextToVideoPipeline model_id={self.model_id}"
