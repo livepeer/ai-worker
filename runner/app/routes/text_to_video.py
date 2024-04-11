@@ -34,6 +34,7 @@ async def text_to_video(
     prompt: Annotated[str, Form()],
     guidance_scale: Annotated[float, Form()] = 7.5,
     model_id: Annotated[str, Form()] = "",
+    negative_prompt: Annotated[str, Form()] = "",
     height: Annotated[int, Form()] = 576,
     width: Annotated[int, Form()] = 1024,
     fps: Annotated[int, Form()] = 6,
@@ -74,6 +75,7 @@ async def text_to_video(
     try:
         batch_frames = pipeline(
             prompt=prompt,
+            negative_prompt=negative_prompt,
             guidance_scale=guidance_scale,
             height=height,
             width=width,
