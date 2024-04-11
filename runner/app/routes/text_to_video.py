@@ -4,15 +4,10 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.pipelines.base import Pipeline
 from app.dependencies import get_pipeline
 from app.routes.util import image_to_data_url, VideoResponse, HTTPError, http_error
-from PIL import Image
 from typing import Annotated
 import logging
 import random
 import os
-
-from PIL import ImageFile
-
-ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 router = APIRouter()
 
