@@ -1,7 +1,7 @@
 from app.pipelines.base import Pipeline
 from app.pipelines.util import get_torch_device, get_model_dir
 
-from diffusers import StableVideoDiffusionPipeline
+from diffusers import DiffusionPipeline
 from huggingface_hub import file_download
 import torch
 import PIL
@@ -37,7 +37,7 @@ class TextToVideoPipeline(Pipeline):
             kwargs["variant"] = "fp16"
 
         self.model_id = model_id
-        self.ldm = StableVideoDiffusionPipeline.from_pretrained(model_id, **kwargs)
+        self.ldm = DiffusionPipeline.from_pretrained(model_id, **kwargs)
         self.ldm.to(get_torch_device())
 
         if os.environ.get("SFAST"):
