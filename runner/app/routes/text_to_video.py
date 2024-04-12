@@ -22,12 +22,10 @@ class TextToVideoParams(BaseModel):
     height: int = 576
     width: int = 1024
     fps: int = 6
-    motion_bucket_id: int = 127
-    noise_aug_strength: int = 0.02
     guidance_scale: float = 7.5
     negative_prompt: str = ""
+    motion: str = ""
     seed: int = None
-    num_images_per_prompt: int = 1
 
 responses = {400: {"model": HTTPError}, 500: {"model": HTTPError}}
 
@@ -78,12 +76,11 @@ async def text_to_video(
         batch_frames = pipeline(
             prompt=params.prompt,
             negative_prompt=params.negative_prompt,
+            motion=params.motion,
             guidance_scale=params.guidance_scale,
             height=params.height,
             width=params.width,
             fps=params.fps,
-            motion_bucket_id=params.motion_bucket_id,
-            noise_aug_strength=params.noise_aug_strength,
             seed=params.seed,
         )
     except Exception as e:
