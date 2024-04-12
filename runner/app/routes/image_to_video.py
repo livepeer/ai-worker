@@ -32,6 +32,7 @@ responses = {400: {"model": HTTPError}, 500: {"model": HTTPError}}
 )
 async def image_to_video(
     image: Annotated[UploadFile, File()],
+    prompt: Annotated[str, Form()] = "",
     model_id: Annotated[str, Form()] = "",
     height: Annotated[int, Form()] = 576,
     width: Annotated[int, Form()] = 1024,
@@ -74,6 +75,7 @@ async def image_to_video(
         batch_frames = pipeline(
             image=Image.open(image.file).convert("RGB"),
             height=height,
+            prompt=prompt,
             width=width,
             fps=fps,
             motion_bucket_id=motion_bucket_id,
