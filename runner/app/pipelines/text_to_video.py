@@ -17,9 +17,10 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 # See https://huggingface.co/ByteDance/AnimateDiff-Lightning
 # Compatible with any SD1.5 stylized base model
 bases = {
-    "AbsoluteReality": "digiplay/AbsoluteReality_v1.8.1", # Bettter with faces & peoplew
-    "epiCRealism": "emilianJR/epiCRealism", # More photorealism
-    "DreamShaper": "Lykon/DreamShaper" # More of a cartoonish look
+    "AbsoluteReality": "digiplay/AbsoluteReality_v1.8.1",
+    "epiCRealism": "emilianJR/epiCRealism",
+    "DreamShaper": "Lykon/DreamShaper",
+    "RealisticVision": "SG161222/Realistic_Vision_V6.0_B1_noVAE"
 }
 base_loaded = "epiCRealism"
 
@@ -34,7 +35,6 @@ motionChoices = [
     ("Roll left", "guoyww/animatediff-motion-lora-rolling-anticlockwise"),
     ("Roll right", "guoyww/animatediff-motion-lora-rolling-clockwise"),
 ],
-motion_loaded = None
 
 logger = logging.getLogger(__name__)
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -67,7 +67,7 @@ class TextToVideoPipeline(Pipeline):
         if self.model_id == "ByteDance/AnimateDiff-Lightning":
             kwargs["torch_dtype"] = torch.float16
             repo = "ByteDance/AnimateDiff-Lightning"
-            motion_loaded = ""
+            self.motion_loaded = ""
             # Load base
             self.ldm = AnimateDiffPipeline.from_pretrained(bases[base_loaded]).to("cuda")
             # Load noise scheduler
@@ -101,17 +101,18 @@ class TextToVideoPipeline(Pipeline):
                 del kwargs["fps"]
         elif self.model_id == "ByteDance/AnimateDiff-Lightning":
             # Load correct motion module
-            if motion_loaded != kwargs["motion"]:
+            if self.motion_loaded != kwargs["motion"]:
                 self.ldm.unload_lora_weights()
                 if kwargs["motion"] != "":
                     self.ldm.load_lora_weights(kwargs["motion"], adapter_name="motion")
                     self.ldm.set_adapters(["motion"], [0.7])
-                motion_loaded = kwargs["motion"]
+                self.motion_loaded = kwargs["motion"]
             # This model is finetuned for 2, 4 or 8 inference steps
             kwargs["num_inference_steps"] = 4
             kwargs["guidance_scale"] = 1
-            # These params do not apply
+            kwargs["num_frames"] = 18
             if "fps" in kwargs:
+                kwargs["frame_rate"] = kwargs["fps"]
                 del kwargs["fps"]
 
         seed = kwargs.pop("seed", None)
