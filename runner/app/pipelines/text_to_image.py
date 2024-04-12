@@ -174,10 +174,11 @@ class TextToImagePipeline(Pipeline):
                 kwargs["num_inference_steps"] = 2
         elif SDXL_BASE_MODEL_ID in self.model_id:
             kwargs["num_inference_steps"] = 40
-            image = self.ldm(prompt=prompt,
-                num_inference_steps=40,
-                denoising_end=0.8,
-                output_type="latent",).images
+            kwargs["denoising_end"] = 0.8
+            kwargs["output_type"] = "latent"
+            image = self.ldm(prompt, **kwargs).images
+            del kwargs["output_type"]
+            del kwargs["denoising_end"]
             kwargs["image"] = image
             kwargs["denoising_start"] = 0.8
             return self.refiner(prompt, **kwargs).images
