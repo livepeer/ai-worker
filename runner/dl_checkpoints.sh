@@ -60,6 +60,7 @@ if [ "$MODE" = "alpha" ]; then
     
     # Download text-to-image and image-to-image models.
     huggingface-cli download ByteDance/SDXL-Lightning --include "*unet.safetensors" --exclude "*lora.safetensors*" --cache-dir models
+    huggingface-cli download timbrooks/instruct-pix2pix --include "*fp16.safetensors" --exclude "*lora.safetensors*" --cache-dir models
     
     # Download image-to-video models (token-gated).
     printf "\nDownloading token-gated models...\n"
@@ -83,7 +84,11 @@ else
     # Download text-to-video models.
     huggingface-cli download ali-vilab/text-to-video-ms-1.7b --include "*.fp16.safetensors" "*.json" --cache-dir models
     huggingface-cli download ByteDance/AnimateDiff-Lightning --include "*.fp16.safetensors" "*.json" --cache-dir models
+
+    # Download some base models
     huggingface-cli download digiplay/AbsoluteReality_v1.8.1 --include "*.fp16.safetensors" "*.json" --cache-dir models
+    huggingface-cli download emilianJR/epiCRealism.8.1 --include "*.fp16.safetensors" "*.json" --cache-dir models
+    huggingface-cli download Lykon/DreamShaper --include "*.fp16.safetensors" "*.json" --cache-dir models
 
     # Download image-to-video models (token-gated).
     printf "\nDownloading token-gated models...\n"

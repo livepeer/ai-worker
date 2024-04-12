@@ -532,6 +532,11 @@
             "title": "Negative Prompt",
             "default": ""
           },
+          "motion": {
+            "type": "string",
+            "title": "Motion",
+            "default": ""
+          },
           "seed": {
             "type": "integer",
             "title": "Seed"
@@ -540,16 +545,6 @@
             "type": "integer",
             "title": "Fps",
             "default": 7
-          },
-          "motion_bucket_id": {
-            "type": "integer",
-            "title": "Motion Bucket Id",
-            "default": 127
-          },
-          "noise_aug_strength": {
-            "type": "number",
-            "title": "Noise Aug Strength",
-            "default": 0.02
           }
         },
         "type": "object",

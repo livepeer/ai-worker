@@ -14,11 +14,35 @@ from PIL import ImageFile
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
+# See https://huggingface.co/ByteDance/AnimateDiff-Lightning
+# Compatible with any SD1.5 stylized base model
+bases = {
+    "AbsoluteReality": "digiplay/AbsoluteReality_v1.8.1", # Bettter with faces & peoplew
+    "epiCRealism": "emilianJR/epiCRealism", # More photorealism
+    "DreamShaper": "Lykon/DreamShaper" # More of a cartoonish look
+}
+base_loaded = "epiCRealism"
+
+motionChoices = [
+    ("Default", ""),
+    ("Zoom in", "guoyww/animatediff-motion-lora-zoom-in"),
+    ("Zoom out", "guoyww/animatediff-motion-lora-zoom-out"),
+    ("Tilt up", "guoyww/animatediff-motion-lora-tilt-up"),
+    ("Tilt down", "guoyww/animatediff-motion-lora-tilt-down"),
+    ("Pan left", "guoyww/animatediff-motion-lora-pan-left"),
+    ("Pan right", "guoyww/animatediff-motion-lora-pan-right"),
+    ("Roll left", "guoyww/animatediff-motion-lora-rolling-anticlockwise"),
+    ("Roll right", "guoyww/animatediff-motion-lora-rolling-clockwise"),
+],
+motion_loaded = None
+
 logger = logging.getLogger(__name__)
 torch.backends.cuda.matmul.allow_tf32 = True
 
 class TextToVideoPipeline(Pipeline):
+    global motion_loaded
     def __init__(self, model_id: str):
+        global motion_loaded
         kwargs = {"cache_dir": get_model_dir()}
 
         torch_device = get_torch_device()
@@ -42,12 +66,15 @@ class TextToVideoPipeline(Pipeline):
 
         if self.model_id == "ByteDance/AnimateDiff-Lightning":
             kwargs["torch_dtype"] = torch.float16
-            adapter = MotionAdapter().to(torch_device, torch.float16)
-            adapter.load_state_dict(load_file(hf_hub_download("ByteDance/AnimateDiff-Lightning", "animatediff_lightning_4step_diffusers.safetensors"), device="cuda"))
-            kwargs["motion_adapter"] = adapter
-            self.ldm = AnimateDiffPipeline.from_pretrained("digiplay/AbsoluteReality_v1.8.1", **kwargs)
+            repo = "ByteDance/AnimateDiff-Lightning"
+            motion_loaded = ""
+            # Load base
+            self.ldm = AnimateDiffPipeline.from_pretrained(bases[base_loaded]).to("cuda")
+            # Load noise scheduler
             self.ldm.scheduler = EulerDiscreteScheduler.from_config(self.ldm.scheduler.config, timestep_spacing="trailing", beta_schedule="linear")
-            self.ldm.to(torch_device)
+            # Load model params
+            ckpt = "animatediff_lightning_4step_diffusers.safetensors"
+            self.ldm.unet.load_state_dict(load_file(hf_hub_download(repo, ckpt), device="cuda"), strict=False)
         elif self.model_id == "ali-vilab/text-to-video-ms-1.7b":
             self.ldm = DiffusionPipeline.from_pretrained(model_id, **kwargs)
             self.ldm.scheduler = DPMSolverMultistepScheduler.from_config(self.ldm.scheduler.config)
@@ -66,24 +93,26 @@ class TextToVideoPipeline(Pipeline):
             self.ldm = compile_model(self.ldm)
 
     def __call__(self, prompt: str, **kwargs) -> List[List[PIL.Image]]:
+        global motion_loaded
         # ali-vilab/text-to-video-ms-1.7b has a limited parameter set
         if self.model_id == "ali-vilab/text-to-video-ms-1.7b":
             kwargs["num_inference_steps"] = 25
             if "fps" in kwargs:
                 del kwargs["fps"]
-            if "motion_bucket_id" in kwargs:
-                del kwargs["motion_bucket_id"]
-            if "noise_aug_strength" in kwargs:
-                del kwargs["noise_aug_strength"]
         elif self.model_id == "ByteDance/AnimateDiff-Lightning":
+            # Load correct motion module
+            if motion_loaded != kwargs["motion"]:
+                self.ldm.unload_lora_weights()
+                if kwargs["motion"] != "":
+                    self.ldm.load_lora_weights(kwargs["motion"], adapter_name="motion")
+                    self.ldm.set_adapters(["motion"], [0.7])
+                motion_loaded = kwargs["motion"]
+            # This model is finetuned for 2, 4 or 8 inference steps
             kwargs["num_inference_steps"] = 4
             kwargs["guidance_scale"] = 1
+            # These params do not apply
             if "fps" in kwargs:
                 del kwargs["fps"]
-            if "motion_bucket_id" in kwargs:
-                del kwargs["motion_bucket_id"]
-            if "noise_aug_strength" in kwargs:
-                del kwargs["noise_aug_strength"]
 
         seed = kwargs.pop("seed", None)
         if seed is not None:
