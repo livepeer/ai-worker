@@ -40,9 +40,7 @@ logger = logging.getLogger(__name__)
 torch.backends.cuda.matmul.allow_tf32 = True
 
 class TextToVideoPipeline(Pipeline):
-    global motion_loaded
     def __init__(self, model_id: str):
-        global motion_loaded
         kwargs = {"cache_dir": get_model_dir()}
 
         torch_device = get_torch_device()
@@ -93,7 +91,6 @@ class TextToVideoPipeline(Pipeline):
             self.ldm = compile_model(self.ldm)
 
     def __call__(self, prompt: str, **kwargs) -> List[List[PIL.Image]]:
-        global motion_loaded
         # ali-vilab/text-to-video-ms-1.7b has a limited parameter set
         if self.model_id == "ali-vilab/text-to-video-ms-1.7b":
             kwargs["num_inference_steps"] = 25
