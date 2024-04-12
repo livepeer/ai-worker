@@ -1,7 +1,7 @@
 from app.pipelines.base import Pipeline
 from app.pipelines.util import get_torch_device, get_model_dir
 
-from diffusers import AnimateDiffPipeline, MotionAdapter, DiffusionPipeline, EulerDiscreteScheduler
+from diffusers import AnimateDiffPipeline, MotionAdapter, DiffusionPipeline, EulerDiscreteScheduler, DPMSolverMultistepScheduler
 from huggingface_hub import file_download, hf_hub_download
 from safetensors.torch import load_file
 import torch
@@ -15,7 +15,7 @@ from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 logger = logging.getLogger(__name__)
-
+torch.backends.cuda.matmul.allow_tf32 = True
 
 class TextToVideoPipeline(Pipeline):
     def __init__(self, model_id: str):
@@ -36,19 +36,25 @@ class TextToVideoPipeline(Pipeline):
 
             kwargs["torch_dtype"] = torch.float16
             kwargs["variant"] = "fp16"
+            kwargs["use_safetensors"] = True
 
         self.model_id = model_id
 
         if self.model_id == "ByteDance/AnimateDiff-Lightning":
+            kwargs["torch_dtype"] = torch.float16
             adapter = MotionAdapter().to(torch_device, torch.float16)
-            adapter.load_state_dict(load_file(hf_hub_download("ByteDance/AnimateDiff-Lightning" ,f"animatediff_lightning_4step_diffusers.safetensors"), device="cuda"))
+            adapter.load_state_dict(load_file(hf_hub_download("ByteDance/AnimateDiff-Lightning", "animatediff_lightning_4step_diffusers.safetensors"), device="cuda"))
             kwargs["motion_adapter"] = adapter
-            self.ldm = AnimateDiffPipeline.from_pretrained("Lykon/DreamShaper", **kwargs)
+            self.ldm = AnimateDiffPipeline.from_pretrained("digiplay/AbsoluteReality_v1.8.1", **kwargs)
             self.ldm.scheduler = EulerDiscreteScheduler.from_config(self.ldm.scheduler.config, timestep_spacing="trailing", beta_schedule="linear")
             self.ldm.to(torch_device)
-        else:
+        elif self.model_id == "ali-vilab/text-to-video-ms-1.7b":
             self.ldm = DiffusionPipeline.from_pretrained(model_id, **kwargs)
+            self.ldm.scheduler = DPMSolverMultistepScheduler.from_config(self.ldm.scheduler.config)
             self.ldm.to(torch_device)
+        else:
+            self.ldm = DiffusionPipeline.from_pretrained(model_id, **kwargs).to(torch_device)
+        self.ldm.enable_vae_slicing()
 
         if os.environ.get("SFAST"):
             logger.info(
@@ -62,6 +68,7 @@ class TextToVideoPipeline(Pipeline):
     def __call__(self, prompt: str, **kwargs) -> List[List[PIL.Image]]:
         # ali-vilab/text-to-video-ms-1.7b has a limited parameter set
         if self.model_id == "ali-vilab/text-to-video-ms-1.7b":
+            kwargs["num_inference_steps"] = 25
             if "fps" in kwargs:
                 del kwargs["fps"]
             if "motion_bucket_id" in kwargs:
@@ -69,7 +76,8 @@ class TextToVideoPipeline(Pipeline):
             if "noise_aug_strength" in kwargs:
                 del kwargs["noise_aug_strength"]
         elif self.model_id == "ByteDance/AnimateDiff-Lightning":
-            kwargs["step"] = 4
+            kwargs["num_inference_steps"] = 4
+            kwargs["guidance_scale"] = 1
             if "fps" in kwargs:
                 del kwargs["fps"]
             if "motion_bucket_id" in kwargs:
