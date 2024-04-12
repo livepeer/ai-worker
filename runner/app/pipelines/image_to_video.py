@@ -42,9 +42,9 @@ class ImageToVideoPipeline(Pipeline):
 
         if I2VGEN_LIGHTNING_MODEL_ID in model_id:
             self.ldm = I2VGenXLPipeline.from_pretrained("ali-vilab/i2vgen-xl", torch_dtype=torch.float16, variant="fp16")
+            self.ldm.enable_vae_slicing()
         else:
             self.ldm = StableVideoDiffusionPipeline.from_pretrained(model_id, **kwargs)
-        self.ldm.enable_vae_slicing()
         self.ldm.to(get_torch_device())
 
         if os.environ.get("SFAST"):
