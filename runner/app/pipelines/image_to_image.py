@@ -152,7 +152,6 @@ class ImageToImagePipeline(Pipeline):
                 # Default to 2step
                 kwargs["num_inference_steps"] = 2
         elif PIX2PIX_MODEL_ID in self.model_id:
-            kwargs["guidance_scale"] = round(random.uniform(6.0, 9.0), ndigits=2)
             kwargs["image_guidance_scale"] = round(random.uniform(1.2, 1.8), ndigits=2)
             kwargs["num_inference_steps"] = 50
 
