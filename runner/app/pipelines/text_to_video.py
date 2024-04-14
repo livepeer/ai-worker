@@ -67,7 +67,8 @@ class TextToVideoPipeline(Pipeline):
             repo = "ByteDance/AnimateDiff-Lightning"
             self.motion_loaded = ""
             # Load base
-            self.ldm = AnimateDiffPipeline.from_pretrained(bases[base_loaded]).to("cuda")
+            adapter = MotionAdapter.from_pretrained("guoyww/animatediff-motion-adapter-v1-5-2", torch_dtype=torch.float16)
+            self.ldm = AnimateDiffPipeline.from_pretrained(bases[base_loaded], motion_adapter=adapter, torch_dtype=torch.float16).to("cuda")
             # Load noise scheduler
             self.ldm.scheduler = EulerDiscreteScheduler.from_config(self.ldm.scheduler.config, timestep_spacing="trailing", beta_schedule="linear")
             # Load model params
