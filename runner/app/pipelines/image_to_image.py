@@ -12,6 +12,7 @@ from safetensors.torch import load_file
 from huggingface_hub import file_download, hf_hub_download
 import torch
 import PIL
+import random
 from typing import List
 import logging
 import os
@@ -90,6 +91,8 @@ class ImageToImagePipeline(Pipeline):
                 self.ldm.scheduler.config, timestep_spacing="trailing"
             )
         elif PIX2PIX_MODEL_ID in model_id:
+            kwargs["torch_dtype"] = torch.float16
+            kwargs["variant"] = "fp16"
             self.ldm = StableDiffusionInstructPix2PixPipeline.from_pretrained(
                 model_id, **kwargs
             ).to(torch_device)
@@ -148,6 +151,10 @@ class ImageToImagePipeline(Pipeline):
             else:
                 # Default to 2step
                 kwargs["num_inference_steps"] = 2
+        elif PIX2PIX_MODEL_ID in self.model_id:
+            kwargs["guidance_scale"] = round(random.uniform(6.0, 9.0), ndigits=2)
+            kwargs["image_guidance_scale"] = round(random.uniform(1.2, 1.8), ndigits=2)
+            kwargs["num_inference_steps"] = 50
 
         return self.ldm(prompt, image=image, **kwargs).images
 
