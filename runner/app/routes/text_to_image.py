@@ -50,7 +50,8 @@ async def text_to_image(
         return JSONResponse(
             status_code=400,
             content=http_error(
-                f"pipeline configured with {pipeline.model_id} but called with {params.model_id}"
+                f"pipeline configured with {pipeline.model_id} but called with "
+                f"{params.model_id}"
             ),
         )
 

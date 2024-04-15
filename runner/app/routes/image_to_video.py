@@ -55,7 +55,8 @@ async def image_to_video(
         return JSONResponse(
             status_code=400,
             content=http_error(
-                f"pipeline configured with {pipeline.model_id} but called with {model_id}"
+                f"pipeline configured with {pipeline.model_id} but called with "
+                f"{model_id}"
             ),
         )
 
@@ -63,7 +64,8 @@ async def image_to_video(
         return JSONResponse(
             status_code=400,
             content=http_error(
-                f"`height` and `width` have to be divisible by 8 but are {height} and {width}."
+                f"`height` and `width` have to be divisible by 8 but are {height} and "
+                f"{width}."
             ),
         )
 
