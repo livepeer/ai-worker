@@ -73,10 +73,11 @@ class ImageToVideoPipeline(Pipeline):
             if "prompt" in kwargs:
                 del kwargs["prompt"]
         elif I2VGEN_LIGHTNING_MODEL_ID in self.model_id:
-            kwargs["num_frames"] = 18
-            kwargs["num_inference_steps"] = 50
+            kwargs["num_inference_steps"] = 75
             if "decode_chunk_size" not in kwargs:
                 kwargs["decode_chunk_size"] = 8
+            if "num_frames" not in kwargs:
+                kwargs["num_frames"] = 25
             if "fps" in kwargs:
                 del kwargs["fps"]
             if "motion_bucket_id" in kwargs:
