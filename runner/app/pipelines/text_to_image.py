@@ -111,14 +111,24 @@ class TextToImagePipeline(Pipeline):
                 self.ldm.vae.decode, mode="max-autotune", fullgraph=True
             )
 
-        if os.environ.get("SFAST"):
+        if os.getenv("SFAST", "").strip().lower() == "true":
             logger.info(
-                "TextToImagePipeline will be dynamicallly compiled with stable-fast for %s",
+                "TextToImagePipeline will be dynamically compiled with stable-fast for "
+                "%s",
                 model_id,
             )
             from app.pipelines.sfast import compile_model
 
             self.ldm = compile_model(self.ldm)
+
+            # Warm-up the pipeline.
+            # TODO: Not yet supported for ImageToImagePipeline.
+            if os.getenv("SFAST_WARMUP", "true").lower() == "true":
+                logger.warning(
+                    "The 'SFAST_WARMUP' flag is not yet supported for the "
+                    "TextToImagePipeline and will be ignored. As a result the first "
+                    "call may be slow if 'SFAST' is enabled."
+                )
 
     def __call__(self, prompt: str, **kwargs) -> List[PIL.Image]:
         seed = kwargs.pop("seed", None)
