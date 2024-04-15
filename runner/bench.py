@@ -108,7 +108,7 @@ if __name__ == "__main__":
     load_max_mem_reserved = torch.cuda.max_memory_reserved() / 1024**3
 
     # Collect pipeline warmup metrics if stable-fast is enabled
-    if os.environ.get("SFAST"):
+    if os.getenv("SFAST", "").strip().lower() == "true":
         warmups = 3
         warmup_metrics = bench_pipeline(pipeline, args.batch_size, warmups)
 
@@ -123,7 +123,8 @@ if __name__ == "__main__":
     print(f"pipeline load max GPU memory allocated: {load_max_mem_allocated:.3f}GiB")
     print(f"pipeline load max GPU memory reserved: {load_max_mem_reserved:.3f}GiB")
 
-    if os.environ.get("SFAST"):
+    if os.getenv("SFAST", "").strip().lower() == "true":
+        
         print(f"avg warmup inference time: {warmup_metrics.inference_time:.3f}s")
         print(
             f"avg warmup inference time per output: {warmup_metrics.inference_time_per_output:.3f}s"
