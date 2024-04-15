@@ -42,7 +42,30 @@ To debug the AI runner when it operates within a container orchestrated by exter
    cd .. && git apply ./runner/dev/patches/debug.patch && cd runner
    ```
 
-5. **Attach and Debug**: Follow the [guidance on attaching to a running container](https://code.visualstudio.com/docs/python/debugging#_command-line-debugging) for details.
+5. **Attach and Debug**: Follow the [guidance on attaching to a running container](https://code.visualstudio.com/docs/python/debugging#_command-line-debugging) for details. To attach to the AI runner, use the following configuration:
+
+   ```json
+   {
+     "version": "0.2.0",
+     "configurations": [
+       {
+         "name": "Python Debugger: Remote Attach",
+         "type": "debugpy",
+         "request": "attach",
+         "connect": {
+           "host": "0.0.0.0",
+           "port": 5678
+         },
+         "pathMappings": [
+           {
+             "localRoot": "${workspaceFolder}",
+             "remoteRoot": "."
+           }
+         ]
+       }
+     ]
+   }
+   ```
 
 6. **Revert Changes**: After debugging, undo the debug patch.
 
