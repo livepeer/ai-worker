@@ -80,6 +80,9 @@ else
     # Download image-to-video models.
     huggingface-cli download stabilityai/stable-video-diffusion-img2vid-xt --include "*.fp16.safetensors" "*.json" --cache-dir models
     
+    # Download video models
+    huggingface-cli download ali-vilab/i2vgen-xl --include "*.fp16.safetensors" "*.json" --cache-dir models
+
     # Download image-to-video models (token-gated).
     printf "\nDownloading token-gated models...\n"
     check_hf_auth
