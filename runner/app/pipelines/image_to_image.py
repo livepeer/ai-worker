@@ -152,8 +152,10 @@ class ImageToImagePipeline(Pipeline):
                 # Default to 2step
                 kwargs["num_inference_steps"] = 2
         elif PIX2PIX_MODEL_ID in self.model_id:
-            kwargs["image_guidance_scale"] = round(random.uniform(1.2, 1.8), ndigits=2)
-            kwargs["num_inference_steps"] = 50
+            if "image_guidance_scale" not in kwargs:
+                kwargs["image_guidance_scale"] = round(random.uniform(1.2, 1.8), ndigits=2)
+            if "num_inference_steps" not in kwargs:
+                kwargs["num_inference_steps"] = 50
 
         return self.ldm(prompt, image=image, **kwargs).images
 
