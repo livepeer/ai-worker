@@ -21,7 +21,7 @@ const containerModelDir = "/models"
 const containerPort = "8000/tcp"
 const pollingInterval = 500 * time.Millisecond
 const containerTimeout = 2 * time.Minute
-const optFlagsTimeout = 5 * time.Minute // Pipelines with optimization flags can take longer to start.
+const optFlagsContainerTimeout = 5 * time.Minute
 const containerRemoveTimeout = 30 * time.Second
 const containerCreatorLabel = "creator"
 const containerCreator = "ai-worker"
@@ -112,7 +112,7 @@ func (m *DockerManager) Borrow(ctx context.Context, pipeline, modelID string) (*
 		// The container does not exist so try to create it
 		var err error
 		// TODO: Optimization flags for dynamically loaded (borrowed) containers are not currently supported due to startup delays.
-		rc, err = m.createContainer(ctx, pipeline, modelID, false, map[string]StringBool{})
+		rc, err = m.createContainer(ctx, pipeline, modelID, false, map[string]EnvValue{})
 		if err != nil {
 			return nil, err
 		}
@@ -146,12 +146,6 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	}
 	for key, value := range optimizationFlags {
 		envVars = append(envVars, key+"="+value.String())
-	}
-	var containerTimeoutTmp time.Duration
-	if len(optimizationFlags) == 0 {
-		containerTimeoutTmp = containerTimeout
-	} else {
-		containerTimeoutTmp = optFlagsTimeout
 	}
 
 	containerConfig := &container.Config{
@@ -198,7 +192,7 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 		return nil, err
 	}
 
-	cctx, cancel := context.WithTimeout(ctx, containerTimeoutTmp)
+	cctx, cancel := context.WithTimeout(ctx, containerTimeout)
 	if err := m.dockerClient.ContainerStart(cctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		cancel()
 		dockerRemoveContainer(m.dockerClient, resp.ID)
@@ -206,13 +200,20 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	}
 	cancel()
 
-	cctx, cancel = context.WithTimeout(ctx, containerTimeoutTmp)
+	cctx, cancel = context.WithTimeout(ctx, containerTimeout)
 	if err := dockerWaitUntilRunning(cctx, m.dockerClient, resp.ID, pollingInterval); err != nil {
 		cancel()
 		dockerRemoveContainer(m.dockerClient, resp.ID)
 		return nil, err
 	}
 	cancel()
+
+	// Extend runner container timeout when optimization flags are used, as these
+	// pipelines may require more startup time.
+	runnerContainerTimeout := containerTimeout
+	if len(optimizationFlags) > 0 {
+		runnerContainerTimeout = optFlagsContainerTimeout
+	}
 
 	cfg := RunnerContainerConfig{
 		Type:     Managed,
@@ -221,9 +222,10 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 		Endpoint: RunnerEndpoint{
 			URL: "http://localhost:" + containerHostPort,
 		},
-		ID:       resp.ID,
-		GPU:      gpu,
-		KeepWarm: keepWarm,
+		ID:               resp.ID,
+		GPU:              gpu,
+		KeepWarm:         keepWarm,
+		containerTimeout: runnerContainerTimeout,
 	}
 
 	rc, err := NewRunnerContainer(ctx, cfg)

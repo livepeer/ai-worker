@@ -10,34 +10,34 @@ import (
 	"sync"
 )
 
-// StringBool allows JSON booleans to be unmarshalled as strings.
-type StringBool string
+// EnvValue unmarshals JSON booleans as strings for compatibility with env variables.
+type EnvValue string
 
-// UnmarshalJSON converts JSON booleans to strings for StringBool.
-func (sb *StringBool) UnmarshalJSON(b []byte) error {
+// UnmarshalJSON converts JSON booleans to strings for EnvValue.
+func (sb *EnvValue) UnmarshalJSON(b []byte) error {
 	var boolVal bool
 	err := json.Unmarshal(b, &boolVal)
 	if err == nil {
-		*sb = StringBool(strconv.FormatBool(boolVal))
+		*sb = EnvValue(strconv.FormatBool(boolVal))
 		return nil
 	}
 
 	var strVal string
 	err = json.Unmarshal(b, &strVal)
 	if err == nil {
-		*sb = StringBool(strVal)
+		*sb = EnvValue(strVal)
 	}
 
 	return err
 }
 
-// String returns the string representation of the StringBool.
-func (sb StringBool) String() string {
+// String returns the string representation of the EnvValue.
+func (sb EnvValue) String() string {
 	return string(sb)
 }
 
 // OptimizationFlags is a map of optimization flags to be passed to the pipeline.
-type OptimizationFlags map[string]StringBool
+type OptimizationFlags map[string]EnvValue
 
 type Worker struct {
 	manager *DockerManager

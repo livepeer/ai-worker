@@ -33,9 +33,10 @@ type RunnerContainerConfig struct {
 	Endpoint RunnerEndpoint
 
 	// For managed containers only
-	ID       string
-	GPU      string
-	KeepWarm bool
+	ID               string
+	GPU              string
+	KeepWarm         bool
+	containerTimeout time.Duration
 }
 
 func NewRunnerContainer(ctx context.Context, cfg RunnerContainerConfig) (*RunnerContainer, error) {
@@ -54,7 +55,7 @@ func NewRunnerContainer(ctx context.Context, cfg RunnerContainerConfig) (*Runner
 		return nil, err
 	}
 
-	cctx, cancel := context.WithTimeout(ctx, containerTimeout)
+	cctx, cancel := context.WithTimeout(ctx, cfg.containerTimeout)
 	if err := runnerWaitUntilReady(cctx, client, pollingInterval); err != nil {
 		cancel()
 		return nil, err
