@@ -66,7 +66,7 @@ class ImageToVideoPipeline(Pipeline):
                     "fps": 6,
                     "motion_bucket_id": 127,
                     "noise_aug_strength": 0.02,
-                    "decode_chunk_size": 25,
+                    "decode_chunk_size": 4,
                 }
 
                 logger.info("Warming up ImageToVideoPipeline pipeline...")
