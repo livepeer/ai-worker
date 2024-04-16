@@ -6,8 +6,38 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"strconv"
 	"sync"
 )
+
+// EnvValue unmarshals JSON booleans as strings for compatibility with env variables.
+type EnvValue string
+
+// UnmarshalJSON converts JSON booleans to strings for EnvValue.
+func (sb *EnvValue) UnmarshalJSON(b []byte) error {
+	var boolVal bool
+	err := json.Unmarshal(b, &boolVal)
+	if err == nil {
+		*sb = EnvValue(strconv.FormatBool(boolVal))
+		return nil
+	}
+
+	var strVal string
+	err = json.Unmarshal(b, &strVal)
+	if err == nil {
+		*sb = EnvValue(strVal)
+	}
+
+	return err
+}
+
+// String returns the string representation of the EnvValue.
+func (sb EnvValue) String() string {
+	return string(sb)
+}
+
+// OptimizationFlags is a map of optimization flags to be passed to the pipeline.
+type OptimizationFlags map[string]EnvValue
 
 type Worker struct {
 	manager *DockerManager
@@ -167,9 +197,9 @@ func (w *Worker) ImageToVideo(ctx context.Context, req ImageToVideoMultipartRequ
 	return resp.JSON200, nil
 }
 
-func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endpoint RunnerEndpoint) error {
+func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endpoint RunnerEndpoint, optimizationFlags OptimizationFlags) error {
 	if endpoint.URL == "" {
-		return w.manager.Warm(ctx, pipeline, modelID)
+		return w.manager.Warm(ctx, pipeline, modelID, optimizationFlags)
 	}
 
 	w.mu.Lock()
