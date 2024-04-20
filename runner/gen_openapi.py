@@ -5,6 +5,11 @@ import json
 import yaml
 import argparse
 
+# Specify Endpoints for OpenAPI schema generation.
+SERVERS = [
+    {"url": "http://gateway-endpoint.ai/", "description": "Example Gateway"},
+]
+
 
 def write_openapi(fname):
     """Write OpenAPI schema to file.
@@ -31,6 +36,7 @@ def write_openapi(fname):
                     openapi_version=app.openapi_version,
                     description="An application to run AI pipelines",
                     routes=app.routes,
+                    servers=SERVERS,
                 ),
                 f,
                 sort_keys=False,
@@ -43,8 +49,10 @@ def write_openapi(fname):
                     openapi_version=app.openapi_version,
                     description="An application to run AI pipelines",
                     routes=app.routes,
+                    servers=SERVERS,
                 ),
                 f,
+                indent=4,  # Make human readable.
             )
         print("OpenAPI schema generated and saved.")
 
