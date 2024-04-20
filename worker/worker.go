@@ -206,10 +206,11 @@ func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endp
 	defer w.mu.Unlock()
 
 	cfg := RunnerContainerConfig{
-		Type:     External,
-		Pipeline: pipeline,
-		ModelID:  modelID,
-		Endpoint: endpoint,
+		Type:             External,
+		Pipeline:         pipeline,
+		ModelID:          modelID,
+		Endpoint:         endpoint,
+		containerTimeout: externalContainerTimeout,
 	}
 	rc, err := NewRunnerContainer(ctx, cfg)
 	if err != nil {

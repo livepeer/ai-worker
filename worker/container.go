@@ -40,6 +40,12 @@ type RunnerContainerConfig struct {
 }
 
 func NewRunnerContainer(ctx context.Context, cfg RunnerContainerConfig) (*RunnerContainer, error) {
+	// Ensure that timeout is set to a non-zero value.
+	timeout := cfg.containerTimeout
+	if timeout == 0 {
+		timeout = containerTimeout
+	}
+
 	var opts []ClientOption
 	if cfg.Endpoint.Token != "" {
 		bearerTokenProvider, err := securityprovider.NewSecurityProviderBearerToken(cfg.Endpoint.Token)
