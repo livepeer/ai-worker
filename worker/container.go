@@ -61,7 +61,7 @@ func NewRunnerContainer(ctx context.Context, cfg RunnerContainerConfig) (*Runner
 		return nil, err
 	}
 
-	cctx, cancel := context.WithTimeout(ctx, cfg.containerTimeout)
+	cctx, cancel := context.WithTimeout(context.Background(), cfg.containerTimeout)
 	if err := runnerWaitUntilReady(cctx, client, pollingInterval); err != nil {
 		cancel()
 		return nil, err
