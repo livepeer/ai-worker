@@ -1,3 +1,4 @@
+// Package main provides a small example on how to run the 'text-to-image' pipeline using the AI worker package.
 package main
 
 import (

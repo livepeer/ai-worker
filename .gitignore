@@ -1,10 +1,14 @@
 .cog
-checkpoints
 cache
 __pycache__
 input
 output
+
+# AI Configuration files and model storage folders.
+aiModels.json
 models
+checkpoints
+
+# IDE
 .vscode
 *.code-workspace
-aiModels.json

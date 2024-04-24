@@ -1,6 +1,6 @@
 # Development Documentation
 
-This guide aims to assist developers working on the AI runner, offering detailed instructions for debugging and setting up the development environment.
+This guide aims to assist developers working on the [AI runner](https://github.com/livepeer/ai-worker/tree/main/runner), offering detailed instructions for debugging and setting up the development environment. For general information about the AI runner, refer to the [AI Runner README](../README.md).
 
 ## Debugging
 
