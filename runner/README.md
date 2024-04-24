@@ -127,6 +127,12 @@ Retrieve the image from the response:
 curl -O 0.0.0.0:8937/stream/<STREAM_URL>.mp4
 ```
 
+### Test with Swagger UI
+
+![Swagger UI](https://fastapi.tiangolo.com/img/index/index-03-swagger-02.png)
+
+The runner comes with a built-in [Swagger UI](https://fastapi.tiangolo.com/features/) for testing API endpoints. Visit `http://localhost:8000/docs` to access it.
+
 ### Apply Pipeline Optimizations
 
 The runner contains several optimizations to speed up inference or reduce memory usage:
