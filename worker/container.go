@@ -17,8 +17,8 @@ const (
 
 type RunnerContainer struct {
 	RunnerContainerConfig
-
-	Client *ClientWithResponses
+	Capacity int
+	Client   *ClientWithResponses
 }
 
 type RunnerEndpoint struct {
@@ -70,6 +70,7 @@ func NewRunnerContainer(ctx context.Context, cfg RunnerContainerConfig) (*Runner
 
 	return &RunnerContainer{
 		RunnerContainerConfig: cfg,
+		Capacity:              1,
 		Client:                client,
 	}, nil
 }
