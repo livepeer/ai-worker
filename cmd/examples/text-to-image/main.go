@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log/slog"
 	"os"
 	"path"
@@ -14,21 +15,24 @@ import (
 )
 
 func main() {
+	aiModelsDir := flag.String("aiModelsDir", "runner/models", "path to the models directory")
+	flag.Parse()
+
 	containerName := "text-to-image"
 	baseOutputPath := "output"
 
 	containerImageID := "livepeer/ai-runner:latest"
 	gpus := []string{"0"}
 
-	modelDir, err := filepath.Abs("runner/models")
+	modelsDir, err := filepath.Abs(*aiModelsDir)
 	if err != nil {
-		slog.Error("Error getting absolute path for modelDir", slog.String("error", err.Error()))
+		slog.Error("Error getting absolute path for 'aiModelsDir'", slog.String("error", err.Error()))
 		return
 	}
 
 	modelID := "stabilityai/sd-turbo"
 
-	w, err := worker.NewWorker(containerImageID, gpus, modelDir)
+	w, err := worker.NewWorker(containerImageID, gpus, modelsDir)
 	if err != nil {
 		slog.Error("Error creating worker", slog.String("error", err.Error()))
 		return
