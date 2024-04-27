@@ -3,6 +3,11 @@ info:
   title: Livepeer AI Runner
   description: An application to run AI pipelines
   version: 0.1.0
+servers:
+- url: http://gateway-endpoint.ai/
+  description: Example Gateway
+- url: http://other-gateway-endpoint.ai/
+  description: Other Example Gateway
 paths:
   /health:
     get:
