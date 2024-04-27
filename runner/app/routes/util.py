@@ -9,9 +9,18 @@ class Media(BaseModel):
     url: str
     seed: int
 
+class chunk(BaseModel):
+    timestamp: tuple
+    text: str
+
+class TextResponse(BaseModel):
+    text: str
+    chunks: List[chunk]
+
 
 class ImageResponse(BaseModel):
     images: List[Media]
+
 
 
 class VideoResponse(BaseModel):
