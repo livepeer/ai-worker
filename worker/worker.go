@@ -239,6 +239,22 @@ func (w *Worker) Stop(ctx context.Context) error {
 	return nil
 }
 
+// HasCapacity returns true if the worker has capacity for the given pipeline and model ID.
+func (w *Worker) HasCapacity(pipeline, modelID string) bool {
+	managedCapacity := w.manager.HasCapacity(context.Background(), pipeline, modelID)
+	if managedCapacity {
+		return true
+	}
+
+	// Check if we have capacity for external containers.
+	name := dockerContainerName(pipeline, modelID)
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	_, ok := w.externalContainers[name]
+
+	return ok
+}
+
 func (w *Worker) borrowContainer(ctx context.Context, pipeline, modelID string) (*RunnerContainer, error) {
 	w.mu.Lock()
 
