@@ -6,6 +6,7 @@ from diffusers import (
     StableDiffusionXLPipeline,
     UNet2DConditionModel,
     EulerDiscreteScheduler,
+    StableDiffusionXLImg2ImgPipeline
 )
 from safetensors.torch import load_file
 from huggingface_hub import file_download, hf_hub_download
@@ -18,6 +19,7 @@ import os
 logger = logging.getLogger(__name__)
 
 SDXL_LIGHTNING_MODEL_ID = "ByteDance/SDXL-Lightning"
+SDXL_BASE_MODEL_ID = "stabilityai/stable-diffusion-xl-base-1.0"
 
 
 class TextToImagePipeline(Pipeline):
@@ -90,6 +92,20 @@ class TextToImagePipeline(Pipeline):
             self.ldm.scheduler = EulerDiscreteScheduler.from_config(
                 self.ldm.scheduler.config, timestep_spacing="trailing"
             )
+        elif SDXL_BASE_MODEL_ID in self.model_id:
+            kwargs["torch_dtype"] = torch.float16
+            kwargs["variant"] = "fp16"
+            kwargs["use_safetensors"] = True
+            self.ldm = StableDiffusionXLPipeline.from_pretrained(model_id, **kwargs).to("cuda")
+            self.refiner = StableDiffusionXLImg2ImgPipeline.from_pretrained(
+                "stabilityai/stable-diffusion-xl-refiner-1.0",
+                text_encoder_2=self.ldm.text_encoder_2,
+                vae=self.ldm.vae,
+                torch_dtype=kwargs["torch_dtype"],
+                use_safetensors=True,
+                variant=kwargs["variant"],
+            ).to("cuda")
+
         else:
             self.ldm = AutoPipelineForText2Image.from_pretrained(model_id, **kwargs).to(
                 torch_device
@@ -166,6 +182,16 @@ class TextToImagePipeline(Pipeline):
             else:
                 # Default to 2step
                 kwargs["num_inference_steps"] = 2
+        elif SDXL_BASE_MODEL_ID in self.model_id:
+            kwargs["num_inference_steps"] = 40
+            kwargs["denoising_end"] = 0.8
+            kwargs["output_type"] = "latent"
+            image = self.ldm(prompt, **kwargs).images
+            del kwargs["output_type"]
+            del kwargs["denoising_end"]
+            kwargs["image"] = image
+            kwargs["denoising_start"] = 0.8
+            return self.refiner(prompt, **kwargs).images
 
         return self.ldm(prompt, **kwargs).images
 
