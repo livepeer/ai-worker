@@ -58,13 +58,16 @@ printf "Downloading %s models...\n" "$MODE"
 if [ "$MODE" = "alpha" ]; then
     printf "\nDownloading unrestricted models...\n"
 
+
     # Download text-to-image and image-to-image models.
     huggingface-cli download ByteDance/SDXL-Lightning --include "*unet.safetensors" --exclude "*lora.safetensors*" --cache-dir models
+
 
     # Download image-to-video models (token-gated).
     printf "\nDownloading token-gated models...\n"
     check_hf_auth
     huggingface-cli download stabilityai/stable-video-diffusion-img2vid-xt-1-1 --include "*.fp16.safetensors" "*.json" --cache-dir models "${TOKEN_FLAG}"
+
 
     printf "\nAlpha models downloaded successfully!\n"
 else
