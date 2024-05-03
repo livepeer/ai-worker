@@ -130,6 +130,24 @@ func (m *DockerManager) Return(rc *RunnerContainer) {
 	m.containers[dockerContainerName(rc.Pipeline, rc.ModelID)] = rc
 }
 
+// HasCapacity checks if an unused managed container exists or if a GPU is available for a new container.
+func (m *DockerManager) HasCapacity(ctx context.Context, pipeline, modelID string) bool {
+	containerName := dockerContainerName(pipeline, modelID)
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Check if unused managed container exists for the requested model.
+	_, ok := m.containers[containerName]
+	if ok {
+		return true
+	}
+
+	// Check for available GPU to allocate for a new container for the requested model.
+	_, err := m.allocGPU(ctx)
+	return err == nil
+}
+
 func (m *DockerManager) createContainer(ctx context.Context, pipeline string, modelID string, keepWarm bool, optimizationFlags OptimizationFlags) (*RunnerContainer, error) {
 	containerName := dockerContainerName(pipeline, modelID)
 
