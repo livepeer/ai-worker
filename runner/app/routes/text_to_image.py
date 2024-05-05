@@ -1,13 +1,14 @@
-from pydantic import BaseModel
-from fastapi import Depends, APIRouter
-from fastapi.responses import JSONResponse
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.pipelines.base import Pipeline
-from app.dependencies import get_pipeline
-from app.routes.util import image_to_data_url, ImageResponse, HTTPError, http_error
 import logging
-import random
 import os
+import random
+
+from app.dependencies import get_pipeline
+from app.pipelines.base import Pipeline
+from app.routes.util import HTTPError, ImageResponse, http_error, image_to_data_url
+from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel
 
 router = APIRouter()
 
@@ -23,6 +24,7 @@ class TextToImageParams(BaseModel):
     width: int = None
     guidance_scale: float = 7.5
     negative_prompt: str = ""
+    safety_check: bool = False
     seed: int = None
     num_images_per_prompt: int = 1
 

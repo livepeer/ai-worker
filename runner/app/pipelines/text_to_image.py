@@ -7,6 +7,8 @@ from diffusers import (
     UNet2DConditionModel,
     EulerDiscreteScheduler,
 )
+from transformers import CLIPImageProcessor
+from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
 from safetensors.torch import load_file
 from huggingface_hub import file_download, hf_hub_download
 import torch
@@ -52,6 +54,11 @@ class TextToImagePipeline(Pipeline):
 
         self.model_id = model_id
 
+        # Load SafetyChecker if requested
+        safety_checker = StableDiffusionSafetyChecker.from_pretrained(
+            "CompVis/stable-diffusion-safety-checker"
+        )
+
         # Special case SDXL-Lightning because the unet for SDXL needs to be swapped
         if SDXL_LIGHTNING_MODEL_ID in model_id:
             base = "stabilityai/stable-diffusion-xl-base-1.0"
@@ -84,16 +91,27 @@ class TextToImagePipeline(Pipeline):
             )
 
             self.ldm = StableDiffusionXLPipeline.from_pretrained(
-                base, unet=unet, **kwargs
+                base,
+                unet=unet,
+                safety_checker=safety_checker,
+                feature_extractor=CLIPImageProcessor.from_pretrained(
+                    "openai/clip-vit-base-patch32"
+                ),
+                **kwargs,
             ).to(torch_device)
 
             self.ldm.scheduler = EulerDiscreteScheduler.from_config(
                 self.ldm.scheduler.config, timestep_spacing="trailing"
             )
         else:
-            self.ldm = AutoPipelineForText2Image.from_pretrained(model_id, **kwargs).to(
-                torch_device
-            )
+            self.ldm = AutoPipelineForText2Image.from_pretrained(
+                model_id,
+                safety_checker=safety_checker,
+                feature_extractor=CLIPImageProcessor.from_pretrained(
+                    "openai/clip-vit-base-patch32"
+                ),
+                **kwargs,
+            ).to(torch_device)
 
         if os.environ.get("TORCH_COMPILE"):
             torch._inductor.config.conv_1x1_as_mm = True
