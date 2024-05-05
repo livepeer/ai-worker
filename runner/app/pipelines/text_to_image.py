@@ -1,19 +1,22 @@
-from app.pipelines.base import Pipeline
-from app.pipelines.util import get_torch_device, get_model_dir
-
-from diffusers import (
-    AutoPipelineForText2Image,
-    StableDiffusionXLPipeline,
-    UNet2DConditionModel,
-    EulerDiscreteScheduler,
-)
-from safetensors.torch import load_file
-from huggingface_hub import file_download, hf_hub_download
-import torch
-import PIL
-from typing import List
 import logging
 import os
+from typing import List, Tuple
+
+import PIL
+import torch
+from diffusers import (
+    AutoPipelineForText2Image,
+    EulerDiscreteScheduler,
+    StableDiffusionXLPipeline,
+    UNet2DConditionModel,
+)
+# from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
+from huggingface_hub import file_download, hf_hub_download
+from safetensors.torch import load_file
+# from transformers import CLIPFeatureExtractor
+
+from app.pipelines.base import Pipeline
+from app.pipelines.util import get_model_dir, get_torch_device
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +54,15 @@ class TextToImagePipeline(Pipeline):
             kwargs["torch_dtype"] = torch.bfloat16
 
         self.model_id = model_id
+
+        # # Add NSFW safety checker
+        # if os.getenv("SAFETY_CHECKER", "true").strip().lower() == "true":
+        #     kwargs["safety_checker"] = StableDiffusionSafetyChecker.from_pretrained(
+        #         "CompVis/stable-diffusion-safety-checker"
+        #     )
+        #     kwargs["feature_extractor"] = CLIPFeatureExtractor.from_pretrained(
+        #         "openai/clip-vit-base-patch32"
+        #     )
 
         # Special case SDXL-Lightning because the unet for SDXL needs to be swapped
         if SDXL_LIGHTNING_MODEL_ID in model_id:
@@ -130,7 +142,7 @@ class TextToImagePipeline(Pipeline):
                     "call may be slow if 'SFAST' is enabled."
                 )
 
-    def __call__(self, prompt: str, **kwargs) -> List[PIL.Image]:
+    def __call__(self, prompt: str, **kwargs) -> Tuple[List[PIL.Image], List[bool]]:
         seed = kwargs.pop("seed", None)
         if seed is not None:
             if isinstance(seed, int):
@@ -167,7 +179,9 @@ class TextToImagePipeline(Pipeline):
                 # Default to 2step
                 kwargs["num_inference_steps"] = 2
 
-        return self.ldm(prompt, **kwargs).images
+        output = self.ldm(prompt, **kwargs)
+        nsfw_content_detected = getattr(output, "nsfw_content_detected", None) or []
+        return output.images, nsfw_content_detected
 
     def __str__(self) -> str:
         return f"TextToImagePipeline model_id={self.model_id}"

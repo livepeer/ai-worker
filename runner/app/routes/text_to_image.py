@@ -23,6 +23,7 @@ class TextToImageParams(BaseModel):
     width: int = None
     guidance_scale: float = 7.5
     negative_prompt: str = ""
+    safety_check: bool = False
     seed: int = None
     num_images_per_prompt: int = 1
 
@@ -65,7 +66,7 @@ async def text_to_image(
             params.seed = init_seed
 
     try:
-        images = pipeline(**params.model_dump())
+        images, nsfw_content_detected = pipeline(**params.model_dump())
     except Exception as e:
         logger.error(f"TextToImagePipeline error: {e}")
         logger.exception(e)
@@ -81,4 +82,4 @@ async def text_to_image(
     for img, sd in zip(images, seeds):
         output_images.append({"url": image_to_data_url(img), "seed": sd})
 
-    return {"images": output_images}
+    return {"images": output_images, "nsfw_content_detected": nsfw_content_detected}

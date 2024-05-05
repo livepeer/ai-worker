@@ -1,8 +1,9 @@
-import io
-from PIL import Image
 import base64
-from pydantic import BaseModel
+import io
 from typing import List
+
+from PIL import Image
+from pydantic import BaseModel
 
 
 class Media(BaseModel):
@@ -12,6 +13,7 @@ class Media(BaseModel):
 
 class ImageResponse(BaseModel):
     images: List[Media]
+    nsfw_content_detected: List[bool]
 
 
 class VideoResponse(BaseModel):
