@@ -266,6 +266,11 @@
                         "title": "Negative Prompt",
                         "default": ""
                     },
+                    "safety_check": {
+                        "type": "boolean",
+                        "title": "Safety Check",
+                        "default": false
+                    },
                     "seed": {
                         "type": "integer",
                         "title": "Seed"
@@ -392,12 +397,17 @@
                     "seed": {
                         "type": "integer",
                         "title": "Seed"
+                    },
+                    "nsfw": {
+                        "type": "boolean",
+                        "title": "Nsfw"
                     }
                 },
                 "type": "object",
                 "required": [
                     "url",
-                    "seed"
+                    "seed",
+                    "nsfw"
                 ],
                 "title": "Media"
             },
@@ -429,6 +439,11 @@
                         "type": "string",
                         "title": "Negative Prompt",
                         "default": ""
+                    },
+                    "safety_check": {
+                        "type": "boolean",
+                        "title": "Safety Check",
+                        "default": false
                     },
                     "seed": {
                         "type": "integer",

@@ -1,16 +1,17 @@
 import argparse
+import os
 from time import time
 from typing import List
+
+import numpy as np
 import torch
-from PIL import Image
 from app.main import load_pipeline
 from app.pipelines.base import Pipeline
-from app.pipelines.text_to_image import TextToImagePipeline
 from app.pipelines.image_to_image import ImageToImagePipeline
 from app.pipelines.image_to_video import ImageToVideoPipeline
+from app.pipelines.text_to_image import TextToImagePipeline
+from PIL import Image
 from pydantic import BaseModel
-import os
-import numpy as np
 
 PROMPT = "a mountain lion"
 IMAGE = "images/test.png"
@@ -47,6 +48,8 @@ def bench_pipeline(pipeline: Pipeline, batch_size=1, runs=1) -> BenchMetrics:
     for i in range(runs):
         start = time()
         output = call_pipeline(pipeline, batch_size)
+        if isinstance(output, tuple):
+            output = output[0]
         assert len(output) == batch_size
 
         inference_time[i] = time() - start

@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 responses = {400: {"model": HTTPError}, 500: {"model": HTTPError}}
 
 
-# TODO: Make model_id and other properties optional once Go codegen tool supports
+# TODO: Make model_id and other None properties optional once Go codegen tool supports
 # OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
 @router.post("/image-to-video", response_model=VideoResponse, responses=responses)
 @router.post(
