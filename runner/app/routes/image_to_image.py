@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 responses = {400: {"model": HTTPError}, 500: {"model": HTTPError}}
 
 
-# TODO: Make model_id optional once Go codegen tool supports OAPI 3.1
-# https://github.com/deepmap/oapi-codegen/issues/373
+# TODO: Make model_id and other properties optional once Go codegen tool supports
+# OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
 @router.post("/image-to-image", response_model=ImageResponse, responses=responses)
 @router.post(
     "/image-to-image/",
@@ -61,11 +61,11 @@ async def image_to_image(
         )
 
     if seed is None:
-        init_seed = random.randint(0, 2**32 - 1)
-        if num_images_per_prompt > 1:
-            seed = [i for i in range(init_seed, init_seed + num_images_per_prompt)]
-        else:
-            seed = init_seed
+        seed = random.randint(0, 2**32 - 1)
+    if num_images_per_prompt > 1:
+        seed = [
+            i for i in range(seed, seed + num_images_per_prompt)
+        ]
 
     img = Image.open(image.file).convert("RGB")
     # If a list of seeds/generators is passed, diffusers wants a list of images
