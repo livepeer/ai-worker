@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 
 
 class TextToImageParams(BaseModel):
-    # TODO: Make model_id optional once Go codegen tool supports OAPI 3.1
-    # https://github.com/deepmap/oapi-codegen/issues/373
+    # TODO: Make model_id and other properties optional once Go codegen tool supports
+    # OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
     model_id: str = ""
     prompt: str
     height: int = None
@@ -56,13 +56,11 @@ async def text_to_image(
         )
 
     if params.seed is None:
-        init_seed = random.randint(0, 2**32 - 1)
-        if params.num_images_per_prompt > 1:
-            params.seed = [
-                i for i in range(init_seed, init_seed + params.num_images_per_prompt)
-            ]
-        else:
-            params.seed = init_seed
+        params.seed = random.randint(0, 2**32 - 1)
+    if params.num_images_per_prompt > 1:
+        params.seed = [
+            i for i in range(params.seed, params.seed + params.num_images_per_prompt)
+        ]
 
     try:
         images = pipeline(**params.model_dump())
