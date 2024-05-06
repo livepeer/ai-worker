@@ -7,8 +7,8 @@
     },
     "servers": [
         {
-            "url": "http://gateway-endpoint.ai/",
-            "description": "Example Gateway"
+            "url": "https://dream-gateway.livepeer.cloud",
+            "description": "Livepeer Cloud Community Gateway"
         }
     ],
     "paths": {
