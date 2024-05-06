@@ -5,8 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -360,6 +364,22 @@ func (w *Worker) HasCapacity(pipeline, modelID string) bool {
 	_, ok := w.externalContainers[name]
 
 	return ok
+}
+
+// HasCapacity checks if an unused managed container exists or if a GPU is available for a new container.
+func (m *Worker) ModelExists(modelID string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	//Check if the model folder exists
+	modelPathCheck := filepath.Join(m.manager.modelDir, "models--"+strings.ReplaceAll(modelID, "/", "--"))
+	if _, err := os.Stat(modelPathCheck); os.IsNotExist(err) {
+		slog.Error(fmt.Sprintf("model %s does not exist at %s", modelID, modelPathCheck))
+		return false
+	} else {
+		slog.Info("Model found: ", slog.String("path", modelPathCheck))
+		return true
+	}
 }
 
 func (w *Worker) borrowContainer(ctx context.Context, pipeline, modelID string) (*RunnerContainer, error) {
