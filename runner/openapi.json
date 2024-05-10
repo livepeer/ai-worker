@@ -274,6 +274,10 @@
                         "type": "integer",
                         "title": "Num Images Per Prompt",
                         "default": 1
+                    },
+                    "num_inference_steps": {    
+                        "type": "integer",         
+                        "title": "Num Inference Steps"
                     }
                 },
                 "type": "object",
@@ -438,6 +442,10 @@
                         "type": "integer",
                         "title": "Num Images Per Prompt",
                         "default": 1
+                    },
+                    "num_inference_steps": {    
+                        "type": "integer",         
+                        "title": "Num Inference Steps"
                     }
                 },
                 "type": "object",
