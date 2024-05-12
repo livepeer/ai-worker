@@ -3,6 +3,9 @@ info:
   title: Livepeer AI Runner
   description: An application to run AI pipelines
   version: 0.1.0
+servers:
+- url: https://dream-gateway.livepeer.cloud
+  description: Livepeer Cloud Community Gateway
 paths:
   /health:
     get:
