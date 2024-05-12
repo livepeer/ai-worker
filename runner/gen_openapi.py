@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 
 import yaml
 from app.main import app, use_route_names_as_operation_ids
@@ -81,7 +82,7 @@ def write_openapi(fname, entrypoint="runner"):
     if entrypoint == "gateway":
         print("Translating OpenAPI schema from 'runner' to 'gateway' entrypoint...")
         openapi = translate_to_gateway(openapi)
-        fname = fname.replace(".yaml", "_gateway.yaml")
+        fname = os.path.splitext(fname)[0] + "_gateway" + os.path.splitext(fname)[1]
 
     # Write OpenAPI schema to file.
     with open(fname, "w") as f:
