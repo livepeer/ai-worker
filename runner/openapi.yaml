@@ -296,6 +296,7 @@ components:
         num_inference_steps:
           type: integer
           title: Num Inference Steps
+          default: 50
       type: object
       required:
       - prompt
