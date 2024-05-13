@@ -24,8 +24,8 @@ class TextToImageParams(BaseModel):
     guidance_scale: float = 7.5
     negative_prompt: str = ""
     seed: int = None
-    num_images_per_prompt: int = 1
     num_inference_steps: int = 50  # TODO: Make optional.
+    num_images_per_prompt: int = 1
 
 
 responses = {400: {"model": HTTPError}, 500: {"model": HTTPError}}
