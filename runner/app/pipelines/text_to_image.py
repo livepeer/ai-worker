@@ -142,6 +142,9 @@ class TextToImagePipeline(Pipeline):
                     torch.Generator(get_torch_device()).manual_seed(s) for s in seed
                 ]
 
+        if "num_inference_steps" in kwargs and kwargs["num_inference_steps"] < 1:
+            del kwargs["num_inference_steps"]
+
         if (
             self.model_id == "stabilityai/sdxl-turbo"
             or self.model_id == "stabilityai/sd-turbo"
@@ -149,9 +152,6 @@ class TextToImagePipeline(Pipeline):
             # SD turbo models were trained without guidance_scale so
             # it should be set to 0
             kwargs["guidance_scale"] = 0.0
-
-            if "num_inference_steps" not in kwargs:
-                kwargs["num_inference_steps"] = 1
         elif SDXL_LIGHTNING_MODEL_ID in self.model_id:
             # SDXL-Lightning models should have guidance_scale = 0 and use
             # the correct number of inference steps for the unet checkpoint loaded
