@@ -111,13 +111,21 @@ class TextToImagePipeline(Pipeline):
                 self.ldm.vae.decode, mode="max-autotune", fullgraph=True
             )
 
-        if os.getenv("SFAST", "").strip().lower() == "true":
+        sfast_enabled = os.getenv("SFAST", "").strip().lower() == "true"
+        deepcache_enabled = os.getenv("DEEPCACHE", "").strip().lower() == "true"
+        if sfast_enabled and deepcache_enabled:
+            logger.warning(
+                "Both 'SFAST' and 'DEEPCACHE' are enabled. This is not recommended "
+                "as it may lead to suboptimal performance. Please disable one of them."
+            )
+
+        if sfast_enabled:
             logger.info(
                 "TextToImagePipeline will be dynamically compiled with stable-fast for "
                 "%s",
                 model_id,
             )
-            from app.pipelines.sfast import compile_model
+            from app.pipelines.optim.sfast import compile_model
 
             self.ldm = compile_model(self.ldm)
 
@@ -129,6 +137,15 @@ class TextToImagePipeline(Pipeline):
                     "TextToImagePipeline and will be ignored. As a result the first "
                     "call may be slow if 'SFAST' is enabled."
                 )
+
+        if deepcache_enabled:
+            logger.info(
+                "TextToImagePipeline will be optimized with DeepCache for %s",
+                model_id,
+            )
+            from app.pipelines.optim.deepcache import enable_deepcache
+
+            self.ldm = enable_deepcache(self.ldm)
 
     def __call__(self, prompt: str, **kwargs) -> List[PIL.Image]:
         seed = kwargs.pop("seed", None)
