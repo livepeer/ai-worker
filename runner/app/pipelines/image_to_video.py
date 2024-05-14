@@ -43,13 +43,21 @@ class ImageToVideoPipeline(Pipeline):
         self.ldm = StableVideoDiffusionPipeline.from_pretrained(model_id, **kwargs)
         self.ldm.to(get_torch_device())
 
-        if os.getenv("SFAST", "").strip().lower() == "true":
+        sfast_enabled = os.getenv("SFAST", "").strip().lower() == "true"
+        deepcache_enabled = os.getenv("DEEPCACHE", "").strip().lower() == "true"
+        if sfast_enabled and deepcache_enabled:
+            logger.warning(
+                "Both 'SFAST' and 'DEEPCACHE' are enabled. This is not recommended "
+                "as it may lead to suboptimal performance. Please disable one of them."
+            )
+
+        if sfast_enabled:
             logger.info(
                 "ImageToVideoPipeline will be dynamically compiled with stable-fast "
                 "for %s",
                 model_id,
             )
-            from app.pipelines.sfast import compile_model
+            from app.pipelines.optim.sfast import compile_model
 
             self.ldm = compile_model(self.ldm)
 
@@ -85,6 +93,15 @@ class ImageToVideoPipeline(Pipeline):
                         "Warmup iteration %s took %s seconds", ii + 1, iteration_time
                     )
                 logger.info("Total warmup time: %s seconds", total_time)
+
+        if deepcache_enabled:
+            logger.info(
+                "TextToImagePipeline will be optimized with DeepCache for %s",
+                model_id,
+            )
+            from app.pipelines.optim.deepcache import enable_deepcache
+
+            self.ldm = enable_deepcache(self.ldm)
 
     def __call__(self, image: PIL.Image, **kwargs) -> List[List[PIL.Image]]:
         if "decode_chunk_size" not in kwargs:
