@@ -124,7 +124,6 @@ if __name__ == "__main__":
     print(f"pipeline load max GPU memory reserved: {load_max_mem_reserved:.3f}GiB")
 
     if os.getenv("SFAST", "").strip().lower() == "true":
-        
         print(f"avg warmup inference time: {warmup_metrics.inference_time:.3f}s")
         print(
             f"avg warmup inference time per output: {warmup_metrics.inference_time_per_output:.3f}s"
