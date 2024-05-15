@@ -15,14 +15,15 @@ logger = logging.getLogger(__name__)
 
 
 class TextToImageParams(BaseModel):
-    # TODO: Make model_id and other properties optional once Go codegen tool supports
-    # OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
+    # TODO: Make model_id and other None properties optional once Go codegen tool
+    # supports OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
     model_id: str = ""
     prompt: str
     height: int = None
     width: int = None
     guidance_scale: float = 7.5
     negative_prompt: str = ""
+    safety_check: bool = True
     seed: int = None
     num_inference_steps: int = 50  # TODO: Make optional.
     num_images_per_prompt: int = 1
@@ -64,7 +65,7 @@ async def text_to_image(
         ]
 
     try:
-        images = pipeline(**params.model_dump())
+        images, has_nsfw_concept = pipeline(**params.model_dump())
     except Exception as e:
         logger.error(f"TextToImagePipeline error: {e}")
         logger.exception(e)
@@ -77,7 +78,12 @@ async def text_to_image(
         seeds = [seeds]
 
     output_images = []
-    for img, sd in zip(images, seeds):
-        output_images.append({"url": image_to_data_url(img), "seed": sd})
+    for img, sd, is_nsfw in zip(images, seeds, has_nsfw_concept):
+        # TODO: Return None once Go codegen tool supports optional properties
+        # OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
+        is_nsfw = is_nsfw or False
+        output_images.append(
+            {"url": image_to_data_url(img), "seed": sd, "nsfw": is_nsfw}
+        )
 
     return {"images": output_images}
