@@ -168,7 +168,7 @@ components:
         safety_check:
           type: boolean
           title: Safety Check
-          default: false
+          default: true
         seed:
           type: integer
           title: Seed
@@ -297,7 +297,7 @@ components:
         safety_check:
           type: boolean
           title: Safety Check
-          default: false
+          default: true
         seed:
           type: integer
           title: Seed

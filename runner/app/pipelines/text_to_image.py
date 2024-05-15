@@ -154,7 +154,7 @@ class TextToImagePipeline(Pipeline):
     def __call__(
         self, prompt: str, **kwargs
     ) -> Tuple[List[PIL.Image], List[Optional[bool]]]:
-        safety_check = kwargs.pop("safety_check", False)
+        safety_check = kwargs.pop("safety_check", True)
 
         seed = kwargs.pop("seed", None)
         if seed is not None:

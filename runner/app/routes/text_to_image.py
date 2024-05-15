@@ -23,7 +23,7 @@ class TextToImageParams(BaseModel):
     width: int = None
     guidance_scale: float = 7.5
     negative_prompt: str = ""
-    safety_check: bool = False
+    safety_check: bool = True
     seed: int = None
     num_inference_steps: int = 50  # TODO: Make optional.
     num_images_per_prompt: int = 1

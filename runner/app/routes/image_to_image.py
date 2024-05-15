@@ -37,7 +37,7 @@ async def image_to_image(
     strength: Annotated[float, Form()] = 0.8,
     guidance_scale: Annotated[float, Form()] = 7.5,
     negative_prompt: Annotated[str, Form()] = "",
-    safety_check: Annotated[bool, Form()] = False,
+    safety_check: Annotated[bool, Form()] = True,
     seed: Annotated[int, Form()] = None,
     num_images_per_prompt: Annotated[int, Form()] = 1,
     pipeline: Pipeline = Depends(get_pipeline),

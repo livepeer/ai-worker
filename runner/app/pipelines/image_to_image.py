@@ -134,7 +134,7 @@ class ImageToImagePipeline(Pipeline):
     def __call__(
         self, prompt: str, image: PIL.Image, **kwargs
     ) -> Tuple[List[PIL.Image], List[bool]]:
-        safety_check = kwargs.pop("safety_check", False)
+        safety_check = kwargs.pop("safety_check", True)
 
         seed = kwargs.pop("seed", None)
         if seed is not None:
