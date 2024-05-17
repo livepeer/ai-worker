@@ -30,9 +30,14 @@ RUN pyenv install $PYTHON_VERSION && \
 # Upgrade pip and install your desired packages
 ARG PIP_VERSION=23.3.2
 RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools wheel && \
-  pip install --no-cache-dir torch==2.1.1 torchvision==0.16.1 torchaudio==2.1.1
+  pip install --no-cache-dir torch==2.3.0 torchvision==0.18.0 torchaudio==2.3.0
 
 WORKDIR /app
+
+RUN pip install --pre oneflow -f https://github.com/siliconflow/oneflow_releases/releases/expanded_assets/community_cu121
+RUN pip install "torch" "transformers==4.27.1" "diffusers[torch]==0.19.3"
+RUN pip install --pre onediff
+
 COPY ./requirements.txt /app
 RUN pip install --no-cache-dir -r requirements.txt
 

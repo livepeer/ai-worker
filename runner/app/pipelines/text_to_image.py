@@ -2,6 +2,8 @@ import logging
 import os
 from typing import List, Tuple, Optional
 
+import oneflow as flow
+from onediff.infer_compiler import oneflow_compile
 import PIL
 import torch
 from diffusers import (
@@ -114,6 +116,7 @@ class TextToImagePipeline(Pipeline):
 
         sfast_enabled = os.getenv("SFAST", "").strip().lower() == "true"
         deepcache_enabled = os.getenv("DEEPCACHE", "").strip().lower() == "true"
+        onediff_enabled = os.getenv("ONEDIFF", "").strip().lower() == "true"
         if sfast_enabled and deepcache_enabled:
             logger.warning(
                 "Both 'SFAST' and 'DEEPCACHE' are enabled. This is not recommended "
@@ -147,6 +150,13 @@ class TextToImagePipeline(Pipeline):
             from app.pipelines.optim.deepcache import enable_deepcache
 
             self.ldm = enable_deepcache(self.ldm)
+
+        if onediff_enabled:
+            logger.info(
+                "TextToImagePipeline will be compiled with OneFlow for %s",
+                model_id,
+            )
+            self.ldm.unet = oneflow_compile(self.ldm.unet)
 
         safety_checker_device = os.getenv("SAFETY_CHECKER_DEVICE", "cuda").lower()
         self._safety_checker = SafetyChecker(device=safety_checker_device)
