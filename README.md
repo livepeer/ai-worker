@@ -29,7 +29,7 @@ The AI worker's code is in the [worker](https://github.com/livepeer/ai-worker/tr
 
 The AI worker and runner are designed to work with the [ai-video](https://github.com/livepeer/go-livepeer/tree/ai-video) branch of [go-livepeer](https://github.com/livepeer/go-livepeer/tree/ai-video). You can run both independently for testing. To build the AI worker locally and run examples, follow these steps:
 
-1. Follow the README instructions in the [runner](./runner/README.md) directory to download model checkpoints and build the runner image.
+1. Follow the [README](./runner/README.md) instructions in the [runner](./runner/README.md) directory to download model checkpoints and build the runner image.
 2. Generate Go bindings for the runner OpenAPI spec with `make codegen`.
 3. Run any examples in the `cmd/examples` directory, e.g., `go run cmd/examples/text-to-image/main.go <RUNS> <PROMPT>`.
 
