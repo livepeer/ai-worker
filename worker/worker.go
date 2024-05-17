@@ -198,6 +198,11 @@ func (w *Worker) ImageToVideo(ctx context.Context, req ImageToVideoMultipartRequ
 		return nil, errors.New("image-to-video container returned 500")
 	}
 
+	if resp.JSON200 == nil {
+		slog.Error("image-to-video container returned no content")
+		return nil, errors.New("image-to-video container returned no content")
+	}
+
 	return resp.JSON200, nil
 }
 
