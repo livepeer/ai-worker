@@ -57,24 +57,17 @@ async def text_to_image(
             ),
         )
 
-    if params.seed is None:
-        params.seed = random.randint(0, 2**32 - 1)
-        if params.num_images_per_prompt > 1:
-            params.seed = [
-                i for i in range(params.seed, params.seed + params.num_images_per_prompt)
-            ]
+    seed = params.seed if params.seed is not None else random.randint(0, 2**32 - 1)
+    seeds = [seed + i for i in range(params.num_images_per_prompt)]
 
-    if not isinstance(params.seed, list):
-        params.seed = [params.seed]
-    
-    num_images_per_prompt = params.num_images_per_prompt
-    params.num_images_per_prompt = 1
+    # TODO: Process one image at a time to avoid CUDA OEM errors. Can be removed again
+    # once LIV-243 and LIV-379 are resolved.
     images = []
     has_nsfw_concept = []
-    seeds = params.seed
-    for i in range(num_images_per_prompt):
+    params.num_images_per_prompt = 1
+    for seed in seeds:
         try:
-            params.seed = [seeds[i]] #pass one seed at a time
+            params.seed = [seed]
             imgs, nsfw_check = pipeline(**params.model_dump())
             images.extend(imgs)
             has_nsfw_concept.extend(nsfw_check)
@@ -84,14 +77,12 @@ async def text_to_image(
             return JSONResponse(
                 status_code=500, content=http_error("TextToImagePipeline error")
             )
-        
-    output_images = []
-    for img, sd, is_nsfw in zip(images, seeds, has_nsfw_concept):
-        # TODO: Return None once Go codegen tool supports optional properties
-        # OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
-        is_nsfw = is_nsfw or False
-        output_images.append(
-            {"url": image_to_data_url(img), "seed": sd, "nsfw": is_nsfw}
-        )
+
+    # TODO: Return None once Go codegen tool supports optional properties
+    # OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
+    output_images = [
+        {"url": image_to_data_url(img), "seed": sd, "nsfw": nsfw or False}
+        for img, sd, nsfw in zip(images, seeds, has_nsfw_concept)
+    ]
 
     return {"images": output_images}
