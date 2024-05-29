@@ -39,6 +39,7 @@ async def image_to_video(
     motion_bucket_id: Annotated[int, Form()] = 127,
     noise_aug_strength: Annotated[float, Form()] = 0.02,
     seed: Annotated[int, Form()] = None,
+    safety_check: Annotated[bool, Form()] = True,
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
@@ -73,14 +74,15 @@ async def image_to_video(
         seed = random.randint(0, 2**32 - 1)
 
     try:
-        batch_frames = pipeline(
+        batch_frames, has_nsfw_concept = pipeline(
             image=Image.open(image.file).convert("RGB"),
             height=height,
             width=width,
             fps=fps,
             motion_bucket_id=motion_bucket_id,
             noise_aug_strength=noise_aug_strength,
-            seed=seed,
+            safety_check=safety_check,
+            seed=seed            
         )
     except Exception as e:
         logger.error(f"ImageToVideoPipeline error: {e}")
@@ -93,7 +95,7 @@ async def image_to_video(
     for frames in batch_frames:
         output_frames.append(
             [
-                {"url": image_to_data_url(frame), "seed": seed, "nsfw": False}
+                {"url": image_to_data_url(frame), "seed": seed, "nsfw": has_nsfw_concept[0]}
                 for frame in frames
             ]
         )
