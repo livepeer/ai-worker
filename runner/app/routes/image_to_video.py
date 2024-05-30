@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 responses = {400: {"model": HTTPError}, 500: {"model": HTTPError}}
 
 
-# TODO: Make model_id optional once Go codegen tool supports OAPI 3.1
-# https://github.com/deepmap/oapi-codegen/issues/373
+# TODO: Make model_id and other None properties optional once Go codegen tool supports
+# OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
 @router.post("/image-to-video", response_model=VideoResponse, responses=responses)
 @router.post(
     "/image-to-video/",
@@ -55,7 +55,8 @@ async def image_to_video(
         return JSONResponse(
             status_code=400,
             content=http_error(
-                f"pipeline configured with {pipeline.model_id} but called with {model_id}"
+                f"pipeline configured with {pipeline.model_id} but called with "
+                f"{model_id}"
             ),
         )
 
@@ -63,7 +64,8 @@ async def image_to_video(
         return JSONResponse(
             status_code=400,
             content=http_error(
-                f"`height` and `width` have to be divisible by 8 but are {height} and {width}."
+                f"`height` and `width` have to be divisible by 8 but are {height} and "
+                f"{width}."
             ),
         )
 
@@ -90,7 +92,10 @@ async def image_to_video(
     output_frames = []
     for frames in batch_frames:
         output_frames.append(
-            [{"url": image_to_data_url(frame), "seed": seed} for frame in frames]
+            [
+                {"url": image_to_data_url(frame), "seed": seed, "nsfw": False}
+                for frame in frames
+            ]
         )
 
     return {"frames": output_frames}

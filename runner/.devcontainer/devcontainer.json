@@ -12,7 +12,6 @@
 	],
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
-	// "features": {},
 
 	// Configure tool-specific properties.
 	"customizations": {
@@ -29,19 +28,10 @@
 	"forwardPorts": [
 		8000
 	],
-	
+
 	// Use 'mounts' to make a list of local folders available inside the container.
 	"mounts": [
-		"source=${localWorkspaceFolder}/models,target=/models,type=bind"
-		// "source=${localEnv:HOME}/.lpData/models,target=/models,type=bind"
+		// "source=${localWorkspaceFolder}/models,target=/models,type=bind"
+		"source=${localEnv:HOME}/.lpData/models,target=/models,type=bind"
     ]
-
-	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": ""
-
-	// Configure tool-specific properties.
-	// "customizations": {},
-
-	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
-	// "remoteUser": "root"
 }

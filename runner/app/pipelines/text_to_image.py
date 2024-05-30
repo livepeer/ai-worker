@@ -1,19 +1,20 @@
-from app.pipelines.base import Pipeline
-from app.pipelines.util import get_torch_device, get_model_dir
-
-from diffusers import (
-    AutoPipelineForText2Image,
-    StableDiffusionXLPipeline,
-    UNet2DConditionModel,
-    EulerDiscreteScheduler,
-)
-from safetensors.torch import load_file
-from huggingface_hub import file_download, hf_hub_download
-import torch
-import PIL
-from typing import List
 import logging
 import os
+from typing import List, Tuple, Optional
+
+import PIL
+import torch
+from diffusers import (
+    AutoPipelineForText2Image,
+    EulerDiscreteScheduler,
+    StableDiffusionXLPipeline,
+    UNet2DConditionModel,
+)
+from huggingface_hub import file_download, hf_hub_download
+from safetensors.torch import load_file
+
+from app.pipelines.base import Pipeline
+from app.pipelines.util import get_model_dir, get_torch_device, SafetyChecker
 
 logger = logging.getLogger(__name__)
 
@@ -111,16 +112,50 @@ class TextToImagePipeline(Pipeline):
                 self.ldm.vae.decode, mode="max-autotune", fullgraph=True
             )
 
-        if os.environ.get("SFAST"):
+        sfast_enabled = os.getenv("SFAST", "").strip().lower() == "true"
+        deepcache_enabled = os.getenv("DEEPCACHE", "").strip().lower() == "true"
+        if sfast_enabled and deepcache_enabled:
+            logger.warning(
+                "Both 'SFAST' and 'DEEPCACHE' are enabled. This is not recommended "
+                "as it may lead to suboptimal performance. Please disable one of them."
+            )
+
+        if sfast_enabled:
             logger.info(
-                "TextToImagePipeline will be dynamicallly compiled with stable-fast for %s",
+                "TextToImagePipeline will be dynamically compiled with stable-fast for "
+                "%s",
                 model_id,
             )
-            from app.pipelines.sfast import compile_model
+            from app.pipelines.optim.sfast import compile_model
 
             self.ldm = compile_model(self.ldm)
 
-    def __call__(self, prompt: str, **kwargs) -> List[PIL.Image]:
+            # Warm-up the pipeline.
+            # TODO: Not yet supported for ImageToImagePipeline.
+            if os.getenv("SFAST_WARMUP", "true").lower() == "true":
+                logger.warning(
+                    "The 'SFAST_WARMUP' flag is not yet supported for the "
+                    "TextToImagePipeline and will be ignored. As a result the first "
+                    "call may be slow if 'SFAST' is enabled."
+                )
+
+        if deepcache_enabled:
+            logger.info(
+                "TextToImagePipeline will be optimized with DeepCache for %s",
+                model_id,
+            )
+            from app.pipelines.optim.deepcache import enable_deepcache
+
+            self.ldm = enable_deepcache(self.ldm)
+
+        safety_checker_device = os.getenv("SAFETY_CHECKER_DEVICE", "cuda").lower()
+        self._safety_checker = SafetyChecker(device=safety_checker_device)
+
+    def __call__(
+        self, prompt: str, **kwargs
+    ) -> Tuple[List[PIL.Image], List[Optional[bool]]]:
+        safety_check = kwargs.pop("safety_check", True)
+
         seed = kwargs.pop("seed", None)
         if seed is not None:
             if isinstance(seed, int):
@@ -132,6 +167,9 @@ class TextToImagePipeline(Pipeline):
                     torch.Generator(get_torch_device()).manual_seed(s) for s in seed
                 ]
 
+        if "num_inference_steps" in kwargs and kwargs["num_inference_steps"] < 1:
+            del kwargs["num_inference_steps"]
+
         if (
             self.model_id == "stabilityai/sdxl-turbo"
             or self.model_id == "stabilityai/sd-turbo"
@@ -139,9 +177,6 @@ class TextToImagePipeline(Pipeline):
             # SD turbo models were trained without guidance_scale so
             # it should be set to 0
             kwargs["guidance_scale"] = 0.0
-
-            if "num_inference_steps" not in kwargs:
-                kwargs["num_inference_steps"] = 1
         elif SDXL_LIGHTNING_MODEL_ID in self.model_id:
             # SDXL-Lightning models should have guidance_scale = 0 and use
             # the correct number of inference steps for the unet checkpoint loaded
@@ -157,7 +192,14 @@ class TextToImagePipeline(Pipeline):
                 # Default to 2step
                 kwargs["num_inference_steps"] = 2
 
-        return self.ldm(prompt, **kwargs).images
+        output = self.ldm(prompt, **kwargs)
+
+        if safety_check:
+            _, has_nsfw_concept = self._safety_checker.check_nsfw_images(output.images)
+        else:
+            has_nsfw_concept = [None] * len(output.images)
+
+        return output.images, has_nsfw_concept
 
     def __str__(self) -> str:
         return f"TextToImagePipeline model_id={self.model_id}"

@@ -8,12 +8,15 @@ import PIL
 from typing import List
 import logging
 import os
+import time
 
 from PIL import ImageFile
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 logger = logging.getLogger(__name__)
+
+SFAST_WARMUP_ITERATIONS = 2  # Model warm-up iterations when SFAST is enabled.
 
 
 class ImageToVideoPipeline(Pipeline):
@@ -40,17 +43,69 @@ class ImageToVideoPipeline(Pipeline):
         self.ldm = StableVideoDiffusionPipeline.from_pretrained(model_id, **kwargs)
         self.ldm.to(get_torch_device())
 
-        if os.environ.get("SFAST"):
+        sfast_enabled = os.getenv("SFAST", "").strip().lower() == "true"
+        deepcache_enabled = os.getenv("DEEPCACHE", "").strip().lower() == "true"
+        if sfast_enabled and deepcache_enabled:
+            logger.warning(
+                "Both 'SFAST' and 'DEEPCACHE' are enabled. This is not recommended "
+                "as it may lead to suboptimal performance. Please disable one of them."
+            )
+
+        if sfast_enabled:
             logger.info(
-                "ImageToVideoPipeline will be dynamicallly compiled with stable-fast for %s",
+                "ImageToVideoPipeline will be dynamically compiled with stable-fast "
+                "for %s",
                 model_id,
             )
-            from app.pipelines.sfast import compile_model
+            from app.pipelines.optim.sfast import compile_model
 
             self.ldm = compile_model(self.ldm)
 
+            # Warm-up the pipeline.
+            # NOTE: Initial calls may be slow due to compilation. Subsequent calls will
+            # be faster.
+            if os.getenv("SFAST_WARMUP", "true").lower() == "true":
+                # Retrieve default model params.
+                # TODO: Retrieve defaults from Pydantic class in route.
+                warmup_kwargs = {
+                    "image": PIL.Image.new("RGB", (576, 1024)),
+                    "height": 576,
+                    "width": 1024,
+                    "fps": 6,
+                    "motion_bucket_id": 127,
+                    "noise_aug_strength": 0.02,
+                    "decode_chunk_size": 4,
+                }
+
+                logger.info("Warming up ImageToVideoPipeline pipeline...")
+                total_time = 0
+                for ii in range(SFAST_WARMUP_ITERATIONS):
+                    t = time.time()
+                    try:
+                        self.ldm(**warmup_kwargs).frames
+                    except Exception as e:
+                        # FIXME: When out of memory, pipeline is corrupted.
+                        logger.error(f"ImageToVideoPipeline warmup error: {e}")
+                        raise e
+                    iteration_time = time.time() - t
+                    total_time += iteration_time
+                    logger.info(
+                        "Warmup iteration %s took %s seconds", ii + 1, iteration_time
+                    )
+                logger.info("Total warmup time: %s seconds", total_time)
+
+        if deepcache_enabled:
+            logger.info(
+                "TextToImagePipeline will be optimized with DeepCache for %s",
+                model_id,
+            )
+            from app.pipelines.optim.deepcache import enable_deepcache
+
+            self.ldm = enable_deepcache(self.ldm)
+
     def __call__(self, image: PIL.Image, **kwargs) -> List[List[PIL.Image]]:
         if "decode_chunk_size" not in kwargs:
+            # Decrease decode_chunk_size to reduce memory usage.
             kwargs["decode_chunk_size"] = 4
 
         seed = kwargs.pop("seed", None)

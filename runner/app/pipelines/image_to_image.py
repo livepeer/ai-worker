@@ -1,5 +1,5 @@
 from app.pipelines.base import Pipeline
-from app.pipelines.util import get_torch_device, get_model_dir
+from app.pipelines.util import get_torch_device, get_model_dir, SafetyChecker
 
 from diffusers import (
     AutoPipelineForImage2Image,
@@ -7,13 +7,15 @@ from diffusers import (
     StableDiffusionXLPipeline,
     UNet2DConditionModel,
     EulerDiscreteScheduler,
+    EulerAncestralDiscreteScheduler,
+    StableDiffusionInstructPix2PixPipeline
 )
 from safetensors.torch import load_file
 from huggingface_hub import file_download, hf_hub_download
 import torch
 import PIL
 import random
-from typing import List
+from typing import List, Tuple
 import logging
 import os
 
@@ -26,6 +28,8 @@ logger = logging.getLogger(__name__)
 SDXL_LIGHTNING_MODEL_ID = "ByteDance/SDXL-Lightning"
 PIX2PIX_MODEL_ID = "timbrooks/instruct-pix2pix"
 
+# https://huggingface.co/timbrooks/instruct-pix2pix
+INSTRUCT_PIX2PIX_MODEL_ID = "timbrooks/instruct-pix2pix"
 
 class ImageToImagePipeline(Pipeline):
     def __init__(self, model_id: str):
@@ -90,27 +94,62 @@ class ImageToImagePipeline(Pipeline):
             self.ldm.scheduler = EulerDiscreteScheduler.from_config(
                 self.ldm.scheduler.config, timestep_spacing="trailing"
             )
-        elif PIX2PIX_MODEL_ID in model_id:
-            kwargs["torch_dtype"] = torch.float16
-            kwargs["variant"] = "fp16"
+        elif INSTRUCT_PIX2PIX_MODEL_ID in model_id:
+            # Initialize the pipeline for the InstructPix2Pix model
             self.ldm = StableDiffusionInstructPix2PixPipeline.from_pretrained(
                 model_id, **kwargs
             ).to(torch_device)
+            # Assign the scheduler for the InstructPix2Pix model
+            self.ldm.scheduler = EulerAncestralDiscreteScheduler.from_config(self.ldm.scheduler.config)
         else:
             self.ldm = AutoPipelineForImage2Image.from_pretrained(
                 model_id, **kwargs
             ).to(torch_device)
 
-        if os.environ.get("SFAST"):
+        sfast_enabled = os.getenv("SFAST", "").strip().lower() == "true"
+        deepcache_enabled = os.getenv("DEEPCACHE", "").strip().lower() == "true"
+        if sfast_enabled and deepcache_enabled:
+            logger.warning(
+                "Both 'SFAST' and 'DEEPCACHE' are enabled. This is not recommended "
+                "as it may lead to suboptimal performance. Please disable one of them."
+            )
+
+        if sfast_enabled:
             logger.info(
-                "ImageToImagePipeline will be dynamicallly compiled with stable-fast for %s",
+                "ImageToImagePipeline will be dynamically compiled with stable-fast "
+                "for %s",
                 model_id,
             )
-            from app.pipelines.sfast import compile_model
+            from app.pipelines.optim.sfast import compile_model
 
             self.ldm = compile_model(self.ldm)
 
-    def __call__(self, prompt: str, image: PIL.Image, **kwargs) -> List[PIL.Image]:
+            # Warm-up the pipeline.
+            # TODO: Not yet supported for ImageToImagePipeline.
+            if os.getenv("SFAST_WARMUP", "true").lower() == "true":
+                logger.warning(
+                    "The 'SFAST_WARMUP' flag is not yet supported for the "
+                    "ImageToImagePipeline and will be ignored. As a result the first "
+                    "call may be slow if 'SFAST' is enabled."
+                )
+
+        if deepcache_enabled:
+            logger.info(
+                "TextToImagePipeline will be optimized with DeepCache for %s",
+                model_id,
+            )
+            from app.pipelines.optim.deepcache import enable_deepcache
+
+            self.ldm = enable_deepcache(self.ldm)
+
+        safety_checker_device = os.getenv("SAFETY_CHECKER_DEVICE", "cuda").lower()
+        self._safety_checker = SafetyChecker(device=safety_checker_device)
+
+    def __call__(
+        self, prompt: str, image: PIL.Image, **kwargs
+    ) -> Tuple[List[PIL.Image], List[bool]]:
+        safety_check = kwargs.pop("safety_check", True)
+
         seed = kwargs.pop("seed", None)
         if seed is not None:
             if isinstance(seed, int):
@@ -157,7 +196,14 @@ class ImageToImagePipeline(Pipeline):
             if "num_inference_steps" not in kwargs:
                 kwargs["num_inference_steps"] = 50
 
-        return self.ldm(prompt, image=image, **kwargs).images
+        output = self.ldm(prompt, image=image, **kwargs)
+
+        if safety_check:
+            _, has_nsfw_concept = self._safety_checker.check_nsfw_images(output.images)
+        else:
+            has_nsfw_concept = [None] * len(output.images)
+
+        return output.images, has_nsfw_concept
 
     def __str__(self) -> str:
         return f"ImageToImagePipeline model_id={self.model_id}"

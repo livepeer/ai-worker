@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"image"
+	"image/gif"
+	"image/jpeg"
 	"image/png"
 	"io"
 	"os"
@@ -25,6 +27,10 @@ func ReadImageB64DataUrl(url string, w io.Writer) error {
 	switch dataURL.MediaType.ContentType() {
 	case "image/png":
 		err = png.Encode(w, img)
+	case "image/jpg", "image/jpeg":
+		err = jpeg.Encode(w, img, nil)
+	case "image/gif":
+		err = gif.Encode(w, img, nil)
 		// Add cases for other image formats if necessary
 	default:
 		return fmt.Errorf("unsupported image format: %s", dataURL.MediaType.ContentType())

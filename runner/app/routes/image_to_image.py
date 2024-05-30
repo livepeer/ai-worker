@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 responses = {400: {"model": HTTPError}, 500: {"model": HTTPError}}
 
 
-# TODO: Make model_id optional once Go codegen tool supports OAPI 3.1
-# https://github.com/deepmap/oapi-codegen/issues/373
+# TODO: Make model_id and other None properties optional once Go codegen tool supports
+# OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
 @router.post("/image-to-image", response_model=ImageResponse, responses=responses)
 @router.post(
     "/image-to-image/",
@@ -38,6 +38,7 @@ async def image_to_image(
     guidance_scale: Annotated[float, Form()] = 7.5,
     image_guidance_scale: Annotated[float, Form()] = 0,
     negative_prompt: Annotated[str, Form()] = "",
+    safety_check: Annotated[bool, Form()] = True,
     seed: Annotated[int, Form()] = None,
     num_images_per_prompt: Annotated[int, Form()] = 1,
     pipeline: Pipeline = Depends(get_pipeline),
@@ -56,16 +57,17 @@ async def image_to_image(
         return JSONResponse(
             status_code=400,
             content=http_error(
-                f"pipeline configured with {pipeline.model_id} but called with {model_id}"
+                f"pipeline configured with {pipeline.model_id} but called with "
+                f"{model_id}"
             ),
         )
 
     if seed is None:
-        init_seed = random.randint(0, 2**32 - 1)
-        if num_images_per_prompt > 1:
-            seed = [i for i in range(init_seed, init_seed + num_images_per_prompt)]
-        else:
-            seed = init_seed
+        seed = random.randint(0, 2**32 - 1)
+    if num_images_per_prompt > 1:
+        seed = [
+            i for i in range(seed, seed + num_images_per_prompt)
+        ]
 
     img = Image.open(image.file).convert("RGB")
     # If a list of seeds/generators is passed, diffusers wants a list of images
@@ -76,13 +78,14 @@ async def image_to_image(
         image = img
 
     try:
-        images = pipeline(
+        images, has_nsfw_concept = pipeline(
             prompt=prompt,
             image=image,
             strength=strength,
             guidance_scale=guidance_scale,
             image_guidance_scale=image_guidance_scale,
             negative_prompt=negative_prompt,
+            safety_check=safety_check,
             seed=seed,
             num_images_per_prompt=num_images_per_prompt,
         )
@@ -98,7 +101,12 @@ async def image_to_image(
         seeds = [seeds]
 
     output_images = []
-    for img, s in zip(images, seeds):
-        output_images.append({"url": image_to_data_url(img), "seed": s})
+    for img, sd, is_nsfw in zip(images, seeds, has_nsfw_concept):
+        # TODO: Return None once Go codegen tool supports optional properties
+        # OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
+        is_nsfw = is_nsfw or False
+        output_images.append(
+            {"url": image_to_data_url(img), "seed": sd, "nsfw": is_nsfw}
+        )
 
     return {"images": output_images}

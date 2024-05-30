@@ -6,8 +6,38 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"strconv"
 	"sync"
 )
+
+// EnvValue unmarshals JSON booleans as strings for compatibility with env variables.
+type EnvValue string
+
+// UnmarshalJSON converts JSON booleans to strings for EnvValue.
+func (sb *EnvValue) UnmarshalJSON(b []byte) error {
+	var boolVal bool
+	err := json.Unmarshal(b, &boolVal)
+	if err == nil {
+		*sb = EnvValue(strconv.FormatBool(boolVal))
+		return nil
+	}
+
+	var strVal string
+	err = json.Unmarshal(b, &strVal)
+	if err == nil {
+		*sb = EnvValue(strVal)
+	}
+
+	return err
+}
+
+// String returns the string representation of the EnvValue.
+func (sb EnvValue) String() string {
+	return string(sb)
+}
+
+// OptimizationFlags is a map of optimization flags to be passed to the pipeline.
+type OptimizationFlags map[string]EnvValue
 
 type Worker struct {
 	manager *DockerManager
@@ -164,22 +194,28 @@ func (w *Worker) ImageToVideo(ctx context.Context, req ImageToVideoMultipartRequ
 		return nil, errors.New("image-to-video container returned 500")
 	}
 
+	if resp.JSON200 == nil {
+		slog.Error("image-to-video container returned no content")
+		return nil, errors.New("image-to-video container returned no content")
+	}
+
 	return resp.JSON200, nil
 }
 
-func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endpoint RunnerEndpoint) error {
+func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endpoint RunnerEndpoint, optimizationFlags OptimizationFlags) error {
 	if endpoint.URL == "" {
-		return w.manager.Warm(ctx, pipeline, modelID)
+		return w.manager.Warm(ctx, pipeline, modelID, optimizationFlags)
 	}
 
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
 	cfg := RunnerContainerConfig{
-		Type:     External,
-		Pipeline: pipeline,
-		ModelID:  modelID,
-		Endpoint: endpoint,
+		Type:             External,
+		Pipeline:         pipeline,
+		ModelID:          modelID,
+		Endpoint:         endpoint,
+		containerTimeout: externalContainerTimeout,
 	}
 	rc, err := NewRunnerContainer(ctx, cfg)
 	if err != nil {
@@ -206,6 +242,22 @@ func (w *Worker) Stop(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// HasCapacity returns true if the worker has capacity for the given pipeline and model ID.
+func (w *Worker) HasCapacity(pipeline, modelID string) bool {
+	managedCapacity := w.manager.HasCapacity(context.Background(), pipeline, modelID)
+	if managedCapacity {
+		return true
+	}
+
+	// Check if we have capacity for external containers.
+	name := dockerContainerName(pipeline, modelID)
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	_, ok := w.externalContainers[name]
+
+	return ok
 }
 
 func (w *Worker) borrowContainer(ctx context.Context, pipeline, modelID string) (*RunnerContainer, error) {

@@ -33,12 +33,19 @@ type RunnerContainerConfig struct {
 	Endpoint RunnerEndpoint
 
 	// For managed containers only
-	ID       string
-	GPU      string
-	KeepWarm bool
+	ID               string
+	GPU              string
+	KeepWarm         bool
+	containerTimeout time.Duration
 }
 
 func NewRunnerContainer(ctx context.Context, cfg RunnerContainerConfig) (*RunnerContainer, error) {
+	// Ensure that timeout is set to a non-zero value.
+	timeout := cfg.containerTimeout
+	if timeout == 0 {
+		timeout = containerTimeout
+	}
+
 	var opts []ClientOption
 	if cfg.Endpoint.Token != "" {
 		bearerTokenProvider, err := securityprovider.NewSecurityProviderBearerToken(cfg.Endpoint.Token)
@@ -54,7 +61,7 @@ func NewRunnerContainer(ctx context.Context, cfg RunnerContainerConfig) (*Runner
 		return nil, err
 	}
 
-	cctx, cancel := context.WithTimeout(ctx, containerTimeout)
+	cctx, cancel := context.WithTimeout(ctx, cfg.containerTimeout)
 	if err := runnerWaitUntilReady(cctx, client, pollingInterval); err != nil {
 		cancel()
 		return nil, err

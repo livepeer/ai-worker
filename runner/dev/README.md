@@ -1,6 +1,6 @@
 # Development Documentation
 
-This guide aims to assist developers working on the AI runner, offering detailed instructions for debugging and setting up the development environment.
+This guide aims to assist developers working on the [AI runner](https://github.com/livepeer/ai-worker/tree/main/runner), offering detailed instructions for debugging and setting up the development environment. For general information about the AI runner, refer to the [AI Runner README](../README.md).
 
 ## Debugging
 
@@ -42,7 +42,30 @@ To debug the AI runner when it operates within a container orchestrated by exter
    cd .. && git apply ./runner/dev/patches/debug.patch && cd runner
    ```
 
-5. **Attach and Debug**: Follow the [guidance on attaching to a running container](https://code.visualstudio.com/docs/python/debugging#_command-line-debugging) for details.
+5. **Attach and Debug**: Follow the [guidance on attaching to a running container](https://code.visualstudio.com/docs/python/debugging#_command-line-debugging) for details. To attach to the AI runner, use the following configuration:
+
+   ```json
+   {
+     "version": "0.2.0",
+     "configurations": [
+       {
+         "name": "Python Debugger: Remote Attach",
+         "type": "debugpy",
+         "request": "attach",
+         "connect": {
+           "host": "0.0.0.0",
+           "port": 5678
+         },
+         "pathMappings": [
+           {
+             "localRoot": "${workspaceFolder}",
+             "remoteRoot": "."
+           }
+         ]
+       }
+     ]
+   }
+   ```
 
 6. **Revert Changes**: After debugging, undo the debug patch.
 
