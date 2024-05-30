@@ -6,6 +6,8 @@ from diffusers import (
     StableDiffusionXLPipeline,
     UNet2DConditionModel,
     EulerDiscreteScheduler,
+    EulerAncestralDiscreteScheduler,
+    StableDiffusionInstructPix2PixPipeline
 )
 from safetensors.torch import load_file
 from huggingface_hub import file_download, hf_hub_download
@@ -23,6 +25,8 @@ logger = logging.getLogger(__name__)
 
 SDXL_LIGHTNING_MODEL_ID = "ByteDance/SDXL-Lightning"
 
+# https://huggingface.co/timbrooks/instruct-pix2pix
+INSTRUCT_PIX2PIX_MODEL_ID = "timbrooks/instruct-pix2pix"
 
 class ImageToImagePipeline(Pipeline):
     def __init__(self, model_id: str):
@@ -87,6 +91,13 @@ class ImageToImagePipeline(Pipeline):
             self.ldm.scheduler = EulerDiscreteScheduler.from_config(
                 self.ldm.scheduler.config, timestep_spacing="trailing"
             )
+        elif INSTRUCT_PIX2PIX_MODEL_ID in model_id:
+            # Initialize the pipeline for the InstructPix2Pix model
+            self.ldm = StableDiffusionInstructPix2PixPipeline.from_pretrained(
+                model_id, **kwargs
+            ).to(torch_device)
+            # Assign the scheduler for the InstructPix2Pix model
+            self.ldm.scheduler = EulerAncestralDiscreteScheduler.from_config(self.ldm.scheduler.config)
         else:
             self.ldm = AutoPipelineForImage2Image.from_pretrained(
                 model_id, **kwargs
