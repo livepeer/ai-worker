@@ -3,7 +3,6 @@ from app.pipelines.util import get_torch_device, get_model_dir, SafetyChecker
 
 from diffusers import (
     AutoPipelineForImage2Image,
-    StableDiffusionInstructPix2PixPipeline,
     StableDiffusionXLPipeline,
     UNet2DConditionModel,
     EulerDiscreteScheduler,
@@ -14,7 +13,6 @@ from safetensors.torch import load_file
 from huggingface_hub import file_download, hf_hub_download
 import torch
 import PIL
-import random
 from typing import List, Tuple
 import logging
 import os
@@ -26,7 +24,6 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 logger = logging.getLogger(__name__)
 
 SDXL_LIGHTNING_MODEL_ID = "ByteDance/SDXL-Lightning"
-PIX2PIX_MODEL_ID = "timbrooks/instruct-pix2pix"
 
 # https://huggingface.co/timbrooks/instruct-pix2pix
 INSTRUCT_PIX2PIX_MODEL_ID = "timbrooks/instruct-pix2pix"
@@ -190,11 +187,6 @@ class ImageToImagePipeline(Pipeline):
             else:
                 # Default to 2step
                 kwargs["num_inference_steps"] = 2
-        elif PIX2PIX_MODEL_ID in self.model_id:
-            if "image_guidance_scale" not in kwargs:
-                kwargs["image_guidance_scale"] = round(random.uniform(1.2, 1.8), ndigits=2)
-            if "num_inference_steps" not in kwargs:
-                kwargs["num_inference_steps"] = 50
 
         output = self.ldm(prompt, image=image, **kwargs)
 
