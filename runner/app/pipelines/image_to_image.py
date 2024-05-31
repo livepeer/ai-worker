@@ -11,7 +11,7 @@ from safetensors.torch import load_file
 from huggingface_hub import file_download, hf_hub_download
 import torch
 import PIL
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import logging
 import os
 
@@ -133,10 +133,10 @@ class ImageToImagePipeline(Pipeline):
 
     def __call__(
         self, prompt: str, image: PIL.Image, **kwargs
-    ) -> Tuple[List[PIL.Image], List[bool]]:
+    ) -> Tuple[List[PIL.Image], List[Optional[bool]]]:
+        seed = kwargs.pop("seed", None)
         safety_check = kwargs.pop("safety_check", True)
 
-        seed = kwargs.pop("seed", None)
         if seed is not None:
             if isinstance(seed, int):
                 kwargs["generator"] = torch.Generator(get_torch_device()).manual_seed(

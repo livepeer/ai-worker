@@ -5,7 +5,7 @@ from diffusers import StableVideoDiffusionPipeline
 from huggingface_hub import file_download
 import torch
 import PIL
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import logging
 import os
 import time
@@ -102,16 +102,20 @@ class ImageToVideoPipeline(Pipeline):
             from app.pipelines.optim.deepcache import enable_deepcache
 
             self.ldm = enable_deepcache(self.ldm)
-        
+
         safety_checker_device = os.getenv("SAFETY_CHECKER_DEVICE", "cuda").lower()
         self._safety_checker = SafetyChecker(device=safety_checker_device)
 
-    def __call__(self, image: PIL.Image, **kwargs) -> Tuple[List[PIL.Image], List[bool]]:
+    def __call__(
+        self, image: PIL.Image, **kwargs
+    ) -> Tuple[List[PIL.Image], List[Optional[bool]]]:
+        seed = kwargs.pop("seed", None)
+        safety_check = kwargs.pop("safety_check", True)
+
         if "decode_chunk_size" not in kwargs:
             # Decrease decode_chunk_size to reduce memory usage.
             kwargs["decode_chunk_size"] = 4
 
-        seed = kwargs.pop("seed", None)
         if seed is not None:
             if isinstance(seed, int):
                 kwargs["generator"] = torch.Generator(get_torch_device()).manual_seed(
@@ -121,8 +125,7 @@ class ImageToVideoPipeline(Pipeline):
                 kwargs["generator"] = [
                     torch.Generator(get_torch_device()).manual_seed(s) for s in seed
                 ]
-        
-        safety_check = kwargs.pop("safety_check", True)
+
         if safety_check:
             logger.info("checking input image for nsfw")
             _, has_nsfw_concept = self._safety_checker.check_nsfw_images([image])
