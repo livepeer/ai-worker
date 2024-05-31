@@ -13,6 +13,7 @@ from safetensors.torch import load_file
 from huggingface_hub import file_download, hf_hub_download
 import torch
 import PIL
+import random
 from typing import List, Tuple
 import logging
 import os
@@ -92,6 +93,10 @@ class ImageToImagePipeline(Pipeline):
                 self.ldm.scheduler.config, timestep_spacing="trailing"
             )
         elif INSTRUCT_PIX2PIX_MODEL_ID in model_id:
+            if "image_guidance_scale" not in kwargs:
+                kwargs["image_guidance_scale"] = round(random.uniform(1.2, 1.8), ndigits=2)
+            if "num_inference_steps" not in kwargs:
+                kwargs["num_inference_steps"] = 10
             # Initialize the pipeline for the InstructPix2Pix model
             self.ldm = StableDiffusionInstructPix2PixPipeline.from_pretrained(
                 model_id, **kwargs
