@@ -127,7 +127,6 @@ class ImageToVideoPipeline(Pipeline):
                 ]
 
         if safety_check:
-            logger.info("checking input image for nsfw")
             _, has_nsfw_concept = self._safety_checker.check_nsfw_images([image])
         else:
             has_nsfw_concept = [None]
