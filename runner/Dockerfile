@@ -32,7 +32,7 @@ ARG PIP_VERSION=23.3.2
 
 # Pin the setuptools package to ensure INSTRUCT_PIX2PIX model runs properly.
 # These specific dependencies are critical to each model.
-RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools==69.5.1 wheel && \
+RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools==69.5.1 wheel==0.43.0 && \
     pip install --no-cache-dir torch==2.1.1 torchvision==0.16.1 torchaudio==2.1.1
 
 WORKDIR /app
