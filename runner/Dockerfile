@@ -30,7 +30,7 @@ RUN pyenv install $PYTHON_VERSION && \
 
 # Upgrade pip and install your desired packages
 ARG PIP_VERSION=23.3.2
-RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools wheel && \
+RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools==69.5.1 wheel==0.43.0 && \
   pip install --no-cache-dir torch==2.1.1 torchvision==0.16.1 torchaudio==2.1.1
 
 WORKDIR /app
