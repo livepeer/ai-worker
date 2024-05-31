@@ -51,6 +51,28 @@ def validate_torch_device(device_name: str) -> bool:
         return False
 
 
+def is_lightning_model(model_id: str) -> bool:
+    """Checks if the model is a Lightning model.
+
+    Args:
+        model_id: Model ID.
+
+    Returns:
+        True if the model is a Lightning model, False otherwise.
+    """
+    return "-lightning" in model_id.lower()
+
+def is_turbo_model(model_id: str) -> bool:
+    """Checks if the model is a Turbo model.
+
+    Args:
+        model_id: Model ID.
+
+    Returns:
+        True if the model is a Turbo model, False otherwise.
+    """
+    return "-turbo" in model_id.lower()
+
 class SafetyChecker:
     """Checks images for unsafe or inappropriate content using a pretrained model.
 
