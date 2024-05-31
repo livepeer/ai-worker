@@ -1,0 +1,9 @@
+{
+  "images": [
+    {
+      "url": "",
+      "seed": 0,
+      "nsfw": true
+    }
+  ]
+}

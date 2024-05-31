@@ -82,7 +82,7 @@ async def image_to_video(
             motion_bucket_id=motion_bucket_id,
             noise_aug_strength=noise_aug_strength,
             safety_check=safety_check,
-            seed=seed            
+            seed=seed
         )
     except Exception as e:
         logger.error(f"ImageToVideoPipeline error: {e}")
