@@ -8,6 +8,7 @@ from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
 from transformers import CLIPFeatureExtractor
 from typing import Optional
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,30 @@ def validate_torch_device(device_name: str) -> bool:
         return True
     except RuntimeError:
         return False
+
+
+def is_lightning_model(model_id: str) -> bool:
+    """Checks if the model is a Lightning model.
+
+    Args:
+        model_id: Model ID.
+
+    Returns:
+        True if the model is a Lightning model, False otherwise.
+    """
+    return re.search(r"[-_]lightning", model_id, re.IGNORECASE) is not None
+
+
+def is_turbo_model(model_id: str) -> bool:
+    """Checks if the model is a Turbo model.
+
+    Args:
+        model_id: Model ID.
+
+    Returns:
+        True if the model is a Turbo model, False otherwise.
+    """
+    return re.search(r"[-_]turbo", model_id, re.IGNORECASE) is not None
 
 
 class SafetyChecker:
