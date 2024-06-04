@@ -6,12 +6,15 @@ from app.pipelines.util import (
     is_lightning_model,
     is_turbo_model,
 )
+from enum import Enum
 
 from diffusers import (
     AutoPipelineForImage2Image,
     StableDiffusionXLPipeline,
     UNet2DConditionModel,
     EulerDiscreteScheduler,
+    EulerAncestralDiscreteScheduler,
+    StableDiffusionInstructPix2PixPipeline,
 )
 from safetensors.torch import load_file
 from huggingface_hub import file_download, hf_hub_download
@@ -27,7 +30,17 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 logger = logging.getLogger(__name__)
 
-SDXL_LIGHTNING_MODEL_ID = "ByteDance/SDXL-Lightning"
+
+class ModelName(Enum):
+    """Enumeration mapping model names to their corresponding IDs."""
+
+    SDXL_LIGHTNING = "ByteDance/SDXL-Lightning"
+    INSTRUCT_PIX2PIX = "timbrooks/instruct-pix2pix"
+
+    @classmethod
+    def list(cls):
+        """Return a list of all model IDs."""
+        return list(map(lambda c: c.value, cls))
 
 
 class ImageToImagePipeline(Pipeline):
@@ -45,7 +58,7 @@ class ImageToImagePipeline(Pipeline):
                 for _, _, files in os.walk(folder_path)
                 for fname in files
             )
-            or SDXL_LIGHTNING_MODEL_ID in model_id
+            or ModelName.SDXL_LIGHTNING.value in model_id
         )
         if torch_device != "cpu" and has_fp16_variant:
             logger.info("ImageToImagePipeline loading fp16 variant for %s", model_id)
@@ -56,7 +69,7 @@ class ImageToImagePipeline(Pipeline):
         self.model_id = model_id
 
         # Special case SDXL-Lightning because the unet for SDXL needs to be swapped
-        if SDXL_LIGHTNING_MODEL_ID in model_id:
+        if ModelName.SDXL_LIGHTNING.value in model_id:
             base = "stabilityai/stable-diffusion-xl-base-1.0"
 
             # ByteDance/SDXL-Lightning-2step
@@ -78,7 +91,7 @@ class ImageToImagePipeline(Pipeline):
             unet.load_state_dict(
                 load_file(
                     hf_hub_download(
-                        SDXL_LIGHTNING_MODEL_ID,
+                        ModelName.SDXL_LIGHTNING.value,
                         f"{unet_id}.safetensors",
                         cache_dir=kwargs["cache_dir"],
                     ),
@@ -92,6 +105,14 @@ class ImageToImagePipeline(Pipeline):
 
             self.ldm.scheduler = EulerDiscreteScheduler.from_config(
                 self.ldm.scheduler.config, timestep_spacing="trailing"
+            )
+        elif ModelName.INSTRUCT_PIX2PIX.value in model_id:
+            self.ldm = StableDiffusionInstructPix2PixPipeline.from_pretrained(
+                model_id, **kwargs
+            ).to(torch_device)
+
+            self.ldm.scheduler = EulerAncestralDiscreteScheduler.from_config(
+                self.ldm.scheduler.config
             )
         else:
             self.ldm = AutoPipelineForImage2Image.from_pretrained(
@@ -176,7 +197,7 @@ class ImageToImagePipeline(Pipeline):
 
             if "num_inference_steps" not in kwargs:
                 kwargs["num_inference_steps"] = 2
-        elif SDXL_LIGHTNING_MODEL_ID in self.model_id:
+        elif ModelName.SDXL_LIGHTNING.value in self.model_id:
             # SDXL-Lightning models should have guidance_scale = 0 and use
             # the correct number of inference steps for the unet checkpoint loaded
             kwargs["guidance_scale"] = 0.0
@@ -190,6 +211,10 @@ class ImageToImagePipeline(Pipeline):
             else:
                 # Default to 2step
                 kwargs["num_inference_steps"] = 2
+        elif ModelName.INSTRUCT_PIX2PIX.value in self.model_id:
+            if "num_inference_steps" not in kwargs:
+                # TODO: Currently set to recommended value make configurable later.
+                kwargs["num_inference_steps"] = 10
 
         output = self.ldm(prompt, image=image, **kwargs)
 
