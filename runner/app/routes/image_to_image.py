@@ -36,7 +36,7 @@ async def image_to_image(
     model_id: Annotated[str, Form()] = "",
     strength: Annotated[float, Form()] = 0.8,
     guidance_scale: Annotated[float, Form()] = 7.5,
-    image_guidance_scale: Annotated[float, Form()] = 0,
+    image_guidance_scale: Annotated[float, Form()] = 1.5,
     negative_prompt: Annotated[str, Form()] = "",
     safety_check: Annotated[bool, Form()] = True,
     seed: Annotated[int, Form()] = None,
