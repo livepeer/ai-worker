@@ -264,7 +264,7 @@
                     "image_guidance_scale": {
                         "type": "number",
                         "title": "Image Guidance Scale",
-                        "default": 1
+                        "default": 1.5
                     },
                     "negative_prompt": {
                         "type": "string",
