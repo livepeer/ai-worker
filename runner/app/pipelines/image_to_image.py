@@ -1,5 +1,11 @@
 from app.pipelines.base import Pipeline
-from app.pipelines.util import get_torch_device, get_model_dir, SafetyChecker
+from app.pipelines.util import (
+    get_torch_device,
+    get_model_dir,
+    SafetyChecker,
+    is_lightning_model,
+    is_turbo_model,
+)
 
 from diffusers import (
     AutoPipelineForImage2Image,
@@ -119,14 +125,22 @@ class ImageToImagePipeline(Pipeline):
                     "call may be slow if 'SFAST' is enabled."
                 )
 
-        if deepcache_enabled:
+        if deepcache_enabled and not (
+            is_lightning_model(model_id) or is_turbo_model(model_id)
+        ):
             logger.info(
-                "TextToImagePipeline will be optimized with DeepCache for %s",
+                "ImageToImagePipeline will be optimized with DeepCache for %s",
                 model_id,
             )
             from app.pipelines.optim.deepcache import enable_deepcache
 
             self.ldm = enable_deepcache(self.ldm)
+        elif deepcache_enabled:
+            logger.warning(
+                "DeepCache is not supported for Lightning or Turbo models. "
+                "ImageToImagePipeline will NOT be optimized with DeepCache for %s",
+                model_id,
+            )
 
         safety_checker_device = os.getenv("SAFETY_CHECKER_DEVICE", "cuda").lower()
         self._safety_checker = SafetyChecker(device=safety_checker_device)

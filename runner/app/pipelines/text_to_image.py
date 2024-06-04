@@ -14,7 +14,7 @@ from huggingface_hub import file_download, hf_hub_download
 from safetensors.torch import load_file
 
 from app.pipelines.base import Pipeline
-from app.pipelines.util import get_model_dir, get_torch_device, SafetyChecker
+from app.pipelines.util import get_model_dir, get_torch_device, SafetyChecker, is_lightning_model, is_turbo_model
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +139,9 @@ class TextToImagePipeline(Pipeline):
                     "call may be slow if 'SFAST' is enabled."
                 )
 
-        if deepcache_enabled:
+        if deepcache_enabled and not (
+            is_lightning_model(model_id) or is_turbo_model(model_id)
+        ):
             logger.info(
                 "TextToImagePipeline will be optimized with DeepCache for %s",
                 model_id,
@@ -147,6 +149,12 @@ class TextToImagePipeline(Pipeline):
             from app.pipelines.optim.deepcache import enable_deepcache
 
             self.ldm = enable_deepcache(self.ldm)
+        elif deepcache_enabled:
+            logger.warning(
+                "DeepCache is not supported for Lightning or Turbo models. "
+                "TextToImagePipeline will NOT be optimized with DeepCache for %s",
+                model_id,
+            )
 
         safety_checker_device = os.getenv("SAFETY_CHECKER_DEVICE", "cuda").lower()
         self._safety_checker = SafetyChecker(device=safety_checker_device)
