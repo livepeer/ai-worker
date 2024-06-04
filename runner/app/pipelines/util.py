@@ -8,6 +8,7 @@ from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
 from transformers import CLIPFeatureExtractor
 from typing import Optional
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,8 @@ def is_lightning_model(model_id: str) -> bool:
     Returns:
         True if the model is a Lightning model, False otherwise.
     """
-    return "-lightning" in model_id.lower()
+    return re.search(r"[-_]lightning", model_id, re.IGNORECASE) is not None
+
 
 def is_turbo_model(model_id: str) -> bool:
     """Checks if the model is a Turbo model.
@@ -71,7 +73,8 @@ def is_turbo_model(model_id: str) -> bool:
     Returns:
         True if the model is a Turbo model, False otherwise.
     """
-    return "-turbo" in model_id.lower()
+    return re.search(r"[-_]turbo", model_id, re.IGNORECASE) is not None
+
 
 class SafetyChecker:
     """Checks images for unsafe or inappropriate content using a pretrained model.
