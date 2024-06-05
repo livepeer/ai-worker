@@ -62,24 +62,20 @@ async def image_to_image(
             ),
         )
 
-    seeds = []
-    if seed is None:
-        seeds = [random.randint(0, 2**32 - 1)]
-    if num_images_per_prompt > 1:
-        seeds = [
-            i for i in range(seeds[0], seeds[0] + num_images_per_prompt)
-        ]
+    seed = seed if seed is not None else random.randint(0, 2**32 - 1)
+    seeds = [seed + i for i in range(num_images_per_prompt)]
 
-    img = Image.open(image.file).convert("RGB")
-    
-    try:
-        images = []
-        has_nsfw_concept = []
-        
-        for seed in seeds:
-            image_out, nsfw = pipeline(
+    image = Image.open(image.file).convert("RGB")
+
+    # TODO: Process one image at a time to avoid CUDA OEM errors. Can be removed again
+    # once LIV-243 and LIV-379 are resolved.
+    images = []
+    has_nsfw_concept = []
+    for seed in seeds:
+        try:
+            imgs, nsfw_checks = pipeline(
                 prompt=prompt,
-                image=img,
+                image=image,
                 strength=strength,
                 guidance_scale=guidance_scale,
                 image_guidance_scale=image_guidance_scale,
@@ -88,28 +84,20 @@ async def image_to_image(
                 seed=seed,
                 num_images_per_prompt=1,
             )
-            
-            images.extend(image_out)
-            has_nsfw_concept.extend(nsfw)
-        
-    except Exception as e:
-        logger.error(f"ImageToImagePipeline error: {e}")
-        logger.exception(e)
-        return JSONResponse(
-            status_code=500, content=http_error("ImageToImagePipeline error")
-        )
+            images.extend(imgs)
+            has_nsfw_concept.extend(nsfw_checks)
+        except Exception as e:
+            logger.error(f"ImageToImagePipeline error: {e}")
+            logger.exception(e)
+            return JSONResponse(
+                status_code=500, content=http_error("ImageToImagePipeline error")
+            )
 
-    seeds = seed
-    if not isinstance(seeds, list):
-        seeds = [seeds]
-
-    output_images = []
-    for img, sd, is_nsfw in zip(images, seeds, has_nsfw_concept):
-        # TODO: Return None once Go codegen tool supports optional properties
-        # OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
-        is_nsfw = is_nsfw or False
-        output_images.append(
-            {"url": image_to_data_url(img), "seed": sd, "nsfw": is_nsfw}
-        )
+    # TODO: Return None once Go codegen tool supports optional properties
+    # OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
+    output_images = [
+        {"url": image_to_data_url(img), "seed": sd, "nsfw": nsfw or False}
+        for img, sd, nsfw in zip(images, seeds, has_nsfw_concept)
+    ]
 
     return {"images": output_images}
