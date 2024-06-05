@@ -62,33 +62,36 @@ async def image_to_image(
             ),
         )
 
+    seeds = []
     if seed is None:
-        seed = random.randint(0, 2**32 - 1)
+        seeds = [random.randint(0, 2**32 - 1)]
     if num_images_per_prompt > 1:
-        seed = [
-            i for i in range(seed, seed + num_images_per_prompt)
+        seeds = [
+            i for i in range(seeds[0], seeds[0] + num_images_per_prompt)
         ]
 
     img = Image.open(image.file).convert("RGB")
-    # If a list of seeds/generators is passed, diffusers wants a list of images
-    # https://github.com/huggingface/diffusers/blob/17808a091e2d5615c2ed8a63d7ae6f2baea11e1e/src/diffusers/pipelines/stable_diffusion_xl/pipeline_stable_diffusion_xl_img2img.py#L715
-    if isinstance(seed, list):
-        image = [img] * num_images_per_prompt
-    else:
-        image = img
-
+    
     try:
-        images, has_nsfw_concept = pipeline(
-            prompt=prompt,
-            image=image,
-            strength=strength,
-            guidance_scale=guidance_scale,
-            image_guidance_scale=image_guidance_scale,
-            negative_prompt=negative_prompt,
-            safety_check=safety_check,
-            seed=seed,
-            num_images_per_prompt=num_images_per_prompt,
-        )
+        images = []
+        has_nsfw_concept = []
+        
+        for seed in seeds:
+            image_out, nsfw = pipeline(
+                prompt=prompt,
+                image=img,
+                strength=strength,
+                guidance_scale=guidance_scale,
+                image_guidance_scale=image_guidance_scale,
+                negative_prompt=negative_prompt,
+                safety_check=safety_check,
+                seed=seed,
+                num_images_per_prompt=1,
+            )
+            
+            images.extend(image_out)
+            has_nsfw_concept.extend(nsfw)
+        
     except Exception as e:
         logger.error(f"ImageToImagePipeline error: {e}")
         logger.exception(e)
