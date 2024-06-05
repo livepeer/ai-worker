@@ -218,6 +218,69 @@
                     }
                 ]
             }
+        },
+        "/upscale": {
+            "post": {
+                "summary": "Upscale Image",
+                "operationId": "upscale_image",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Body_upscale_image_post"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ImageResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPError"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPError"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
         }
     },
     "components": {
@@ -234,6 +297,39 @@
                     "msg"
                 ],
                 "title": "APIError"
+            },
+            "Body_upscale_image_post": {
+                "properties": {
+                    "prompt": {
+                        "type": "string",
+                        "title": "Prompt"
+                    },
+                    "image": {
+                        "type": "string",
+                        "format": "binary",
+                        "title": "Image"
+                    },
+                    "model_id": {
+                        "type": "string",
+                        "title": "Model Id",
+                        "default": ""
+                    },
+                    "safety_check": {
+                        "type": "boolean",
+                        "title": "Safety Check",
+                        "default": true
+                    },
+                    "seed": {
+                        "type": "integer",
+                        "title": "Seed"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "prompt",
+                    "image"
+                ],
+                "title": "Body_upscale_image_post"
             },
             "Body_image_to_image_image_to_image_post": {
                 "properties": {

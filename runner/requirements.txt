@@ -12,3 +12,4 @@ triton>=2.1.0
 peft==0.11.1
 deepcache==0.1.1
 safetensors==0.4.3
+scipy

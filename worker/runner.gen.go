@@ -58,6 +58,15 @@ type BodyImageToVideoImageToVideoPost struct {
 	Width            *int               `json:"width,omitempty"`
 }
 
+// BodyUpscaleImagePost defines model for Body_upscale_image_post.
+type BodyUpscaleImagePost struct {
+	Image       openapi_types.File `json:"image"`
+	ModelId     *string            `json:"model_id,omitempty"`
+	Prompt      string             `json:"prompt"`
+	SafetyCheck *bool              `json:"safety_check,omitempty"`
+	Seed        *int               `json:"seed,omitempty"`
+}
+
 // HTTPError defines model for HTTPError.
 type HTTPError struct {
 	Detail APIError `json:"detail"`
@@ -130,6 +139,9 @@ type ImageToVideoMultipartRequestBody = BodyImageToVideoImageToVideoPost
 
 // TextToImageJSONRequestBody defines body for TextToImage for application/json ContentType.
 type TextToImageJSONRequestBody = TextToImageParams
+
+// UpscaleImageMultipartRequestBody defines body for UpscaleImage for multipart/form-data ContentType.
+type UpscaleImageMultipartRequestBody = BodyUpscaleImagePost
 
 // AsValidationErrorLoc0 returns the union data inside the ValidationError_Loc_Item as a ValidationErrorLoc0
 func (t ValidationError_Loc_Item) AsValidationErrorLoc0() (ValidationErrorLoc0, error) {
@@ -279,6 +291,9 @@ type ClientInterface interface {
 	TextToImageWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	TextToImage(ctx context.Context, body TextToImageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// UpscaleImageWithBody request with any body
+	UpscaleImageWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) Health(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -331,6 +346,18 @@ func (c *Client) TextToImageWithBody(ctx context.Context, contentType string, bo
 
 func (c *Client) TextToImage(ctx context.Context, body TextToImageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewTextToImageRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) UpscaleImageWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUpscaleImageRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -466,6 +493,35 @@ func NewTextToImageRequestWithBody(server string, contentType string, body io.Re
 	return req, nil
 }
 
+// NewUpscaleImageRequestWithBody generates requests for UpscaleImage with any type of body
+func NewUpscaleImageRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/upscale")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -522,6 +578,9 @@ type ClientWithResponsesInterface interface {
 	TextToImageWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TextToImageResponse, error)
 
 	TextToImageWithResponse(ctx context.Context, body TextToImageJSONRequestBody, reqEditors ...RequestEditorFn) (*TextToImageResponse, error)
+
+	// UpscaleImageWithBodyWithResponse request with any body
+	UpscaleImageWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpscaleImageResponse, error)
 }
 
 type HealthResponse struct {
@@ -621,6 +680,31 @@ func (r TextToImageResponse) StatusCode() int {
 	return 0
 }
 
+type UpscaleImageResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ImageResponse
+	JSON400      *HTTPError
+	JSON422      *HTTPValidationError
+	JSON500      *HTTPError
+}
+
+// Status returns HTTPResponse.Status
+func (r UpscaleImageResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UpscaleImageResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 // HealthWithResponse request returning *HealthResponse
 func (c *ClientWithResponses) HealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*HealthResponse, error) {
 	rsp, err := c.Health(ctx, reqEditors...)
@@ -663,6 +747,15 @@ func (c *ClientWithResponses) TextToImageWithResponse(ctx context.Context, body 
 		return nil, err
 	}
 	return ParseTextToImageResponse(rsp)
+}
+
+// UpscaleImageWithBodyWithResponse request with arbitrary body returning *UpscaleImageResponse
+func (c *ClientWithResponses) UpscaleImageWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpscaleImageResponse, error) {
+	rsp, err := c.UpscaleImageWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUpscaleImageResponse(rsp)
 }
 
 // ParseHealthResponse parses an HTTP response from a HealthWithResponse call
@@ -832,6 +925,53 @@ func ParseTextToImageResponse(rsp *http.Response) (*TextToImageResponse, error) 
 	return response, nil
 }
 
+// ParseUpscaleImageResponse parses an HTTP response from a UpscaleImageWithResponse call
+func ParseUpscaleImageResponse(rsp *http.Response) (*UpscaleImageResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UpscaleImageResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ImageResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest HTTPValidationError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Health
@@ -846,6 +986,9 @@ type ServerInterface interface {
 	// Text To Image
 	// (POST /text-to-image)
 	TextToImage(w http.ResponseWriter, r *http.Request)
+	// Upscale Image
+	// (POST /upscale)
+	UpscaleImage(w http.ResponseWriter, r *http.Request)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -873,6 +1016,12 @@ func (_ Unimplemented) ImageToVideo(w http.ResponseWriter, r *http.Request) {
 // Text To Image
 // (POST /text-to-image)
 func (_ Unimplemented) TextToImage(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Upscale Image
+// (POST /upscale)
+func (_ Unimplemented) UpscaleImage(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -942,6 +1091,23 @@ func (siw *ServerInterfaceWrapper) TextToImage(w http.ResponseWriter, r *http.Re
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.TextToImage(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// UpscaleImage operation middleware
+func (siw *ServerInterfaceWrapper) UpscaleImage(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, HTTPBearerScopes, []string{})
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpscaleImage(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1076,6 +1242,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/text-to-image", wrapper.TextToImage)
 	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/upscale", wrapper.UpscaleImage)
+	})
 
 	return r
 }
@@ -1083,27 +1252,28 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
