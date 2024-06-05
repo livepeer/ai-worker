@@ -1,6 +1,9 @@
-# NOTE: The 'awk' command is a workaround for a warning causing syntax error. Temporary
-# solution until issue (https://github.com/deepmap/oapi-codegen/issues/373) is resolved.
+# This make command generates golang bindings using the FastAPI schema.
+# NOTE: 'awk' command temporarily resolves a warning due to 'oapi-codegen' and 'OpenAPI'
+# version mismatch (refer: https://github.com/deepmap/oapi-codegen/issues/373).
 codegen:
-	go install github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@v2.2.0
-	oapi-codegen -package worker -generate types,client,chi-server,spec runner/openapi.json > worker/runner.gen.go
-	oapi-codegen -package worker -generate types,client,chi-server,spec runner/openapi.json | awk '!/WARNING/' > worker/runner.gen.go
+	go run github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@v2.2.0 \
+		-package worker \
+		-generate types,client,chi-server,spec \
+		runner/openapi.json \
+		| awk '!/WARNING/' > worker/runner.gen.go
