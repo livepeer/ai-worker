@@ -67,7 +67,7 @@ async def text_to_image(
     params.num_images_per_prompt = 1
     for seed in seeds:
         try:
-            params.seed = [seed]
+            params.seed = seed
             imgs, nsfw_check = pipeline(**params.model_dump())
             images.extend(imgs)
             has_nsfw_concept.extend(nsfw_check)
