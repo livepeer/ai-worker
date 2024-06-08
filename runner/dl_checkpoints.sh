@@ -17,6 +17,43 @@ function display_help() {
     echo "  --help   Display this help message."
 }
 
+# Download recommended models during alpha phase.
+function download_alpha_models() {
+    printf "\nDownloading recommended alpha phase models...\n"
+
+    printf "\nDownloading unrestricted models...\n"
+
+    # Download text-to-image and image-to-image models.
+    huggingface-cli download ByteDance/SDXL-Lightning --include "*unet.safetensors" --cache-dir models
+    huggingface-cli download timbrooks/instruct-pix2pix --include "*.fp16.safetensors" "*.json" "*.txt" --cache-dir models
+
+    printf "\nDownloading token-gated models...\n"
+
+    # Download image-to-video models (token-gated).
+    check_hf_auth
+    huggingface-cli download stabilityai/stable-video-diffusion-img2vid-xt-1-1 --include "*.fp16.safetensors" "*.json" --cache-dir models ${TOKEN_FLAG:+"$TOKEN_FLAG"}
+}
+
+# Download all models.
+function download_all_models() {
+    download_alpha_models
+
+    printf "\nDownloading other available models...\n"
+
+    # Download text-to-image and image-to-image models.
+    printf "\nDownloading unrestricted models...\n"
+    huggingface-cli download stabilityai/sd-turbo --include "*.fp16.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
+    huggingface-cli download stabilityai/sdxl-turbo --include "*.fp16.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
+    huggingface-cli download runwayml/stable-diffusion-v1-5 --include "*.fp16.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
+    huggingface-cli download stabilityai/stable-diffusion-xl-base-1.0 --include "*.fp16.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
+    huggingface-cli download prompthero/openjourney-v4 --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
+    huggingface-cli download SG161222/RealVisXL_V4.0_Lightning --include "*.fp16.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
+    huggingface-cli download SG161222/RealVisXL_V4.0 --include "*.fp16.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
+
+    # Download image-to-video models.
+    huggingface-cli download stabilityai/stable-video-diffusion-img2vid-xt --include "*.fp16.safetensors" "*.json" --cache-dir models
+}
+
 # Enable HF transfer acceleration.
 # See: https://huggingface.co/docs/huggingface_hub/v0.22.1/package_reference/environment_variables#hfhubenablehftransfer.
 export HF_HUB_ENABLE_HF_TRANSFER=1
@@ -54,40 +91,10 @@ if ! command -v huggingface-cli > /dev/null 2>&1; then
     exit 1
 fi
 
-printf "Downloading %s models...\n" "$MODE"
 if [ "$MODE" = "alpha" ]; then
-    printf "\nDownloading unrestricted models...\n"
-
-    # Download text-to-image and image-to-image models.
-    huggingface-cli download ByteDance/SDXL-Lightning --include "*unet.safetensors" --exclude "*lora.safetensors*" --cache-dir models
-    huggingface-cli download timbrooks/instruct-pix2pix --include "*fp16.safetensors" --exclude "*lora.safetensors*" --cache-dir models
-    
-    # Download image-to-video models (token-gated).
-    printf "\nDownloading token-gated models...\n"
-    check_hf_auth
-    huggingface-cli download stabilityai/stable-video-diffusion-img2vid-xt-1-1 --include "*.fp16.safetensors" "*.json" --cache-dir models ${TOKEN_FLAG:+"$TOKEN_FLAG"}
-
-    printf "\nAlpha models downloaded successfully!\n"
+    download_alpha_models
 else
-    # Download text-to-image and image-to-image models.
-    printf "\nDownloading unrestricted models...\n"
-    huggingface-cli download stabilityai/sd-turbo --include "*.fp16.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
-    huggingface-cli download stabilityai/sdxl-turbo --include "*.fp16.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
-    huggingface-cli download runwayml/stable-diffusion-v1-5 --include "*.fp16.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
-    huggingface-cli download stabilityai/stable-diffusion-xl-base-1.0 --include "*.fp16.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
-    huggingface-cli download prompthero/openjourney-v4 --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
-    huggingface-cli download ByteDance/SDXL-Lightning --include "*unet.safetensors" --exclude "*lora.safetensors*" --cache-dir models
-    huggingface-cli download SG161222/RealVisXL_V4.0_Lightning --include "*.fp16.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
-    huggingface-cli download SG161222/RealVisXL_V4.0 --include "*.fp16.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
-    huggingface-cli download timbrooks/instruct-pix2pix --include "*.fp16.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models/
-
-    # Download image-to-video models.
-    huggingface-cli download stabilityai/stable-video-diffusion-img2vid-xt --include "*.fp16.safetensors" "*.json" --cache-dir models
-
-    # Download image-to-video models (token-gated).
-    printf "\nDownloading token-gated models...\n"
-    check_hf_auth
-    huggingface-cli download stabilityai/stable-video-diffusion-img2vid-xt-1-1 --include "*.fp16.safetensors" "*.json" --cache-dir models ${TOKEN_FLAG:+"$TOKEN_FLAG"}
-
-    printf "\nAll models downloaded successfully!\n"
+    download_all_models
 fi
+
+printf "\nAll models downloaded successfully!\n"
