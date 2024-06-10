@@ -52,6 +52,9 @@ class ImageToImagePipeline(Pipeline):
             repo_id=model_id, repo_type="model"
         )
         folder_path = os.path.join(get_model_dir(), folder_name)
+        # Load the fp16 variant if fp16 'safetensors' files are present in the cache.
+        # NOTE: Exception for SDXL-Lightning model: despite having fp16 'safetensors'
+        # files, they are not named according to the standard convention.
         has_fp16_variant = (
             any(
                 ".fp16.safetensors" in fname
