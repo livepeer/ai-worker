@@ -1,3 +1,9 @@
+/*
+Package worker's module provides multipart form data utilities.
+
+This module extends oapi-codegen Go bindings with multipart writers, enabling request
+parameter encoding for inter-node communication (gateway, orchestrator, runner).
+*/
 package worker
 
 import (
@@ -44,8 +50,18 @@ func NewImageToImageMultipartWriter(w io.Writer, req ImageToImageMultipartReques
 			return nil, err
 		}
 	}
+	if req.ImageGuidanceScale != nil {
+		if err := mw.WriteField("image_guidance_scale", fmt.Sprintf("%f", *req.ImageGuidanceScale)); err != nil {
+			return nil, err
+		}
+	}
 	if req.NegativePrompt != nil {
 		if err := mw.WriteField("negative_prompt", *req.NegativePrompt); err != nil {
+			return nil, err
+		}
+	}
+	if req.SafetyCheck != nil {
+		if err := mw.WriteField("safety_check", strconv.FormatBool(*req.SafetyCheck)); err != nil {
 			return nil, err
 		}
 	}
@@ -118,6 +134,11 @@ func NewImageToVideoMultipartWriter(w io.Writer, req ImageToVideoMultipartReques
 	}
 	if req.Seed != nil {
 		if err := mw.WriteField("seed", strconv.Itoa(*req.Seed)); err != nil {
+			return nil, err
+		}
+	}
+	if req.SafetyCheck != nil {
+		if err := mw.WriteField("safety_check", strconv.FormatBool(*req.SafetyCheck)); err != nil {
 			return nil, err
 		}
 	}
