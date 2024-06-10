@@ -42,7 +42,7 @@ To debug the AI runner when it operates within a container orchestrated by exter
    cd .. && git apply ./runner/dev/patches/debug.patch && cd runner
    ```
 
-5. **Attach and Debug**: Follow the [guidance on attaching to a running container](https://code.visualstudio.com/docs/python/debugging#_command-line-debugging) for details. To attach to the AI runner, use the following configuration:
+5. **Attach and Debug**: Debugging the AI runner involves attaching to an active container. Ensure that VSCode is open in the `runner` directory. Follow these [instructions to attach to a running container](https://code.visualstudio.com/docs/python/debugging#_command-line-debugging) with the appropriate configuration:
 
    ```json
    {
