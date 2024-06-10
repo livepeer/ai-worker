@@ -27,6 +27,9 @@ function download_alpha_models() {
     huggingface-cli download ByteDance/SDXL-Lightning --include "*unet.safetensors" --cache-dir models
     huggingface-cli download timbrooks/instruct-pix2pix --include "*.fp16.safetensors" "*.json" "*.txt" --cache-dir models
 
+    # Download upscale models
+    huggingface-cli download stabilityai/stable-diffusion-x4-upscaler --include "*.fp16.safetensors" --cache-dir models
+
     printf "\nDownloading token-gated models...\n"
 
     # Download image-to-video models (token-gated).
