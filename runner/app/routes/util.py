@@ -12,7 +12,6 @@ class Media(BaseModel):
     # TODO: Make nsfw property optional once Go codegen tool supports
     # OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
     nsfw: bool
-<<<<<<< HEAD
 
 class chunk(BaseModel):
     timestamp: tuple
@@ -21,8 +20,6 @@ class chunk(BaseModel):
 class TextResponse(BaseModel):
     text: str
     chunks: List[chunk]
-=======
->>>>>>> main
 
 
 class ImageResponse(BaseModel):
