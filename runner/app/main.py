@@ -49,7 +49,8 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
         case "frame-interpolation":
             raise NotImplementedError("frame-interpolation pipeline not implemented")
         case "upscale":
-            raise NotImplementedError("upscale pipeline not implemented")
+            from app.pipelines.upscale import UpscalePipeline
+            return UpscalePipeline(model_id)
         case _:
             raise EnvironmentError(
                 f"{pipeline} is not a valid pipeline for model {model_id}"
@@ -77,7 +78,9 @@ def load_route(pipeline: str) -> any:
         case "frame-interpolation":
             raise NotImplementedError("frame-interpolation pipeline not implemented")
         case "upscale":
-            raise NotImplementedError("upscale pipeline not implemented")
+            from app.routes import upscale
+
+            return upscale.router
         case _:
             raise EnvironmentError(f"{pipeline} is not a valid pipeline")
 
