@@ -1,5 +1,5 @@
 from app.pipelines.base import Pipeline
-from app.pipelines.util import get_torch_device, get_model_dir, SafetyChecker
+from app.pipelines.util import get_torch_device, get_model_dir, SafetyChecker, is_lightning_model, is_turbo_model
 
 from diffusers import (
     StableDiffusionUpscalePipeline
@@ -21,8 +21,6 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 logger = logging.getLogger(__name__)
 
-SDX4_UPSCALER_MODEL_ID = "stabilityai/stable-diffusion-x4-upscaler"
-
 
 class UpscalePipeline(Pipeline):
     def __init__(self, model_id: str):
@@ -33,13 +31,10 @@ class UpscalePipeline(Pipeline):
             repo_id=model_id, repo_type="model"
         )
         folder_path = os.path.join(get_model_dir(), folder_name)
-        has_fp16_variant = (
-                any(
-                    ".fp16.safetensors" in fname
-                    for _, _, files in os.walk(folder_path)
-                    for fname in files
-                )
-                or SDX4_UPSCALER_MODEL_ID in model_id
+        has_fp16_variant = any(
+            ".fp16.safetensors" in fname
+            for _, _, files in os.walk(folder_path)
+            for fname in files
         )
         if torch_device != "cpu" and has_fp16_variant:
             logger.info("UpscalePipeline loading fp16 variant for %s", model_id)
@@ -79,7 +74,9 @@ class UpscalePipeline(Pipeline):
                     "call may be slow if 'SFAST' is enabled."
                 )
 
-        if deepcache_enabled:
+        if deepcache_enabled and not (
+            is_lightning_model(model_id) or is_turbo_model(model_id)
+        ):
             logger.info(
                 "UpscalePipeline will be optimized with DeepCache for %s",
                 model_id,
@@ -87,6 +84,12 @@ class UpscalePipeline(Pipeline):
             from app.pipelines.optim.deepcache import enable_deepcache
 
             self.ldm = enable_deepcache(self.ldm)
+        elif deepcache_enabled:
+            logger.warning(
+                "DeepCache is not supported for Lightning or Turbo models. "
+                "TextToImagePipeline will NOT be optimized with DeepCache for %s",
+                model_id,
+            )
 
         safety_checker_device = os.getenv("SAFETY_CHECKER_DEVICE", "cuda").lower()
         self._safety_checker = SafetyChecker(device=safety_checker_device)

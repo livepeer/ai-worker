@@ -57,13 +57,12 @@ async def upscale(
             ),
         )
 
-    if seed is None:
-        seed = random.randint(0, 2**32 - 1)
+    seed = seed or random.randint(0, 2**32 - 1)
 
     image = Image.open(image.file).convert("RGB")
 
     try:
-        images  , has_nsfw_concept = pipeline(
+        images, has_nsfw_concept = pipeline(
             prompt=prompt,
             image=image,
             safety_check=safety_check,
@@ -76,15 +75,13 @@ async def upscale(
             status_code=500, content=http_error("UpscalePipeline error")
         )
 
-    seeds = seed if isinstance(seed, list) else [seed]
+    seeds = [seed]
 
-    output_images = []
-    for img, sd, is_nsfw in zip(images, seeds, has_nsfw_concept):
-        # TODO: Return None once Go codegen tool supports optional properties
-        # OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
-        is_nsfw = is_nsfw or False
-        output_images.append(
-            {"url": image_to_data_url(img), "seed": sd, "nsfw": is_nsfw}
-        )
+    # TODO: Return None once Go codegen tool supports optional properties
+    # OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
+    output_images = [
+        {"url": image_to_data_url(img), "seed": sd, "nsfw": nsfw or False}
+        for img, sd, nsfw in zip(images, seeds, has_nsfw_concept)
+    ]
 
     return {"images": output_images}

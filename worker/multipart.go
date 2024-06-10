@@ -13,46 +13,6 @@ import (
 	"strconv"
 )
 
-func NewUpscaleMultipartWriter(w io.Writer, req UpscaleImageMultipartRequestBody) (*multipart.Writer, error) {
-	mw := multipart.NewWriter(w)
-	writer, err := mw.CreateFormFile("image", req.Image.Filename())
-	if err != nil {
-		return nil, err
-	}
-	imageSize := req.Image.FileSize()
-	imageRdr, err := req.Image.Reader()
-	if err != nil {
-		return nil, err
-	}
-	copied, err := io.Copy(writer, imageRdr)
-	if err != nil {
-		return nil, err
-	}
-	if copied != imageSize {
-		return nil, fmt.Errorf("failed to copy image to multipart request imageBytes=%v copiedBytes=%v", imageSize, copied)
-	}
-
-	if err := mw.WriteField("prompt", req.Prompt); err != nil {
-		return nil, err
-	}
-	if req.ModelId != nil {
-		if err := mw.WriteField("model_id", *req.ModelId); err != nil {
-			return nil, err
-		}
-	}
-	if req.Seed != nil {
-		if err := mw.WriteField("seed", strconv.Itoa(*req.Seed)); err != nil {
-			return nil, err
-		}
-	}
-
-	if err := mw.Close(); err != nil {
-		return nil, err
-	}
-
-	return mw, nil
-}
-
 func NewImageToImageMultipartWriter(w io.Writer, req ImageToImageMultipartRequestBody) (*multipart.Writer, error) {
 	mw := multipart.NewWriter(w)
 	writer, err := mw.CreateFormFile("image", req.Image.Filename())
@@ -179,6 +139,51 @@ func NewImageToVideoMultipartWriter(w io.Writer, req ImageToVideoMultipartReques
 	}
 	if req.SafetyCheck != nil {
 		if err := mw.WriteField("safety_check", strconv.FormatBool(*req.SafetyCheck)); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := mw.Close(); err != nil {
+		return nil, err
+	}
+
+	return mw, nil
+}
+
+func NewUpscaleMultipartWriter(w io.Writer, req UpscaleImageMultipartRequestBody) (*multipart.Writer, error) {
+	mw := multipart.NewWriter(w)
+	writer, err := mw.CreateFormFile("image", req.Image.Filename())
+	if err != nil {
+		return nil, err
+	}
+	imageSize := req.Image.FileSize()
+	imageRdr, err := req.Image.Reader()
+	if err != nil {
+		return nil, err
+	}
+	copied, err := io.Copy(writer, imageRdr)
+	if err != nil {
+		return nil, err
+	}
+	if copied != imageSize {
+		return nil, fmt.Errorf("failed to copy image to multipart request imageBytes=%v copiedBytes=%v", imageSize, copied)
+	}
+
+	if err := mw.WriteField("prompt", req.Prompt); err != nil {
+		return nil, err
+	}
+	if req.ModelId != nil {
+		if err := mw.WriteField("model_id", *req.ModelId); err != nil {
+			return nil, err
+		}
+	}
+	if req.SafetyCheck != nil {
+		if err := mw.WriteField("safety_check", strconv.FormatBool(*req.SafetyCheck)); err != nil {
+			return nil, err
+		}
+	}
+	if req.Seed != nil {
+		if err := mw.WriteField("seed", strconv.Itoa(*req.Seed)); err != nil {
 			return nil, err
 		}
 	}
