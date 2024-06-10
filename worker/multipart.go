@@ -150,7 +150,7 @@ func NewImageToVideoMultipartWriter(w io.Writer, req ImageToVideoMultipartReques
 	return mw, nil
 }
 
-func NewUpscaleMultipartWriter(w io.Writer, req UpscaleImageMultipartRequestBody) (*multipart.Writer, error) {
+func NewUpscaleMultipartWriter(w io.Writer, req UpscaleMultipartRequestBody) (*multipart.Writer, error) {
 	mw := multipart.NewWriter(w)
 	writer, err := mw.CreateFormFile("image", req.Image.Filename())
 	if err != nil {

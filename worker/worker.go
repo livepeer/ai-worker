@@ -202,7 +202,7 @@ func (w *Worker) ImageToVideo(ctx context.Context, req ImageToVideoMultipartRequ
 	return resp.JSON200, nil
 }
 
-func (w *Worker) Upscale(ctx context.Context, req UpscaleImageMultipartRequestBody) (*ImageResponse, error) {
+func (w *Worker) Upscale(ctx context.Context, req UpscaleMultipartRequestBody) (*ImageResponse, error) {
 	c, err := w.borrowContainer(ctx, "upscale", *req.ModelId)
 	if err != nil {
 		return nil, err
@@ -215,7 +215,7 @@ func (w *Worker) Upscale(ctx context.Context, req UpscaleImageMultipartRequestBo
 		return nil, err
 	}
 
-	resp, err := c.Client.UpscaleImageWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	resp, err := c.Client.UpscaleWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
 	if err != nil {
 		return nil, err
 	}
