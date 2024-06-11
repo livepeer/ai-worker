@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 responses = {400: {"model": HTTPError}, 500: {"model": HTTPError}}
 
 
-# TODO: Make model_id optional once Go codegen tool supports OAPI 3.1
-# https://github.com/deepmap/oapi-codegen/issues/373
+# TODO: Make model_id and other None properties optional once Go codegen tool supports
+# OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
 @router.post("/image-to-image", response_model=ImageResponse, responses=responses)
 @router.post(
     "/image-to-image/",
@@ -36,7 +36,9 @@ async def image_to_image(
     model_id: Annotated[str, Form()] = "",
     strength: Annotated[float, Form()] = 0.8,
     guidance_scale: Annotated[float, Form()] = 7.5,
+    image_guidance_scale: Annotated[float, Form()] = 1.5,
     negative_prompt: Annotated[str, Form()] = "",
+    safety_check: Annotated[bool, Form()] = True,
     seed: Annotated[int, Form()] = None,
     num_images_per_prompt: Annotated[int, Form()] = 1,
     pipeline: Pipeline = Depends(get_pipeline),
@@ -60,44 +62,42 @@ async def image_to_image(
             ),
         )
 
-    if seed is None:
-        init_seed = random.randint(0, 2**32 - 1)
-        if num_images_per_prompt > 1:
-            seed = [i for i in range(init_seed, init_seed + num_images_per_prompt)]
-        else:
-            seed = init_seed
+    seed = seed if seed is not None else random.randint(0, 2**32 - 1)
+    seeds = [seed + i for i in range(num_images_per_prompt)]
 
-    img = Image.open(image.file).convert("RGB")
-    # If a list of seeds/generators is passed, diffusers wants a list of images
-    # https://github.com/huggingface/diffusers/blob/17808a091e2d5615c2ed8a63d7ae6f2baea11e1e/src/diffusers/pipelines/stable_diffusion_xl/pipeline_stable_diffusion_xl_img2img.py#L715
-    if isinstance(seed, list):
-        image = [img] * num_images_per_prompt
-    else:
-        image = img
+    image = Image.open(image.file).convert("RGB")
 
-    try:
-        images = pipeline(
-            prompt=prompt,
-            image=image,
-            strength=strength,
-            guidance_scale=guidance_scale,
-            negative_prompt=negative_prompt,
-            seed=seed,
-            num_images_per_prompt=num_images_per_prompt,
-        )
-    except Exception as e:
-        logger.error(f"ImageToImagePipeline error: {e}")
-        logger.exception(e)
-        return JSONResponse(
-            status_code=500, content=http_error("ImageToImagePipeline error")
-        )
+    # TODO: Process one image at a time to avoid CUDA OEM errors. Can be removed again
+    # once LIV-243 and LIV-379 are resolved.
+    images = []
+    has_nsfw_concept = []
+    for seed in seeds:
+        try:
+            imgs, nsfw_checks = pipeline(
+                prompt=prompt,
+                image=image,
+                strength=strength,
+                guidance_scale=guidance_scale,
+                image_guidance_scale=image_guidance_scale,
+                negative_prompt=negative_prompt,
+                safety_check=safety_check,
+                seed=seed,
+                num_images_per_prompt=1,
+            )
+            images.extend(imgs)
+            has_nsfw_concept.extend(nsfw_checks)
+        except Exception as e:
+            logger.error(f"ImageToImagePipeline error: {e}")
+            logger.exception(e)
+            return JSONResponse(
+                status_code=500, content=http_error("ImageToImagePipeline error")
+            )
 
-    seeds = seed
-    if not isinstance(seeds, list):
-        seeds = [seeds]
-
-    output_images = []
-    for img, s in zip(images, seeds):
-        output_images.append({"url": image_to_data_url(img), "seed": s})
+    # TODO: Return None once Go codegen tool supports optional properties
+    # OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
+    output_images = [
+        {"url": image_to_data_url(img), "seed": sd, "nsfw": nsfw or False}
+        for img, sd, nsfw in zip(images, seeds, has_nsfw_concept)
+    ]
 
     return {"images": output_images}

@@ -7,7 +7,7 @@ from app.dependencies import get_pipeline
 from app.routes.util import image_to_data_url, ImageResponse, HTTPError, http_error
 import logging
 import random
-import os
+import os, json
 
 router = APIRouter()
 
@@ -15,15 +15,17 @@ logger = logging.getLogger(__name__)
 
 
 class TextToImageParams(BaseModel):
-    # TODO: Make model_id optional once Go codegen tool supports OAPI 3.1
-    # https://github.com/deepmap/oapi-codegen/issues/373
+    # TODO: Make model_id and other None properties optional once Go codegen tool
+    # supports OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
     model_id: str = ""
     prompt: str
     height: int = None
     width: int = None
     guidance_scale: float = 7.5
     negative_prompt: str = ""
+    safety_check: bool = True
     seed: int = None
+    num_inference_steps: int = 50  # TODO: Make optional.
     num_images_per_prompt: int = 1
 
 
@@ -55,30 +57,32 @@ async def text_to_image(
             ),
         )
 
-    if params.seed is None:
-        init_seed = random.randint(0, 2**32 - 1)
-        if params.num_images_per_prompt > 1:
-            params.seed = [
-                i for i in range(init_seed, init_seed + params.num_images_per_prompt)
-            ]
-        else:
-            params.seed = init_seed
+    seed = params.seed if params.seed is not None else random.randint(0, 2**32 - 1)
+    seeds = [seed + i for i in range(params.num_images_per_prompt)]
 
-    try:
-        images = pipeline(**params.model_dump())
-    except Exception as e:
-        logger.error(f"TextToImagePipeline error: {e}")
-        logger.exception(e)
-        return JSONResponse(
-            status_code=500, content=http_error("TextToImagePipeline error")
-        )
+    # TODO: Process one image at a time to avoid CUDA OEM errors. Can be removed again
+    # once LIV-243 and LIV-379 are resolved.
+    images = []
+    has_nsfw_concept = []
+    params.num_images_per_prompt = 1
+    for seed in seeds:
+        try:
+            params.seed = seed
+            imgs, nsfw_check = pipeline(**params.model_dump())
+            images.extend(imgs)
+            has_nsfw_concept.extend(nsfw_check)
+        except Exception as e:
+            logger.error(f"TextToImagePipeline error: {e}")
+            logger.exception(e)
+            return JSONResponse(
+                status_code=500, content=http_error("TextToImagePipeline error")
+            )
 
-    seeds = params.seed
-    if not isinstance(seeds, list):
-        seeds = [seeds]
-
-    output_images = []
-    for img, sd in zip(images, seeds):
-        output_images.append({"url": image_to_data_url(img), "seed": sd})
+    # TODO: Return None once Go codegen tool supports optional properties
+    # OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
+    output_images = [
+        {"url": image_to_data_url(img), "seed": sd, "nsfw": nsfw or False}
+        for img, sd, nsfw in zip(images, seeds, has_nsfw_concept)
+    ]
 
     return {"images": output_images}

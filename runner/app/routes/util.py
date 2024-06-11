@@ -1,13 +1,17 @@
-import io
-from PIL import Image
 import base64
-from pydantic import BaseModel
+import io
 from typing import List
+
+from PIL import Image
+from pydantic import BaseModel
 
 
 class Media(BaseModel):
     url: str
     seed: int
+    # TODO: Make nsfw property optional once Go codegen tool supports
+    # OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
+    nsfw: bool
 
 class chunk(BaseModel):
     timestamp: tuple

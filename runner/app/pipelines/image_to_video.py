@@ -1,11 +1,11 @@
 from app.pipelines.base import Pipeline
-from app.pipelines.util import get_torch_device, get_model_dir
+from app.pipelines.util import get_torch_device, get_model_dir, SafetyChecker
 
 from diffusers import StableVideoDiffusionPipeline
 from huggingface_hub import file_download
 import torch
 import PIL
-from typing import List
+from typing import List, Tuple, Optional
 import logging
 import os
 import time
@@ -43,13 +43,21 @@ class ImageToVideoPipeline(Pipeline):
         self.ldm = StableVideoDiffusionPipeline.from_pretrained(model_id, **kwargs)
         self.ldm.to(get_torch_device())
 
-        if os.getenv("SFAST", "").strip().lower() == "true":
+        sfast_enabled = os.getenv("SFAST", "").strip().lower() == "true"
+        deepcache_enabled = os.getenv("DEEPCACHE", "").strip().lower() == "true"
+        if sfast_enabled and deepcache_enabled:
+            logger.warning(
+                "Both 'SFAST' and 'DEEPCACHE' are enabled. This is not recommended "
+                "as it may lead to suboptimal performance. Please disable one of them."
+            )
+
+        if sfast_enabled:
             logger.info(
                 "ImageToVideoPipeline will be dynamically compiled with stable-fast "
                 "for %s",
                 model_id,
             )
-            from app.pipelines.sfast import compile_model
+            from app.pipelines.optim.sfast import compile_model
 
             self.ldm = compile_model(self.ldm)
 
@@ -86,12 +94,28 @@ class ImageToVideoPipeline(Pipeline):
                     )
                 logger.info("Total warmup time: %s seconds", total_time)
 
-    def __call__(self, image: PIL.Image, **kwargs) -> List[List[PIL.Image]]:
+        if deepcache_enabled:
+            logger.info(
+                "TextToImagePipeline will be optimized with DeepCache for %s",
+                model_id,
+            )
+            from app.pipelines.optim.deepcache import enable_deepcache
+
+            self.ldm = enable_deepcache(self.ldm)
+
+        safety_checker_device = os.getenv("SAFETY_CHECKER_DEVICE", "cuda").lower()
+        self._safety_checker = SafetyChecker(device=safety_checker_device)
+
+    def __call__(
+        self, image: PIL.Image, **kwargs
+    ) -> Tuple[List[PIL.Image], List[Optional[bool]]]:
+        seed = kwargs.pop("seed", None)
+        safety_check = kwargs.pop("safety_check", True)
+
         if "decode_chunk_size" not in kwargs:
             # Decrease decode_chunk_size to reduce memory usage.
             kwargs["decode_chunk_size"] = 4
 
-        seed = kwargs.pop("seed", None)
         if seed is not None:
             if isinstance(seed, int):
                 kwargs["generator"] = torch.Generator(get_torch_device()).manual_seed(
@@ -102,7 +126,12 @@ class ImageToVideoPipeline(Pipeline):
                     torch.Generator(get_torch_device()).manual_seed(s) for s in seed
                 ]
 
-        return self.ldm(image, **kwargs).frames
+        if safety_check:
+            _, has_nsfw_concept = self._safety_checker.check_nsfw_images([image])
+        else:
+            has_nsfw_concept = [None]
+
+        return self.ldm(image, **kwargs).frames, has_nsfw_concept
 
     def __str__(self) -> str:
         return f"ImageToVideoPipeline model_id={self.model_id}"

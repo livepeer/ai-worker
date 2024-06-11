@@ -194,6 +194,59 @@ func (w *Worker) ImageToVideo(ctx context.Context, req ImageToVideoMultipartRequ
 		return nil, errors.New("image-to-video container returned 500")
 	}
 
+	if resp.JSON200 == nil {
+		slog.Error("image-to-video container returned no content")
+		return nil, errors.New("image-to-video container returned no content")
+	}
+
+	return resp.JSON200, nil
+}
+
+func (w *Worker) Upscale(ctx context.Context, req UpscaleMultipartRequestBody) (*ImageResponse, error) {
+	c, err := w.borrowContainer(ctx, "upscale", *req.ModelId)
+	if err != nil {
+		return nil, err
+	}
+	defer w.returnContainer(c)
+
+	var buf bytes.Buffer
+	mw, err := NewUpscaleMultipartWriter(&buf, req)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.Client.UpscaleWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("upscale container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("upscale container returned 422")
+	}
+
+	if resp.JSON400 != nil {
+		val, err := json.Marshal(resp.JSON400)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("upscale container returned 400", slog.String("err", string(val)))
+		return nil, errors.New("upscale container returned 400")
+	}
+
+	if resp.JSON500 != nil {
+		val, err := json.Marshal(resp.JSON500)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("upscale container returned 500", slog.String("err", string(val)))
+		return nil, errors.New("upscale container returned 500")
+	}
+
 	return resp.JSON200, nil
 }
 
@@ -237,6 +290,22 @@ func (w *Worker) Stop(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// HasCapacity returns true if the worker has capacity for the given pipeline and model ID.
+func (w *Worker) HasCapacity(pipeline, modelID string) bool {
+	managedCapacity := w.manager.HasCapacity(context.Background(), pipeline, modelID)
+	if managedCapacity {
+		return true
+	}
+
+	// Check if we have capacity for external containers.
+	name := dockerContainerName(pipeline, modelID)
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	_, ok := w.externalContainers[name]
+
+	return ok
 }
 
 func (w *Worker) borrowContainer(ctx context.Context, pipeline, modelID string) (*RunnerContainer, error) {
