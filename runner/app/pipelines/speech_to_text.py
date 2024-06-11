@@ -32,13 +32,13 @@ class SpeechToTextPipeline(Pipeline):
             for fname in files
         )
         if torch_device != "cpu" and has_fp16_variant:
-            logger.info("TextToImagePipeline loading fp16 variant for %s", model_id)
+            logger.info("SpeechToTextPipeline loading fp16 variant for %s", model_id)
 
             kwargs["torch_dtype"] = torch.float16
             kwargs["variant"] = "fp16"
 
         if os.environ.get("BFLOAT16"):
-            logger.info("TextToImagePipeline using bfloat16 precision for %s", model_id)
+            logger.info("SpeechToTextPipeline using bfloat16 precision for %s", model_id)
             kwargs["torch_dtype"] = torch.bfloat16
 
         self.model_id = model_id
@@ -80,4 +80,4 @@ class SpeechToTextPipeline(Pipeline):
         return result
 
     def __str__(self) -> str:
-        return f"TextToImagePipeline model_id={self.model_id}"
+        return f"SpeechToTextPipeline model_id={self.model_id}"
