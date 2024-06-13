@@ -82,7 +82,7 @@ async def image_to_video(
             motion_bucket_id=motion_bucket_id,
             noise_aug_strength=noise_aug_strength,
             safety_check=safety_check,
-            seed=seed
+            seed=seed,
         )
     except Exception as e:
         logger.error(f"ImageToVideoPipeline error: {e}")
@@ -95,7 +95,11 @@ async def image_to_video(
     for frames in batch_frames:
         output_frames.append(
             [
-                {"url": image_to_data_url(frame), "seed": seed, "nsfw": has_nsfw_concept[0]}
+                {
+                    "url": image_to_data_url(frame),
+                    "seed": seed,
+                    "nsfw": has_nsfw_concept[0],
+                }
                 for frame in frames
             ]
         )
