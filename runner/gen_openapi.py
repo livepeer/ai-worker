@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import copy
 
 import yaml
 from app.main import app, use_route_names_as_operation_ids
@@ -21,9 +22,11 @@ def translate_to_gateway(openapi):
     entrypoint created by the https://github.com/livepeer/go-livepeer package.
 
     .. note::
-       Differences between 'runner' and 'gateway' entrypoints:
-       - 'health' endpoint is removed.
-       - 'model_id' is enforced in all endpoints.
+        Differences between 'runner' and 'gateway' entrypoints:
+        - 'health' endpoint is removed.
+        - 'model_id' is enforced in all endpoints.
+        - 'VideoResponse' schema is updated to match the Gateway's transcoded mp4
+            response.
 
     Args:
         openapi (dict): The OpenAPI schema to be translated.
@@ -48,6 +51,14 @@ def translate_to_gateway(openapi):
                         schema = openapi["components"]["schemas"][schema_name]
                         if "model_id" in schema["properties"]:
                             schema["required"].append("model_id")
+
+    # Update the 'VideoResponse' schema to match the Gateway's response.
+    # NOTE: This is necessary because the Gateway transcodes the runner's response and
+    # returns an mp4 file.
+    openapi["components"]["schemas"]["VideoResponse"] = copy.deepcopy(
+        openapi["components"]["schemas"]["ImageResponse"]
+    )
+    openapi["components"]["schemas"]["VideoResponse"]["title"] = "VideoResponse"
 
     return openapi
 
