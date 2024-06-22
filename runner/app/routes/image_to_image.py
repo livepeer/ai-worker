@@ -41,6 +41,7 @@ async def image_to_image(
     safety_check: Annotated[bool, Form()] = True,
     seed: Annotated[int, Form()] = None,
     num_images_per_prompt: Annotated[int, Form()] = 1,
+    num_inference_steps: Annoted[int, Form()] = 50,
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
@@ -83,6 +84,7 @@ async def image_to_image(
                 safety_check=safety_check,
                 seed=seed,
                 num_images_per_prompt=1,
+                num_inference_steps = 50,
             )
             images.extend(imgs)
             has_nsfw_concept.extend(nsfw_checks)
