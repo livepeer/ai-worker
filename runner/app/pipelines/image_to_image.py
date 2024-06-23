@@ -184,7 +184,9 @@ class ImageToImagePipeline(Pipeline):
                 kwargs["generator"] = [
                     torch.Generator(get_torch_device()).manual_seed(s) for s in seed
                 ]
-
+        if "num_inference_steps" in kwargs and kwargs["num_inference_steps"] < 1:
+            del kwargs["num_inference_steps"]
+            
         if (
             self.model_id == "stabilityai/sdxl-turbo"
             or self.model_id == "stabilityai/sd-turbo"
@@ -198,8 +200,6 @@ class ImageToImagePipeline(Pipeline):
             if "strength" not in kwargs:
                 kwargs["strength"] = 0.5
 
-            if "num_inference_steps" not in kwargs:
-                kwargs["num_inference_steps"] = 2
         elif ModelName.SDXL_LIGHTNING.value in self.model_id:
             # SDXL-Lightning models should have guidance_scale = 0 and use
             # the correct number of inference steps for the unet checkpoint loaded
