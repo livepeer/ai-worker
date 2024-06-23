@@ -40,6 +40,7 @@ async def image_to_video(
     noise_aug_strength: Annotated[float, Form()] = 0.02,
     seed: Annotated[int, Form()] = None,
     safety_check: Annotated[bool, Form()] = True,
+    num_inference_steps: Annotated[int, Form()] = 50,
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
@@ -82,6 +83,7 @@ async def image_to_video(
             motion_bucket_id=motion_bucket_id,
             noise_aug_strength=noise_aug_strength,
             safety_check=safety_check,
+            num_inference_steps=num_inference_steps,
             seed=seed,
         )
     except Exception as e:
