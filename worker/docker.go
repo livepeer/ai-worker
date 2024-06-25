@@ -105,7 +105,7 @@ func (m *DockerManager) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (m *DockerManager) Borrow(ctx context.Context, pipeline, modelID string) (*RunnerContainer, error) {
+func (m *DockerManager) Borrow(ctx context.Context, pipeline, modelID string, gpus []int) (*RunnerContainer, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -115,7 +115,7 @@ func (m *DockerManager) Borrow(ctx context.Context, pipeline, modelID string) (*
 		// The container does not exist so try to create it
 		var err error
 		// TODO: Optimization flags for dynamically loaded (borrowed) containers are not currently supported due to startup delays.
-		rc, err = m.createContainer(ctx, pipeline, modelID, false, map[string]EnvValue{}, []int{})
+		rc, err = m.createContainer(ctx, pipeline, modelID, false, map[string]EnvValue{}, gpus)
 		if err != nil {
 			return nil, err
 		}
