@@ -73,11 +73,11 @@ func NewDockerManager(containerImageID string, gpus []string, modelDir string) (
 	}, nil
 }
 
-func (m *DockerManager) Warm(ctx context.Context, pipeline string, modelID string, optimizationFlags OptimizationFlags) error {
+func (m *DockerManager) Warm(ctx context.Context, pipeline string, modelID string, optimizationFlags OptimizationFlags, gpus []int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	_, err := m.createContainer(ctx, pipeline, modelID, true, optimizationFlags)
+	_, err := m.createContainer(ctx, pipeline, modelID, true, optimizationFlags, gpus)
 	return err
 }
 
@@ -114,7 +114,7 @@ func (m *DockerManager) Borrow(ctx context.Context, pipeline, modelID string) (*
 		// The container does not exist so try to create it
 		var err error
 		// TODO: Optimization flags for dynamically loaded (borrowed) containers are not currently supported due to startup delays.
-		rc, err = m.createContainer(ctx, pipeline, modelID, false, map[string]EnvValue{})
+		rc, err = m.createContainer(ctx, pipeline, modelID, false, map[string]EnvValue{}, []int{})
 		if err != nil {
 			return nil, err
 		}
@@ -149,7 +149,7 @@ func (m *DockerManager) HasCapacity(ctx context.Context, pipeline, modelID strin
 	return err == nil
 }
 
-func (m *DockerManager) createContainer(ctx context.Context, pipeline string, modelID string, keepWarm bool, optimizationFlags OptimizationFlags) (*RunnerContainer, error) {
+func (m *DockerManager) createContainer(ctx context.Context, pipeline string, modelID string, keepWarm bool, optimizationFlags OptimizationFlags, gpus []int) (*RunnerContainer, error) {
 	containerName := dockerContainerName(pipeline, modelID)
 
 	gpu, err := m.allocGPU(ctx)

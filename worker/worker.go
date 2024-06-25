@@ -250,9 +250,9 @@ func (w *Worker) Upscale(ctx context.Context, req UpscaleMultipartRequestBody) (
 	return resp.JSON200, nil
 }
 
-func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endpoint RunnerEndpoint, optimizationFlags OptimizationFlags) error {
+func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endpoint RunnerEndpoint, optimizationFlags OptimizationFlags, gpus []int) error {
 	if endpoint.URL == "" {
-		return w.manager.Warm(ctx, pipeline, modelID, optimizationFlags)
+		return w.manager.Warm(ctx, pipeline, modelID, optimizationFlags, gpus)
 	}
 
 	w.mu.Lock()
