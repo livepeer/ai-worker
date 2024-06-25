@@ -265,6 +265,10 @@ func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endp
 		Endpoint:         endpoint,
 		containerTimeout: externalContainerTimeout,
 	}
+	if len(gpus) > 0 {
+		//Get the gpu index, validate to the manager gpu list
+		cfg.GPU = strconv.Itoa(gpus[0] % len(w.manager.gpus))
+	}
 	rc, err := NewRunnerContainer(ctx, cfg)
 	if err != nil {
 		return err
