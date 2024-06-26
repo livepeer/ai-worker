@@ -39,6 +39,7 @@ type BodyImageToImageImageToImagePost struct {
 	ModelId            *string            `json:"model_id,omitempty"`
 	NegativePrompt     *string            `json:"negative_prompt,omitempty"`
 	NumImagesPerPrompt *int               `json:"num_images_per_prompt,omitempty"`
+	NumInferenceSteps  *int               `json:"num_inference_steps,omitempty"`
 	Prompt             string             `json:"prompt"`
 	SafetyCheck        *bool              `json:"safety_check,omitempty"`
 	Seed               *int               `json:"seed,omitempty"`
@@ -47,15 +48,16 @@ type BodyImageToImageImageToImagePost struct {
 
 // BodyImageToVideoImageToVideoPost defines model for Body_image_to_video_image_to_video_post.
 type BodyImageToVideoImageToVideoPost struct {
-	Fps              *int               `json:"fps,omitempty"`
-	Height           *int               `json:"height,omitempty"`
-	Image            openapi_types.File `json:"image"`
-	ModelId          *string            `json:"model_id,omitempty"`
-	MotionBucketId   *int               `json:"motion_bucket_id,omitempty"`
-	NoiseAugStrength *float32           `json:"noise_aug_strength,omitempty"`
-	SafetyCheck      *bool              `json:"safety_check,omitempty"`
-	Seed             *int               `json:"seed,omitempty"`
-	Width            *int               `json:"width,omitempty"`
+	Fps               *int               `json:"fps,omitempty"`
+	Height            *int               `json:"height,omitempty"`
+	Image             openapi_types.File `json:"image"`
+	ModelId           *string            `json:"model_id,omitempty"`
+	MotionBucketId    *int               `json:"motion_bucket_id,omitempty"`
+	NoiseAugStrength  *float32           `json:"noise_aug_strength,omitempty"`
+	NumInferenceSteps *int               `json:"num_inference_steps,omitempty"`
+	SafetyCheck       *bool              `json:"safety_check,omitempty"`
+	Seed              *int               `json:"seed,omitempty"`
+	Width             *int               `json:"width,omitempty"`
 }
 
 // BodyUpscaleUpscalePost defines model for Body_upscale_upscale_post.
@@ -1252,28 +1254,28 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+xY3W/bNhD/Vwhuj47teM06+C3JttbY2ga12z0UgcFIZ5mtRHIkldYI/L8PPMoS9VU7",
-	"y0e3Ik+2pPv43fF+dyfd0EhmSgoQ1tDpDTXRGjKGf08vZr9pLbX7r7RUoC0HfJKZxP1YblOgU/rKJHRA",
-	"7Ua5C2M1FwndbgdUw9851xDT6QdUuRyUKqXtUk9efYTI0u2Ansl4s+QZS2BpZfGncamksW1YSc5jJiJY",
-	"mog5Lzc0hhXLU0unz4cnlfMXhRyZo1wJQeTZFWgHAb04AyupM2bplF5xwfSGVkZmKNIKu9BdfgXLcYgF",
-	"zZD9iDIZQ7rkcc0SDfC8cgJkFndBEpAwy69hqbTMlO218bqQIxderstUnvkzMEsFusvgcWAvzwgGaMgF",
-	"6JZVLiwkPrzKzk63H4JhK7CbZbSG6FPNs9U5VM7nKEbOUaw0cyVlCkygHYA49Dh3113gjNUgEruuORsP",
-	"fwl87SRaJ9eggdpF5SssYMShVb+XMNc8Btm87CbMSplaTD9XcH5XpjMXa+DJun7gJ88DvZf+eZfqXUh1",
-	"p/LPpOVSLK/y6BPYppHjyfPQipMkZyhZsxbEISQ3sGR5suwpjPEkoIATJqd5Qvpr5BuU9GceN2AfjyfP",
-	"Kk9/4fO2ZqOc91Rxfyn2VXGusF+Wv911+80q6T/cpm7XaDrz3HEoLxeLi54lIAbLeOr+/ahhRaf0h1G1",
-	"SoyKPWJUDvomwEI9AFb56gHynqU8Zo6heyFxC5nZh61pb1th+dVbKoEwrdkGYwjRNg104QaW2vX5rgjq",
-	"eI1lNq+3YPrmDxrOFRToWq6qhls56PCPPHgLRklhoIdJ5uCMvYKYszBPfrp35anVJkx41nVYHbi9pxZe",
-	"YVafQzK8dtd36oS5TkO5dzrdu8vmKGO8RUQUROaBd0S0gC92ITHwC6aZT/ZDLbDVmD5gMH/nuyWaFSvQ",
-	"gKm10Nh6TsYNqztZMkfZ/92+Wg73W07zIqigmNs121HYe9tyKqNah2Fi82ZFpx9uWrm6aUG8DJrNnzJC",
-	"N612M2i9kYIxPfPf36hEETNZuLv7eO/i8K4KySBTB4yC92796W/FK82yRiu+ZU9u5KRc5b3hPT26cB+G",
-	"VMPbCggrMso1t5u5g+Kxu7F4BkyDLr8mYBn7W6WRtbWKbp0NLlbSs8JEmis83yk9FYQplXJ/4MRKonNB",
-	"TmdEcQUpFz6eXV3wa1AA2j1/mwuBjq5BG29rPDwejl1CpALBFKdT+hPeGlDF7Bphj9Y4RrEJA/LaHQ06",
-	"n8XllKUuZT4fqDUZj91PJIUFgVoB6NFH49zvPqnsO8ZwjmNi6gmZ51EExqzylJRHgkeQZ5nbfEuI7uYI",
-	"u+iRlUflprxbpOthIbMLglNfD2Cs2xAbcWV5arli2o7cyn0UM8sOD+3QV9ttvSZde9w+YMbrO8ihOR/Q",
-	"Z/d56uXO2+H/jMXkrT8S9DuZ3Kvf1vrbRlCJkHJFPnms8GfCghYsJXPQ16BJ9R6x6zs4Q8KO8+Fyexly",
-	"wn9dW0i/KTS4ga+je7mBXfCxuNH/wvzI3Kj3/idufM/c8BWO3LDwxR4wNoK18KvM+PfBtxfPp+HwRID7",
-	"JYCrscZsKD6H9Vf+u0LgYedB59e5JwI8EeB+CbAr5q3XcmYMKtU9la9X56nMY3IusywX3G7IC2bhM9vQ",
-	"4iMavtSZ6WgUa2DZUeKfDtNCfRg5dfdG/08AAAD//8a69BN0HgAA",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
