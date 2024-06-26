@@ -21,6 +21,7 @@ SFAST_WARMUP_ITERATIONS = 2  # Model warm-up iterations when SFAST is enabled.
 
 class ImageToVideoPipeline(Pipeline):
     def __init__(self, model_id: str):
+        self.model_id = model_id
         kwargs = {"cache_dir": get_model_dir()}
 
         torch_device = get_torch_device()
@@ -39,7 +40,6 @@ class ImageToVideoPipeline(Pipeline):
             kwargs["torch_dtype"] = torch.float16
             kwargs["variant"] = "fp16"
 
-        self.model_id = model_id
         self.ldm = StableVideoDiffusionPipeline.from_pretrained(model_id, **kwargs)
         self.ldm.to(get_torch_device())
 
@@ -125,7 +125,7 @@ class ImageToVideoPipeline(Pipeline):
                 kwargs["generator"] = [
                     torch.Generator(get_torch_device()).manual_seed(s) for s in seed
                 ]
-                
+
         if "num_inference_steps" in kwargs and kwargs["num_inference_steps"] < 1:
             del kwargs["num_inference_steps"]
 

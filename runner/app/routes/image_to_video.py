@@ -41,6 +41,7 @@ async def image_to_video(
     seed: Annotated[int, Form()] = None,
     num_inference_steps: Annotated[int, Form()] = 50,
     safety_check: Annotated[bool, Form()] = True,
+    num_inference_steps: Annotated[int, Form()] = 50,
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
@@ -84,6 +85,7 @@ async def image_to_video(
             noise_aug_strength=noise_aug_strength,
             num_inference_steps=num_inference_steps,
             safety_check=safety_check,
+            num_inference_steps=num_inference_steps,
             seed=seed,
         )
     except Exception as e:

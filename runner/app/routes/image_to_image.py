@@ -85,6 +85,7 @@ async def image_to_image(
                 safety_check=safety_check,
                 seed=seed,
                 num_images_per_prompt=1,
+                num_inference_steps = num_inference_steps,
             )
             images.extend(imgs)
             has_nsfw_concept.extend(nsfw_checks)

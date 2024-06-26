@@ -343,6 +343,11 @@
                         "type": "integer",
                         "title": "Seed"
                     },
+                    "num_inference_steps": {
+                        "type": "integer",
+                        "title": "Num Inference Steps",
+                        "default": 50
+                    },
                     "num_images_per_prompt": {
                         "type": "integer",
                         "title": "Num Images Per Prompt",
