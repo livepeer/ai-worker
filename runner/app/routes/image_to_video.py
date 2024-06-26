@@ -41,7 +41,6 @@ async def image_to_video(
     seed: Annotated[int, Form()] = None,
     num_inference_steps: Annotated[int, Form()] = 50,
     safety_check: Annotated[bool, Form()] = True,
-    num_inference_steps: Annotated[int, Form()] = 50,
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
