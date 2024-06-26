@@ -85,7 +85,6 @@ async def image_to_video(
             motion_bucket_id=motion_bucket_id,
             noise_aug_strength=noise_aug_strength,
             safety_check=safety_check,
-            num_inference_steps=num_inference_steps,
             seed=seed,
         )
     except Exception as e:
