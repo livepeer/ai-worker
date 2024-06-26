@@ -1,0 +1,105 @@
+diff --git a/runner/app/pipelines/image_to_image.py b/runner/app/pipelines/image_to_image.py
+index fda2dfb..8256b64 100644
+--- a/runner/app/pipelines/image_to_image.py
++++ b/runner/app/pipelines/image_to_image.py
+@@ -48,6 +48,10 @@ class ImageToImagePipeline(Pipeline):
+         self.model_id = model_id
+         kwargs = {"cache_dir": get_model_dir()}
+ 
++        if os.getenv("MOCK_PIPELINE", "").strip().lower() == "true":
++            logger.info("Mocking ImageToImagePipeline for %s", model_id)
++            return
++
+         torch_device = get_torch_device()
+         folder_name = file_download.repo_folder_name(
+             repo_id=model_id, repo_type="model"
+@@ -171,6 +175,9 @@ class ImageToImagePipeline(Pipeline):
+     def __call__(
+         self, prompt: str, image: PIL.Image, **kwargs
+     ) -> Tuple[List[PIL.Image], List[Optional[bool]]]:
++        if os.getenv("MOCK_PIPELINE", "").strip().lower() == "true":
++            return [PIL.Image.new("RGB", (256, 256), (0, 0, 255))], [True]
++
+         seed = kwargs.pop("seed", None)
+         safety_check = kwargs.pop("safety_check", True)
+ 
+diff --git a/runner/app/pipelines/image_to_video.py b/runner/app/pipelines/image_to_video.py
+index c3a528e..81dab05 100644
+--- a/runner/app/pipelines/image_to_video.py
++++ b/runner/app/pipelines/image_to_video.py
+@@ -24,6 +24,10 @@ class ImageToVideoPipeline(Pipeline):
+         self.model_id = model_id
+         kwargs = {"cache_dir": get_model_dir()}
+ 
++        if os.getenv("MOCK_PIPELINE", "").strip().lower() == "true":
++            logger.info("Mocking ImageToVideoPipeline for %s", model_id)
++            return
++
+         torch_device = get_torch_device()
+         folder_name = file_download.repo_folder_name(
+             repo_id=model_id, repo_type="model"
+@@ -109,6 +113,14 @@ class ImageToVideoPipeline(Pipeline):
+     def __call__(
+         self, image: PIL.Image, **kwargs
+     ) -> Tuple[List[PIL.Image], List[Optional[bool]]]:
++        if os.getenv("MOCK_PIPELINE", "").strip().lower() == "true":
++            return [
++                [
++                    PIL.Image.new("RGB", (256, 256), (0, 0, 255)),
++                    PIL.Image.new("RGB", (256, 256), (0, 0, 255)),
++                ]
++            ], [True]
++
+         seed = kwargs.pop("seed", None)
+         safety_check = kwargs.pop("safety_check", True)
+ 
+diff --git a/runner/app/pipelines/text_to_image.py b/runner/app/pipelines/text_to_image.py
+index 278c04e..8a0c4b6 100644
+--- a/runner/app/pipelines/text_to_image.py
++++ b/runner/app/pipelines/text_to_image.py
+@@ -32,6 +32,10 @@ class TextToImagePipeline(Pipeline):
+         self.model_id = model_id
+         kwargs = {"cache_dir": get_model_dir()}
+ 
++        if os.getenv("MOCK_PIPELINE", "").strip().lower() == "true":
++            logger.info("Mocking TextToImagePipeline for %s", model_id)
++            return
++
+         torch_device = get_torch_device()
+         folder_name = file_download.repo_folder_name(
+             repo_id=model_id, repo_type="model"
+@@ -167,6 +171,9 @@ class TextToImagePipeline(Pipeline):
+     def __call__(
+         self, prompt: str, **kwargs
+     ) -> Tuple[List[PIL.Image], List[Optional[bool]]]:
++        if os.getenv("MOCK_PIPELINE", "").strip().lower() == "true":
++            return [PIL.Image.new("RGB", (256, 256), (0, 0, 255))], [True]
++
+         seed = kwargs.pop("seed", None)
+         safety_check = kwargs.pop("safety_check", True)
+ 
+diff --git a/runner/app/pipelines/upscale.py b/runner/app/pipelines/upscale.py
+index bd2e4f2..830d27c 100644
+--- a/runner/app/pipelines/upscale.py
++++ b/runner/app/pipelines/upscale.py
+@@ -27,6 +27,10 @@ class UpscalePipeline(Pipeline):
+         self.model_id = model_id
+         kwargs = {"cache_dir": get_model_dir()}
+ 
++        if os.getenv("MOCK_PIPELINE", "").strip().lower() == "true":
++            logger.info("Mocking UpscalePipeline for %s", model_id)
++            return
++
+         torch_device = get_torch_device()
+         folder_name = file_download.repo_folder_name(
+             repo_id=model_id, repo_type="model"
+@@ -97,6 +101,9 @@ class UpscalePipeline(Pipeline):
+     def __call__(
+             self, prompt: str, image: PIL.Image, **kwargs
+     ) -> Tuple[List[PIL.Image], List[Optional[bool]]]:
++        if os.getenv("MOCK_PIPELINE", "").strip().lower() == "true":
++            return [PIL.Image.new("RGB", (256, 256), (0, 0, 255))], [True]
++
+         seed = kwargs.pop("seed", None)
+         safety_check = kwargs.pop("safety_check", True)
+ 
