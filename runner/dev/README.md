@@ -8,6 +8,13 @@ This guide aims to assist developers working on the [AI runner](https://github.c
 
 Leverage the [VSCode DevContainer](https://code.visualstudio.com/docs/remote/containers) for an efficient debugging experience with the [AI runner](https://github.com/livepeer/ai-worker/tree/main/runner). This configuration automatically prepares a development environment equipped with all necessary tools and dependencies.
 
+**Prerequisites:**
+
+- [VSCode](https://code.visualstudio.com/download)
+- [Remote - Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+- [Docker](https://docs.docker.com/get-docker/)
+- [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+
 **Quickstart with DevContainer:**
 
 1. **Install** [VSCode](https://code.visualstudio.com/download) and the [Remote - Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers).
