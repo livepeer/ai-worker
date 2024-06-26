@@ -23,6 +23,7 @@ SDXL_LIGHTNING_MODEL_ID = "ByteDance/SDXL-Lightning"
 
 class TextToImagePipeline(Pipeline):
     def __init__(self, model_id: str):
+        self.model_id = model_id
         kwargs = {"cache_dir": get_model_dir()}
 
         torch_device = get_torch_device()
@@ -51,7 +52,6 @@ class TextToImagePipeline(Pipeline):
             logger.info("TextToImagePipeline using bfloat16 precision for %s", model_id)
             kwargs["torch_dtype"] = torch.bfloat16
 
-        self.model_id = model_id
 
         # Special case SDXL-Lightning because the unet for SDXL needs to be swapped
         if SDXL_LIGHTNING_MODEL_ID in model_id:
