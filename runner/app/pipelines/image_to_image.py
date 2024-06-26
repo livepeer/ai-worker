@@ -45,6 +45,7 @@ class ModelName(Enum):
 
 class ImageToImagePipeline(Pipeline):
     def __init__(self, model_id: str):
+        self.model_id = model_id
         kwargs = {"cache_dir": get_model_dir()}
 
         torch_device = get_torch_device()
@@ -68,8 +69,6 @@ class ImageToImagePipeline(Pipeline):
 
             kwargs["torch_dtype"] = torch.float16
             kwargs["variant"] = "fp16"
-
-        self.model_id = model_id
 
         # Special case SDXL-Lightning because the unet for SDXL needs to be swapped
         if ModelName.SDXL_LIGHTNING.value in model_id:
