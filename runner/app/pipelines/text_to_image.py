@@ -14,7 +14,13 @@ from huggingface_hub import file_download, hf_hub_download
 from safetensors.torch import load_file
 
 from app.pipelines.base import Pipeline
-from app.pipelines.util import get_model_dir, get_torch_device, SafetyChecker, is_lightning_model, is_turbo_model
+from app.pipelines.util import (
+    get_model_dir,
+    get_torch_device,
+    SafetyChecker,
+    is_lightning_model,
+    is_turbo_model,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +57,6 @@ class TextToImagePipeline(Pipeline):
         if os.environ.get("BFLOAT16"):
             logger.info("TextToImagePipeline using bfloat16 precision for %s", model_id)
             kwargs["torch_dtype"] = torch.bfloat16
-
 
         # Special case SDXL-Lightning because the unet for SDXL needs to be swapped
         if SDXL_LIGHTNING_MODEL_ID in model_id:
