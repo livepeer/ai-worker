@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -73,11 +74,11 @@ func NewDockerManager(containerImageID string, gpus []string, modelDir string) (
 	}, nil
 }
 
-func (m *DockerManager) Warm(ctx context.Context, pipeline string, modelID string, optimizationFlags OptimizationFlags) error {
+func (m *DockerManager) Warm(ctx context.Context, pipeline string, modelID string, optimizationFlags OptimizationFlags, gpus []int) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	_, err := m.createContainer(ctx, pipeline, modelID, true, optimizationFlags)
+	_, err := m.createContainer(ctx, pipeline, modelID, true, optimizationFlags, gpus)
 	return err
 }
 
@@ -104,7 +105,7 @@ func (m *DockerManager) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (m *DockerManager) Borrow(ctx context.Context, pipeline, modelID string) (*RunnerContainer, error) {
+func (m *DockerManager) Borrow(ctx context.Context, pipeline, modelID string, gpus []int) (*RunnerContainer, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -114,7 +115,7 @@ func (m *DockerManager) Borrow(ctx context.Context, pipeline, modelID string) (*
 		// The container does not exist so try to create it
 		var err error
 		// TODO: Optimization flags for dynamically loaded (borrowed) containers are not currently supported due to startup delays.
-		rc, err = m.createContainer(ctx, pipeline, modelID, false, map[string]EnvValue{})
+		rc, err = m.createContainer(ctx, pipeline, modelID, false, map[string]EnvValue{}, gpus)
 		if err != nil {
 			return nil, err
 		}
@@ -145,14 +146,14 @@ func (m *DockerManager) HasCapacity(ctx context.Context, pipeline, modelID strin
 	}
 
 	// Check for available GPU to allocate for a new container for the requested model.
-	_, err := m.allocGPU(ctx)
+	_, err := m.allocGPU(ctx, []int{})
 	return err == nil
 }
 
-func (m *DockerManager) createContainer(ctx context.Context, pipeline string, modelID string, keepWarm bool, optimizationFlags OptimizationFlags) (*RunnerContainer, error) {
+func (m *DockerManager) createContainer(ctx context.Context, pipeline string, modelID string, keepWarm bool, optimizationFlags OptimizationFlags, gpus []int) (*RunnerContainer, error) {
 	containerName := dockerContainerName(pipeline, modelID)
 
-	gpu, err := m.allocGPU(ctx)
+	gpu, err := m.allocGPU(ctx, gpus)
 	if err != nil {
 		return nil, err
 	}
@@ -260,13 +261,11 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	return rc, nil
 }
 
-func (m *DockerManager) allocGPU(ctx context.Context) (string, error) {
+func (m *DockerManager) allocGPU(ctx context.Context, preferredGPUs []int) (string, error) {
 	// Is there a GPU available?
-	for _, gpu := range m.gpus {
-		_, ok := m.gpuContainers[gpu]
-		if !ok {
-			return gpu, nil
-		}
+	gpu, err := m.FindAvailableGPU(ctx, preferredGPUs)
+	if err == nil {
+		return gpu, nil
 	}
 
 	// Is there a GPU with an idle container?
@@ -289,6 +288,27 @@ func (m *DockerManager) allocGPU(ctx context.Context) (string, error) {
 	}
 
 	return "", errors.New("insufficient capacity")
+}
+
+func (m *DockerManager) FindAvailableGPU(ctx context.Context, preferredGPUs []int) (string, error) {
+	// If the preferred GPU is available, return it.
+	for _, gpu := range preferredGPUs {
+		gpuID := strconv.Itoa(gpu)
+		_, ok := m.gpuContainers[gpuID]
+		if !ok {
+			return gpuID, nil
+		}
+	}
+
+	// Is there a GPU available?
+	for _, gpu := range m.gpus {
+		_, ok := m.gpuContainers[gpu]
+		if !ok {
+			return gpu, nil
+		}
+	}
+
+	return "", errors.New("no available gpu found")
 }
 
 func removeExistingContainers(ctx context.Context, client *client.Client) error {
