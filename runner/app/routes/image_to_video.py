@@ -84,7 +84,6 @@ async def image_to_video(
             noise_aug_strength=noise_aug_strength,
             num_inference_steps=num_inference_steps,
             safety_check=safety_check,
-            num_inference_steps=num_inference_steps,
             seed=seed,
         )
     except Exception as e:
