@@ -1,6 +1,6 @@
 # Development Guide
 
-This guide provides instructions for setting up the development environment and debugging the [AI worker](https://github.com/livepeer/ai-worker) repository.
+This document offers a comprehensive guide for configuring the development environment and debugging the [worker](/worker) component within the [AI worker](https://github.com/livepeer/ai-worker) repository. For an in-depth exploration of developing the [runner](/runner), please consult the [AI runner development guide](/runner/dev/README.md).
 
 ## Debugging
 
