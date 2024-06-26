@@ -183,9 +183,10 @@ class ImageToImagePipeline(Pipeline):
                 kwargs["generator"] = [
                     torch.Generator(get_torch_device()).manual_seed(s) for s in seed
                 ]
+
         if "num_inference_steps" in kwargs and kwargs["num_inference_steps"] < 1:
             del kwargs["num_inference_steps"]
-            
+
         if (
             self.model_id == "stabilityai/sdxl-turbo"
             or self.model_id == "stabilityai/sd-turbo"
