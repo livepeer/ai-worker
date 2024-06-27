@@ -1,3 +1,4 @@
+from fastapi import File
 from app.pipelines.base import Pipeline
 from app.pipelines.util import get_torch_device, get_model_dir
 
@@ -64,7 +65,7 @@ class SpeechToTextPipeline(Pipeline):
             **kwargs,
         )
 
-    def __call__(self, audio: str, **kwargs) -> List[PIL.Image]:
+    def __call__(self, audio: str, **kwargs) -> List[File]:
         seed = kwargs.pop("seed", None)
         if seed is not None:
             if isinstance(seed, int):

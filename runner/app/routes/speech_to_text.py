@@ -4,7 +4,8 @@ from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.pipelines.base import Pipeline
 from app.dependencies import get_pipeline
-from app.routes.util import image_to_data_url, TextResponse, HTTPError, http_error
+from app.routes.util import TextResponse, HTTPError, http_error
+from app.pipelines.audio import AudioConverter
 import logging
 import random
 import os
@@ -49,8 +50,16 @@ async def speech_to_text(
     if seed is None:
         seed = random.randint(0, 2**32 - 1)
 
-    result = pipeline(
+    # Check the extension and convert the file if necessary
+    if audio.filename.endswith(".m4a"):
+        logger.info("Converting m4a file to mp3")
+        conv = AudioConverter()
+        converted_bytes = conv.m4a_to_mp3(audio)
+        audio.file.seek(0)
+        audio.file.write(converted_bytes)
+        audio.file.seek(0)
+        logger.info("Converted m4a file to mp3")
+
+    return pipeline(
         audio=audio.file.read(),
     )
-
-    return result
