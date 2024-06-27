@@ -265,16 +265,18 @@ func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endp
 		Endpoint:         endpoint,
 		containerTimeout: externalContainerTimeout,
 	}
-	rc, err := NewRunnerContainer(ctx, cfg)
-	if err != nil {
-		return err
-	}
 
 	name := dockerContainerName(pipeline, modelID)
 	if endpoint.URL != "" {
 		name = cfg.Endpoint.URL
 		slog.Info("name of container: ", slog.String("url", cfg.Endpoint.URL))
 	}
+
+	rc, err := NewRunnerContainer(ctx, cfg, name)
+	if err != nil {
+		return err
+	}
+
 	slog.Info("Starting external container", slog.String("name", name), slog.String("pipeline", pipeline), slog.String("modelID", modelID))
 	w.externalContainers[name] = rc
 
@@ -304,12 +306,18 @@ func (w *Worker) HasCapacity(pipeline, modelID string) bool {
 	}
 
 	// Check if we have capacity for external containers.
-	name := dockerContainerName(pipeline, modelID)
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	_, ok := w.externalContainers[name]
+	for _, rc := range w.externalContainers {
+		if rc.Pipeline == pipeline && rc.ModelID == modelID {
+			if rc.Capacity > 0 {
+				return true
+			}
+		}
+	}
 
-	return ok
+	//no managed or external containers have capacity
+	return false
 }
 
 func (w *Worker) borrowContainer(ctx context.Context, pipeline, modelID string) (*RunnerContainer, error) {

@@ -17,6 +17,7 @@ const (
 
 type RunnerContainer struct {
 	RunnerContainerConfig
+	Name     string
 	Capacity int
 	Client   *ClientWithResponses
 }
@@ -39,7 +40,7 @@ type RunnerContainerConfig struct {
 	containerTimeout time.Duration
 }
 
-func NewRunnerContainer(ctx context.Context, cfg RunnerContainerConfig) (*RunnerContainer, error) {
+func NewRunnerContainer(ctx context.Context, cfg RunnerContainerConfig, name string) (*RunnerContainer, error) {
 	// Ensure that timeout is set to a non-zero value.
 	timeout := cfg.containerTimeout
 	if timeout == 0 {
@@ -70,6 +71,7 @@ func NewRunnerContainer(ctx context.Context, cfg RunnerContainerConfig) (*Runner
 
 	return &RunnerContainer{
 		RunnerContainerConfig: cfg,
+		Name:                  name,
 		Capacity:              1,
 		Client:                client,
 	}, nil
