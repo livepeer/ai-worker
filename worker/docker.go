@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -164,6 +165,12 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 		"PIPELINE=" + pipeline,
 		"MODEL_ID=" + modelID,
 	}
+	_, ok := os.LookupEnv("MOCK_PIPELINE")
+	if ok {
+		envVars = append(envVars, "MOCK_PIPELINE=true")
+		slog.Info("MOCK_PIPELINE set, passing to runner container")
+	}
+
 	for key, value := range optimizationFlags {
 		envVars = append(envVars, key+"="+value.String())
 	}
