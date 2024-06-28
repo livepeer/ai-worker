@@ -40,22 +40,24 @@ func (sb EnvValue) String() string {
 type OptimizationFlags map[string]EnvValue
 
 type Worker struct {
-	manager *DockerManager
+	manager              *DockerManager
+	useManagedContainers bool
 
 	externalContainers map[string]*RunnerContainer
 	mu                 *sync.Mutex
 }
 
-func NewWorker(containerImageID string, gpus []string, modelDir string) (*Worker, error) {
+func NewWorker(containerImageID string, gpus []string, modelDir string, useManagedContainers bool) (*Worker, error) {
 	manager, err := NewDockerManager(containerImageID, gpus, modelDir)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Worker{
-		manager:            manager,
-		externalContainers: make(map[string]*RunnerContainer),
-		mu:                 &sync.Mutex{},
+		manager:              manager,
+		useManagedContainers: useManagedContainers,
+		externalContainers:   make(map[string]*RunnerContainer),
+		mu:                   &sync.Mutex{},
 	}, nil
 }
 
@@ -265,13 +267,19 @@ func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endp
 		Endpoint:         endpoint,
 		containerTimeout: externalContainerTimeout,
 	}
-	rc, err := NewRunnerContainer(ctx, cfg)
+
+	name := dockerContainerName(pipeline, modelID)
+	if endpoint.URL != "" {
+		name = cfg.Endpoint.URL
+		slog.Info("name of container: ", slog.String("url", cfg.Endpoint.URL))
+	}
+
+	rc, err := NewRunnerContainer(ctx, cfg, name)
 	if err != nil {
 		return err
 	}
 
-	name := dockerContainerName(pipeline, modelID)
-	slog.Info("Starting external container", slog.String("name", name), slog.String("modelID", modelID))
+	slog.Info("Starting external container", slog.String("name", name), slog.String("pipeline", pipeline), slog.String("modelID", modelID))
 	w.externalContainers[name] = rc
 
 	return nil
@@ -300,36 +308,58 @@ func (w *Worker) HasCapacity(pipeline, modelID string) bool {
 	}
 
 	// Check if we have capacity for external containers.
-	name := dockerContainerName(pipeline, modelID)
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	_, ok := w.externalContainers[name]
+	for _, rc := range w.externalContainers {
+		if rc.Pipeline == pipeline && rc.ModelID == modelID {
+			if rc.Capacity > 0 {
+				return true
+			}
+		}
+	}
 
-	return ok
+	//no managed or external containers have capacity
+	return false
 }
 
 func (w *Worker) borrowContainer(ctx context.Context, pipeline, modelID string) (*RunnerContainer, error) {
 	w.mu.Lock()
 
-	name := dockerContainerName(pipeline, modelID)
-	rc, ok := w.externalContainers[name]
-	if ok {
-		w.mu.Unlock()
-		// We allow concurrent in-flight requests for external containers and assume that it knows
-		// how to handle them
-		return rc, nil
+	for key, rc := range w.externalContainers {
+		if rc.Pipeline == pipeline && rc.ModelID == modelID {
+			// The current implementation of ai-runner containers does not have a queue so only do one request at a time to each container
+			if rc.Capacity > 0 {
+				slog.Info("selecting container to run request", slog.Int("type", int(rc.Type)), slog.Int("capacity", rc.Capacity), slog.String("url", rc.Endpoint.URL))
+				w.externalContainers[key].Capacity -= 1
+				w.mu.Unlock()
+				return rc, nil
+			}
+		}
 	}
 
 	w.mu.Unlock()
+
+	if !w.useManagedContainers {
+		return nil, errors.New("no runners available")
+	}
 
 	return w.manager.Borrow(ctx, pipeline, modelID)
 }
 
 func (w *Worker) returnContainer(rc *RunnerContainer) {
+	slog.Info("returning container to be available", slog.Int("type", int(rc.Type)), slog.Int("capacity", rc.Capacity), slog.String("url", rc.Endpoint.URL))
+
 	switch rc.Type {
 	case Managed:
 		w.manager.Return(rc)
 	case External:
-		// Noop because we allow concurrent in-flight requests for external containers
+		w.mu.Lock()
+		defer w.mu.Unlock()
+		//free external container for next request
+		for key, _ := range w.externalContainers {
+			if w.externalContainers[key].Endpoint.URL == rc.Endpoint.URL {
+				w.externalContainers[key].Capacity += 1
+			}
+		}
 	}
 }

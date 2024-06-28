@@ -17,8 +17,9 @@ const (
 
 type RunnerContainer struct {
 	RunnerContainerConfig
-
-	Client *ClientWithResponses
+	Name     string
+	Capacity int
+	Client   *ClientWithResponses
 }
 
 type RunnerEndpoint struct {
@@ -39,7 +40,7 @@ type RunnerContainerConfig struct {
 	containerTimeout time.Duration
 }
 
-func NewRunnerContainer(ctx context.Context, cfg RunnerContainerConfig) (*RunnerContainer, error) {
+func NewRunnerContainer(ctx context.Context, cfg RunnerContainerConfig, name string) (*RunnerContainer, error) {
 	// Ensure that timeout is set to a non-zero value.
 	timeout := cfg.containerTimeout
 	if timeout == 0 {
@@ -61,7 +62,7 @@ func NewRunnerContainer(ctx context.Context, cfg RunnerContainerConfig) (*Runner
 		return nil, err
 	}
 
-	cctx, cancel := context.WithTimeout(ctx, cfg.containerTimeout)
+	cctx, cancel := context.WithTimeout(context.Background(), cfg.containerTimeout)
 	if err := runnerWaitUntilReady(cctx, client, pollingInterval); err != nil {
 		cancel()
 		return nil, err
@@ -70,6 +71,8 @@ func NewRunnerContainer(ctx context.Context, cfg RunnerContainerConfig) (*Runner
 
 	return &RunnerContainer{
 		RunnerContainerConfig: cfg,
+		Name:                  name,
+		Capacity:              1,
 		Client:                client,
 	}, nil
 }
