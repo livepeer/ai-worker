@@ -8,6 +8,13 @@ This guide aims to assist developers working on the [AI runner](https://github.c
 
 Leverage the [VSCode DevContainer](https://code.visualstudio.com/docs/remote/containers) for an efficient debugging experience with the [AI runner](https://github.com/livepeer/ai-worker/tree/main/runner). This configuration automatically prepares a development environment equipped with all necessary tools and dependencies.
 
+**Prerequisites:**
+
+- [VSCode](https://code.visualstudio.com/download)
+- [Remote - Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+- [Docker](https://docs.docker.com/get-docker/)
+- [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+
 **Quickstart with DevContainer:**
 
 1. **Install** [VSCode](https://code.visualstudio.com/download) and the [Remote - Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers).
@@ -77,4 +84,25 @@ To debug the AI runner when it operates within a container orchestrated by exter
 
    ```bash
    docker build -t livepeer/ai-runner:latest .
+   ```
+
+### Mocking the Pipelines
+
+Mocking the pipelines is a practical approach for accelerating development and testing phases. This method simulates the pipeline execution, eliminating the need to run the actual model on a dedicated GPU. Follow the steps below to implement mocking:
+
+1. **Navigate to the Correct Directory**:
+   Ensure you are within the `runner` directory to apply changes effectively.
+
+2. **Applying the Mock Patch**:
+   Use the command below to apply the necessary code modifications for mocking the pipelines. This step introduces a mock environment for your development process.
+
+   ```bash
+   cd .. && git apply ./runner/dev/patches/mock.patch && cd runner
+   ```
+
+3. **Starting the AI Runner with Mocking**: Launch the AI runner with the environment variable `MOCK_PIPELINE` set to `True`. This enables the mock mode for pipeline execution.
+4. **Reverting Mock Changes**: Once testing is complete and you wish to return to the actual pipeline execution, revert the applied mock changes using the following command:
+
+   ```bash
+   cd .. && git apply -R ./runner/dev/patches/mock.patch && cd runner
    ```

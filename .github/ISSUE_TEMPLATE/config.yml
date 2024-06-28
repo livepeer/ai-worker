@@ -1,5 +1,14 @@
 blank_issues_enabled: true
 contact_links:
+  - name: AI Model Request
+    url: https://livepeer-ai-spe.productlane.com/roadmap
+    about: "Have a specific AI model you want to see supported? Check our roadmap and suggest it if it's not there!"
+  - name: AI Pipeline Request
+    url: https://livepeer-ai-spe.productlane.com/roadmap
+    about: "Have a specific AI pipeline you want to see supported? Check our roadmap and suggest it if it's not there!"
+  - name: Feature Request
+    url: https://livepeer-ai-spe.productlane.com/roadmap
+    about: "Got a new feature idea? Check our roadmap and suggest it if it's not there!"
   - name: Question
     url: https://discord.gg/livepeer
     about: "Have a question? Join us in the 'ai-video' channel on the Livepeer Discord server. We're here to help!"

@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 class UpscalePipeline(Pipeline):
     def __init__(self, model_id: str):
+        self.model_id = model_id
         kwargs = {"cache_dir": get_model_dir()}
 
         torch_device = get_torch_device()
@@ -42,7 +43,6 @@ class UpscalePipeline(Pipeline):
             kwargs["torch_dtype"] = torch.float16
             kwargs["variant"] = "fp16"
 
-        self.model_id = model_id
         self.ldm = StableDiffusionUpscalePipeline.from_pretrained(
                 model_id, **kwargs
             ).to(torch_device)
