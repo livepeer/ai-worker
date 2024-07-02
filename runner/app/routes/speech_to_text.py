@@ -50,16 +50,23 @@ async def speech_to_text(
     if seed is None:
         seed = random.randint(0, 2**32 - 1)
 
-    # Check the extension and convert the file if necessary
-    if audio.filename.endswith(".m4a"):
-        logger.info("Converting m4a file to mp3")
-        conv = AudioConverter()
-        converted_bytes = conv.m4a_to_mp3(audio)
-        audio.file.seek(0)
-        audio.file.write(converted_bytes)
-        audio.file.seek(0)
-        logger.info("Converted m4a file to mp3")
 
-    return pipeline(
-        audio=audio.file.read(),
-    )
+    try:
+        # Check the extension and convert the file if necessary
+        if audio.filename.endswith(".m4a"):
+            logger.info("Converting m4a file to mp3")
+            conv = AudioConverter()
+            converted_bytes = conv.m4a_to_mp3(audio)
+            audio.file.seek(0)
+            audio.file.write(converted_bytes)
+            audio.file.seek(0)
+            logger.info("Converted m4a file to mp3")
+
+        return pipeline(
+            audio=audio.file.read(),
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=400,
+            content=http_error(f"Error processing audio file: {str(e)}"),
+        )
