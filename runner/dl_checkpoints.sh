@@ -24,12 +24,14 @@ function download_alpha_models() {
     printf "\nDownloading unrestricted models...\n"
 
     # Download text-to-image and image-to-image models.
-    huggingface-cli download SG161222/RealVisXL_V4.0_Lightning --include "*.fp16.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
     huggingface-cli download ByteDance/SDXL-Lightning --include "*unet.safetensors" --cache-dir models
     huggingface-cli download timbrooks/instruct-pix2pix --include "*.fp16.safetensors" "*.json" "*.txt" --cache-dir models
 
     # Download upscale models
     huggingface-cli download stabilityai/stable-diffusion-x4-upscaler --include "*.fp16.safetensors" --cache-dir models
+
+    # Download speech-to-text models.
+    huggingface-cli download openai/whisper-large-v3 --include "*.safetensors" "*.json" --cache-dir models
 
     printf "\nDownloading token-gated models...\n"
 
