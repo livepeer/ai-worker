@@ -13,9 +13,18 @@ class Media(BaseModel):
     # OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
     nsfw: bool
 
+class chunk(BaseModel):
+    timestamp: tuple
+    text: str
+
+class TextResponse(BaseModel):
+    text: str
+    chunks: List[chunk]
+
 
 class ImageResponse(BaseModel):
     images: List[Media]
+
 
 
 class VideoResponse(BaseModel):

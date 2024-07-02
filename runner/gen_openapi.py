@@ -5,7 +5,7 @@ import copy
 
 import yaml
 from app.main import app, use_route_names_as_operation_ids
-from app.routes import health, image_to_image, image_to_video, text_to_image, upscale
+from app.routes import health, image_to_image, image_to_video, text_to_image, upscale, speech_to_text
 from fastapi.openapi.utils import get_openapi
 
 # Specify Endpoints for OpenAPI schema generation.
@@ -77,6 +77,7 @@ def write_openapi(fname, entrypoint="runner"):
     app.include_router(image_to_image.router)
     app.include_router(image_to_video.router)
     app.include_router(upscale.router)
+    app.include_router(speech_to_text.router)
 
     use_route_names_as_operation_ids(app)
 

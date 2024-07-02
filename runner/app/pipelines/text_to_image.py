@@ -136,7 +136,7 @@ class TextToImagePipeline(Pipeline):
             self.ldm = compile_model(self.ldm)
 
             # Warm-up the pipeline.
-            # TODO: Not yet supported for ImageToImagePipeline.
+            # TODO: Not yet supported for TextToImagePipeline.
             if os.getenv("SFAST_WARMUP", "true").lower() == "true":
                 logger.warning(
                     "The 'SFAST_WARMUP' flag is not yet supported for the "
