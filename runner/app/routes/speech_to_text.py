@@ -61,12 +61,22 @@ async def speech_to_text(
             audio.file.write(converted_bytes)
             audio.file.seek(0)
             logger.info("Converted m4a file to mp3")
+    except Exception as e:
+        return JSONResponse(
+            status_code=400,
+            content=http_error(f"Error processing audio file: {str(e)}"),
+        )
 
+    try:
         return pipeline(
             audio=audio.file.read(),
         )
     except Exception as e:
+        status_code = 500
+        if "Soundfile is either not in the correct format or is malformed" in str(e):
+            status_code = 400
+
         return JSONResponse(
-            status_code=400,
+            status_code=status_code,
             content=http_error(f"Error processing audio file: {str(e)}"),
         )
