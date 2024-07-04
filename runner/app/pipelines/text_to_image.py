@@ -32,6 +32,10 @@ class TextToImagePipeline(Pipeline):
         self.model_id = model_id
         kwargs = {"cache_dir": get_model_dir()}
 
+        if os.getenv("MOCK_PIPELINE", "").strip().lower() == "true":
+            logger.info("Mocking TextToImagePipeline for %s", model_id)
+            return
+
         torch_device = get_torch_device()
         folder_name = file_download.repo_folder_name(
             repo_id=model_id, repo_type="model"
@@ -167,6 +171,9 @@ class TextToImagePipeline(Pipeline):
     def __call__(
         self, prompt: str, **kwargs
     ) -> Tuple[List[PIL.Image], List[Optional[bool]]]:
+        if os.getenv("MOCK_PIPELINE", "").strip().lower() == "true":
+            return [PIL.Image.new("RGB", (256, 256), (0, 0, 255))], [True]
+
         seed = kwargs.pop("seed", None)
         safety_check = kwargs.pop("safety_check", True)
 
