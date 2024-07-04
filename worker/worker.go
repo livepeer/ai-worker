@@ -286,6 +286,12 @@ func (w *Worker) SpeechToText(ctx context.Context, req SpeechToTextMultipartRequ
 		return nil, errors.New("speech-to-text container returned 400")
 	}
 
+	if resp.StatusCode() == 413 {
+		msg := "speech-to-text container returned 413 file too large; max file size is 50MB"
+		slog.Error("speech-to-text container returned 400", slog.String("err", string(msg)))
+		return nil, errors.New(msg)
+	}
+
 	if resp.JSON500 != nil {
 		val, err := json.Marshal(resp.JSON500)
 		if err != nil {

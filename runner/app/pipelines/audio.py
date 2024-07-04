@@ -7,7 +7,8 @@ class AudioConverter:
     def __init__(self):
         pass
 
-    def m4a_to_mp3(self, upload_file: UploadFile) -> bytes:
+    # Converts MP4 and M4A files to MP3
+    def mp4_to_mp3(self, upload_file: UploadFile) -> bytes:
         tempfile_out = self.generate_random_filename()
 
         input_container = av.open(upload_file.file)
