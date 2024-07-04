@@ -17,9 +17,9 @@ logger = logging.getLogger(__name__)
 
 responses = {400: {"model": HTTPError}, 500: {"model": HTTPError}}
 
-@router.post("/speech-to-text", response_model=TextResponse, responses=responses)
-@router.post("/speech-to-text/", response_model=TextResponse, include_in_schema=False)
-async def speech_to_text(
+@router.post("/audio-to-text", response_model=TextResponse, responses=responses)
+@router.post("/audio-to-text/", response_model=TextResponse, include_in_schema=False)
+async def audio_to_text(
     audio: Annotated[UploadFile, File()],
     model_id: Annotated[str, Form()] = "",
     seed: Annotated[int, Form()] = None,

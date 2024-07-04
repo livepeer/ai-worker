@@ -6,7 +6,6 @@ from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 
 from huggingface_hub import file_download
 import torch
-import PIL
 from typing import List
 import logging
 import os
@@ -14,7 +13,7 @@ import os
 logger = logging.getLogger(__name__)
 
 
-class SpeechToTextPipeline(Pipeline):
+class AudioToTextPipeline(Pipeline):
     def __init__(self, model_id: str):
         # kwargs = {"cache_dir": get_model_dir()}
         kwargs = {}
@@ -25,21 +24,19 @@ class SpeechToTextPipeline(Pipeline):
         )
         folder_path = os.path.join(get_model_dir(), folder_name)
         # Load fp16 variant if fp16 safetensors files are found in cache
-        # Special case SDXL-Lightning because the safetensors files are fp16 but are not
-        # named properly right now
         has_fp16_variant = any(
             ".fp16.safetensors" in fname
             for _, _, files in os.walk(folder_path)
             for fname in files
         )
         if torch_device != "cpu" and has_fp16_variant:
-            logger.info("SpeechToTextPipeline loading fp16 variant for %s", model_id)
+            logger.info("AudioToTextPipeline loading fp16 variant for %s", model_id)
 
             kwargs["torch_dtype"] = torch.float16
             kwargs["variant"] = "fp16"
 
         if os.environ.get("BFLOAT16"):
-            logger.info("SpeechToTextPipeline using bfloat16 precision for %s", model_id)
+            logger.info("AudioToTextPipeline using bfloat16 precision for %s", model_id)
             kwargs["torch_dtype"] = torch.bfloat16
 
         self.model_id = model_id
@@ -81,4 +78,4 @@ class SpeechToTextPipeline(Pipeline):
         return result
 
     def __str__(self) -> str:
-        return f"SpeechToTextPipeline model_id={self.model_id}"
+        return f"AudioToTextPipeline model_id={self.model_id}"

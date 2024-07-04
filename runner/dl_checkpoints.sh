@@ -30,7 +30,7 @@ function download_alpha_models() {
     # Download upscale models
     huggingface-cli download stabilityai/stable-diffusion-x4-upscaler --include "*.fp16.safetensors" --cache-dir models
 
-    # Download speech-to-text models.
+    # Download audio-to-text models.
     huggingface-cli download openai/whisper-large-v3 --include "*.safetensors" "*.json" --cache-dir models
 
     printf "\nDownloading token-gated models...\n"
