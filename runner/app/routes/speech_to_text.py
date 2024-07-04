@@ -53,7 +53,7 @@ async def speech_to_text(
 
     try:
         # Check the extension and convert the file if necessary
-        if audio.filename.endswith(".m4a"):
+        if audio.filename.endswith(".m4a") or audio.filename.endswith(".mp4"):
             logger.info("Converting m4a file to mp3")
             conv = AudioConverter()
             converted_bytes = conv.m4a_to_mp3(audio)
