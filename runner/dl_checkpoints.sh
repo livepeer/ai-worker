@@ -30,12 +30,33 @@ function download_alpha_models() {
 
     # Download upscale models
     huggingface-cli download stabilityai/stable-diffusion-x4-upscaler --include "*.fp16.safetensors" --cache-dir models
+    
+    # Download text-to-speech models
+    huggingface-cli download openai/whisper-large-v2 --include "*.bin" "*.json" --cache-dir models
 
+    # Download lipsync models
+    huggingface-cli download camenduru/Wav2Lip --include "*.pth" "*.json" --cache-dir models
+
+    # Download FastSpeech 2 and HiFi-GAN models
+    huggingface-cli download facebook/fastspeech2-en-ljspeech --include "*.bin" "*.json" --cache-dir models/fastspeech2
+    huggingface-cli download facebook/hifigan --include "*.bin" "*.json" --cache-dir models/hifigan
+
+    # Download Wav2Lip inference script and other necessary files
+    # huggingface-cli download camenduru/Wav2Lip --include "inference.py" --cache-dir models
+    # huggingface-cli download camenduru/Wav2Lip --include "hparams.py" --cache-dir models
+    # huggingface-cli download camenduru/Wav2Lip --include "wav2lip.py" --cache-dir models
+    # huggingface-cli download camenduru/Wav2Lip --include "face_detection/detection/sfd/sfd_detector.py" --cache-dir models
+    # huggingface-cli download camenduru/Wav2Lip --include "face_detection/detection/sfd/sfd_model.pth" --cache-dir models
+    
     printf "\nDownloading token-gated models...\n"
 
     # Download image-to-video models (token-gated).
     check_hf_auth
-    huggingface-cli download stabilityai/stable-video-diffusion-img2vid-xt-1-1 --include "*.fp16.safetensors" "*.json" --cache-dir models ${TOKEN_FLAG:+"$TOKEN_FLAG"}
+    huggingface-cli download stabilityai/stable-video-diffusion-img2vid-xt-1-1 --include "*.fp16.safetensors" "*.bin" "*.json" --cache-dir models ${TOKEN_FLAG:+"$TOKEN_FLAG"}
+
+    # Download Real3DPortrait repo and setup custom python environment
+    
+
 }
 
 # Download all models.

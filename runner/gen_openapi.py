@@ -77,6 +77,7 @@ def write_openapi(fname, entrypoint="runner"):
     app.include_router(image_to_image.router)
     app.include_router(image_to_video.router)
     app.include_router(upscale.router)
+    app.include_router(lipsync.router)
 
     use_route_names_as_operation_ids(app)
 
