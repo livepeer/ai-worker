@@ -103,3 +103,27 @@ index bd2e4f2..830d27c 100644
          seed = kwargs.pop("seed", None)
          safety_check = kwargs.pop("safety_check", True)
  
+diff --git a/worker/docker.go b/worker/docker.go
+index 48131a7..c822efb 100644
+--- a/worker/docker.go
++++ b/worker/docker.go
+@@ -4,6 +4,7 @@ import (
+ 	"context"
+ 	"errors"
+ 	"log/slog"
++	"os"
+ 	"strings"
+ 	"sync"
+ 	"time"
+@@ -168,6 +169,11 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
+ 		envVars = append(envVars, key+"="+value.String())
+ 	}
+ 
++	if value, ok := os.LookupEnv("MOCK_PIPELINE"); ok {
++		envVars = append(envVars, "MOCK_PIPELINE="+value)
++		slog.Info("MOCK_PIPELINE set to " + value + ", passing to runner container")
++	}
++
+ 	containerConfig := &container.Config{
+ 		Image: m.containerImageID,
+ 		Env:   envVars,
