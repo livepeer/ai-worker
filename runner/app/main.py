@@ -1,10 +1,10 @@
 import logging
 import os
 from contextlib import asynccontextmanager
-
 from app.routes import health
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
+
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +52,9 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
             from app.pipelines.upscale import UpscalePipeline
 
             return UpscalePipeline(model_id)
+        case "text-to-speech":
+            from app.pipelines.text_to_speech import TextToSpeechPipeline
+            return TextToSpeechPipeline(model_id)
         case _:
             raise EnvironmentError(
                 f"{pipeline} is not a valid pipeline for model {model_id}"
@@ -82,6 +85,10 @@ def load_route(pipeline: str) -> any:
             from app.routes import upscale
 
             return upscale.router
+        case "text-to-speech":
+            from app.routes import text_to_speech
+
+            return text_to_speech.router
         case _:
             raise EnvironmentError(f"{pipeline} is not a valid pipeline")
 

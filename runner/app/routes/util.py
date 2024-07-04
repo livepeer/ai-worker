@@ -23,6 +23,18 @@ class ImageResponse(BaseModel):
 class VideoResponse(BaseModel):
     frames: List[List[Media]]
 
+class AudioResponse(BaseModel):
+    audio: Media
+
+class chunk(BaseModel):
+    timestamp: tuple
+    text: str
+
+
+class TextResponse(BaseModel):
+    text: str
+    chunks: List[chunk]
+
 
 class chunk(BaseModel):
     timestamp: tuple

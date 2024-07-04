@@ -404,6 +404,85 @@
                     }
                 ]
             }
+        },
+        "/text-to-speech": {
+            "post": {
+                "summary": "Text To Speech",
+                "operationId": "text_to_speech",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TextToSpeechParams"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AudioResponse"
+                                }
+                            },
+                            "audio/mp4": {}
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "detail": {
+                                            "type": "string",
+                                            "title": "Detail"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "detail"
+                                    ],
+                                    "title": "HTTPError"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "detail": {
+                                            "type": "string",
+                                            "title": "Detail"
+                                        }
+                                    },
+                                    "type": "object",
+                                    "required": [
+                                        "detail"
+                                    ],
+                                    "title": "HTTPError"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -420,6 +499,18 @@
                     "msg"
                 ],
                 "title": "APIError"
+            },
+            "AudioResponse": {
+                "properties": {
+                    "audio": {
+                        "$ref": "#/components/schemas/Media"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "audio"
+                ],
+                "title": "AudioResponse"
             },
             "Body_audio_to_text_audio_to_text_post": {
                 "properties": {
@@ -761,6 +852,22 @@
                     "prompt"
                 ],
                 "title": "TextToImageParams"
+            },
+            "TextToSpeechParams": {
+                "properties": {
+                    "text_input": {
+                        "type": "string",
+                        "title": "Text Input",
+                        "default": ""
+                    },
+                    "model_id": {
+                        "type": "string",
+                        "title": "Model Id",
+                        "default": ""
+                    }
+                },
+                "type": "object",
+                "title": "TextToSpeechParams"
             },
             "ValidationError": {
                 "properties": {
