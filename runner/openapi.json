@@ -282,15 +282,15 @@
                 ]
             }
         },
-        "/speech-to-text": {
+        "/audio-to-text": {
             "post": {
-                "summary": "Speech To Text",
-                "operationId": "speech_to_text",
+                "summary": "Audio To Text",
+                "operationId": "audio_to_text",
                 "requestBody": {
                     "content": {
                         "multipart/form-data": {
                             "schema": {
-                                "$ref": "#/components/schemas/Body_speech_to_text_speech_to_text_post"
+                                "$ref": "#/components/schemas/Body_audio_to_text_audio_to_text_post"
                             }
                         }
                     },
@@ -360,6 +360,29 @@
                     "msg"
                 ],
                 "title": "APIError"
+            },
+            "Body_audio_to_text_audio_to_text_post": {
+                "properties": {
+                    "audio": {
+                        "type": "string",
+                        "format": "binary",
+                        "title": "Audio"
+                    },
+                    "model_id": {
+                        "type": "string",
+                        "title": "Model Id",
+                        "default": ""
+                    },
+                    "seed": {
+                        "type": "integer",
+                        "title": "Seed"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "audio"
+                ],
+                "title": "Body_audio_to_text_audio_to_text_post"
             },
             "Body_image_to_image_image_to_image_post": {
                 "properties": {
@@ -471,29 +494,6 @@
                     "image"
                 ],
                 "title": "Body_image_to_video_image_to_video_post"
-            },
-            "Body_speech_to_text_speech_to_text_post": {
-                "properties": {
-                    "audio": {
-                        "type": "string",
-                        "format": "binary",
-                        "title": "Audio"
-                    },
-                    "model_id": {
-                        "type": "string",
-                        "title": "Model Id",
-                        "default": ""
-                    },
-                    "seed": {
-                        "type": "integer",
-                        "title": "Seed"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "audio"
-                ],
-                "title": "Body_speech_to_text_speech_to_text_post"
             },
             "Body_upscale_upscale_post": {
                 "properties": {

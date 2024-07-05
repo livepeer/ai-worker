@@ -194,7 +194,7 @@ func NewUpscaleMultipartWriter(w io.Writer, req UpscaleMultipartRequestBody) (*m
 
 	return mw, nil
 }
-func NewSpeechToTextMultipartWriter(w io.Writer, req SpeechToTextMultipartRequestBody) (*multipart.Writer, error) {
+func NewAudioToTextMultipartWriter(w io.Writer, req AudioToTextMultipartRequestBody) (*multipart.Writer, error) {
 	mw := multipart.NewWriter(w)
 	writer, err := mw.CreateFormFile("audio", req.Audio.Filename())
 	if err != nil {

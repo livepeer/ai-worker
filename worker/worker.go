@@ -250,20 +250,20 @@ func (w *Worker) Upscale(ctx context.Context, req UpscaleMultipartRequestBody) (
 	return resp.JSON200, nil
 }
 
-func (w *Worker) SpeechToText(ctx context.Context, req SpeechToTextMultipartRequestBody) (*TextResponse, error) {
-	c, err := w.borrowContainer(ctx, "speech-to-text", *req.ModelId)
+func (w *Worker) AudioToText(ctx context.Context, req AudioToTextMultipartRequestBody) (*TextResponse, error) {
+	c, err := w.borrowContainer(ctx, "audio-to-text", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
 	defer w.returnContainer(c)
 
 	var buf bytes.Buffer
-	mw, err := NewSpeechToTextMultipartWriter(&buf, req)
+	mw, err := NewAudioToTextMultipartWriter(&buf, req)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := c.Client.SpeechToTextWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	resp, err := c.Client.AudioToTextWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
 	if err != nil {
 		return nil, err
 	}
@@ -273,8 +273,8 @@ func (w *Worker) SpeechToText(ctx context.Context, req SpeechToTextMultipartRequ
 		if err != nil {
 			return nil, err
 		}
-		slog.Error("speech-to-text container returned 422", slog.String("err", string(val)))
-		return nil, errors.New("speech-to-text container returned 422")
+		slog.Error("audio-to-text container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("audio-to-text container returned 422")
 	}
 
 	if resp.JSON400 != nil {
@@ -282,13 +282,13 @@ func (w *Worker) SpeechToText(ctx context.Context, req SpeechToTextMultipartRequ
 		if err != nil {
 			return nil, err
 		}
-		slog.Error("speech-to-text container returned 400", slog.String("err", string(val)))
-		return nil, errors.New("speech-to-text container returned 400")
+		slog.Error("audio-to-text container returned 400", slog.String("err", string(val)))
+		return nil, errors.New("audio-to-text container returned 400")
 	}
 
 	if resp.StatusCode() == 413 {
-		msg := "speech-to-text container returned 413 file too large; max file size is 50MB"
-		slog.Error("speech-to-text container returned 400", slog.String("err", string(msg)))
+		msg := "audio-to-text container returned 413 file too large; max file size is 50MB"
+		slog.Error("audio-to-text container returned 400", slog.String("err", string(msg)))
 		return nil, errors.New(msg)
 	}
 
@@ -297,8 +297,8 @@ func (w *Worker) SpeechToText(ctx context.Context, req SpeechToTextMultipartRequ
 		if err != nil {
 			return nil, err
 		}
-		slog.Error("speech-to-text container returned 500", slog.String("err", string(val)))
-		return nil, errors.New("speech-to-text container returned 500")
+		slog.Error("audio-to-text container returned 500", slog.String("err", string(val)))
+		return nil, errors.New("audio-to-text container returned 500")
 	}
 
 	return resp.JSON200, nil
