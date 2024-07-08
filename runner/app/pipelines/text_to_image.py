@@ -222,8 +222,24 @@ class TextToImagePipeline(Pipeline):
                 # Default to 8step
                 kwargs["num_inference_steps"] = 8
 
-        output = self.ldm(prompt, **kwargs)
-
+        prompts = prompt.split("|", 3)
+        prompt = prompts[0]
+        if len(prompts) > 1:
+            kwargs["prompt_2"] = prompts[1]
+        if len(prompts) > 2:
+            kwargs["prompt_3"] = prompts[2]
+        
+        if "negative_prompt" in kwargs:
+            negative_prompts = prompt.split("|", 3)
+            kwargs["negative_prompt"] = negative_prompts[0]
+            if len(negative_prompts) > 1:
+                kwargs["negative_prompt_2"] = negative_prompts[1]
+            if len(negative_prompts) > 2:
+                kwargs["negative_prompt_3"] = negative_prompts[2]
+        
+        
+        output = self.ldm(prompt=prompt, **kwargs)
+        
         if safety_check:
             _, has_nsfw_concept = self._safety_checker.check_nsfw_images(output.images)
         else:
