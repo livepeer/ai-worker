@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import Depends, APIRouter, UploadFile, File, Form
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
@@ -23,14 +24,18 @@ responses = {
 
 @router.post("/lipsync", responses=responses)
 async def lipsync(
-    text_input: str = Form(...),
+    text_input: Optional[str] = Form(None),
+    audio: Optional[UploadFile] = File(None),
     image: UploadFile = File(...),
     pipeline: Pipeline = Depends(get_pipeline),
 ):
+    if not text_input and not audio:
+        raise HTTPException(status_code=400, detail="Either text_input or audio must be provided")
 
     try:
         output_video_path = pipeline(
             text_input,
+            audio.file,
             image.file,
         )
     except Exception as e:
@@ -52,3 +57,4 @@ async def lipsync(
                 "detail": f"no output found for {output_video_path}"
             },
         )
+

@@ -27,12 +27,19 @@ class LipsyncPipeline(Pipeline):
         self.TTS_hifigan = FastSpeech2ConformerHifiGan.from_pretrained("espnet/fastspeech2_conformer_hifigan", cache_dir=get_model_dir()).to(self.device)
 
 
-    def __call__(self, text, image_file):
+    def __call__(self, text, image_file, audio_file):
         # Save Source Image to Disk
         temp_image_file_path = save_image_to_temp_file(image_file)
 
-        # Generate Voice
-        audio_path = self.generate_speech(text)
+        # generate unique filename
+        unique_audio_filename = f"{uuid.uuid4()}.wav"
+        audio_path = os.path.join("/tmp/", unique_audio_filename)
+
+        if audio_file is None:
+            self.generate_speech(text, audio_path)
+        else: 
+            with open(audio_path, 'wb') as audio_file:
+                audio_file.write(audio_file)
 
         # Generate LipSync
         lipsync_output_path = self.generate_real3d_lipsync(temp_image_file_path, audio_path, "/app/output")
@@ -69,7 +76,7 @@ class LipsyncPipeline(Pipeline):
         print("Lip-sync video generation complete.")
         return output_video_path
 
-    def generate_speech(self, text):
+    def generate_speech(self, text, output_file_name):
         # Tokenize input text
         inputs = self.TTS_tokenizer(text, return_tensors="pt").to(self.device)
         
@@ -83,9 +90,6 @@ class LipsyncPipeline(Pipeline):
         # Convert spectrogram to waveform
         waveform = self.TTS_hifigan(spectrogram)
 
-        # generate unique filename
-        unique_audio_filename = f"{uuid.uuid4()}.wav"
-        audio_path = os.path.join("/tmp/", unique_audio_filename)
         sf.write(audio_path, waveform.squeeze().detach().cpu().numpy(), samplerate=22050)
         return audio_path
 

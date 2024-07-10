@@ -13,7 +13,7 @@ activate_conda_env() {
 
 activate_conda_env "/models/models--yerfor--Real3DPortrait/anaconda3"
 
-# Debugging: Check which Python is being used
+# Debugging: Check which Python is being used - 3.9 is used by the conda env for real3dportrait
 which python
 python --version
 
