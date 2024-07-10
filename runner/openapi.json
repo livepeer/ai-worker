@@ -456,6 +456,11 @@
                         "title": "Model Id",
                         "default": ""
                     },
+                    "loras": {
+                        "type": "string",
+                        "title": "Loras",
+                        "default": ""
+                    },
                     "strength": {
                         "type": "number",
                         "title": "Strength",
@@ -701,6 +706,11 @@
                         "type": "string",
                         "title": "Model Id",
                         "description": "",
+                        "default": ""
+                    },
+                    "loras": {
+                        "type": "string",
+                        "title": "Loras",
                         "default": ""
                     },
                     "prompt": {

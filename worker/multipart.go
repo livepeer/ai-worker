@@ -40,6 +40,11 @@ func NewImageToImageMultipartWriter(w io.Writer, req ImageToImageMultipartReques
 			return nil, err
 		}
 	}
+	if req.Loras != nil {
+		if err := mw.WriteField("loras", *req.Loras); err != nil {
+			return nil, err
+		}
+	}
 	if req.Strength != nil {
 		if err := mw.WriteField("strength", fmt.Sprintf("%f", *req.Strength)); err != nil {
 			return nil, err

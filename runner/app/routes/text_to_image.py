@@ -24,6 +24,7 @@ class TextToImageParams(BaseModel):
         str,
         Field(default="", description=""),
     ]
+    loras: Annotated[str, Field(loras="")]
     prompt: Annotated[str, Field(description="")]
     height: Annotated[int, Field(default=576, description="")]
     width: Annotated[int, Field(default=1024, description="")]
