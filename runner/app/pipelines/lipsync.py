@@ -38,8 +38,8 @@ class LipsyncPipeline(Pipeline):
         if audio_file is None:
             self.generate_speech(text, audio_path)
         else: 
-            with open(audio_path, 'wb') as audio_file:
-                audio_file.write(audio_file)
+            with open(audio_path, 'wb') as f:
+                f.write(audio_file.read())
 
         # Generate LipSync
         lipsync_output_path = self.generate_real3d_lipsync(temp_image_file_path, audio_path, "/app/output")
