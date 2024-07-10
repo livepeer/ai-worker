@@ -25,6 +25,15 @@ class TextToImageParams(BaseModel):
             default="", description="Hugging Face model ID used for image generation."
         ),
     ]
+    loras: Annotated[
+        str, 
+        Field(
+            description=(
+                "A lora and weight to use for image generation. "
+                "example: { \"nerijs/pixel-art-xl\" : 1.2 } "
+            )
+        ),
+    ]
     prompt: Annotated[
         str,
         Field(

@@ -52,6 +52,9 @@ type BodyGenImageToImage struct {
 	// ImageGuidanceScale Degree to which the generated image is pushed towards the initial image.
 	ImageGuidanceScale *float32 `json:"image_guidance_scale,omitempty"`
 
+	// Loras A lora and weight to use for image generation.
+	Loras *string `json:"loras,omitempty"`
+
 	// ModelId Hugging Face model ID used for image generation.
 	ModelId *string `json:"model_id,omitempty"`
 
@@ -223,6 +226,9 @@ type TextToImageParams struct {
 
 	// Height The height in pixels of the generated image.
 	Height *int `json:"height,omitempty"`
+
+	// Loras A lora and weight to use for image generation. example: { "nerijs/pixel-art-xl" : 1.2 }
+	Loras string `json:"loras"`
 
 	// ModelId Hugging Face model ID used for image generation.
 	ModelId *string `json:"model_id,omitempty"`
