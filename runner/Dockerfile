@@ -1,6 +1,6 @@
 # Based on https://github.com/huggingface/api-inference-community/blob/main/docker_images/diffusers/Dockerfile
 
-FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
+FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu20.04
 LABEL maintainer="Yondon Fu <yondon@livepeer.org>"
 
 # Add any system dependency here
@@ -10,10 +10,9 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install prerequisites
 RUN apt-get update && \
-    apt-get install -y build-essential libssl-dev zlib1g-dev libbz2-dev \
-    libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
-    xz-utils tk-dev libffi-dev liblzma-dev python3-openssl git ca-certificates \
-    ffmpeg libsm6 libxext6 python3-dev ninja-build cuda-toolkit-12-1
+  apt-get install -y build-essential libssl-dev zlib1g-dev libbz2-dev \
+  libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
+  xz-utils tk-dev libffi-dev liblzma-dev python3-openssl git
 
 # Install pyenv
 RUN curl https://pyenv.run | bash
@@ -25,18 +24,16 @@ ENV PATH $PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH
 # Install your desired Python version
 ARG PYTHON_VERSION=3.11
 RUN pyenv install $PYTHON_VERSION && \
-    pyenv global $PYTHON_VERSION && \
-    pyenv rehash
+  pyenv global $PYTHON_VERSION && \
+  pyenv rehash
 
 # Upgrade pip and install your desired packages
 ARG PIP_VERSION=23.3.2
 RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools==69.5.1 wheel==0.43.0 && \
-    pip install --no-cache-dir torch==2.1.1 torchvision==0.16.1 torchaudio==2.1.1
+  pip install --no-cache-dir torch==2.1.1 torchvision==0.16.1 torchaudio==2.1.1
 
 WORKDIR /app
-
 COPY ./requirements.txt /app
-RUN pip install pyyaml
 RUN pip install --no-cache-dir -r requirements.txt
 
 RUN pip install https://github.com/chengzeyi/stable-fast/releases/download/v1.0.3/stable_fast-1.0.3+torch211cu121-cp311-cp311-manylinux2014_x86_64.whl
@@ -47,18 +44,12 @@ RUN pip install https://github.com/chengzeyi/stable-fast/releases/download/v1.0.
 # Feel free to override if it does not make sense for your library.
 ARG max_workers=1
 ENV MAX_WORKERS=$max_workers
-
 ENV HUGGINGFACE_HUB_CACHE=/models
 ENV DIFFUSERS_CACHE=/models
 ENV MODEL_DIR=/models
 
-# Copy application files
 COPY app/ /app/app
 COPY images/ /app/images
 COPY bench.py /app/bench.py
-COPY cmd/lipsync/run_real3dportrait.sh /app/run_real3dportrait.sh
 
-RUN apt-get install libc6
-
-# Set the command to run the application
 CMD ["uvicorn", "app.main:app", "--log-config", "app/cfg/uvicorn_logging_config.json", "--host", "0.0.0.0", "--port", "8000"]

@@ -28,13 +28,6 @@ responses = {
 async def lipsync(
     text_input: str = Form(...),
     image: UploadFile = File(...),
-    model_id: str = Form(""),
-    seed: int = Form(None),
-    height: int = Form(576),
-    width: int = Form(1024),
-    fps: int = Form(6),
-    motion_bucket_id: int = Form(127),
-    noise_aug_strength: float = Form(0.02),
     pipeline: Pipeline = Depends(get_pipeline),
 ):
 
