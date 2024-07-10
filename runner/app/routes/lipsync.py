@@ -11,9 +11,6 @@ import os
 class HTTPError(BaseModel):
     detail: str
 
-class TextInput(BaseModel):
-    text: str
-
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
@@ -31,23 +28,10 @@ async def lipsync(
     pipeline: Pipeline = Depends(get_pipeline),
 ):
 
-    if model_id != "" and model_id != pipeline.model_id:
-        return JSONResponse(
-            status_code=400,
-            content={
-                "detail": f"pipeline configured with {pipeline.model_id} but called with {model_id}"
-            },
-        )
-
-    if seed is None:
-        seed = random.randint(0, 2**32 - 1)
-
-   
     try:
         output_video_path = pipeline(
             text_input,
             image.file,
-            seed=seed,
         )
     except Exception as e:
         logger.error(f"LipsyncPipeline error: {e}")

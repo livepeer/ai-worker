@@ -51,7 +51,7 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
             return UpscalePipeline(model_id)
         case "lipsync":
             from app.pipelines.lipsync import LipsyncPipeline
-            return LipsyncPipeline(model_id)
+            return LipsyncPipeline()
         case _:
             raise EnvironmentError(
                 f"{pipeline} is not a valid pipeline for model {model_id}"

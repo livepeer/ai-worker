@@ -19,8 +19,7 @@ import tempfile
 logger = logging.getLogger(__name__)
 
 class LipsyncPipeline(Pipeline):
-    def __init__(self, model_id: str):
-        self.model_id = model_id # unused at the moment
+    def __init__(self):
         self.device = get_torch_device()
         # Load FastSpeech 2 and HiFi-GAN models
         self.TTS_tokenizer = FastSpeech2ConformerTokenizer.from_pretrained("espnet/fastspeech2_conformer", cache_dir=get_model_dir())
@@ -28,9 +27,7 @@ class LipsyncPipeline(Pipeline):
         self.TTS_hifigan = FastSpeech2ConformerHifiGan.from_pretrained("espnet/fastspeech2_conformer_hifigan", cache_dir=get_model_dir()).to(self.device)
 
 
-    def __call__(self, text, image_file, seed=None, model_id="real3dportrait"):
-        self.model_id = model_id
-
+    def __call__(self, text, image_file):
         # Save Source Image to Disk
         temp_image_file_path = save_image_to_temp_file(image_file)
 
@@ -51,11 +48,14 @@ class LipsyncPipeline(Pipeline):
         unique_video_filename = f"{uuid.uuid4()}.mp4"
         output_video_path = os.path.join(output_path, unique_video_filename)
 
+        # parameter for driving head pose - default in repo is a bit wonky
+        pose_drv = 'static'
+
         # Ensure output directory exists
         os.makedirs(output_path, exist_ok=True)
 
         # Construct the command to run the shell script
-        command = [shell_script_path, image_path, audio_path, output_video_path]
+        command = [shell_script_path, image_path, audio_path, output_video_path, pose_drv]
 
         real3dportrait_path = "/models/models--yerfor--Real3DPortrait/"
         os.chdir(real3dportrait_path)
