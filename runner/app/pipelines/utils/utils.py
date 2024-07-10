@@ -2,6 +2,9 @@
 
 import logging
 import os
+import json
+import numpy as np
+from torch import dtype as TorchDtype
 import re
 from pathlib import Path
 from typing import Dict, Optional
@@ -175,3 +178,40 @@ class SafetyChecker:
             clip_input=safety_checker_input.pixel_values.to(self._dtype),
         )
         return images, has_nsfw_concept
+
+def load_loras(pipeline: any, requested_loras: str):
+    """Loads LoRas and sets their weights into the given pipeline.
+
+    Args:
+        pipeline: Diffusion pipeline, usually available under self.ldm.
+        loras: JSON string with key-value pairs, where the key is the repository to load LoRas from and the value is the strength (float with a minimum value of 0.0) to assign to the LoRa.
+    """
+    # Parse LoRas param as JSON to extract key-value pairs
+    loras = json.loads(requested_loras)
+    # Build a list of adapter names and their requested strength
+    adapters = []
+    strengths = []
+    for adapter, val in loras.items():
+        # Sanity check: strength should be a number with a minimum value of 0.0
+        try:
+            strength = int(strength)
+        except ValueError:
+            logger.warning(
+                "Skipping requested LoRa " + adapter + ", as it's requested strength (" + val + ") is not a number"
+            )
+            # NOTE: do we want to drop skipped LoRas from loaded_loras?
+            continue
+        if strength < 0.0:
+            logger.warning(
+                "Clipping strength of LoRa " + adapter + " to 0.0, as it's requested strength (" + val + ") is negative"
+            )
+            strength = 0.0
+        # TODO: Sanity check: adapter name should exist on HuggingFace and have weights to load in
+        # Load in the LoRa weights
+        # TODO: Make sure that load_lora_weights is a noop if the LoRas are already loaded
+        pipeline.load_lora_weights(adapter, adapter_name=adapter)
+        # Remember adapter name and their associated strength
+        adapters.append(adapter)
+        strengths.append(val)
+    # Set weights for all loaded adapters
+    pipeline.set_adapters(adapters, strengths)
