@@ -20,6 +20,7 @@ from app.pipelines.util import (
     SafetyChecker,
     is_lightning_model,
     is_turbo_model,
+    load_loras,
 )
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,7 @@ SDXL_LIGHTNING_MODEL_ID = "ByteDance/SDXL-Lightning"
 
 class TextToImagePipeline(Pipeline):
     def __init__(self, model_id: str):
+        self.loaded_loras = ""
         self.model_id = model_id
         kwargs = {"cache_dir": get_model_dir()}
 
@@ -179,6 +181,19 @@ class TextToImagePipeline(Pipeline):
                 kwargs["generator"] = [
                     torch.Generator(get_torch_device()).manual_seed(s) for s in seed
                 ]
+
+        # Dynamically (un)load LoRas. Defaults to "" when not passed, so should always be present in kwargs
+        if self.loaded_loras != kwargs["loras"]:
+            # Unload previously loaded LoRas
+            # NOTE: we might want to keep LoRas loaded and only reset their weights
+            # TODO: run tests with VRAM usage. We should be able to keep the last x LoRas loaded without issues
+            if self.loaded_loras != "":
+                self.ldm.unload_lora_weights()
+            # Remember requested LoRas and their weights
+            self.loaded_loras = kwargs["loras"]
+            load_loras(self.ldm, self.loaded_loras)
+        # Do not pass the lora param to the model when running inference
+        del kwargs["loras"]
 
         if "num_inference_steps" in kwargs and kwargs["num_inference_steps"] < 1:
             del kwargs["num_inference_steps"]
