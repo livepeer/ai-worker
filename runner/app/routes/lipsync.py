@@ -1,5 +1,5 @@
 from typing import Optional
-from fastapi import Depends, APIRouter, UploadFile, File, Form
+from fastapi import Depends, APIRouter, UploadFile, File, Form, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from app.pipelines.base import Pipeline
@@ -37,6 +37,10 @@ async def lipsync(
     else:
         audio_file = None
 
+    if image is None or image.file is None:
+        raise HTTPException(status_code=400, detail="Image file must be provided")
+
+
     try:
         output_video_path = pipeline(
             text_input,
@@ -45,7 +49,6 @@ async def lipsync(
         )
     except Exception as e:
         logger.error(f"LipsyncPipeline error: {e}")
-        logger.exception(e)
         return JSONResponse(
             status_code=500,
             content={

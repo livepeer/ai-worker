@@ -27,7 +27,7 @@ class LipsyncPipeline(Pipeline):
         self.TTS_hifigan = FastSpeech2ConformerHifiGan.from_pretrained("espnet/fastspeech2_conformer_hifigan", cache_dir=get_model_dir()).to(self.device)
 
 
-    def __call__(self, text, image_file, audio_file):
+    def __call__(self, text, audio_file, image_file):
         # Save Source Image to Disk
         temp_image_file_path = save_image_to_temp_file(image_file)
 
@@ -90,8 +90,8 @@ class LipsyncPipeline(Pipeline):
         # Convert spectrogram to waveform
         waveform = self.TTS_hifigan(spectrogram)
 
-        sf.write(audio_path, waveform.squeeze().detach().cpu().numpy(), samplerate=22050)
-        return audio_path
+        sf.write(output_file_name, waveform.squeeze().detach().cpu().numpy(), samplerate=22050)
+        return output_file_name
 
     def unload_model(self, model):
         # Move all components of the pipeline to CPU if they have the .cpu() method
@@ -105,8 +105,11 @@ class LipsyncPipeline(Pipeline):
         time.sleep(20)
 
 def save_image_to_temp_file(image_file):
-    image = Image.open(image_file)
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
-    image.save(temp_file, format="JPEG")
-    temp_file.close()
-    return temp_file.name
+    try:
+        image = Image.open(image_file)
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
+        image.save(temp_file, format="JPEG")
+        temp_file.close()
+        return temp_file.name
+    except Exception as e:
+        raise RuntimeError(f"Failed to save image to temp file: {str(e)}")
