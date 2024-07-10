@@ -25,17 +25,22 @@ responses = {
 @router.post("/lipsync", responses=responses)
 async def lipsync(
     text_input: Optional[str] = Form(None),
-    audio: Optional[UploadFile] = File(None),
+    audio: UploadFile = File(None),
     image: UploadFile = File(...),
     pipeline: Pipeline = Depends(get_pipeline),
 ):
     if not text_input and not audio:
         raise HTTPException(status_code=400, detail="Either text_input or audio must be provided")
+    
+    if audio is not None:
+        audio_file = audio.file
+    else:
+        audio_file = None
 
     try:
         output_video_path = pipeline(
             text_input,
-            audio.file,
+            audio_file,
             image.file,
         )
     except Exception as e:
