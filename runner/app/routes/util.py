@@ -1,10 +1,10 @@
 import base64
 import io
 from typing import List
-
+import PIL
 from PIL import Image
 from pydantic import BaseModel
-
+import cv2
 
 class Media(BaseModel):
     url: str
@@ -42,3 +42,24 @@ def image_to_base64(img: Image, format: str = "png") -> str:
 
 def image_to_data_url(img: Image, format: str = "png") -> str:
     return "data:image/png;base64," + image_to_base64(img, format=format)
+
+def extract_frames(video_path) -> List[PIL.Image]:
+    frames = []
+    vidcap = cv2.VideoCapture(video_path)
+    success, image = vidcap.read()
+    while success:
+        pil_image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        frames.append(pil_image)
+        success, image = vidcap.read()
+    vidcap.release()
+    return frames
+
+def save_image_to_temp_file(image_file):
+    try:
+        image = Image.open(image_file)
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
+        image.save(temp_file, format="JPEG")
+        temp_file.close()
+        return temp_file.name
+    except Exception as e:
+        raise RuntimeError(f"Failed to save image to temp file: {str(e)}")

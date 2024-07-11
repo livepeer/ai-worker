@@ -19,7 +19,7 @@ Models are expected to be stored at ~/.lpData/models/ on the host machine, and t
 git clone https://github.com/livepeer/ai-worker.git
 cd ai-worker/
 docker build -f ./cmd/lipsync/Dockerfile.lipsync -t livepeer/ai-runner:lipsync .
-docker run --name lipsync-public -e PIPELINE=lipsync -e MODEL_ID=real3dportrait -e HUGGINGFACE_TOKEN={your token} --gpus 0 -p 8000:8000 -v ~/.lpData/models:/models livepeer/ai-runner:lipsync
+docker run --name lipsync-public -e PIPELINE=lipsync -e MODEL_ID=real3dportrait -e HUGGINGFACE_TOKEN={your token or env var} --gpus 0 -p 8005:8000 -v ~/.lpData/models:/models livepeer/ai-runner:lipsync
 ```
 
 ### Implementation details

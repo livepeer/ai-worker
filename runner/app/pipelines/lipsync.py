@@ -1,6 +1,6 @@
 import uuid
 from app.pipelines.base import Pipeline
-from app.pipelines.util import get_torch_device, get_model_dir, SafetyChecker
+from app.pipelines.util import get_torch_device, get_model_dir, SafetyChecker, save_image_to_temp_file
 from diffusers import StableVideoDiffusionPipeline
 from diffusers.utils import load_image, export_to_video
 from transformers import FastSpeech2ConformerTokenizer, FastSpeech2ConformerModel, FastSpeech2ConformerHifiGan
@@ -12,8 +12,7 @@ import logging
 import time
 import gc
 from tqdm import tqdm
-from PIL import Image, ImageFile
-import tempfile
+
 
 
 logger = logging.getLogger(__name__)
@@ -103,13 +102,3 @@ class LipsyncPipeline(Pipeline):
         torch.cuda.empty_cache()
         gc.collect()
         time.sleep(20)
-
-def save_image_to_temp_file(image_file):
-    try:
-        image = Image.open(image_file)
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
-        image.save(temp_file, format="JPEG")
-        temp_file.close()
-        return temp_file.name
-    except Exception as e:
-        raise RuntimeError(f"Failed to save image to temp file: {str(e)}")
