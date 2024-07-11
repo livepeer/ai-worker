@@ -53,13 +53,3 @@ def extract_frames(video_path) -> List[PIL.Image]:
         success, image = vidcap.read()
     vidcap.release()
     return frames
-
-def save_image_to_temp_file(image_file):
-    try:
-        image = Image.open(image_file)
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
-        image.save(temp_file, format="JPEG")
-        temp_file.close()
-        return temp_file.name
-    except Exception as e:
-        raise RuntimeError(f"Failed to save image to temp file: {str(e)}")
