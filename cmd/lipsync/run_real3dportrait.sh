@@ -3,7 +3,7 @@ activate_conda_env() {
   local env_path="$1"
   if [ -f "${env_path}/etc/profile.d/conda.sh" ]; then
     source "${env_path}/etc/profile.d/conda.sh"
-    source "${env_path}/bin/conda init bash"
+    conda init
     conda activate real3dportrait
   else
     echo "Conda activation script not found at ${env_path}/etc/profile.d/conda.sh"
