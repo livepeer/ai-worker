@@ -194,7 +194,7 @@ def load_loras(pipeline: any, requested_loras: str):
     for adapter, val in loras.items():
         # Sanity check: strength should be a number with a minimum value of 0.0
         try:
-            strength = int(strength)
+            strength = int(val)
         except ValueError:
             logger.warning(
                 "Skipping requested LoRa " + adapter + ", as it's requested strength (" + val + ") is not a number"
@@ -212,6 +212,6 @@ def load_loras(pipeline: any, requested_loras: str):
         pipeline.load_lora_weights(adapter, adapter_name=adapter)
         # Remember adapter name and their associated strength
         adapters.append(adapter)
-        strengths.append(val)
+        strengths.append(strength)
     # Set weights for all loaded adapters
     pipeline.set_adapters(adapters, strengths)
