@@ -14,3 +14,8 @@ deepcache==0.1.1
 safetensors==0.4.3
 scipy==1.13.0
 numpy==1.26.4
+soundfile
+opencv-python
+pillow
+g2p-en
+torchshow

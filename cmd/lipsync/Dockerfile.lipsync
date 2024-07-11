@@ -1,0 +1,35 @@
+FROM livepeer/ai-runner:latest
+
+# Install necessary build tools
+RUN apt-get update && apt-get install -y \
+    ffmpeg libsm6 libxext6 python3-dev ninja-build cuda-toolkit-12-1 \
+    gawk bison gcc make wget tar
+
+# Download and install GLIBC 2.35
+# RUN wget -c https://ftp.gnu.org/gnu/glibc/glibc-2.35.tar.gz && \
+#     tar -zxvf glibc-2.35.tar.gz && \
+#     cd glibc-2.35 && \
+#     mkdir glibc-build && \
+#     cd glibc-build && \
+#     ../configure --prefix=/opt/glibc-2.35 && \
+#     make && \
+#     make install
+
+# # Set the LD_LIBRARY_PATH to use the new GLIBC
+# ENV LD_LIBRARY_PATH=/opt/glibc-2.35/lib:$LD_LIBRARY_PATH
+
+# # Verify the installation
+# RUN /opt/glibc-2.35/lib/ld-2.35.so --version
+
+# Download and install GLIBC 2.35
+RUN wget http://mirrors.edge.kernel.org/ubuntu/pool/main/g/glibc/libc6_2.35-0ubuntu3_amd64.deb && \
+    dpkg -i libc6_2.35-0ubuntu3_amd64.deb || apt-get install -f -y
+
+# Verify the installation
+RUN ldd --version
+
+COPY ./runner/app/ /app/app
+COPY ./cmd/lipsync/run_real3dportrait.sh /app/run_real3dportrait.sh
+
+# Expose the debugpy port and start the app as usual.
+CMD ["python", "-m", "debugpy", "--listen", "0.0.0.0:5678", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
