@@ -68,7 +68,8 @@ async def text_to_image(
     for seed in seeds:
         try:
             params.seed = seed
-            imgs, nsfw_check = pipeline(**params.model_dump())
+            kwargs = {k: v for k,v in params.model_dump().items() if k != "model_id"}
+            imgs, nsfw_check = pipeline(**kwargs)
             images.extend(imgs)
             has_nsfw_concept.extend(nsfw_check)
         except Exception as e:
