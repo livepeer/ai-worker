@@ -1,6 +1,7 @@
 import logging
 import os
 from typing import List, Tuple, Optional
+from enum import Enum
 
 import PIL
 import torch
@@ -9,6 +10,7 @@ from diffusers import (
     EulerDiscreteScheduler,
     StableDiffusionXLPipeline,
     UNet2DConditionModel,
+    StableDiffusion3Pipeline,
 )
 from huggingface_hub import file_download, hf_hub_download
 from safetensors.torch import load_file
@@ -24,7 +26,17 @@ from app.pipelines.util import (
 
 logger = logging.getLogger(__name__)
 
-SDXL_LIGHTNING_MODEL_ID = "ByteDance/SDXL-Lightning"
+
+class ModelName(Enum):
+    """Enumeration mapping model names to their corresponding IDs."""
+
+    SDXL_LIGHTNING = "ByteDance/SDXL-Lightning"
+    SD3_MEDIUM = "stabilityai/stable-diffusion-3-medium-diffusers"
+
+    @classmethod
+    def list(cls):
+        """Return a list of all model IDs."""
+        return list(map(lambda c: c.value, cls))
 
 
 class TextToImagePipeline(Pipeline):
@@ -46,7 +58,7 @@ class TextToImagePipeline(Pipeline):
                 for _, _, files in os.walk(folder_path)
                 for fname in files
             )
-            or SDXL_LIGHTNING_MODEL_ID in model_id
+            or ModelName.SDXL_LIGHTNING.value in model_id
         )
         if torch_device != "cpu" and has_fp16_variant:
             logger.info("TextToImagePipeline loading fp16 variant for %s", model_id)
@@ -59,7 +71,7 @@ class TextToImagePipeline(Pipeline):
             kwargs["torch_dtype"] = torch.bfloat16
 
         # Special case SDXL-Lightning because the unet for SDXL needs to be swapped
-        if SDXL_LIGHTNING_MODEL_ID in model_id:
+        if ModelName.SDXL_LIGHTNING.value in model_id:
             base = "stabilityai/stable-diffusion-xl-base-1.0"
 
             # ByteDance/SDXL-Lightning-2step
@@ -81,7 +93,7 @@ class TextToImagePipeline(Pipeline):
             unet.load_state_dict(
                 load_file(
                     hf_hub_download(
-                        SDXL_LIGHTNING_MODEL_ID,
+                        ModelName.SDXL_LIGHTNING.value,
                         f"{unet_id}.safetensors",
                         cache_dir=kwargs["cache_dir"],
                     ),
@@ -95,6 +107,10 @@ class TextToImagePipeline(Pipeline):
 
             self.ldm.scheduler = EulerDiscreteScheduler.from_config(
                 self.ldm.scheduler.config, timestep_spacing="trailing"
+            )
+        elif ModelName.SD3_MEDIUM.value in model_id:
+            self.ldm = StableDiffusion3Pipeline.from_pretrained(model_id, **kwargs).to(
+                torch_device
             )
         else:
             self.ldm = AutoPipelineForText2Image.from_pretrained(model_id, **kwargs).to(
@@ -190,7 +206,7 @@ class TextToImagePipeline(Pipeline):
             # SD turbo models were trained without guidance_scale so
             # it should be set to 0
             kwargs["guidance_scale"] = 0.0
-        elif SDXL_LIGHTNING_MODEL_ID in self.model_id:
+        elif ModelName.SDXL_LIGHTNING.value in self.model_id:
             # SDXL-Lightning models should have guidance_scale = 0 and use
             # the correct number of inference steps for the unet checkpoint loaded
             kwargs["guidance_scale"] = 0.0
