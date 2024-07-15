@@ -30,26 +30,32 @@ For more, see the [VSCode documentation on DevContainers](https://code.visualstu
 
 To debug the AI runner when it operates within a container orchestrated by external services, such as [go-livepeer](https://github.com/livepeer/go-livepeer/tree/ai-video), follow these steps to attach to the container:
 
-1. **Directory**: Ensure you're in the `runner` directory.
-2. **Build the AI Runner Image**:
+1. **Update AI Runner Module Path**: In the `go.mod` file of your local [go-livepeer](https://github.com/livepeer/go-livepeer/tree/ai-video) folder, modify the module path for the AI runner to point to your local version:
+
+   ```bash
+   go mod edit -replace github.com/livepeer/ai-worker=../path/to/ai-worker
+   ```
+
+2. **Directory**: Ensure you're in the `runner` directory.
+3. **Build the AI Runner Image**:
 
    ```bash
    docker build -t livepeer/ai-runner:base .
    ```
 
-3. **Build the Debug Image**:
+4. **Build the Debug Image**:
 
    ```bash
    docker build -f ./dev/Dockerfile.debug -t livepeer/ai-runner:latest .
    ```
 
-4. **Apply the Debug Patch**: Implement the required code modifications to facilitate debugger attachment and expose the necessary ports.
+5. **Apply the Debug Patch**: Implement the required code modifications to facilitate debugger attachment and expose the necessary ports.
 
    ```bash
    cd .. && git apply ./runner/dev/patches/debug.patch && cd runner
    ```
 
-5. **Attach and Debug**: Debugging the AI runner involves attaching to an active container. Ensure that VSCode is open in the `runner` directory. Follow these [instructions to attach to a running container](https://code.visualstudio.com/docs/python/debugging#_command-line-debugging) with the appropriate configuration:
+6. **Attach and Debug**: Debugging the AI runner involves attaching to an active container. Ensure that VSCode is open in the `runner` directory. Follow these [instructions to attach to a running container](https://code.visualstudio.com/docs/python/debugging#_command-line-debugging) with the appropriate configuration:
 
    ```json
    {
@@ -74,13 +80,13 @@ To debug the AI runner when it operates within a container orchestrated by exter
    }
    ```
 
-6. **Revert Changes**: After debugging, undo the debug patch.
+7. **Revert Changes**: After debugging, undo the debug patch.
 
    ```bash
    cd .. && git apply -R ./runner/dev/patches/debug.patch && cd runner
    ```
 
-7. **Rebuild the Image**: Execute a rebuild of the image, ensuring to exclude the debug changes.
+8. **Rebuild the Image**: Execute a rebuild of the image, ensuring to exclude the debug changes.
 
    ```bash
    docker build -t livepeer/ai-runner:latest .
