@@ -209,10 +209,15 @@ def load_loras(pipeline: any, requested_loras: str):
                 "Clipping strength of LoRa " + adapter + " to 0.0, as it's requested strength (" + val + ") is negative"
             )
             strength = 0.0
-        # TODO: Sanity check: adapter name should exist on HuggingFace and have weights to load in
-        # Load in the LoRa weights
-        # TODO: Make sure that load_lora_weights is a noop if the LoRas are already loaded
-        pipeline.load_lora_weights(adapter, adapter_name=adapter)
+        # Load in LoRa weights if its repository exists on HuggingFace
+        try:
+            # TODO: If we decide to keep LoRas loaded (and only set their weight to 0), make sure that reloading them causes no performance hit or other issues
+            pipeline.load_lora_weights(adapter, adapter_name=adapter)
+        except (ValueError, RuntimeError, TypeError):
+            logger.warning(
+                "Unable to load LoRas for adapter '" + adapter + "'"
+            )
+            continue
         # Remember adapter name and their associated strength
         adapters.append(adapter)
         strengths.append(strength)
