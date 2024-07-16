@@ -39,13 +39,19 @@ def call_pipeline(pipeline: Pipeline, batch_size=1, **kwargs) -> List[any]:
         raise Exception("invalid pipeline")
 
 
-def bench_pipeline(pipeline: Pipeline, batch_size=1, runs=1, num_inference_steps=None) -> BenchMetrics:
+def bench_pipeline(
+    pipeline: Pipeline, batch_size=1, runs=1, num_inference_steps=None
+) -> BenchMetrics:
     inference_time = np.zeros(runs)
     inference_time_per_output = np.zeros(runs)
     max_mem_allocated = np.zeros(runs)
     max_mem_reserved = np.zeros(runs)
 
-    kwargs = {"num_inference_steps": num_inference_steps} if num_inference_steps is not None else {}
+    kwargs = (
+        {"num_inference_steps": num_inference_steps}
+        if num_inference_steps is not None
+        else {}
+    )
 
     for i in range(runs):
         start = time()
@@ -109,7 +115,9 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    print(f"{args.pipeline=} {args.model_id=} {args.runs=} {args.batch_size=} {args.num_inference_steps=}")
+    print(
+        f"{args.pipeline=} {args.model_id=} {args.runs=} {args.batch_size=} {args.num_inference_steps=}"
+    )
 
     start = time()
     pipeline = load_pipeline(args.pipeline, args.model_id)
@@ -122,10 +130,14 @@ if __name__ == "__main__":
     # Collect pipeline warmup metrics if stable-fast is enabled
     if os.getenv("SFAST", "").strip().lower() == "true":
         warmups = 3
-        warmup_metrics = bench_pipeline(pipeline, args.batch_size, warmups, args.num_inference_steps)
+        warmup_metrics = bench_pipeline(
+            pipeline, args.batch_size, warmups, args.num_inference_steps
+        )
 
     # Collect pipeline inference metrics
-    metrics = bench_pipeline(pipeline, args.batch_size, args.runs, args.num_inference_steps)
+    metrics = bench_pipeline(
+        pipeline, args.batch_size, args.runs, args.num_inference_steps
+    )
 
     print("\n")
     print("----AGGREGATE METRICS----")

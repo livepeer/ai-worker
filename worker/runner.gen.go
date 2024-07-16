@@ -705,6 +705,7 @@ type ImageToImageResponse struct {
 	HTTPResponse *http.Response
 	JSON200      *ImageResponse
 	JSON400      *HTTPError
+	JSON401      *HTTPError
 	JSON422      *HTTPValidationError
 	JSON500      *HTTPError
 }
@@ -730,6 +731,7 @@ type ImageToVideoResponse struct {
 	HTTPResponse *http.Response
 	JSON200      *VideoResponse
 	JSON400      *HTTPError
+	JSON401      *HTTPError
 	JSON422      *HTTPValidationError
 	JSON500      *HTTPError
 }
@@ -755,6 +757,7 @@ type TextToImageResponse struct {
 	HTTPResponse *http.Response
 	JSON200      *ImageResponse
 	JSON400      *HTTPError
+	JSON401      *HTTPError
 	JSON422      *HTTPValidationError
 	JSON500      *HTTPError
 }
@@ -780,6 +783,7 @@ type UpscaleResponse struct {
 	HTTPResponse *http.Response
 	JSON200      *ImageResponse
 	JSON400      *HTTPError
+	JSON401      *HTTPError
 	JSON422      *HTTPValidationError
 	JSON500      *HTTPError
 }
@@ -977,6 +981,13 @@ func ParseImageToImageResponse(rsp *http.Response) (*ImageToImageResponse, error
 		}
 		response.JSON400 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest HTTPValidationError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -1023,6 +1034,13 @@ func ParseImageToVideoResponse(rsp *http.Response) (*ImageToVideoResponse, error
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest HTTPValidationError
@@ -1071,6 +1089,13 @@ func ParseTextToImageResponse(rsp *http.Response) (*TextToImageResponse, error) 
 		}
 		response.JSON400 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest HTTPValidationError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -1117,6 +1142,13 @@ func ParseUpscaleResponse(rsp *http.Response) (*UpscaleResponse, error) {
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest HTTPValidationError
@@ -1446,6 +1478,7 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
+<<<<<<< HEAD
 	"H4sIAAAAAAAC/+xZWXPbNhD+Kxi0j7IlO3HT0ZvtpomnOTyRkj5kPBqYXFFISIDF4UT16L93sKBI8Arl",
 	"8ZEm4yeJ4mL32+NbLKBrGskslwKE0XR6TXW0gozh1+Pzs+dKSeW+50rmoAwHfJPpxH0YblKgU/paJ3RE",
 	"zTp3D9ooLhK62Yyogn8sVxDT6UdccjEql5S6y3Xy8hNEhm5G9ETG6wWzMZcLIxcGvprGUy61aYNCGfdl",
@@ -1471,6 +1504,30 @@ var swaggerSpec = []string{
 	"7pHoNyW6/09kLv3Rp8ENvEQc5AaOdQ/Fjf5rzgfmRn2YfeTGz8wNX+HIDTdx7rBtBOfcbzLjdhNo/ST9",
 	"uDk8EuBuCeBqrLE3FH9i9Ff++0LgfveDzv9UHgnwSIC7JcC2mDd+lVOjcVHdUnnlcppKG5NTmWVWuGPo",
 	"C2bgC1vT4q8PvOjR0/E4VsCyvcS/3U+L5fuRW043F5v/AgAA//+0aZ0EMSUAAA==",
+=======
+	"H4sIAAAAAAAC/+xY23LbNhN+FQz+/1K2ZDduOrqz3TbxtEk8kZNeZDwamFxRSEgAxcGJ6tG7d7CgSPAU",
+	"KU3stB5dSST38O1iv90l72giCyUFCGvo9I6aZAkFw7+nlxe/aC21/6+0VKAtB3xSmMz/WG5zoFP6wmR0",
+	"RO1K+QtjNRcZXa9HVMOfjmtI6fQdqlyPKpXKdqUnb95DYul6RM9kuprzgmUwt7L807pU0tgurMzxlIkE",
+	"5iZh3ssdTWHBXG7p9OnhSe38WSlHZihXQRCuuAHtIaAXb2AhdcEsndIbLphe0drIBYp0wi5155/BchRj",
+	"QTNkO6JCppDPedqwRCM8L7wAuUj7IAnImOW3MFdaFsoO2nhZypHLINdnyhXhDMxcge4zeBTZcwXBAA25",
+	"BN2xyoWFLIRX29noDkMwbAF2NU+WkHxoeLbaQe18hmLkHMUqMzdS5sAE2gFIY48zf90HzlgNIrPLhrPJ",
+	"4U+Rr41E5+RaNFCbqEKFRYzYteq3EuaWpyDbl/2EWSjTiOnHGs6vyvTmYgk8WzYP/ORppPc8PO9T/RpS",
+	"fVX5F9JyKeY3LvkAtm3k6PhpbMVLkjOUbFiL4hCSG5gzl80HCmNyHFHAC5NTl5HhGvkOJf2Rpy3YR5Pj",
+	"J7WnP/B5V7NVzluqeLgUh6rYKeyX1W9/3X63SvoXt6kvazS9ee45lOdXV5cDS0AKlvHc//u/hgWd0v+N",
+	"61ViXO4R42rQtwGW6hGw2tcAkLcs5ynzDN0KiVsozDZsbXvrGsvPwVIFhGnNVhhDjLZtoA83sNwuzzdF",
+	"0MRrLLOu2YLpq99oPFdQoG+5qhtu7aDHP/LgNRglhYEBJpmdM/YCUs7iPIXp3penTpsw8Vk3YfXgDp46",
+	"eIVZfIzJ8NJff1UndDqP5d7ofOsu61DGBIuIKIosAO+J6Ao+2SuJgV8yzUKy72uBrcf0DoP5ke+WaFYs",
+	"QAOm1kJr6zmZtKxuZMkMZf9z+2o13L9wmpdBRcXcrdmewt7alnOZNDoME6tXCzp9d9fJ1V0H4nXUbH6X",
+	"CbrptJtR540UjBmY/+FGLYqYyZW/u433Po7gqpSMMrXDKHjr15/hVrzQrGi14i/sya2cVKt8MLylR5fu",
+	"45AaeDsBYUUmTnO7mnkoAbsfi2fANOjqawKWcbhVGVlaq+ja2+BiIQMrTKK5wvOd0lNBmFI5DwdOrCTa",
+	"CXJ6QRRXkHMR4tnUBb8FBaD989dOCHR0C9oEW5PDo8OJT4hUIJjidEp/wFsjqphdIuzxEscoNmFAXvuj",
+	"QecXaTVlqU9ZyAdqHU8m/ieRwoJArQj0+L3x7jefVLYdYzzHMTHNhMxckoAxC5eT6kjwCFxR+M23guhv",
+	"jrGLHlh5UG3Km0W6GRYyuyQ4DfUAxvoNsRVX4XLLFdN27Ffug5RZtntou77arps16dvj+h4z3txBds35",
+	"iD75lqde7bw9/s9YSl6HIwl+jx7G7xvBnF1Kzf+CFB0fH39Tx529uwuhFiHVbn7yUHm/EBa0YDmZgb4F",
+	"TeoXmE3Dw+EVt7p31+vrmIzhs96VDCtKi5T4HryVlNh+H4qUw2/qD0zK5tDZk3JPynsgZaAWktLCJ7vD",
+	"oIwW4c9S8p8H31219+Nwz7xHwjxf3K1pWH55HKbcm1Lgfidg74fQPfP2zHskzNuwaB20vBmDSk1P1Sv0",
+	"eS5dSs5lUTjB7Yo8YxY+shUtP5Tii7uZjsepBlYcZOHpYV6qHyZena6v138HAAD//5er3yJYIAAA",
+>>>>>>> cf59a6e (refactor: improve error codes and code formatting)
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

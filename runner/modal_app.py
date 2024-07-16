@@ -1,13 +1,10 @@
-from modal import Image, Stub, asgi_app, enter, method, Secret, Volume
 import logging
-from pathlib import Path
-from app.main import (
-    config_logging,
-    load_route,
-    use_route_names_as_operation_ids,
-)
-from app.routes import health
 import os
+from pathlib import Path
+
+from app.main import config_logging, load_route, use_route_names_as_operation_ids
+from app.routes import health
+from modal import Image, Secret, Stub, Volume, asgi_app, enter, method
 
 stub = Stub("livepeer-ai-runner")
 pipeline_image = (

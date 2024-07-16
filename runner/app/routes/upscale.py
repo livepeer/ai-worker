@@ -1,16 +1,15 @@
-from fastapi import Depends, APIRouter, UploadFile, File, Form
-from fastapi.responses import JSONResponse
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.pipelines.base import Pipeline
-from app.dependencies import get_pipeline
-from app.routes.util import image_to_data_url, ImageResponse, HTTPError, http_error
-from PIL import Image
-from typing import Annotated
 import logging
-import random
 import os
+import random
+from typing import Annotated
 
-from PIL import ImageFile
+from app.dependencies import get_pipeline
+from app.pipelines.base import Pipeline
+from app.routes.util import HTTPError, ImageResponse, http_error, image_to_data_url
+from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from PIL import Image, ImageFile
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -18,16 +17,21 @@ router = APIRouter()
 
 logger = logging.getLogger(__name__)
 
-responses = {400: {"model": HTTPError}, 500: {"model": HTTPError}}
+
+RESPONSES = {
+    status.HTTP_400_BAD_REQUEST: {"model": HTTPError},
+    status.HTTP_401_UNAUTHORIZED: {"model": HTTPError},
+    status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPError},
+}
 
 
 # TODO: Make model_id and other None properties optional once Go codegen tool supports
 # OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
-@router.post("/upscale", response_model=ImageResponse, responses=responses)
+@router.post("/upscale", response_model=ImageResponse, responses=RESPONSES)
 @router.post(
     "/upscale/",
     response_model=ImageResponse,
-    responses=responses,
+    responses=RESPONSES,
     include_in_schema=False,
 )
 async def upscale(
@@ -43,14 +47,14 @@ async def upscale(
     if auth_token:
         if not token or token.credentials != auth_token:
             return JSONResponse(
-                status_code=401,
+                status_code=status.HTTP_401_UNAUTHORIZED,
                 headers={"WWW-Authenticate": "Bearer"},
                 content=http_error("Invalid bearer token"),
             )
 
     if model_id != "" and model_id != pipeline.model_id:
         return JSONResponse(
-            status_code=400,
+            status_code=status.HTTP_400_BAD_REQUEST,
             content=http_error(
                 f"pipeline configured with {pipeline.model_id} but called with "
                 f"{model_id}"
@@ -72,7 +76,8 @@ async def upscale(
         logger.error(f"UpscalePipeline error: {e}")
         logger.exception(e)
         return JSONResponse(
-            status_code=500, content=http_error("UpscalePipeline error")
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=http_error("UpscalePipeline error"),
         )
 
     seeds = [seed]
