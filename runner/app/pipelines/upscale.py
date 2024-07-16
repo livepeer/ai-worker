@@ -1,5 +1,5 @@
 from app.pipelines.base import Pipeline
-from app.pipelines.util import get_torch_device, get_model_dir, SafetyChecker, is_lightning_model, is_turbo_model
+from app.pipelines.utils import get_torch_device, get_model_dir, SafetyChecker, is_lightning_model, is_turbo_model
 
 from diffusers import (
     StableDiffusionUpscalePipeline
