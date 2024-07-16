@@ -1,21 +1,26 @@
-from fastapi import File
-from app.pipelines.base import Pipeline
-from app.pipelines.util import get_torch_device, get_model_dir
-
-from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
-
-from huggingface_hub import file_download
-import torch
-from typing import List
 import logging
 import os
+from typing import List
+
+import torch
+from app.pipelines.base import Pipeline
+from app.pipelines.utils import get_model_dir, get_torch_device
+from app.pipelines.utils.audio import AudioConverter
+from fastapi import File, UploadFile
+from huggingface_hub import file_download
+from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 
 logger = logging.getLogger(__name__)
 
 
+MODEL_INCOMPATIBLE_EXTENSIONS = {
+    "openai/whisper-large-v3": ["mp4", "m4a", "ac3"],
+}
+
+
 class AudioToTextPipeline(Pipeline):
     def __init__(self, model_id: str):
-        # kwargs = {"cache_dir": get_model_dir()}
+        self.model_id = model_id
         kwargs = {}
 
         torch_device = get_torch_device()
@@ -39,16 +44,11 @@ class AudioToTextPipeline(Pipeline):
             logger.info("AudioToTextPipeline using bfloat16 precision for %s", model_id)
             kwargs["torch_dtype"] = torch.bfloat16
 
-        self.model_id = model_id
-
-        import time
-        start_time = time.time()
         model = AutoModelForSpeechSeq2Seq.from_pretrained(
-            model_id, low_cpu_mem_usage=True, use_safetensors=True, **kwargs
+            model_id, low_cpu_mem_usage=True, use_safetensors=True, cache_dir=get_model_dir(), **kwargs
         ).to(torch_device)
 
-        processor = AutoProcessor.from_pretrained(model_id)
-        print(f"Time taken to load model: {time.time() - start_time:.2f}s")
+        processor = AutoProcessor.from_pretrained(model_id, cache_dir=get_model_dir())
 
         self.ldm = pipeline(
             "automatic-speech-recognition",
@@ -62,20 +62,17 @@ class AudioToTextPipeline(Pipeline):
             **kwargs,
         )
 
-    def __call__(self, audio: str, **kwargs) -> List[File]:
-        seed = kwargs.pop("seed", None)
-        if seed is not None:
-            if isinstance(seed, int):
-                kwargs["generator"] = torch.Generator(get_torch_device()).manual_seed(
-                    seed
-                )
-            elif isinstance(seed, list):
-                kwargs["generator"] = [
-                    torch.Generator(get_torch_device()).manual_seed(s) for s in seed
-                ]
+    def __call__(self, audio: UploadFile, **kwargs) -> List[File]:
+        # Convert M4A/MP4 files for pipeline compatibility.
+        if (
+            os.path.splitext(audio.filename)[1].lower().lstrip(".")
+            in MODEL_INCOMPATIBLE_EXTENSIONS[self.model_id]
+        ):
+            audio_converter = AudioConverter()
+            converted_bytes = audio_converter.convert(audio, "mp3")
+            audio_converter.write_bytes_to_file(converted_bytes, audio)
 
-        result = self.ldm(audio, **kwargs)
-        return result
+        return self.ldm(audio.file.read(), **kwargs)
 
     def __str__(self) -> str:
         return f"AudioToTextPipeline model_id={self.model_id}"

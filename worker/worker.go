@@ -286,9 +286,9 @@ func (w *Worker) AudioToText(ctx context.Context, req AudioToTextMultipartReques
 		return nil, errors.New("audio-to-text container returned 400")
 	}
 
-	if resp.StatusCode() == 413 {
+	if resp.JSON413 != nil {
 		msg := "audio-to-text container returned 413 file too large; max file size is 50MB"
-		slog.Error("audio-to-text container returned 400", slog.String("err", string(msg)))
+		slog.Error("audio-to-text container returned 413", slog.String("err", string(msg)))
 		return nil, errors.New(msg)
 	}
 

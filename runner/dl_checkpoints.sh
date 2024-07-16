@@ -24,6 +24,7 @@ function download_alpha_models() {
     printf "\nDownloading unrestricted models...\n"
 
     # Download text-to-image and image-to-image models.
+    huggingface-cli download SG161222/RealVisXL_V4.0_Lightning --include "*.fp16.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
     huggingface-cli download ByteDance/SDXL-Lightning --include "*unet.safetensors" --cache-dir models
     huggingface-cli download timbrooks/instruct-pix2pix --include "*.fp16.safetensors" "*.json" "*.txt" --cache-dir models
 
