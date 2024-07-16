@@ -213,9 +213,9 @@ def load_loras(pipeline: any, requested_loras: str):
         try:
             # TODO: If we decide to keep LoRas loaded (and only set their weight to 0), make sure that reloading them causes no performance hit or other issues
             pipeline.load_lora_weights(adapter, adapter_name=adapter)
-        except (ValueError, RuntimeError, TypeError):
+        except Exception as e:
             logger.warning(
-                "Unable to load LoRas for adapter '" + adapter + "'"
+                "Unable to load LoRas for adapter '" + adapter + "': " + e
             )
             continue
         # Remember adapter name and their associated strength
