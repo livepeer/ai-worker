@@ -16,7 +16,7 @@ from huggingface_hub import file_download, hf_hub_download
 from safetensors.torch import load_file
 
 from app.pipelines.base import Pipeline
-from app.pipelines.util import (
+from app.pipelines.utils import (
     get_model_dir,
     get_torch_device,
     SafetyChecker,
@@ -152,7 +152,7 @@ class TextToImagePipeline(Pipeline):
             self.ldm = compile_model(self.ldm)
 
             # Warm-up the pipeline.
-            # TODO: Not yet supported for ImageToImagePipeline.
+            # TODO: Not yet supported for TextToImagePipeline.
             if os.getenv("SFAST_WARMUP", "true").lower() == "true":
                 logger.warning(
                     "The 'SFAST_WARMUP' flag is not yet supported for the "
