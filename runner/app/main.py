@@ -42,6 +42,10 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
             from app.pipelines.image_to_video import ImageToVideoPipeline
 
             return ImageToVideoPipeline(model_id)
+        case "audio-to-text":
+            from app.pipelines.audio_to_text import AudioToTextPipeline
+
+            return AudioToTextPipeline(model_id)
         case "frame-interpolation":
             raise NotImplementedError("frame-interpolation pipeline not implemented")
         case "upscale":
@@ -67,6 +71,10 @@ def load_route(pipeline: str) -> any:
             from app.routes import image_to_video
 
             return image_to_video.router
+        case "audio-to-text":
+            from app.routes import audio_to_text
+
+            return audio_to_text.router
         case "frame-interpolation":
             raise NotImplementedError("frame-interpolation pipeline not implemented")
         case "upscale":

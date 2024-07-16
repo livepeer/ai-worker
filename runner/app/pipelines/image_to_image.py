@@ -1,5 +1,5 @@
 from app.pipelines.base import Pipeline
-from app.pipelines.util import (
+from app.pipelines.utils import (
     get_torch_device,
     get_model_dir,
     SafetyChecker,
