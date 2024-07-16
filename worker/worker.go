@@ -60,7 +60,7 @@ func NewWorker(containerImageID string, gpus []string, modelDir string) (*Worker
 }
 
 func (w *Worker) TextToImage(ctx context.Context, req TextToImageJSONRequestBody) (*ImageResponse, error) {
-	c, err := w.borrowContainer(ctx, "text-to-image", *req.ModelId)
+	c, err := w.borrowContainer(ctx, "text-to-image", *req.ModelId, []int{}) //TODO: Need to pass the prefered GPUs
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func (w *Worker) TextToImage(ctx context.Context, req TextToImageJSONRequestBody
 }
 
 func (w *Worker) ImageToImage(ctx context.Context, req ImageToImageMultipartRequestBody) (*ImageResponse, error) {
-	c, err := w.borrowContainer(ctx, "image-to-image", *req.ModelId)
+	c, err := w.borrowContainer(ctx, "image-to-image", *req.ModelId, []int{}) //TODO: Need to pass the prefered GPUs
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +150,7 @@ func (w *Worker) ImageToImage(ctx context.Context, req ImageToImageMultipartRequ
 }
 
 func (w *Worker) ImageToVideo(ctx context.Context, req ImageToVideoMultipartRequestBody) (*VideoResponse, error) {
-	c, err := w.borrowContainer(ctx, "image-to-video", *req.ModelId)
+	c, err := w.borrowContainer(ctx, "image-to-video", *req.ModelId, []int{}) //TODO: Need to pass the prefered GPUs
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +203,7 @@ func (w *Worker) ImageToVideo(ctx context.Context, req ImageToVideoMultipartRequ
 }
 
 func (w *Worker) Upscale(ctx context.Context, req UpscaleMultipartRequestBody) (*ImageResponse, error) {
-	c, err := w.borrowContainer(ctx, "upscale", *req.ModelId)
+	c, err := w.borrowContainer(ctx, "upscale", *req.ModelId, []int{}) //TODO: Need to pass the prefered GPUs
 	if err != nil {
 		return nil, err
 	}
@@ -250,9 +250,9 @@ func (w *Worker) Upscale(ctx context.Context, req UpscaleMultipartRequestBody) (
 	return resp.JSON200, nil
 }
 
-func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endpoint RunnerEndpoint, optimizationFlags OptimizationFlags) error {
+func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endpoint RunnerEndpoint, optimizationFlags OptimizationFlags, gpus []int) error {
 	if endpoint.URL == "" {
-		return w.manager.Warm(ctx, pipeline, modelID, optimizationFlags)
+		return w.manager.Warm(ctx, pipeline, modelID, optimizationFlags, gpus)
 	}
 
 	w.mu.Lock()
@@ -264,6 +264,10 @@ func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endp
 		ModelID:          modelID,
 		Endpoint:         endpoint,
 		containerTimeout: externalContainerTimeout,
+	}
+	if len(gpus) > 0 {
+		//Get the gpu index, validate to the manager gpu list
+		cfg.GPU = strconv.Itoa(gpus[0] % len(w.manager.gpus))
 	}
 	rc, err := NewRunnerContainer(ctx, cfg)
 	if err != nil {
@@ -308,7 +312,7 @@ func (w *Worker) HasCapacity(pipeline, modelID string) bool {
 	return ok
 }
 
-func (w *Worker) borrowContainer(ctx context.Context, pipeline, modelID string) (*RunnerContainer, error) {
+func (w *Worker) borrowContainer(ctx context.Context, pipeline, modelID string, gpus []int) (*RunnerContainer, error) {
 	w.mu.Lock()
 
 	name := dockerContainerName(pipeline, modelID)
@@ -322,7 +326,7 @@ func (w *Worker) borrowContainer(ctx context.Context, pipeline, modelID string) 
 
 	w.mu.Unlock()
 
-	return w.manager.Borrow(ctx, pipeline, modelID)
+	return w.manager.Borrow(ctx, pipeline, modelID, gpus)
 }
 
 func (w *Worker) returnContainer(rc *RunnerContainer) {
