@@ -1,10 +1,10 @@
+import logging
+import os
+from contextlib import asynccontextmanager
+
+from app.routes import health
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
-from contextlib import asynccontextmanager
-import os
-import logging
-from app.routes import health
-
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +50,7 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
             raise NotImplementedError("frame-interpolation pipeline not implemented")
         case "upscale":
             from app.pipelines.upscale import UpscalePipeline
+
             return UpscalePipeline(model_id)
         case _:
             raise EnvironmentError(
