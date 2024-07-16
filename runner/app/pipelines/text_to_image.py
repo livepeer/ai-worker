@@ -1,28 +1,27 @@
 import logging
 import os
-from typing import List, Tuple, Optional
 from enum import Enum
+from typing import List, Optional, Tuple
 
 import PIL
 import torch
-from diffusers import (
-    AutoPipelineForText2Image,
-    EulerDiscreteScheduler,
-    StableDiffusionXLPipeline,
-    UNet2DConditionModel,
-    StableDiffusion3Pipeline,
-)
-from huggingface_hub import file_download, hf_hub_download
-from safetensors.torch import load_file
-
 from app.pipelines.base import Pipeline
 from app.pipelines.utils import (
+    SafetyChecker,
     get_model_dir,
     get_torch_device,
-    SafetyChecker,
     is_lightning_model,
     is_turbo_model,
 )
+from diffusers import (
+    AutoPipelineForText2Image,
+    EulerDiscreteScheduler,
+    StableDiffusion3Pipeline,
+    StableDiffusionXLPipeline,
+    UNet2DConditionModel,
+)
+from huggingface_hub import file_download, hf_hub_download
+from safetensors.torch import load_file
 
 logger = logging.getLogger(__name__)
 

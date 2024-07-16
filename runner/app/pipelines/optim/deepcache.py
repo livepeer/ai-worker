@@ -2,8 +2,10 @@
 
 For more information, see the DeepCache project on GitHub: https://github.com/horseee/DeepCache
 """
-from DeepCache import DeepCacheSDHelper
+
 import logging
+
+from DeepCache import DeepCacheSDHelper
 
 logger = logging.getLogger(__name__)
 

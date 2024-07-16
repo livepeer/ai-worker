@@ -1,21 +1,20 @@
-from app.pipelines.base import Pipeline
-from app.pipelines.utils import get_torch_device, get_model_dir, SafetyChecker, is_lightning_model, is_turbo_model
-
-from diffusers import (
-    StableDiffusionUpscalePipeline
-)
-from safetensors.torch import load_file
-from huggingface_hub import file_download, hf_hub_download
-import torch
-import PIL
-from typing import List, Tuple, Optional
 import logging
 import os
+from typing import List, Optional, Tuple
 
-from PIL import ImageFile
-from PIL import Image
-from io import BytesIO
+import PIL
 import torch
+from app.pipelines.base import Pipeline
+from app.pipelines.utils import (
+    SafetyChecker,
+    get_model_dir,
+    get_torch_device,
+    is_lightning_model,
+    is_turbo_model,
+)
+from diffusers import StableDiffusionUpscalePipeline
+from huggingface_hub import file_download
+from PIL import ImageFile
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -44,8 +43,8 @@ class UpscalePipeline(Pipeline):
             kwargs["variant"] = "fp16"
 
         self.ldm = StableDiffusionUpscalePipeline.from_pretrained(
-                model_id, **kwargs
-            ).to(torch_device)
+            model_id, **kwargs
+        ).to(torch_device)
 
         sfast_enabled = os.getenv("SFAST", "").strip().lower() == "true"
         deepcache_enabled = os.getenv("DEEPCACHE", "").strip().lower() == "true"
@@ -95,7 +94,7 @@ class UpscalePipeline(Pipeline):
         self._safety_checker = SafetyChecker(device=safety_checker_device)
 
     def __call__(
-            self, prompt: str, image: PIL.Image, **kwargs
+        self, prompt: str, image: PIL.Image, **kwargs
     ) -> Tuple[List[PIL.Image], List[Optional[bool]]]:
         seed = kwargs.pop("seed", None)
         safety_check = kwargs.pop("safety_check", True)

@@ -1,13 +1,14 @@
-from pydantic import BaseModel
-from fastapi import Depends, APIRouter
-from fastapi.responses import JSONResponse
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.pipelines.base import Pipeline
-from app.dependencies import get_pipeline
-from app.routes.util import image_to_data_url, ImageResponse, HTTPError, http_error
 import logging
+import os
 import random
-import os, json
+
+from app.dependencies import get_pipeline
+from app.pipelines.base import Pipeline
+from app.routes.util import HTTPError, ImageResponse, http_error, image_to_data_url
+from fastapi import APIRouter, Depends, status
+from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel
 
 router = APIRouter()
 
@@ -29,11 +30,20 @@ class TextToImageParams(BaseModel):
     num_images_per_prompt: int = 1
 
 
-responses = {400: {"model": HTTPError}, 500: {"model": HTTPError}}
+RESPONSES = {
+    status.HTTP_400_BAD_REQUEST: {"model": HTTPError},
+    status.HTTP_401_UNAUTHORIZED: {"model": HTTPError},
+    status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPError},
+}
 
 
-@router.post("/text-to-image", response_model=ImageResponse, responses=responses)
-@router.post("/text-to-image/", response_model=ImageResponse, include_in_schema=False)
+@router.post("/text-to-image", response_model=ImageResponse, responses=RESPONSES)
+@router.post(
+    "/text-to-image/",
+    response_model=ImageResponse,
+    responses=RESPONSES,
+    include_in_schema=False,
+)
 async def text_to_image(
     params: TextToImageParams,
     pipeline: Pipeline = Depends(get_pipeline),
@@ -43,14 +53,14 @@ async def text_to_image(
     if auth_token:
         if not token or token.credentials != auth_token:
             return JSONResponse(
-                status_code=401,
+                status_code=status.HTTP_401_UNAUTHORIZED,
                 headers={"WWW-Authenticate": "Bearer"},
                 content=http_error("Invalid bearer token"),
             )
 
     if params.model_id != "" and params.model_id != pipeline.model_id:
         return JSONResponse(
-            status_code=400,
+            status_code=status.HTTP_400_BAD_REQUEST,
             content=http_error(
                 f"pipeline configured with {pipeline.model_id} but called with "
                 f"{params.model_id}"
@@ -68,7 +78,7 @@ async def text_to_image(
     for seed in seeds:
         try:
             params.seed = seed
-            kwargs = {k: v for k,v in params.model_dump().items() if k != "model_id"}
+            kwargs = {k: v for k, v in params.model_dump().items() if k != "model_id"}
             imgs, nsfw_check = pipeline(**kwargs)
             images.extend(imgs)
             has_nsfw_concept.extend(nsfw_check)
@@ -76,7 +86,8 @@ async def text_to_image(
             logger.error(f"TextToImagePipeline error: {e}")
             logger.exception(e)
             return JSONResponse(
-                status_code=500, content=http_error("TextToImagePipeline error")
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content=http_error("TextToImagePipeline error"),
             )
 
     # TODO: Return None once Go codegen tool supports optional properties
