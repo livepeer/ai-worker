@@ -4,8 +4,8 @@ from typing import Annotated
 
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
-from app.routes.util import HTTPError, TextResponse, file_exceeds_max_size, http_error
 from app.pipelines.utils.audio import AudioConversionError
+from app.routes.util import HTTPError, TextResponse, file_exceeds_max_size, http_error
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -32,10 +32,9 @@ def handle_pipeline_error(e: Exception) -> JSONResponse:
         A JSONResponse with the appropriate error message and status code.
     """
     logger.error(f"Audio processing error: {str(e)}")  # Log the detailed error
-    if (
-        "Soundfile is either not in the correct format or is malformed" in str(e)
-        or isinstance(e, AudioConversionError)
-    ):
+    if "Soundfile is either not in the correct format or is malformed" in str(
+        e
+    ) or isinstance(e, AudioConversionError):
         status_code = status.HTTP_415_UNSUPPORTED_MEDIA_TYPE
         error_message = "Unsupported audio format or malformed file."
     else:
@@ -49,7 +48,12 @@ def handle_pipeline_error(e: Exception) -> JSONResponse:
 
 
 @router.post("/audio-to-text", response_model=TextResponse, responses=RESPONSES)
-@router.post("/audio-to-text/", response_model=TextResponse, include_in_schema=False)
+@router.post(
+    "/audio-to-text/",
+    response_model=TextResponse,
+    responses=RESPONSES,
+    include_in_schema=False,
+)
 async def audio_to_text(
     audio: Annotated[UploadFile, File()],
     model_id: Annotated[str, Form()] = "",
