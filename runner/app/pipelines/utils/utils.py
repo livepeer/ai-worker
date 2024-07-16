@@ -215,7 +215,7 @@ def load_loras(pipeline: any, requested_loras: str):
             pipeline.load_lora_weights(adapter, adapter_name=adapter)
         except Exception as e:
             logger.warning(
-                "Unable to load LoRas for adapter '" + adapter + "': " + str(e)
+                "Unable to load LoRas for adapter '" + adapter + "'. " + type(e).__name__ + ": " + str(e)
             )
             continue
         # Remember adapter name and their associated strength
