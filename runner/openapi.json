@@ -317,6 +317,26 @@
                             }
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPError"
+                                }
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPError"
+                                }
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "content": {
@@ -372,10 +392,6 @@
                         "type": "string",
                         "title": "Model Id",
                         "default": ""
-                    },
-                    "seed": {
-                        "type": "integer",
-                        "title": "Seed"
                     }
                 },
                 "type": "object",

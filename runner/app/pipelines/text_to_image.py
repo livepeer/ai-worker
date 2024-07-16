@@ -16,7 +16,7 @@ from huggingface_hub import file_download, hf_hub_download
 from safetensors.torch import load_file
 
 from app.pipelines.base import Pipeline
-from app.pipelines.util import (
+from app.pipelines.utils import (
     get_model_dir,
     get_torch_device,
     SafetyChecker,

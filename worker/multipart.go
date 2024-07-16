@@ -218,11 +218,6 @@ func NewAudioToTextMultipartWriter(w io.Writer, req AudioToTextMultipartRequestB
 			return nil, err
 		}
 	}
-	if req.Seed != nil {
-		if err := mw.WriteField("seed", strconv.Itoa(*req.Seed)); err != nil {
-			return nil, err
-		}
-	}
 
 	if err := mw.Close(); err != nil {
 		return nil, err

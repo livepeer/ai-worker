@@ -81,26 +81,6 @@ def is_turbo_model(model_id: str) -> bool:
     return re.search(r"[-_]turbo", model_id, re.IGNORECASE) is not None
 
 
-def get_temp_file(prefix: str, extension: str) -> str:
-    """Generates a temporary file path with the specified prefix and extension.
-
-    Args:
-        prefix: The prefix for the temporary file.
-        extension: The extension for the temporary file.
-
-    Returns:
-        The path to a non-existing temporary file with the specified prefix and extension.
-    """
-    if not extension.startswith("."):
-        extension = "." + extension
-    filename = f"{prefix}{uuid.uuid4()}{extension}"
-    temp_path = os.path.join(tempfile.gettempdir(), filename)
-    while os.path.exists(temp_path):
-        filename = f"{prefix}{uuid.uuid4()}{extension}"
-        temp_path = os.path.join(tempfile.gettempdir(), filename)
-    return temp_path
-
-
 class SafetyChecker:
     """Checks images for unsafe or inappropriate content using a pretrained model.
 
