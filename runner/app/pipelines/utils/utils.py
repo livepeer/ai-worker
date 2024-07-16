@@ -190,7 +190,13 @@ def load_loras(pipeline: any, requested_loras: str):
     if requested_loras == "" or requested_loras == None:
         return;
     # Parse LoRas param as JSON to extract key-value pairs
-    loras = json.loads(requested_loras)
+    try:
+        loras = json.loads(requested_loras)
+    except Exception as e:
+        logger.warning(
+            "Unable to parse '" + requested_loras + "' as JSON. Continuing inference without loading LoRas"
+        )
+        return
     # Build a list of adapter names and their requested strength
     adapters = []
     strengths = []
@@ -202,7 +208,6 @@ def load_loras(pipeline: any, requested_loras: str):
             logger.warning(
                 "Skipping requested LoRa " + adapter + ", as it's requested strength (" + val + ") is not a number"
             )
-            # NOTE: do we want to drop skipped LoRas from loaded_loras?
             continue
         if strength < 0.0:
             logger.warning(
