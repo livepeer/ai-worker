@@ -1,30 +1,29 @@
+import logging
+import os
+from enum import Enum
+from typing import List, Optional, Tuple
+
+import PIL
+import torch
 from app.pipelines.base import Pipeline
 from app.pipelines.utils import (
-    get_torch_device,
-    get_model_dir,
     SafetyChecker,
+    get_model_dir,
+    get_torch_device,
     is_lightning_model,
     is_turbo_model,
 )
-from enum import Enum
-
 from diffusers import (
     AutoPipelineForImage2Image,
+    EulerAncestralDiscreteScheduler,
+    EulerDiscreteScheduler,
+    StableDiffusionInstructPix2PixPipeline,
     StableDiffusionXLPipeline,
     UNet2DConditionModel,
-    EulerDiscreteScheduler,
-    EulerAncestralDiscreteScheduler,
-    StableDiffusionInstructPix2PixPipeline,
 )
-from safetensors.torch import load_file
 from huggingface_hub import file_download, hf_hub_download
-import torch
-import PIL
-from typing import List, Tuple, Optional
-import logging
-import os
-
 from PIL import ImageFile
+from safetensors.torch import load_file
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
