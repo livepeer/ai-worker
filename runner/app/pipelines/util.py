@@ -1,5 +1,6 @@
 import torch
 import os
+import json
 import numpy as np
 from torch import dtype as TorchDtype
 from pathlib import Path
@@ -131,3 +132,48 @@ class SafetyChecker:
             clip_input=safety_checker_input.pixel_values.to(self._dtype),
         )
         return images, has_nsfw_concept
+
+def load_loras(pipeline: any, requested_loras: str):
+    """Loads LoRas and sets their weights into the given pipeline.
+
+    Args:
+        pipeline: Diffusion pipeline, usually available under self.ldm.
+        loras: JSON string with key-value pairs, where the key is the repository to load LoRas from and the value is the strength (float with a minimum value of 0.0) to assign to the LoRa.
+    """
+    # No LoRas to load
+    if requested_loras == "" or requested_loras == None:
+        return;
+    # Parse LoRas param as JSON to extract key-value pairs
+    loras = json.loads(requested_loras)
+    # Build a list of adapter names and their requested strength
+    adapters = []
+    strengths = []
+    for adapter, val in loras.items():
+        # Sanity check: strength should be a number with a minimum value of 0.0
+        try:
+            strength = int(val)
+        except ValueError:
+            logger.warning(
+                "Skipping requested LoRa " + adapter + ", as it's requested strength (" + val + ") is not a number"
+            )
+            # NOTE: do we want to drop skipped LoRas from loaded_loras?
+            continue
+        if strength < 0.0:
+            logger.warning(
+                "Clipping strength of LoRa " + adapter + " to 0.0, as it's requested strength (" + val + ") is negative"
+            )
+            strength = 0.0
+        # Load in LoRa weights if its repository exists on HuggingFace
+        try:
+            # TODO: If we decide to keep LoRas loaded (and only set their weight to 0), make sure that reloading them causes no performance hit or other issues
+            pipeline.load_lora_weights(adapter, adapter_name=adapter)
+        except Exception as e:
+            logger.warning(
+                "Unable to load LoRas for adapter '" + adapter + "': " + str(e)
+            )
+            continue
+        # Remember adapter name and their associated strength
+        adapters.append(adapter)
+        strengths.append(strength)
+    # Set weights for all loaded adapters
+    pipeline.set_adapters(adapters, strengths)
