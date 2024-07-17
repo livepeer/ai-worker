@@ -5,6 +5,15 @@ from typing import List, Optional, Tuple
 
 import PIL
 import torch
+from app.pipelines.base import Pipeline
+from app.pipelines.utils import (
+    SafetyChecker,
+    get_model_dir,
+    get_torch_device,
+    is_lightning_model,
+    is_turbo_model,
+    split_prompt,
+)
 from diffusers import (
     AutoPipelineForText2Image,
     EulerDiscreteScheduler,
@@ -14,15 +23,6 @@ from diffusers import (
 )
 from huggingface_hub import file_download, hf_hub_download
 from safetensors.torch import load_file
-
-from app.pipelines.base import Pipeline
-from app.pipelines.utils import (
-    SafetyChecker,
-    get_model_dir,
-    get_torch_device,
-    is_lightning_model,
-    is_turbo_model,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -222,24 +222,19 @@ class TextToImagePipeline(Pipeline):
                 # Default to 8step
                 kwargs["num_inference_steps"] = 8
 
-        prompts = prompt.split("|", 3)
-        prompt = prompts[0]
-        if len(prompts) > 1:
-            kwargs["prompt_2"] = prompts[1]
-        if len(prompts) > 2:
-            kwargs["prompt_3"] = prompts[2]
-        
-        if "negative_prompt" in kwargs:
-            negative_prompts = prompt.split("|", 3)
-            kwargs["negative_prompt"] = negative_prompts[0]
-            if len(negative_prompts) > 1:
-                kwargs["negative_prompt_2"] = negative_prompts[1]
-            if len(negative_prompts) > 2:
-                kwargs["negative_prompt_3"] = negative_prompts[2]
-        
-        
+        # Allow users to specify multiple (negative) prompts using the '|' separator.
+        prompts = split_prompt(prompt, max_splits=3)
+        prompt = prompts.pop("prompt")
+        kwargs.update(prompts)
+        neg_prompts = split_prompt(
+            kwargs.pop("negative_prompt", ""),
+            key_prefix="negative_prompt",
+            max_splits=3,
+        )
+        kwargs.update(neg_prompts)
+
         output = self.ldm(prompt=prompt, **kwargs)
-        
+
         if safety_check:
             _, has_nsfw_concept = self._safety_checker.check_nsfw_images(output.images)
         else:

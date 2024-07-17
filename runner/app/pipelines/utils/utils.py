@@ -79,6 +79,39 @@ def is_turbo_model(model_id: str) -> bool:
     return re.search(r"[-_]turbo", model_id, re.IGNORECASE) is not None
 
 
+def split_prompt(
+    input_prompt: str,
+    separator: str = "|",
+    key_prefix: str = "prompt",
+    max_splits: int = -1,
+) -> dict[str, str]:
+    """Splits an input prompt into prompts, including the main prompt, with customizable
+    key naming.
+
+    Args:
+        input_prompt (str): The input prompt string to be split.
+        separator (str): The character used to split the input prompt. Defaults to '|'.
+        key_prefix (str): Prefix for keys in the returned dictionary for all prompts,
+            including the main prompt. Defaults to 'prompt'.
+        max_splits (int): Maximum number of splits to perform. Defaults to -1 (no limit).
+
+    Returns:
+        Dict[str, str]: A dictionary of all prompts, including the main prompt.
+    """
+    prompts = input_prompt.split(separator, max_splits - 1)
+    start_index = 1 if max_splits < 0 else max(1, len(prompts) - max_splits)
+
+    prompt_dict = {f"{key_prefix}": prompts[0].strip()}
+    prompt_dict.update(
+        {
+            f"{key_prefix}_{i+1}": prompt.strip()
+            for i, prompt in enumerate(prompts[1:], start=start_index)
+        }
+    )
+
+    return prompt_dict
+
+
 class SafetyChecker:
     """Checks images for unsafe or inappropriate content using a pretrained model.
 
