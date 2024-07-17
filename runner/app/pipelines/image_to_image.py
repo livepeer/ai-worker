@@ -5,14 +5,6 @@ from typing import List, Optional, Tuple
 
 import PIL
 import torch
-from app.pipelines.base import Pipeline
-from app.pipelines.utils import (
-    SafetyChecker,
-    get_model_dir,
-    get_torch_device,
-    is_lightning_model,
-    is_turbo_model,
-)
 from diffusers import (
     AutoPipelineForImage2Image,
     EulerAncestralDiscreteScheduler,
@@ -24,6 +16,15 @@ from diffusers import (
 from huggingface_hub import file_download, hf_hub_download
 from PIL import ImageFile
 from safetensors.torch import load_file
+
+from app.pipelines.base import Pipeline
+from app.pipelines.utils import (
+    SafetyChecker,
+    get_model_dir,
+    get_torch_device,
+    is_lightning_model,
+    is_turbo_model,
+)
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -171,6 +172,7 @@ class ImageToImagePipeline(Pipeline):
         self, prompt: str, image: PIL.Image, **kwargs
     ) -> Tuple[List[PIL.Image], List[Optional[bool]]]:
         seed = kwargs.pop("seed", None)
+        num_inference_steps = kwargs.get("num_inference_steps", None)
         safety_check = kwargs.pop("safety_check", True)
 
         if seed is not None:
@@ -183,6 +185,9 @@ class ImageToImagePipeline(Pipeline):
                     torch.Generator(get_torch_device()).manual_seed(s) for s in seed
                 ]
 
+        if num_inference_steps is None or num_inference_steps < 1:
+            del kwargs["num_inference_steps"]
+
         if (
             self.model_id == "stabilityai/sdxl-turbo"
             or self.model_id == "stabilityai/sd-turbo"
@@ -191,13 +196,13 @@ class ImageToImagePipeline(Pipeline):
             # it should be set to 0
             kwargs["guidance_scale"] = 0.0
 
-            # num_inference_steps * strength should be >= 1 because
-            # the pipeline will be run for int(num_inference_steps * strength) steps
-            if "strength" not in kwargs:
-                kwargs["strength"] = 0.5
-
-            if "num_inference_steps" not in kwargs:
-                kwargs["num_inference_steps"] = 2
+            # Ensure num_inference_steps * strength >= 1 for minimum pipeline
+            # execution steps.
+            if "num_inference_steps" in kwargs:
+                kwargs["strength"] = max(
+                    1.0 / kwargs.get("num_inference_steps", 1),
+                    kwargs.get("strength", 0.5),
+                )
         elif ModelName.SDXL_LIGHTNING.value in self.model_id:
             # SDXL-Lightning models should have guidance_scale = 0 and use
             # the correct number of inference steps for the unet checkpoint loaded
@@ -212,10 +217,6 @@ class ImageToImagePipeline(Pipeline):
             else:
                 # Default to 2step
                 kwargs["num_inference_steps"] = 2
-        elif ModelName.INSTRUCT_PIX2PIX.value in self.model_id:
-            if "num_inference_steps" not in kwargs:
-                # TODO: Currently set to recommended value make configurable later.
-                kwargs["num_inference_steps"] = 10
 
         output = self.ldm(prompt, image=image, **kwargs)
 

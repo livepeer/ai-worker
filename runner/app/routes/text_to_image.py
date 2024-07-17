@@ -26,7 +26,7 @@ class TextToImageParams(BaseModel):
     negative_prompt: str = ""
     safety_check: bool = True
     seed: int = None
-    num_inference_steps: int = 50  # TODO: Make optional.
+    num_inference_steps: int = 50  # NOTE: Hardcoded due to varying pipeline values.
     num_images_per_prompt: int = 1
 
 

@@ -45,6 +45,7 @@ type BodyImageToImageImageToImagePost struct {
 	ModelId            *string            `json:"model_id,omitempty"`
 	NegativePrompt     *string            `json:"negative_prompt,omitempty"`
 	NumImagesPerPrompt *int               `json:"num_images_per_prompt,omitempty"`
+	NumInferenceSteps  *int               `json:"num_inference_steps,omitempty"`
 	Prompt             string             `json:"prompt"`
 	SafetyCheck        *bool              `json:"safety_check,omitempty"`
 	Seed               *int               `json:"seed,omitempty"`
@@ -53,24 +54,26 @@ type BodyImageToImageImageToImagePost struct {
 
 // BodyImageToVideoImageToVideoPost defines model for Body_image_to_video_image_to_video_post.
 type BodyImageToVideoImageToVideoPost struct {
-	Fps              *int               `json:"fps,omitempty"`
-	Height           *int               `json:"height,omitempty"`
-	Image            openapi_types.File `json:"image"`
-	ModelId          *string            `json:"model_id,omitempty"`
-	MotionBucketId   *int               `json:"motion_bucket_id,omitempty"`
-	NoiseAugStrength *float32           `json:"noise_aug_strength,omitempty"`
-	SafetyCheck      *bool              `json:"safety_check,omitempty"`
-	Seed             *int               `json:"seed,omitempty"`
-	Width            *int               `json:"width,omitempty"`
+	Fps               *int               `json:"fps,omitempty"`
+	Height            *int               `json:"height,omitempty"`
+	Image             openapi_types.File `json:"image"`
+	ModelId           *string            `json:"model_id,omitempty"`
+	MotionBucketId    *int               `json:"motion_bucket_id,omitempty"`
+	NoiseAugStrength  *float32           `json:"noise_aug_strength,omitempty"`
+	NumInferenceSteps *int               `json:"num_inference_steps,omitempty"`
+	SafetyCheck       *bool              `json:"safety_check,omitempty"`
+	Seed              *int               `json:"seed,omitempty"`
+	Width             *int               `json:"width,omitempty"`
 }
 
 // BodyUpscaleUpscalePost defines model for Body_upscale_upscale_post.
 type BodyUpscaleUpscalePost struct {
-	Image       openapi_types.File `json:"image"`
-	ModelId     *string            `json:"model_id,omitempty"`
-	Prompt      string             `json:"prompt"`
-	SafetyCheck *bool              `json:"safety_check,omitempty"`
-	Seed        *int               `json:"seed,omitempty"`
+	Image             openapi_types.File `json:"image"`
+	ModelId           *string            `json:"model_id,omitempty"`
+	NumInferenceSteps *int               `json:"num_inference_steps,omitempty"`
+	Prompt            string             `json:"prompt"`
+	SafetyCheck       *bool              `json:"safety_check,omitempty"`
+	Seed              *int               `json:"seed,omitempty"`
 }
 
 // HTTPError defines model for HTTPError.
@@ -1478,56 +1481,32 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-<<<<<<< HEAD
-	"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",
-=======
-	"H4sIAAAAAAAC/+xY23LbNhN+FQz+/1K2ZDduOrqz3TbxtEk8kZNeZDwamFxRSEgAxcGJ6tG7d7CgSPAU",
-	"KU3stB5dSST38O1iv90l72giCyUFCGvo9I6aZAkFw7+nlxe/aC21/6+0VKAtB3xSmMz/WG5zoFP6wmR0",
-	"RO1K+QtjNRcZXa9HVMOfjmtI6fQdqlyPKpXKdqUnb95DYul6RM9kuprzgmUwt7L807pU0tgurMzxlIkE",
-	"5iZh3ssdTWHBXG7p9OnhSe38WSlHZihXQRCuuAHtIaAXb2AhdcEsndIbLphe0drIBYp0wi5155/BchRj",
-	"QTNkO6JCppDPedqwRCM8L7wAuUj7IAnImOW3MFdaFsoO2nhZypHLINdnyhXhDMxcge4zeBTZcwXBAA25",
-	"BN2xyoWFLIRX29noDkMwbAF2NU+WkHxoeLbaQe18hmLkHMUqMzdS5sAE2gFIY48zf90HzlgNIrPLhrPJ",
-	"4U+Rr41E5+RaNFCbqEKFRYzYteq3EuaWpyDbl/2EWSjTiOnHGs6vyvTmYgk8WzYP/ORppPc8PO9T/RpS",
-	"fVX5F9JyKeY3LvkAtm3k6PhpbMVLkjOUbFiL4hCSG5gzl80HCmNyHFHAC5NTl5HhGvkOJf2Rpy3YR5Pj",
-	"J7WnP/B5V7NVzluqeLgUh6rYKeyX1W9/3X63SvoXt6kvazS9ee45lOdXV5cDS0AKlvHc//u/hgWd0v+N",
-	"61ViXO4R42rQtwGW6hGw2tcAkLcs5ynzDN0KiVsozDZsbXvrGsvPwVIFhGnNVhhDjLZtoA83sNwuzzdF",
-	"0MRrLLOu2YLpq99oPFdQoG+5qhtu7aDHP/LgNRglhYEBJpmdM/YCUs7iPIXp3penTpsw8Vk3YfXgDp46",
-	"eIVZfIzJ8NJff1UndDqP5d7ofOsu61DGBIuIKIosAO+J6Ao+2SuJgV8yzUKy72uBrcf0DoP5ke+WaFYs",
-	"QAOm1kJr6zmZtKxuZMkMZf9z+2o13L9wmpdBRcXcrdmewt7alnOZNDoME6tXCzp9d9fJ1V0H4nXUbH6X",
-	"CbrptJtR540UjBmY/+FGLYqYyZW/u433Po7gqpSMMrXDKHjr15/hVrzQrGi14i/sya2cVKt8MLylR5fu",
-	"45AaeDsBYUUmTnO7mnkoAbsfi2fANOjqawKWcbhVGVlaq+ja2+BiIQMrTKK5wvOd0lNBmFI5DwdOrCTa",
-	"CXJ6QRRXkHMR4tnUBb8FBaD989dOCHR0C9oEW5PDo8OJT4hUIJjidEp/wFsjqphdIuzxEscoNmFAXvuj",
-	"QecXaTVlqU9ZyAdqHU8m/ieRwoJArQj0+L3x7jefVLYdYzzHMTHNhMxckoAxC5eT6kjwCFxR+M23guhv",
-	"jrGLHlh5UG3Km0W6GRYyuyQ4DfUAxvoNsRVX4XLLFdN27Ffug5RZtntou77arps16dvj+h4z3txBds35",
-	"iD75lqde7bw9/s9YSl6HIwl+jx7G7xvBnF1Kzf+CFB0fH39Tx529uwuhFiHVbn7yUHm/EBa0YDmZgb4F",
-	"TeoXmE3Dw+EVt7p31+vrmIzhs96VDCtKi5T4HryVlNh+H4qUw2/qD0zK5tDZk3JPynsgZaAWktLCJ7vD",
-	"oIwW4c9S8p8H31219+Nwz7xHwjxf3K1pWH55HKbcm1Lgfidg74fQPfP2zHskzNuwaB20vBmDSk1P1Sv0",
-	"eS5dSs5lUTjB7Yo8YxY+shUtP5Tii7uZjsepBlYcZOHpYV6qHyZena6v138HAAD//5er3yJYIAAA",
->>>>>>> cf59a6e (refactor: improve error codes and code formatting)
+	"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",
+	"EigAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
