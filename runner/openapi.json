@@ -485,6 +485,11 @@
                         "type": "integer",
                         "title": "Seed"
                     },
+                    "num_inference_steps": {
+                        "type": "integer",
+                        "title": "Num Inference Steps",
+                        "default": 100
+                    },
                     "num_images_per_prompt": {
                         "type": "integer",
                         "title": "Num Images Per Prompt",
@@ -543,6 +548,11 @@
                         "type": "boolean",
                         "title": "Safety Check",
                         "default": true
+                    },
+                    "num_inference_steps": {
+                        "type": "integer",
+                        "title": "Num Inference Steps",
+                        "default": 25
                     }
                 },
                 "type": "object",
@@ -575,6 +585,11 @@
                     "seed": {
                         "type": "integer",
                         "title": "Seed"
+                    },
+                    "num_inference_steps": {
+                        "type": "integer",
+                        "title": "Num Inference Steps",
+                        "default": 75
                     }
                 },
                 "type": "object",

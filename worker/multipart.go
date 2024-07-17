@@ -75,6 +75,11 @@ func NewImageToImageMultipartWriter(w io.Writer, req ImageToImageMultipartReques
 			return nil, err
 		}
 	}
+	if req.NumInferenceSteps != nil {
+		if err := mw.WriteField("num_inference_steps", strconv.Itoa(*req.NumInferenceSteps)); err != nil {
+			return nil, err
+		}
+	}
 
 	if err := mw.Close(); err != nil {
 		return nil, err
@@ -142,6 +147,11 @@ func NewImageToVideoMultipartWriter(w io.Writer, req ImageToVideoMultipartReques
 			return nil, err
 		}
 	}
+	if req.NumInferenceSteps != nil {
+		if err := mw.WriteField("num_inference_steps", strconv.Itoa(*req.NumInferenceSteps)); err != nil {
+			return nil, err
+		}
+	}
 
 	if err := mw.Close(); err != nil {
 		return nil, err
@@ -184,6 +194,11 @@ func NewUpscaleMultipartWriter(w io.Writer, req UpscaleMultipartRequestBody) (*m
 	}
 	if req.Seed != nil {
 		if err := mw.WriteField("seed", strconv.Itoa(*req.Seed)); err != nil {
+			return nil, err
+		}
+	}
+	if req.NumInferenceSteps != nil {
+		if err := mw.WriteField("num_inference_steps", strconv.Itoa(*req.NumInferenceSteps)); err != nil {
 			return nil, err
 		}
 	}

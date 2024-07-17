@@ -109,6 +109,7 @@ class ImageToVideoPipeline(Pipeline):
         self, image: PIL.Image, **kwargs
     ) -> Tuple[List[PIL.Image], List[Optional[bool]]]:
         seed = kwargs.pop("seed", None)
+        num_inference_steps = kwargs.get("num_inference_steps", None)
         safety_check = kwargs.pop("safety_check", True)
 
         if "decode_chunk_size" not in kwargs:
@@ -124,6 +125,9 @@ class ImageToVideoPipeline(Pipeline):
                 kwargs["generator"] = [
                     torch.Generator(get_torch_device()).manual_seed(s) for s in seed
                 ]
+
+        if num_inference_steps is None or num_inference_steps < 1:
+            del kwargs["num_inference_steps"]
 
         if safety_check:
             _, has_nsfw_concept = self._safety_checker.check_nsfw_images([image])
