@@ -488,7 +488,7 @@
                     "num_inference_steps": {
                         "type": "integer",
                         "title": "Num Inference Steps",
-                        "default": 25
+                        "default": 100
                     },
                     "num_images_per_prompt": {
                         "type": "integer",
@@ -589,7 +589,7 @@
                     "num_inference_steps": {
                         "type": "integer",
                         "title": "Num Inference Steps",
-                        "default": 50
+                        "default": 75
                     }
                 },
                 "type": "object",
