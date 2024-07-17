@@ -43,6 +43,7 @@ async def image_to_video(
     noise_aug_strength: Annotated[float, Form()] = 0.02,
     seed: Annotated[int, Form()] = None,
     safety_check: Annotated[bool, Form()] = True,
+    num_inference_steps: Annotated[int, Form()] = 25,  # TODO: Make optional.
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
@@ -84,6 +85,7 @@ async def image_to_video(
             fps=fps,
             motion_bucket_id=motion_bucket_id,
             noise_aug_strength=noise_aug_strength,
+            num_inference_steps=num_inference_steps,
             safety_check=safety_check,
             seed=seed,
         )

@@ -44,7 +44,7 @@ async def image_to_image(
     negative_prompt: Annotated[str, Form()] = "",
     safety_check: Annotated[bool, Form()] = True,
     seed: Annotated[int, Form()] = None,
-    num_inference_steps: Annotated[int, Form()] = 50,
+    num_inference_steps: Annotated[int, Form()] = 25,  # TODO: Make optional.
     num_images_per_prompt: Annotated[int, Form()] = 1,
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),

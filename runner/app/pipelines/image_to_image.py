@@ -196,9 +196,14 @@ class ImageToImagePipeline(Pipeline):
 
             # num_inference_steps * strength should be >= 1 because
             # the pipeline will be run for int(num_inference_steps * strength) steps
-            if "strength" not in kwargs:
-                kwargs["strength"] = 0.5
-
+            kwargs["strength"] = kwargs.get("strength", 0.5)
+            if (
+                kwargs.get("num_inference_steps")
+                and kwargs["strength"] * kwargs["num_inference_steps"] < 1
+            ):
+                kwargs["strength"] = max(
+                    1.0 / kwargs["num_inference_steps"], kwargs["strength"]
+                )
         elif ModelName.SDXL_LIGHTNING.value in self.model_id:
             # SDXL-Lightning models should have guidance_scale = 0 and use
             # the correct number of inference steps for the unet checkpoint loaded
@@ -214,9 +219,7 @@ class ImageToImagePipeline(Pipeline):
                 # Default to 2step
                 kwargs["num_inference_steps"] = 2
         elif ModelName.INSTRUCT_PIX2PIX.value in self.model_id:
-            if "num_inference_steps" not in kwargs:
-                # TODO: Currently set to recommended value make configurable later.
-                kwargs["num_inference_steps"] = 10
+            kwargs["num_inference_steps"] = kwargs.get("num_inference_steps", 10)
 
         output = self.ldm(prompt, image=image, **kwargs)
 
