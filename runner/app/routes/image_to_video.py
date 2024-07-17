@@ -43,7 +43,9 @@ async def image_to_video(
     noise_aug_strength: Annotated[float, Form()] = 0.02,
     seed: Annotated[int, Form()] = None,
     safety_check: Annotated[bool, Form()] = True,
-    num_inference_steps: Annotated[int, Form()] = 25,  # TODO: Make optional.
+    num_inference_steps: Annotated[
+        int, Form()
+    ] = 25,  # NOTE: Hardcoded due to varying pipeline values.
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
