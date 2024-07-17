@@ -7,5 +7,6 @@ from app.pipelines.utils.utils import (
     get_torch_device,
     is_lightning_model,
     is_turbo_model,
+    split_prompt,
     validate_torch_device,
 )
