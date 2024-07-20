@@ -19,3 +19,4 @@ jobs:
           token: ${{ secrets.DOCS_TRIGGER_PAT }}
           repository: rickstaa/docs
           event-type: update-ai-openapi
+          client-payload: '{"sha": "${{ github.sha }}"}'
