@@ -14,9 +14,8 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Trigger docs AI OpenAPI spec update
-        run: |
-          curl -XPOST -u "${{ secrets.DOCS_TRIGGER_PAT }}:x-oauth-basic" \
-          -H "Accept: application/vnd.github.everest-preview+json" \
-          -H "Content-Type: application/json" \
-          --data '{"event_type": "update-ai-openapi"}' \
-          https://api.github.com/repos/rickstaa/docs/dispatches
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.DOCS_TRIGGER_PAT }}
+          repository: rickstaa/docs
+          event-type: update-ai-openapi
