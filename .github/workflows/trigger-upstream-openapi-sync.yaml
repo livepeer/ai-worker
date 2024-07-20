@@ -11,7 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+
+      - name: Print GitHub context
+        run: echo '${{ toJson(github) }}'
 
       - name: Trigger docs AI OpenAPI spec update
         uses: peter-evans/repository-dispatch@v3
