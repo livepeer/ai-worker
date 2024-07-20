@@ -20,3 +20,11 @@ jobs:
           repository: rickstaa/docs
           event-type: update-ai-openapi
           client-payload: '{"sha": "${{ github.sha }}"}'
+
+      - name: Trigger docs AI OpenAPI spec update
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.SDKS_TRIGGER_PAT }}
+          repository: livepeer/livepeer-ai-sdks
+          event-type: update-ai-openapi
+          client-payload: '{"sha": "${{ github.sha }}"}'
