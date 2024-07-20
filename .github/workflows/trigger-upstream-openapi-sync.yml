@@ -1,4 +1,4 @@
-name: Check OpenAPI changes and trigger upstream updates
+name: Trigger upstream OpenAPI sync
 
 on:
   push:
