@@ -1,0 +1,44 @@
+name: Check OpenAPI spec and Golang bindings
+
+on:
+  pull_request:
+
+jobs:
+  check-openapi-and-bindings:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r runner/requirements.txt
+
+      - name: Generate AI OpenAPI specification
+        working-directory: runner
+        run: |
+          python gen_openapi.py
+
+      - name: Check for OpenAPI spec changes
+        run: |
+          if ! git diff --exit-code; then
+            echo "::error:: OpenAPI spec has changed. Please run 'python gen_openapi.py' in the 'runner' directory and commit the changes."
+            exit 1
+          fi
+
+      - name: Generate Go bindings
+        run: make
+
+      - name: Check for Go bindings changes
+        run: |
+          if ! git diff --exit-code; then
+            echo "::error::Go bindings have changed. Please run 'make' at the root of the repository and commit the changes."
+            exit 1
+          fi
