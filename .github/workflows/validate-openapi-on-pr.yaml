@@ -1,10 +1,10 @@
-name: Check OpenAPI spec & Golang bindings update
+name: Check OpenAPI spec and Golang bindings
 
 on:
   pull_request:
 
 jobs:
-  check-openapi-spec:
+  check-openapi-and-bindings:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -22,27 +22,23 @@ jobs:
           pip install -r runner/requirements.txt
 
       - name: Generate AI OpenAPI specification
+        working-directory: runner
         run: |
-          cd runner
           python gen_openapi.py
-          cd $GITHUB_WORKSPACE
 
-      - name: Check OpenAPI change
+      - name: Check for OpenAPI spec changes
         run: |
-          git diff --exit-code
-          if [ $? -ne 0 ]; then
-            echo "OpenAPI spec has changed. Please run 'python gen_openapi.py' and commit the changes."
+          if ! git diff --exit-code; then
+            echo "::error:: OpenAPI spec has changed. Please run 'python gen_openapi.py' in the 'runner' directory and commit the changes."
             exit 1
           fi
 
       - name: Generate Go bindings
-        run: |
-          make
+        run: make
 
-      - name: Check Go bindings change
+      - name: Check for Go bindings changes
         run: |
-          git diff --exit-code
-          if [ $? -ne 0 ]; then
-            echo "Go bindings have changed. Please run 'make' and commit the changes."
+          if ! git diff --exit-code; then
+            echo "::error::Go bindings have changed. Please run 'make' at the root of the repository and commit the changes."
             exit 1
           fi
