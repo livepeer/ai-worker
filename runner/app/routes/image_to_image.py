@@ -150,6 +150,10 @@ async def image_to_image(
         int,
         Form(description="Number of images to generate per prompt."),
     ] = 1,
+    scheduler: Annotated[
+        str, 
+        Form(description="Set scheduler for pipeline to use per documentation or presets available")
+    ] = "",
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
@@ -194,6 +198,7 @@ async def image_to_image(
                 seed=seed,
                 num_images_per_prompt=1,
                 num_inference_steps=num_inference_steps,
+                scheduler=scheduler
             )
         except Exception as e:
             if isinstance(e, torch.cuda.OutOfMemoryError):
