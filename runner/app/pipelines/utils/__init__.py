@@ -15,3 +15,8 @@ from app.pipelines.utils.utils import (
     split_prompt,
     validate_torch_device,
 )
+
+from app.pipelines.utils.schedulers import (
+    load_scheduler_presets,
+    create_scheduler
+)

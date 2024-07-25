@@ -117,6 +117,13 @@ class TextToImageParams(BaseModel):
         int,
         Field(default=1, description="Number of images to generate per prompt."),
     ]
+    scheduler: Annotated[
+        str, 
+        Field(
+            default="", 
+            description="Set scheduler for pipeline to use per documentation or presets available"
+        ),
+    ]
 
 
 RESPONSES = {
