@@ -6,10 +6,14 @@ from typing import List, Optional, Tuple
 import PIL
 import torch
 from app.pipelines.base import Pipeline
-from app.pipelines.utils import SafetyChecker, get_model_dir, get_torch_device
 from diffusers import StableVideoDiffusionPipeline
 from huggingface_hub import file_download
 from PIL import ImageFile
+from app.pipelines.utils import (
+    SafetyChecker,
+    get_model_dir,
+    get_torch_device
+)
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 

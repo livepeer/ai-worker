@@ -59,6 +59,9 @@ function download_all_models() {
 
     # Download image-to-video models.
     huggingface-cli download stabilityai/stable-video-diffusion-img2vid-xt --include "*.fp16.safetensors" "*.json" --cache-dir models
+
+    #Download frame-interpolation model.
+    wget -O models/film_net_fp16.pt https://github.com/dajes/frame-interpolation-pytorch/releases/download/v1.0.2/film_net_fp16.pt
 }
 
 # Enable HF transfer acceleration.

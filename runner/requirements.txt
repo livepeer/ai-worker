@@ -6,6 +6,8 @@ pydantic==2.7.2
 Pillow==10.3.0
 python-multipart==0.0.9
 uvicorn==0.30.0
+setuptools
+torch
 huggingface_hub==0.23.2
 xformers==0.0.23
 triton>=2.1.0
@@ -17,3 +19,4 @@ numpy==1.26.4
 av==12.1.0
 sentencepiece== 0.2.0
 protobuf==5.27.2
+opencv-python==4.10.0.84
