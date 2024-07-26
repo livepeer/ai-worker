@@ -1,7 +1,7 @@
 name: Check OpenAPI spec and Golang bindings
 
 on:
-  push:
+  check_run:
 
 jobs:
   check-openapi-and-bindings:
