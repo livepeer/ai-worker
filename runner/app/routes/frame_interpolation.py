@@ -36,9 +36,9 @@ RESPONSES = {
 )
 async def frame_interpolation(
     model_id: Annotated[str, Form()],
-    image1: Annotated[Optional[UploadFile], File()]=None,
-    image2: Annotated[Optional[UploadFile], File()]=None,
-    image_dir: Annotated[Optional[str], Form()]="",
+    image1: Annotated[UploadFile, File()]=None,
+    image2: Annotated[UploadFile, File()]=None,
+    image_dir: Annotated[str, Form()]="",
     inter_frames: Annotated[int, Form()] = 2,
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
