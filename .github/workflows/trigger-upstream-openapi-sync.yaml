@@ -1,7 +1,7 @@
 name: Trigger upstream OpenAPI sync
 
 on:
-  push:
+  check_run:
     paths:
       - "runner/openapi.json"
   workflow_dispatch:
