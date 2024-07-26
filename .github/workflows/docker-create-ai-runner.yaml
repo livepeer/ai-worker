@@ -49,7 +49,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            livepeer/ai-runner
+            jjassonn69/ai-runner
           tags: |
             type=sha
             type=ref,event=pr
