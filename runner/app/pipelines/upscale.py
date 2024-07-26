@@ -87,7 +87,7 @@ class UpscalePipeline(Pipeline):
         elif deepcache_enabled:
             logger.warning(
                 "DeepCache is not supported for Lightning or Turbo models. "
-                "TextToImagePipeline will NOT be optimized with DeepCache for %s",
+                "UpscalingPiepline will NOT be optimized with DeepCache for %s",
                 model_id,
             )
 
@@ -112,7 +112,7 @@ class UpscalePipeline(Pipeline):
                 ]
 
         if num_inference_steps is None or num_inference_steps < 1:
-            del kwargs["num_inference_steps"]
+            kwargs.pop("num_inference_steps", None)
 
         output = self.ldm(prompt, image=image, **kwargs)
 
