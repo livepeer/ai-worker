@@ -73,5 +73,5 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           file: "Dockerfile"
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=livepeerci/build:cache
-          cache-to: type=registry,ref=livepeerci/build:cache,mode=max
+          cache-from: type=registry,ref=jjassonn69/build:cache
+          cache-to: type=registry,ref=jjassonn69/build:cache,mode=max
