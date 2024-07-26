@@ -1,7 +1,7 @@
 name: Build Docker image for ai-runner
 
 on:
-  pull_request:
+  member:
     paths:
       - "runner/**"
       - "!runner/.devcontainer/**"
