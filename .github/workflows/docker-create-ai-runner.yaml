@@ -1,7 +1,10 @@
 name: Build Docker image for ai-runner
 
 on:
-  workflow_dispatch:
+  check_run:
+    paths:
+      - "runner/**"
+      - "!runner/.devcontainer/**"
   push:
     branches:
       - main
@@ -10,6 +13,7 @@ on:
     paths:
       - "runner/**"
       - "!runner/.devcontainer/**"
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
