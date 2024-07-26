@@ -203,7 +203,7 @@ func (w *Worker) ImageToVideo(ctx context.Context, req ImageToVideoMultipartRequ
 }
 
 func (w *Worker) Upscale(ctx context.Context, req UpscaleMultipartRequestBody) (*ImageResponse, error) {
-	c, err := w.borrowContainer(ctx, "upscale", *req.ModelId, []int{}) //TODO: Need to pass the prefered GPUs
+	c, err := w.borrowContainer(ctx, "upscale", *req.ModelId, []int{}) //TODO: Need to pass the preferred GPUs
 	if err != nil {
 		return nil, err
 	}
@@ -251,7 +251,7 @@ func (w *Worker) Upscale(ctx context.Context, req UpscaleMultipartRequestBody) (
 }
 
 func (w *Worker) AudioToText(ctx context.Context, req AudioToTextMultipartRequestBody) (*TextResponse, error) {
-	c, err := w.borrowContainer(ctx, "audio-to-text", *req.ModelId)
+	c, err := w.borrowContainer(ctx, "audio-to-text", *req.ModelId, []int{}) //TODO: Need to pass the preferred GPUs
 	if err != nil {
 		return nil, err
 	}
