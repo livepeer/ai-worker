@@ -520,38 +520,17 @@
                         "title": "Model Id"
                     },
                     "image1": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "binary"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "type": "string",
+                        "format": "binary",
                         "title": "Image1"
                     },
                     "image2": {
-                        "anyOf": [
-                            {
-                                "type": "string",
-                                "format": "binary"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "type": "string",
+                        "format": "binary",
                         "title": "Image2"
                     },
                     "image_dir": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ],
+                        "type": "string",
                         "title": "Image Dir",
                         "default": ""
                     },
