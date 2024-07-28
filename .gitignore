@@ -3,13 +3,12 @@ cache
 __pycache__
 input
 output
-runner\app\tests-examples
+runner/app/tests-examples
 
 # AI Configuration files and model storage folders.
 aiModels.json
 models
 checkpoints
-tests-examples
 
 # IDE
 .vscode
