@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from typing import List, Optional, Tuple
 
 import PIL
@@ -21,6 +22,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 logger = logging.getLogger(__name__)
 
+SFAST_WARMUP_ITERATIONS = 2  # Model warm-up iterations when SFAST is enabled.
 
 class UpscalePipeline(Pipeline):
     def __init__(self, model_id: str):
@@ -68,11 +70,29 @@ class UpscalePipeline(Pipeline):
             # Warm-up the pipeline.
             # TODO: Not yet supported for UpscalePipeline.
             if os.getenv("SFAST_WARMUP", "true").lower() == "true":
-                logger.warning(
-                    "The 'SFAST_WARMUP' flag is not yet supported for the "
-                    "UpscalePipeline and will be ignored. As a result the first "
-                    "call may be slow if 'SFAST' is enabled."
-                )
+                # Retrieve default model params.
+                # TODO: Retrieve defaults from Pydantic class in route.
+                warmup_kwargs = {
+                    "prompt": "Upscaling the pipeline with sfast enabled",
+                    "image": PIL.Image.new("RGB", (576, 1024)),
+                }
+
+                logger.info("Warming up ImageToVideoPipeline pipeline...")
+                total_time = 0
+                for ii in range(SFAST_WARMUP_ITERATIONS):
+                    t = time.time()
+                    try:
+                        self.ldm(**warmup_kwargs).images
+                    except Exception as e:
+                        # FIXME: When out of memory, pipeline is corrupted.
+                        logger.error(f"ImageToVideoPipeline warmup error: {e}")
+                        raise e
+                    iteration_time = time.time() - t
+                    total_time += iteration_time
+                    logger.info(
+                        "Warmup iteration %s took %s seconds", ii + 1, iteration_time
+                    )
+                logger.info("Total warmup time: %s seconds", total_time)
 
         if deepcache_enabled and not (
             is_lightning_model(model_id) or is_turbo_model(model_id)
