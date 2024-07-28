@@ -8,6 +8,7 @@ output
 aiModels.json
 models
 checkpoints
+C:/Users/ganes/ai-worker/runner/app/tests-examples
 
 # IDE
 .vscode
