@@ -145,11 +145,29 @@ class ImageToImagePipeline(Pipeline):
             # Warm-up the pipeline.
             # TODO: Not yet supported for ImageToImagePipeline.
             if os.getenv("SFAST_WARMUP", "true").lower() == "true":
-                logger.warning(
-                    "The 'SFAST_WARMUP' flag is not yet supported for the "
-                    "ImageToImagePipeline and will be ignored. As a result the first "
-                    "call may be slow if 'SFAST' is enabled."
-                )
+                warmup_kwargs = {
+                    "prompt":"A warmed up pipeline is a happy pipeline a short poem by ricksta",
+                    "image": PIL.Image.new("RGB", (576, 1024)),
+                    "strength": 0.8,
+                    "negative_prompt": "No blurry or weird artifacts",
+                    "num_images_per_prompt":4,
+                }
+
+                logger.info("Warming up ImageToImagePipeline pipeline...")
+                total_time = 0
+                for ii in range(SFAST_WARMUP_ITERATIONS):
+                    t = time.time()
+                    try:
+                        self.ldm(**warmup_kwargs).images
+                    except Exception as e:
+                        logger.error(f"ImageToImagePipeline warmup error: {e}")
+                        raise e
+                    iteration_time = time.time() - t
+                    total_time += iteration_time
+                    logger.info(
+                        "Warmup iteration %s took %s seconds", ii + 1, iteration_time
+                    )
+                logger.info("Total warmup time: %s seconds", total_time)
 
         if deepcache_enabled and not (
             is_lightning_model(model_id) or is_turbo_model(model_id)

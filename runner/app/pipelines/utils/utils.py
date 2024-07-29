@@ -166,3 +166,65 @@ class SafetyChecker:
             clip_input=safety_checker_input.pixel_values.to(self._dtype),
         )
         return images, has_nsfw_concept
+
+
+def natural_sort_key(s):
+    """
+    Sort in a natural order, separating strings into a list of strings and integers.
+    This handles leading zeros and case insensitivity.
+    """
+    return [
+        int(text) if text.isdigit() else text.lower()
+        for text in re.split(r'([0-9]+)', os.path.basename(s))
+    ]
+
+class DirectoryReader:
+    def __init__(self, dir: str):
+        self.paths = sorted(
+            glob.glob(os.path.join(dir, "*")),
+            key=natural_sort_key
+        )
+        self.nb_frames = len(self.paths)
+        self.idx = 0
+
+        assert self.nb_frames > 0, "no frames found in directory"
+
+        first_img = Image.open(self.paths[0])
+        self.height = first_img.height
+        self.width = first_img.width
+
+    def get_resolution(self):
+        return self.height, self.width
+
+    def reset(self):
+        self.idx = 0  # Reset the index counter to 0
+
+    def get_frame(self):
+        if self.idx >= self.nb_frames:
+            return None
+
+        path = self.paths[self.idx]
+        self.idx += 1
+
+        img = Image.open(path)
+        transforms = v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=True)])
+
+        return transforms(img) 
+
+class DirectoryWriter:
+    def __init__(self, dir: str):
+        self.dir = dir
+        self.idx = 0
+
+    def open(self):
+        return
+
+    def close(self):
+        return
+
+    def write_frame(self, frame: torch.Tensor):
+        path = f"{self.dir}/{self.idx}.png"
+        self.idx += 1
+
+        transforms = v2.Compose([v2.ToPILImage()])
+        transforms(frame.squeeze(0)).save(path)
