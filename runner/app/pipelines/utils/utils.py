@@ -277,6 +277,7 @@ class SafetyChecker:
         )
         return images, has_nsfw_concept
 
+
 def natural_sort_key(s):
     """
     Sort in a natural order, separating strings into a list of strings and integers.
@@ -316,9 +317,9 @@ class DirectoryReader:
         self.idx += 1
 
         img = Image.open(path)
-        transforms = v2.Compose([v2.ToTensor(), v2.ConvertImageDtype(torch.float32)])
+        transforms = v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=True)])
 
-        return transforms(img)
+        return transforms(img) 
 
 class DirectoryWriter:
     def __init__(self, dir: str):
