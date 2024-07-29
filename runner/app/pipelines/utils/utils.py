@@ -277,11 +277,22 @@ class SafetyChecker:
         )
         return images, has_nsfw_concept
 
+
+def natural_sort_key(s):
+    """
+    Sort in a natural order, separating strings into a list of strings and integers.
+    This handles leading zeros and case insensitivity.
+    """
+    return [
+        int(text) if text.isdigit() else text.lower()
+        for text in re.split(r'([0-9]+)', os.path.basename(s))
+    ]
+
 class DirectoryReader:
     def __init__(self, dir: str):
         self.paths = sorted(
             glob.glob(os.path.join(dir, "*")),
-            key=lambda x: int(os.path.basename(x).split(".")[0]),
+            key=natural_sort_key
         )
         self.nb_frames = len(self.paths)
         self.idx = 0
