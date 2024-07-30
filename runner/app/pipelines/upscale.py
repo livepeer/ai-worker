@@ -74,7 +74,7 @@ class UpscalePipeline(Pipeline):
                 # TODO: Retrieve defaults from Pydantic class in route.
                 warmup_kwargs = {
                     "prompt": "Upscaling the pipeline with sfast enabled",
-                    "image": PIL.Image.new("RGB", (576, 1024)),
+                    "image": PIL.Image.new("RGB", (400, 400)), # anything higher than this size cause the model to OOM
                 }
 
                 logger.info("Warming up ImageToVideoPipeline pipeline...")
