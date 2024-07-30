@@ -9,10 +9,14 @@ from app.routes.util import HTTPError, TextResponse, file_exceeds_max_size, http
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-
+from pydantic import BaseModel
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
+
+class AudioToTextParams(BaseModel):
+    audio: UploadFile
+    model_id: str = ""
 
 RESPONSES = {
     status.HTTP_400_BAD_REQUEST: {"model": HTTPError},
@@ -55,8 +59,7 @@ def handle_pipeline_error(e: Exception) -> JSONResponse:
     include_in_schema=False,
 )
 async def audio_to_text(
-    audio: Annotated[UploadFile, File()],
-    model_id: Annotated[str, Form()] = "",
+    params: AudioToTextParams,
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
@@ -69,22 +72,22 @@ async def audio_to_text(
                 content=http_error("Invalid bearer token"),
             )
 
-    if model_id != "" and model_id != pipeline.model_id:
+    if params.model_id != "" and params.model_id != pipeline.model_id:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=http_error(
                 f"pipeline configured with {pipeline.model_id} but called with "
-                f"{model_id}"
+                f"{params.model_id}"
             ),
         )
 
-    if file_exceeds_max_size(audio, 50 * 1024 * 1024):
+    if file_exceeds_max_size(params.audio, 50 * 1024 * 1024):
         return JSONResponse(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             content=http_error("File size exceeds limit"),
         )
 
     try:
-        return pipeline(audio=audio)
+        return pipeline(audio=params.audio)
     except Exception as e:
         return handle_pipeline_error(e)

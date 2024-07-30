@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from PIL import Image, ImageFile
+from pydantic import BaseModel
 
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
@@ -18,6 +19,13 @@ router = APIRouter()
 
 logger = logging.getLogger(__name__)
 
+class UpscaleParams(BaseModel):
+    prompt: str
+    image: UploadFile
+    model_id: str = ""
+    safety_check: bool = True
+    seed: int = None
+    num_inference_steps: int = 75  # NOTE: Hardcoded due to varying pipeline values.
 
 RESPONSES = {
     status.HTTP_400_BAD_REQUEST: {"model": HTTPError},
@@ -36,14 +44,7 @@ RESPONSES = {
     include_in_schema=False,
 )
 async def upscale(
-    prompt: Annotated[str, Form()],
-    image: Annotated[UploadFile, File()],
-    model_id: Annotated[str, Form()] = "",
-    safety_check: Annotated[bool, Form()] = True,
-    seed: Annotated[int, Form()] = None,
-    num_inference_steps: Annotated[
-        int, Form()
-    ] = 75,  # NOTE: Hardcoded due to varying pipeline values.
+    params: UpscaleParams,
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
@@ -56,25 +57,25 @@ async def upscale(
                 content=http_error("Invalid bearer token"),
             )
 
-    if model_id != "" and model_id != pipeline.model_id:
+    if params.model_id != "" and params.model_id != pipeline.model_id:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=http_error(
                 f"pipeline configured with {pipeline.model_id} but called with "
-                f"{model_id}"
+                f"{params.model_id}"
             ),
         )
 
-    seed = seed or random.randint(0, 2**32 - 1)
+    seed = params.seed or random.randint(0, 2**32 - 1)
 
-    image = Image.open(image.file).convert("RGB")
+    image = Image.open(params.image.file).convert("RGB")
 
     try:
         images, has_nsfw_concept = pipeline(
-            prompt=prompt,
+            prompt=params.prompt,
             image=image,
-            num_inference_steps=num_inference_steps,
-            safety_check=safety_check,
+            num_inference_steps=params.num_inference_steps,
+            safety_check=params.safety_check,
             seed=seed,
         )
     except Exception as e:

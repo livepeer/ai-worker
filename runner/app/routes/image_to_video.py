@@ -10,12 +10,26 @@ from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from PIL import Image, ImageFile
+from pydantic import BaseModel
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
+
+class ImageToVideoParams(BaseModel):
+    image: UploadFile
+    model_id: str = ""
+    height: int = 576
+    width: int = 1024
+    fps: int = 6
+    motion_bucket_id: int = 127
+    noise_aug_strength: float = 0.02
+    seed: int = None
+    safety_check: bool = True
+    num_inference_steps: int = 25  # NOTE: Hardcoded due to varying pipeline values.
+
 
 RESPONSES = {
     status.HTTP_400_BAD_REQUEST: {"model": HTTPError},
@@ -34,18 +48,7 @@ RESPONSES = {
     include_in_schema=False,
 )
 async def image_to_video(
-    image: Annotated[UploadFile, File()],
-    model_id: Annotated[str, Form()] = "",
-    height: Annotated[int, Form()] = 576,
-    width: Annotated[int, Form()] = 1024,
-    fps: Annotated[int, Form()] = 6,
-    motion_bucket_id: Annotated[int, Form()] = 127,
-    noise_aug_strength: Annotated[float, Form()] = 0.02,
-    seed: Annotated[int, Form()] = None,
-    safety_check: Annotated[bool, Form()] = True,
-    num_inference_steps: Annotated[
-        int, Form()
-    ] = 25,  # NOTE: Hardcoded due to varying pipeline values.
+    params: ImageToVideoParams,
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
@@ -58,21 +61,21 @@ async def image_to_video(
                 content=http_error("Invalid bearer token"),
             )
 
-    if model_id != "" and model_id != pipeline.model_id:
+    if params.model_id != "" and params.model_id != pipeline.model_id:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=http_error(
                 f"pipeline configured with {pipeline.model_id} but called with "
-                f"{model_id}"
+                f"{params.model_id}"
             ),
         )
 
-    if height % 8 != 0 or width % 8 != 0:
+    if params.height % 8 != 0 or params.width % 8 != 0:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=http_error(
-                f"`height` and `width` have to be divisible by 8 but are {height} and "
-                f"{width}."
+                f"`height` and `width` have to be divisible by 8 but are {params.height} and "
+                f"{params.width}."
             ),
         )
 
@@ -81,14 +84,14 @@ async def image_to_video(
 
     try:
         batch_frames, has_nsfw_concept = pipeline(
-            image=Image.open(image.file).convert("RGB"),
-            height=height,
-            width=width,
-            fps=fps,
-            motion_bucket_id=motion_bucket_id,
-            noise_aug_strength=noise_aug_strength,
-            num_inference_steps=num_inference_steps,
-            safety_check=safety_check,
+            image=Image.open(params.image.file).convert("RGB"),
+            height=params.height,
+            width=params.width,
+            fps=params.fps,
+            motion_bucket_id=params.motion_bucket_id,
+            noise_aug_strength=params.noise_aug_strength,
+            num_inference_steps=params.num_inference_steps,
+            safety_check=params.safety_check,
             seed=seed,
         )
     except Exception as e:
