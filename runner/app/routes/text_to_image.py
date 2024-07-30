@@ -28,6 +28,7 @@ class TextToImageParams(BaseModel):
     seed: int = None
     num_inference_steps: int = 50  # NOTE: Hardcoded due to varying pipeline values.
     num_images_per_prompt: int = 1
+    scheduler: str = ""
 
 
 RESPONSES = {

@@ -742,6 +742,11 @@
                         "type": "integer",
                         "title": "Num Images Per Prompt",
                         "default": 1
+                    },
+                    "scheduler": {
+                        "type": "string",
+                        "title": "Scheduler",
+                        "default": ""
                     }
                 },
                 "type": "object",
