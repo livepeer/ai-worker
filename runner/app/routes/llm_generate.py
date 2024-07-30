@@ -1,11 +1,12 @@
 import logging
-from typing import Annotated
+import os
+from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, Form, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
-from app.routes.util import HTTPError, TextResponse, http_error
+from app.routes.util import HTTPError, LlmResponse, TextResponse, http_error
 
 router = APIRouter()
 
@@ -18,11 +19,14 @@ RESPONSES = {
 }
 
 
-@router.post("/llm-generate", response_model=TextResponse, responses=RESPONSES)
-@router.post("/llm-generate", response_model=TextResponse, responses=RESPONSES, include_in_schema=False)
+@router.post("/llm-generate", response_model=LlmResponse, responses=RESPONSES)
+@router.post("/llm-generate/", response_model=LlmResponse, responses=RESPONSES, include_in_schema=False)
 async def llm_generate(
     prompt: Annotated[str, Form()],
     model_id: Annotated[str, Form()] = "",
+    system_msg: Annotated[str, Form()] = None,
+    temperature: Annotated[float, Form()] = None,
+    max_tokens: Annotated[int, Form()] = None,
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
@@ -45,7 +49,12 @@ async def llm_generate(
         )
 
     try:
-        result = pipeline(prompt=prompt)
+        result = pipeline(
+            prompt=prompt,
+            system_msg=system_msg,
+            temperature=temperature,
+            max_tokens=max_tokens
+        )
         return JSONResponse(content=result)
     except Exception as e:
         logger.error(f"LLM processing error: {str(e)}")

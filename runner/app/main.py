@@ -94,7 +94,7 @@ def load_route(pipeline: str) -> any:
         case "llm":
             from app.routes import llm
 
-            return llm.router
+            return llm_generate.router
         case _:
             raise EnvironmentError(f"{pipeline} is not a valid pipeline")
 

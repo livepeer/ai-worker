@@ -58,6 +58,11 @@ class TextResponse(BaseModel):
     chunks: List[chunk] = Field(..., description="The generated text chunks.")
 
 
+class LlmResponse(BaseModel):
+    response: str
+    tokens_used: int
+
+
 class APIError(BaseModel):
     """API error response model."""
 

@@ -425,7 +425,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/TextResponse"
+                                    "$ref": "#/components/schemas/LlmResponse"
                                 }
                             }
                         }
@@ -644,6 +644,18 @@
                         "type": "string",
                         "title": "Model Id",
                         "default": ""
+                    },
+                    "system_msg": {
+                        "type": "string",
+                        "title": "System Msg"
+                    },
+                    "temperature": {
+                        "type": "number",
+                        "title": "Temperature"
+                    },
+                    "max_tokens": {
+                        "type": "integer",
+                        "title": "Max Tokens"
                     }
                 },
                 "type": "object",
@@ -741,6 +753,24 @@
                     "images"
                 ],
                 "title": "ImageResponse"
+            },
+            "LlmResponse": {
+                "properties": {
+                    "response": {
+                        "type": "string",
+                        "title": "Response"
+                    },
+                    "tokens_used": {
+                        "type": "integer",
+                        "title": "Tokens Used"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "response",
+                    "tokens_used"
+                ],
+                "title": "LlmResponse"
             },
             "Media": {
                 "properties": {
