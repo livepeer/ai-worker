@@ -11,6 +11,7 @@ from app.routes import (
     image_to_image,
     image_to_video,
     text_to_image,
+    frame_interpolation,
     upscale,
 )
 from fastapi.openapi.utils import get_openapi
@@ -68,7 +69,7 @@ def translate_to_gateway(openapi):
     openapi["components"]["schemas"]["VideoResponse"]["title"] = "VideoResponse"
 
     return openapi
-
+    
 
 def write_openapi(fname, entrypoint="runner"):
     """Write OpenAPI schema to file.
@@ -83,8 +84,10 @@ def write_openapi(fname, entrypoint="runner"):
     app.include_router(text_to_image.router)
     app.include_router(image_to_image.router)
     app.include_router(image_to_video.router)
-    app.include_router(upscale.router)
     app.include_router(audio_to_text.router)
+    app.include_router(frame_interpolation.router)
+    app.include_router(upscale.router)
+
 
     use_route_names_as_operation_ids(app)
 
@@ -144,3 +147,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     write_openapi(f"openapi.{args.type.lower()}", args.entrypoint)
+
+
