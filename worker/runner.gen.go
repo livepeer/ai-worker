@@ -221,7 +221,7 @@ type LlmResponse struct {
 	TokensUsed int    `json:"tokens_used"`
 }
 
-// Media defines model for Media.
+// Media A media object containing information about the generated media.
 type Media struct {
 	Nsfw bool   `json:"nsfw"`
 	Seed int    `json:"seed"`
@@ -575,8 +575,8 @@ func (c *Client) LlmGenerateWithBody(ctx context.Context, contentType string, bo
 	return c.Client.Do(req)
 }
 
-func (c *Client) LlmGenerateWithFormdataBody(ctx context.Context, body LlmGenerateFormdataRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewLlmGenerateRequestWithFormdataBody(c.Server, body)
+func (c *Client) GenTextToImageWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGenTextToImageRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1195,15 +1195,16 @@ func (c *ClientWithResponses) LlmGenerateWithBodyWithResponse(ctx context.Contex
 	if err != nil {
 		return nil, err
 	}
-	return ParseLlmGenerateResponse(rsp)
+	return ParseGenSegmentAnything2Response(rsp)
 }
 
-func (c *ClientWithResponses) LlmGenerateWithFormdataBodyWithResponse(ctx context.Context, body LlmGenerateFormdataRequestBody, reqEditors ...RequestEditorFn) (*LlmGenerateResponse, error) {
-	rsp, err := c.LlmGenerateWithFormdataBody(ctx, body, reqEditors...)
+// GenTextToImageWithBodyWithResponse request with arbitrary body returning *GenTextToImageResponse
+func (c *ClientWithResponses) GenTextToImageWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenTextToImageResponse, error) {
+	rsp, err := c.GenTextToImageWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseLlmGenerateResponse(rsp)
+	return ParseGenTextToImageResponse(rsp)
 }
 
 // TextToImageWithBodyWithResponse request with arbitrary body returning *TextToImageResponse
@@ -1449,14 +1450,14 @@ func ParseLlmGenerateResponse(rsp *http.Response) (*LlmGenerateResponse, error) 
 		return nil, err
 	}
 
-	response := &LlmGenerateResponse{
+	response := &GenSegmentAnything2Response{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest LlmResponse
+		var dest MasksResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1828,7 +1829,7 @@ func (siw *ServerInterfaceWrapper) LlmGenerate(w http.ResponseWriter, r *http.Re
 	ctx = context.WithValue(ctx, HTTPBearerScopes, []string{})
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.LlmGenerate(w, r)
+		siw.Handler.GenSegmentAnything2(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
