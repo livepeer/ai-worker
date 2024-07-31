@@ -7,8 +7,32 @@ on:
   workflow_dispatch:
 
 jobs:
-  trigger-upstream-openapi-sync:
+  trigger-sdks-openapi-sync:
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Trigger experimental SDKs update
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.SDKS_TRIGGER_PAT }}
+          repository: livepeer/livepeer-ai-sdks
+          event-type: update-ai-openapi
+          client-payload: '{"sha": "${{ github.sha }}"}'
+        
+      - name: Trigger released JS/TS SDK update
+        # if: startsWith(github.ref, 'refs/tags/') # Only run on release.
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.SDKS_TRIGGER_PAT }}
+          repository: livepeer/ai-sdk-js
+          event-type: update-ai-openapi
+          client-payload: '{"sha": "${{ github.sha }}"}'
+
+  trigger-docs-openapi-sync:
+    runs-on: ubuntu-latest
+    # if: startsWith(github.ref, 'refs/tags/') # Only run on release.
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -17,14 +41,6 @@ jobs:
         uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.DOCS_TRIGGER_PAT }}
-          repository: livepeer/docs
-          event-type: update-ai-openapi
-          client-payload: '{"sha": "${{ github.sha }}"}'
-
-      - name: Trigger SDK generation
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.SDKS_TRIGGER_PAT }}
-          repository: livepeer/livepeer-ai-sdks
+          repository: rickstaa/docs
           event-type: update-ai-openapi
           client-payload: '{"sha": "${{ github.sha }}"}'
