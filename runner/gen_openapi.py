@@ -7,6 +7,7 @@ import yaml
 from app.main import app, use_route_names_as_operation_ids
 from app.routes import (
     audio_to_text,
+    text_to_speech,
     health,
     image_to_image,
     image_to_video,
@@ -85,6 +86,7 @@ def write_openapi(fname, entrypoint="runner"):
     app.include_router(image_to_video.router)
     app.include_router(upscale.router)
     app.include_router(audio_to_text.router)
+    app.include_router(text_to_speech.router)
 
     use_route_names_as_operation_ids(app)
 

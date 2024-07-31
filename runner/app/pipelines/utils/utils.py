@@ -167,3 +167,4 @@ class SafetyChecker:
             clip_input=safety_checker_input.pixel_values.to(self._dtype),
         )
         return images, has_nsfw_concept
+
