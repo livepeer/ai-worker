@@ -266,7 +266,7 @@ class TextToImagePipeline(Pipeline):
             prompt_embeds = compel_proc(prompt)
             output = self.ldm(prompt_embeds=prompt_embeds, **kwargs)            
         except Exception as e:
-            logger.info(f"Failed to generate prompt embeddings: {e}. Using normal prompt.")            
+            logger.info(f"Failed to generate prompt embeddings: {e}. Using prompt and pooled embeddings.")            
             
             try:
                 compel_proc = Compel(tokenizer=[self.ldm.tokenizer, self.ldm.tokenizer_2],
@@ -276,7 +276,7 @@ class TextToImagePipeline(Pipeline):
                 prompt_embeds, pooled_prompt_embeds = compel_proc(prompt)
                 output = self.ldm(prompt_embeds=prompt_embeds, pooled_prompt_embeds=pooled_prompt_embeds, **kwargs)
             except Exception as e:
-                logger.info(f"Failed to generate prompt and pooled embeddings: {e}. Trying without pooled embeddings.")
+                logger.info(f"Failed to generate prompt and pooled embeddings: {e}. Trying normal prompt.")
                 output = self.ldm(prompt=prompt, **kwargs)
 
         if safety_check:
