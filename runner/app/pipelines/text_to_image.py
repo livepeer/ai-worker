@@ -22,6 +22,7 @@ from diffusers import (
     StableDiffusionXLPipeline,
     UNet2DConditionModel,
 )
+from diffusers.models import AutoencoderKL
 from huggingface_hub import file_download, hf_hub_download
 from safetensors.torch import load_file
 
@@ -34,6 +35,7 @@ class ModelName(Enum):
 
     SDXL_LIGHTNING = "ByteDance/SDXL-Lightning"
     SD3_MEDIUM = "stabilityai/stable-diffusion-3-medium-diffusers"
+    REALISTIC_VISION_V6 = "SG161222/Realistic_Vision_V6.0_B1_noVAE"
 
     @classmethod
     def list(cls):
@@ -71,6 +73,11 @@ class TextToImagePipeline(Pipeline):
         if os.environ.get("BFLOAT16"):
             logger.info("TextToImagePipeline using bfloat16 precision for %s", model_id)
             kwargs["torch_dtype"] = torch.bfloat16
+        
+        # Load VAE for specific models.
+        if ModelName.REALISTIC_VISION_V6.value in model_id:
+            vae = AutoencoderKL.from_pretrained("stabilityai/sd-vae-ft-ema")
+            kwargs["vae"] = vae
 
         # Special case SDXL-Lightning because the unet for SDXL needs to be swapped
         if ModelName.SDXL_LIGHTNING.value in model_id:

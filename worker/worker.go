@@ -304,6 +304,54 @@ func (w *Worker) AudioToText(ctx context.Context, req AudioToTextMultipartReques
 	return resp.JSON200, nil
 }
 
+func (w *Worker) LlmGenerate(ctx context.Context, req BodyLlmGenerateLlmGeneratePost) (*LlmResponse, error) {
+	c, err := w.borrowContainer(ctx, "llm-generate", *req.ModelId)
+	if err != nil {
+		return nil, err
+	}
+	defer w.returnContainer(c)
+
+	var buf bytes.Buffer
+	mw, err := NewLlmGenerateMultipartWriter(&buf, req)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.Client.LlmGenerateWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.JSON400 != nil {
+		val, err := json.Marshal(resp.JSON400)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("llm-generate container returned 400", slog.String("err", string(val)))
+		return nil, errors.New("llm-generate container returned 400")
+	}
+
+	if resp.JSON401 != nil {
+		val, err := json.Marshal(resp.JSON401)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("llm-generate container returned 401", slog.String("err", string(val)))
+		return nil, errors.New("llm-generate container returned 401")
+	}
+
+	if resp.JSON500 != nil {
+		val, err := json.Marshal(resp.JSON500)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("llm-generate container returned 500", slog.String("err", string(val)))
+		return nil, errors.New("llm-generate container returned 500")
+	}
+
+	return resp.JSON200, nil
+}
+
 func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endpoint RunnerEndpoint, optimizationFlags OptimizationFlags) error {
 	if endpoint.URL == "" {
 		return w.manager.Warm(ctx, pipeline, modelID, optimizationFlags)

@@ -13,6 +13,7 @@ from app.routes import (
     text_to_image,
     frame_interpolation,
     upscale,
+    llm_generate
 )
 from fastapi.openapi.utils import get_openapi
 
@@ -85,6 +86,7 @@ def write_openapi(fname, entrypoint="runner"):
     app.include_router(image_to_image.router)
     app.include_router(image_to_video.router)
     app.include_router(audio_to_text.router)
+    app.include_router(llm_generate.router)
     app.include_router(frame_interpolation.router)
     app.include_router(upscale.router)
 

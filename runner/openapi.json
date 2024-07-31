@@ -477,6 +477,79 @@
                     }
                 ]
             }
+        },
+        "/llm-generate": {
+            "post": {
+                "summary": "Llm Generate",
+                "operationId": "llm_generate",
+                "requestBody": {
+                    "content": {
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Body_llm_generate_llm_generate_post"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LlmResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPError"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPError"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPError"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
         }
     },
     "components": {
@@ -667,6 +740,36 @@
                 ],
                 "title": "Body_image_to_video_image_to_video_post"
             },
+            "Body_llm_generate_llm_generate_post": {
+                "properties": {
+                    "prompt": {
+                        "type": "string",
+                        "title": "Prompt"
+                    },
+                    "model_id": {
+                        "type": "string",
+                        "title": "Model Id",
+                        "default": ""
+                    },
+                    "system_msg": {
+                        "type": "string",
+                        "title": "System Msg"
+                    },
+                    "temperature": {
+                        "type": "number",
+                        "title": "Temperature"
+                    },
+                    "max_tokens": {
+                        "type": "integer",
+                        "title": "Max Tokens"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "prompt"
+                ],
+                "title": "Body_llm_generate_llm_generate_post"
+            },
             "Body_upscale_upscale_post": {
                 "properties": {
                     "prompt": {
@@ -756,6 +859,24 @@
                     "images"
                 ],
                 "title": "ImageResponse"
+            },
+            "LlmResponse": {
+                "properties": {
+                    "response": {
+                        "type": "string",
+                        "title": "Response"
+                    },
+                    "tokens_used": {
+                        "type": "integer",
+                        "title": "Tokens Used"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "response",
+                    "tokens_used"
+                ],
+                "title": "LlmResponse"
             },
             "Media": {
                 "properties": {

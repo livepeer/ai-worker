@@ -56,6 +56,9 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
             from app.pipelines.upscale import UpscalePipeline
 
             return UpscalePipeline(model_id)
+        case "llm-generate":
+            from app.pipelines.llm_generate import LLMGeneratePipeline
+            return LLMGeneratePipeline(model_id)
         case _:
             raise EnvironmentError(
                 f"{pipeline} is not a valid pipeline for model {model_id}"
@@ -88,6 +91,10 @@ def load_route(pipeline: str) -> any:
             from app.routes import upscale
 
             return upscale.router
+        case "llm-generate":
+            from app.routes import llm_generate
+
+            return llm_generate.router
         case _:
             raise EnvironmentError(f"{pipeline} is not a valid pipeline")
 
