@@ -2,6 +2,7 @@ import logging
 import os
 from enum import Enum
 import time
+from compel import Compel, ReturnedEmbeddingsType
 from typing import List, Optional, Tuple
 
 import PIL
@@ -259,7 +260,24 @@ class TextToImagePipeline(Pipeline):
         )
         kwargs.update(neg_prompts)
 
-        output = self.ldm(prompt=prompt, **kwargs)
+        # we call the compel class and initialise it and try for SDXL models with pooled_embeds
+        try:
+            compel_proc=Compel(tokenizer=self.ldm.tokenizer, text_encoder=self.ldm.text_encoder)
+            prompt_embeds = compel_proc(prompt)
+            output = self.ldm(prompt_embeds=prompt_embeds, **kwargs)            
+        except Exception as e:
+            logger.info(f"Failed to generate prompt and pooled embeddings: {e}. Trying without pooled embeddings.")
+
+            try:
+                compel_proc = Compel(tokenizer=[self.ldm.tokenizer, self.ldm.tokenizer_2],
+                                text_encoder=[self.ldm.text_encoder, self.ldm.text_encoder_2],
+                                returned_embeddings_type=ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
+                                requires_pooled=[False, True])        
+                prompt_embeds, pooled_prompt_embeds = compel_proc(prompt)
+                output = self.ldm(prompt_embeds=prompt_embeds, pooled_prompt_embeds=pooled_prompt_embeds, **kwargs)
+            except Exception as e:
+                logger.info(f"Failed to generate prompt embeddings: {e}. Using normal prompt.")
+                output = self.ldm(prompt=prompt, **kwargs)
 
         if safety_check:
             _, has_nsfw_concept = self._safety_checker.check_nsfw_images(output.images)
