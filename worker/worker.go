@@ -1,11 +1,15 @@
 package worker
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"log/slog"
+	"net/http"
 	"strconv"
 	"sync"
 )
@@ -303,12 +307,22 @@ func (w *Worker) AudioToText(ctx context.Context, req GenAudioToTextMultipartReq
 	return resp.JSON200, nil
 }
 
-func (w *Worker) LlmGenerate(ctx context.Context, req BodyLlmGenerateLlmGeneratePost) (*LlmResponse, error) {
+func (w *Worker) LlmGenerate(ctx context.Context, req LlmGenerateFormdataRequestBody) (interface{}, error) {
+	slog.Info("Incoming request %v", req)
 	c, err := w.borrowContainer(ctx, "llm-generate", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
+	if c == nil {
+		return nil, errors.New("borrowed container is nil")
+	}
+	if c.Client == nil {
+		return nil, errors.New("container client is nil")
+	}
+
 	defer w.returnContainer(c)
+
+	slog.Info("Container borrowed successfully", "model_id", *req.ModelId)
 
 	var buf bytes.Buffer
 	mw, err := NewLlmGenerateMultipartWriter(&buf, req)
@@ -321,34 +335,11 @@ func (w *Worker) LlmGenerate(ctx context.Context, req BodyLlmGenerateLlmGenerate
 		return nil, err
 	}
 
-	if resp.JSON400 != nil {
-		val, err := json.Marshal(resp.JSON400)
-		if err != nil {
-			return nil, err
-		}
-		slog.Error("llm-generate container returned 400", slog.String("err", string(val)))
-		return nil, errors.New("llm-generate container returned 400")
+	if req.Stream != nil && *req.Stream {
+		return w.handleStreamingResponse(ctx, resp)
 	}
 
-	if resp.JSON401 != nil {
-		val, err := json.Marshal(resp.JSON401)
-		if err != nil {
-			return nil, err
-		}
-		slog.Error("llm-generate container returned 401", slog.String("err", string(val)))
-		return nil, errors.New("llm-generate container returned 401")
-	}
-
-	if resp.JSON500 != nil {
-		val, err := json.Marshal(resp.JSON500)
-		if err != nil {
-			return nil, err
-		}
-		slog.Error("llm-generate container returned 500", slog.String("err", string(val)))
-		return nil, errors.New("llm-generate container returned 500")
-	}
-
-	return resp.JSON200, nil
+	return w.handleNonStreamingResponse(resp)
 }
 
 func (w *Worker) SegmentAnything2(ctx context.Context, req GenSegmentAnything2MultipartRequestBody) (*MasksResponse, error) {
@@ -480,4 +471,95 @@ func (w *Worker) returnContainer(rc *RunnerContainer) {
 	case External:
 		// Noop because we allow concurrent in-flight requests for external containers
 	}
+}
+
+func (w *Worker) handleNonStreamingResponse(resp *LlmGenerateResponse) (*LlmResponse, error) {
+	if resp.JSON400 != nil {
+		val, err := json.Marshal(resp.JSON400)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("llm-generate container returned 400", slog.String("err", string(val)))
+		return nil, errors.New("llm-generate container returned 400")
+	}
+
+	if resp.JSON401 != nil {
+		val, err := json.Marshal(resp.JSON401)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("llm-generate container returned 401", slog.String("err", string(val)))
+		return nil, errors.New("llm-generate container returned 401")
+	}
+
+	if resp.JSON500 != nil {
+		val, err := json.Marshal(resp.JSON500)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("llm-generate container returned 500", slog.String("err", string(val)))
+		return nil, errors.New("llm-generate container returned 500")
+	}
+
+	return resp.JSON200, nil
+}
+
+type LlmStreamChunk struct {
+	Chunk      string `json:"chunk,omitempty"`
+	TokensUsed int    `json:"tokens_used,omitempty"`
+	Done       bool   `json:"done,omitempty"`
+}
+
+func (w *Worker) handleStreamingResponse(ctx context.Context, resp *LlmGenerateResponse) (<-chan LlmStreamChunk, error) {
+	if resp.StatusCode() != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode())
+	}
+
+	outputChan := make(chan LlmStreamChunk, 10)
+
+	go func() {
+		defer close(outputChan)
+
+		reader := bufio.NewReader(bytes.NewReader(resp.Body))
+		totalTokens := 0
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				line, err := reader.ReadBytes('\n')
+				if err != nil {
+					if err != io.EOF {
+						slog.Error("Error reading stream", slog.String("err", err.Error()))
+					}
+					return
+				}
+
+				if bytes.HasPrefix(line, []byte("data: ")) {
+					data := bytes.TrimPrefix(line, []byte("data: "))
+					if string(data) == "[DONE]" {
+						outputChan <- LlmStreamChunk{Chunk: "[DONE]", Done: true, TokensUsed: totalTokens}
+						return
+					}
+
+					var streamData LlmStreamChunk
+					if err := json.Unmarshal(data, &streamData); err != nil {
+						slog.Error("Error unmarshaling stream data", slog.String("err", err.Error()))
+						continue
+					}
+
+					totalTokens += streamData.TokensUsed
+
+					select {
+					case outputChan <- streamData:
+					case <-ctx.Done():
+						return
+					}
+				}
+			}
+		}
+	}()
+
+	return outputChan, nil
 }

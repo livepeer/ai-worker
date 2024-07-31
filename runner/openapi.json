@@ -647,15 +647,28 @@
                     },
                     "system_msg": {
                         "type": "string",
-                        "title": "System Msg"
+                        "title": "System Msg",
+                        "default": ""
                     },
                     "temperature": {
                         "type": "number",
-                        "title": "Temperature"
+                        "title": "Temperature",
+                        "default": 0.7
                     },
                     "max_tokens": {
                         "type": "integer",
-                        "title": "Max Tokens"
+                        "title": "Max Tokens",
+                        "default": 256
+                    },
+                    "history": {
+                        "type": "string",
+                        "title": "History",
+                        "default": "[]"
+                    },
+                    "stream": {
+                        "type": "boolean",
+                        "title": "Stream",
+                        "default": false
                     }
                 },
                 "type": "object",
