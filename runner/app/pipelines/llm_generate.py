@@ -1,9 +1,10 @@
 import logging
 import os
+from threading import Thread
 from typing import Dict, Any, Optional
 
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
+from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig, TextIteratorStreamer
 from app.pipelines.base import Pipeline
 from app.pipelines.utils import get_model_dir, get_torch_device
 from huggingface_hub import file_download, hf_hub_download
@@ -14,6 +15,8 @@ logger = logging.getLogger(__name__)
 class LLMGeneratePipeline(Pipeline):
     def __init__(self, model_id: str):
         self.model_id = model_id
+        self.history = [] 
+
         kwargs = {
             "cache_dir": get_model_dir()
         }
@@ -41,6 +44,11 @@ class LLMGeneratePipeline(Pipeline):
         self.model = AutoModelForCausalLM.from_pretrained(
             model_id, **kwargs).to(self.device)
 
+        self.terminators = [
+            self.tokenizer.eos_token_id,
+            self.tokenizer.convert_tokens_to_ids("<|eot_id|>")
+        ]
+
         # Set up generation config
         self.generation_config = self.model.generation_config
 
@@ -57,39 +65,43 @@ class LLMGeneratePipeline(Pipeline):
     def __call__(self, prompt: str, system_msg: Optional[str] = None,
                  temperature: Optional[float] = None,
                  max_tokens: Optional[int] = None, **kwargs) -> Dict[str, Any]:
-        if system_msg:
-            input_text = f"{system_msg}\n\n{prompt}"
-        else:
-            input_text = prompt
 
-        input_ids = self.tokenizer.encode(
-            input_text, return_tensors="pt").to(self.device)
+        conversation = []
+        
+        for user,  assistant in self.history:
+            consersation.extend([{"role":"user", "content": user}, {"role":"assistant", "contanstant": assistant}])
+        conversation.append({"role":"user", "content": prompt})
+
+        input_ids = self.tokenizer.apply_chat_template(conversation, return_tensors="pt").to(self.model.device)
+        streamer = TextIteratorStreamer(self.tokenizer, timeout=10.0, skip_prompt=True, skip_special_tokens=True)
 
         # Update generation config
-        gen_kwargs = {}
-        if temperature is not None:
-            gen_kwargs['temperature'] = temperature
-        if max_tokens is not None:
-            gen_kwargs['max_new_tokens'] = max_tokens
+        generate_kwargs = dict(
+            input_ids= input_ids,
+            streamer= streamer,
+            max_new_tokens= max_tokens,
+            do_sample= True,
+            temperature=temperature,
+            eos_token_id=self.terminators,
+        )
+        
+        if temperature == 0:
+            generate_kwargs['do_sample'] = Fals
 
-        # Merge generation config with provided kwargs
-        gen_kwargs = {**self.generation_config.to_dict(), **gen_kwargs, **kwargs}
 
-        # Generate response
-        with torch.no_grad():
-            output = self.model.generate(
-                input_ids,
-                **gen_kwargs
-            )
+        t = Thread(target=self.model.generate, kwargs=generate_kwargs)
+        t.start()
 
-        # Decode the response
-        response = self.tokenizer.decode(output[0], skip_special_tokens=True)
+        outputs = []
+        for text in streamer:
+            outputs.append(text) 
 
         # Calculate tokens used
-        tokens_used = len(output[0])
+        tokens_used = len(outputs)
+        complete_response = "".join(outputs)
 
         return {
-            "response": response.strip(),
+            "response": complete_response,
             "tokens_used": tokens_used
         }
 

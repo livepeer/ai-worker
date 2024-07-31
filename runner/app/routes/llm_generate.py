@@ -53,7 +53,7 @@ async def llm_generate(
             prompt=prompt,
             system_msg=system_msg,
             temperature=temperature,
-            max_tokens=max_tokens
+            max_tokens=max_tokens,
         )
         return JSONResponse(content=result)
     except Exception as e:
