@@ -240,3 +240,41 @@ func NewAudioToTextMultipartWriter(w io.Writer, req AudioToTextMultipartRequestB
 
 	return mw, nil
 }
+
+func NewLlmGenerateMultipartWriter(w io.Writer, req BodyLlmGenerateLlmGeneratePost) (*multipart.Writer, error) {
+	mw := multipart.NewWriter(w)
+
+	if err := mw.WriteField("prompt", req.Prompt); err != nil {
+		return nil, fmt.Errorf("failed to write prompt field: %w", err)
+	}
+
+	if req.ModelId != nil {
+		if err := mw.WriteField("model_id", *req.ModelId); err != nil {
+			return nil, fmt.Errorf("failed to write model_id field: %w", err)
+		}
+	}
+
+	if req.SystemMsg != nil {
+		if err := mw.WriteField("system_msg", *req.SystemMsg); err != nil {
+			return nil, fmt.Errorf("failed to write system_msg field: %w", err)
+		}
+	}
+
+	if req.Temperature != nil {
+		if err := mw.WriteField("temperature", fmt.Sprintf("%f", *req.Temperature)); err != nil {
+			return nil, fmt.Errorf("failed to write temperature field: %w", err)
+		}
+	}
+
+	if req.MaxTokens != nil {
+		if err := mw.WriteField("max_tokens", strconv.Itoa(*req.MaxTokens)); err != nil {
+			return nil, fmt.Errorf("failed to write max_tokens field: %w", err)
+		}
+	}
+
+	if err := mw.Close(); err != nil {
+		return nil, fmt.Errorf("failed to close multipart writer: %w", err)
+	}
+
+	return mw, nil
+}
