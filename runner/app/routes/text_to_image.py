@@ -1,14 +1,16 @@
 import logging
 import os
 import random
+from typing import Annotated
 
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
-from app.routes.util import HTTPError, ImageResponse, http_error, image_to_data_url
+from app.routes.util import (HTTPError, ImageResponse, http_error,
+                             image_to_data_url)
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 router = APIRouter()
 
@@ -18,16 +20,19 @@ logger = logging.getLogger(__name__)
 class TextToImageParams(BaseModel):
     # TODO: Make model_id and other None properties optional once Go codegen tool
     # supports OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
-    model_id: str = ""
-    prompt: str
-    height: int = None
-    width: int = None
-    guidance_scale: float = 7.5
-    negative_prompt: str = ""
-    safety_check: bool = True
-    seed: int = None
-    num_inference_steps: int = 50  # NOTE: Hardcoded due to varying pipeline values.
-    num_images_per_prompt: int = 1
+    model_id: Annotated[
+        str,
+        Field(default="", description=""),
+    ]
+    prompt: Annotated[str, Field(description="")]
+    height: Annotated[int, Field(default=576, description="")]
+    width: Annotated[int, Field(default=1024, description="")]
+    guidance_scale: Annotated[float, Field(default=7.5, description="")]
+    negative_prompt: Annotated[str, Field(default="", description="")]
+    safety_check: Annotated[bool, Field(default=True, description="")]
+    seed: Annotated[int, Field(default=None, description="")]
+    num_inference_steps: Annotated[int, Field(default=50, description="")]
+    num_images_per_prompt: Annotated[int, Field(default=1, description="")]
 
 
 RESPONSES = {

@@ -249,6 +249,79 @@
                 ]
             }
         },
+        "/upscale": {
+            "post": {
+                "summary": "Upscale",
+                "operationId": "upscale",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Body_upscale_upscale_post"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ImageResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPError"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPError"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPError"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
         "/audio-to-text": {
             "post": {
                 "summary": "Audio To Text",
@@ -296,79 +369,6 @@
                     },
                     "413": {
                         "description": "Request Entity Too Large",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPError"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPError"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/upscale": {
-            "post": {
-                "summary": "Upscale",
-                "operationId": "upscale",
-                "requestBody": {
-                    "content": {
-                        "multipart/form-data": {
-                            "schema": {
-                                "$ref": "#/components/schemas/Body_upscale_upscale_post"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ImageResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPError"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -700,59 +700,57 @@
                     "model_id": {
                         "type": "string",
                         "title": "Model Id",
-                        "description": "",
+                        "description": "The ID of the model to use for image generation.",
                         "default": ""
                     },
                     "prompt": {
                         "type": "string",
                         "title": "Prompt",
-                        "description": ""
+                        "description": "The text prompt to generate the image from."
                     },
                     "height": {
                         "type": "integer",
                         "title": "Height",
-                        "description": "",
-                        "default": 576
+                        "description": "The height of the output image in pixels."
                     },
                     "width": {
                         "type": "integer",
                         "title": "Width",
-                        "description": "",
-                        "default": 1024
+                        "description": "The width of the output image in pixels."
                     },
                     "guidance_scale": {
                         "type": "number",
                         "title": "Guidance Scale",
-                        "description": "",
+                        "description": "The guidance scale for image generation.",
                         "default": 7.5
                     },
                     "negative_prompt": {
                         "type": "string",
                         "title": "Negative Prompt",
-                        "description": "",
+                        "description": "The negative prompt to avoid certain features in the image.",
                         "default": ""
                     },
                     "safety_check": {
                         "type": "boolean",
                         "title": "Safety Check",
-                        "description": "",
+                        "description": "Whether to perform a safety check on the generated image.",
                         "default": true
                     },
                     "seed": {
                         "type": "integer",
                         "title": "Seed",
-                        "description": ""
+                        "description": "The seed for random number generation."
                     },
                     "num_inference_steps": {
                         "type": "integer",
                         "title": "Num Inference Steps",
-                        "description": "",
+                        "description": "The number of inference steps for image generation.",
                         "default": 50
                     },
                     "num_images_per_prompt": {
                         "type": "integer",
                         "title": "Num Images Per Prompt",
-                        "description": "",
+                        "description": "The number of images to generate per prompt.",
                         "default": 1
                     }
                 },
