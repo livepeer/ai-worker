@@ -28,10 +28,16 @@ RUN pyenv install $PYTHON_VERSION && \
   pyenv global $PYTHON_VERSION && \
   pyenv rehash
 
-# Upgrade pip and install your desired packages
+# Upgrade pip and install your desired packages 
 ARG PIP_VERSION=23.3.2
 RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools==69.5.1 wheel==0.43.0 && \
-  pip install --no-cache-dir torch==2.1.1 torchvision==0.16.1 torchaudio==2.1.1
+  pip install --no-cache-dir torch==2.3.1 torchvision==0.18.0 torchaudio==2.3.0 torchao==0.1
+
+##installing onediff from https://github.com/siliconflow/onediff?tab=readme-ov-file#1-install-torch-and-diffusers
+RUN python3 -m pip install -U --pre oneflow -f https://github.com/siliconflow/oneflow_releases/releases/expanded_assets/community_cu121
+RUN python3 -m pip install --pre onediff
+
+
 
 WORKDIR /app
 COPY ./requirements.txt /app

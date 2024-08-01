@@ -17,3 +17,4 @@ numpy==1.26.4
 av==12.1.0
 sentencepiece== 0.2.0
 protobuf==5.27.2
+onediffx==1.1.0
