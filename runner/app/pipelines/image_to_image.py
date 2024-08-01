@@ -144,6 +144,7 @@ class ImageToImagePipeline(Pipeline):
 
             # Warm-up the pipeline.
             # TODO: Not yet supported for ImageToImagePipeline.
+            if os.getenv("SFAST_WARMUP", "true").lower() == "true":
                 logger.warning(
                     "The 'SFAST_WARMUP' flag is not yet supported for the "
                     "ImageToImagePipeline and will be ignored. As a result the first "
