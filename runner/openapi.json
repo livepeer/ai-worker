@@ -332,79 +332,6 @@
                 ]
             }
         },
-        "/frame_interpolation": {
-            "post": {
-                "summary": "Frame Interpolation",
-                "operationId": "frame_interpolation",
-                "requestBody": {
-                    "content": {
-                        "multipart/form-data": {
-                            "schema": {
-                                "$ref": "#/components/schemas/Body_frame_interpolation_frame_interpolation_post"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/ImageResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPError"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPError"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPError"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
         "/upscale": {
             "post": {
                 "summary": "Upscale",
@@ -426,79 +353,6 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/ImageResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPError"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPError"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPError"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "HTTPBearer": []
-                    }
-                ]
-            }
-        },
-        "/llm-generate": {
-            "post": {
-                "summary": "Llm Generate",
-                "operationId": "llm_generate",
-                "requestBody": {
-                    "content": {
-                        "application/x-www-form-urlencoded": {
-                            "schema": {
-                                "$ref": "#/components/schemas/Body_llm_generate_llm_generate_post"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/LlmResponse"
                                 }
                             }
                         }
@@ -585,39 +439,6 @@
                     "audio"
                 ],
                 "title": "Body_audio_to_text_audio_to_text_post"
-            },
-            "Body_frame_interpolation_frame_interpolation_post": {
-                "properties": {
-                    "model_id": {
-                        "type": "string",
-                        "title": "Model Id"
-                    },
-                    "image1": {
-                        "type": "string",
-                        "format": "binary",
-                        "title": "Image1"
-                    },
-                    "image2": {
-                        "type": "string",
-                        "format": "binary",
-                        "title": "Image2"
-                    },
-                    "image_dir": {
-                        "type": "string",
-                        "title": "Image Dir",
-                        "default": ""
-                    },
-                    "inter_frames": {
-                        "type": "integer",
-                        "title": "Inter Frames",
-                        "default": 2
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "model_id"
-                ],
-                "title": "Body_frame_interpolation_frame_interpolation_post"
             },
             "Body_image_to_image_image_to_image_post": {
                 "properties": {
@@ -740,36 +561,6 @@
                 ],
                 "title": "Body_image_to_video_image_to_video_post"
             },
-            "Body_llm_generate_llm_generate_post": {
-                "properties": {
-                    "prompt": {
-                        "type": "string",
-                        "title": "Prompt"
-                    },
-                    "model_id": {
-                        "type": "string",
-                        "title": "Model Id",
-                        "default": ""
-                    },
-                    "system_msg": {
-                        "type": "string",
-                        "title": "System Msg"
-                    },
-                    "temperature": {
-                        "type": "number",
-                        "title": "Temperature"
-                    },
-                    "max_tokens": {
-                        "type": "integer",
-                        "title": "Max Tokens"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "prompt"
-                ],
-                "title": "Body_llm_generate_llm_generate_post"
-            },
             "Body_upscale_upscale_post": {
                 "properties": {
                     "prompt": {
@@ -859,24 +650,6 @@
                     "images"
                 ],
                 "title": "ImageResponse"
-            },
-            "LlmResponse": {
-                "properties": {
-                    "response": {
-                        "type": "string",
-                        "title": "Response"
-                    },
-                    "tokens_used": {
-                        "type": "integer",
-                        "title": "Tokens Used"
-                    }
-                },
-                "type": "object",
-                "required": [
-                    "response",
-                    "tokens_used"
-                ],
-                "title": "LlmResponse"
             },
             "Media": {
                 "properties": {
