@@ -5,7 +5,8 @@ For more information, see the Stable Fast project on GitHub: https://github.com/
 
 import logging
 
-from sfast.compilers.diffusion_pipeline_compiler import CompilationConfig, compile
+from sfast.compilers.diffusion_pipeline_compiler import (CompilationConfig,
+                                                         compile)
 
 logger = logging.getLogger(__name__)
 
