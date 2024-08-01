@@ -35,7 +35,6 @@ var containerHostPorts = map[string]string{
 	"image-to-video": "8002",
 	"upscale":        "8003",
 	"audio-to-text":  "8004",
-	"llm":            "8005",
 }
 
 type DockerManager struct {

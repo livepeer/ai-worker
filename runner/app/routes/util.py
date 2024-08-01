@@ -34,11 +34,6 @@ class TextResponse(BaseModel):
     chunks: List[chunk]
 
 
-class LlmResponse(BaseModel):
-    response: str
-    tokens_used: int
-
-
 class APIError(BaseModel):
     msg: str
 

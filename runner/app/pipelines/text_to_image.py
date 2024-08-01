@@ -164,7 +164,7 @@ class TextToImagePipeline(Pipeline):
                 # TODO: Retrieve defaults from Pydantic class in route.
                 logger.warning(
                     "The 'SFAST_WARMUP' flag is not yet supported for the "
-                    "ImageToImagePipeline and will be ignored. As a result the first "
+                    "TextToImagePipeline and will be ignored. As a result the first "
                     "call may be slow if 'SFAST' is enabled."
                 )
 
