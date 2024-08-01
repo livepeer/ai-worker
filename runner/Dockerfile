@@ -34,8 +34,8 @@ RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools==69.5.1 
   pip install --no-cache-dir torch==2.3.0 torchvision==0.18.0 torchaudio==2.3.0 torchao==0.1
 
 ##installing onediff from https://github.com/siliconflow/onediff?tab=readme-ov-file#1-install-torch-and-diffusers
-RUN python3 -m pip install -U --pre oneflow -f https://github.com/siliconflow/oneflow_releases/releases/expanded_assets/community_cu121
-RUN python3 -m pip install --pre onediff
+RUN python3 -m pip install -U --pre oneflow -f https://github.com/siliconflow/oneflow_releases/releases/expanded_assets/community_cu121 && \
+  python3 -m pip install --pre onediff
 
 
 
@@ -43,7 +43,7 @@ WORKDIR /app
 COPY ./requirements.txt /app
 RUN pip install --no-cache-dir -r requirements.txt
 
-RUN pip install https://github.com/chengzeyi/stable-fast/releases/download/v1.0.3/stable_fast-1.0.3+torch211cu121-cp311-cp311-manylinux2014_x86_64.whl
+# RUN pip install https://github.com/chengzeyi/stable-fast/releases/download/v1.0.3/stable_fast-1.0.3+torch211cu121-cp311-cp311-manylinux2014_x86_64.whl
 
 # Most DL models are quite large in terms of memory, using workers is a HUGE
 # slowdown because of the fork and GIL with python.
