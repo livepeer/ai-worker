@@ -44,6 +44,7 @@ class UpscalePipeline(Pipeline):
 
         sfast_enabled = os.getenv("SFAST", "").strip().lower() == "true"
         deepcache_enabled = os.getenv("DEEPCACHE", "").strip().lower() == "true"
+        onediff_enabled = os.getenv("ONEDIFF", "").strip().lower() == "true"
         if sfast_enabled and deepcache_enabled:
             logger.warning(
                 "Both 'SFAST' and 'DEEPCACHE' are enabled. This is not recommended "
@@ -68,6 +69,15 @@ class UpscalePipeline(Pipeline):
                     "UpscalePipeline and will be ignored. As a result the first "
                     "call may be slow if 'SFAST' is enabled."
                 )
+        if onediff_enabled:
+            logger.info(
+                "UpscalePipeline will be dynamically compiled with onediff for "
+                "%s",
+                model_id,
+            )
+            from app.pipelines.optim.onediff import compile_model
+
+            self.ldm = compile_model(self.ldm)
 
         if deepcache_enabled and not (
             is_lightning_model(model_id) or is_turbo_model(model_id)
