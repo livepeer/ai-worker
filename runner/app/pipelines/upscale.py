@@ -23,8 +23,6 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 logger = logging.getLogger(__name__)
 
-SFAST_WARMUP_ITERATIONS = 2  # Model warm-up iterations when SFAST is enabled.
-
 class UpscalePipeline(Pipeline):
     def __init__(self, model_id: str):
         self.model_id = model_id
@@ -73,27 +71,11 @@ class UpscalePipeline(Pipeline):
             if os.getenv("SFAST_WARMUP", "true").lower() == "true":
                 # Retrieve default model params.
                 # TODO: Retrieve defaults from Pydantic class in route.
-                warmup_kwargs = {
-                    "prompt": "Upscaling the pipeline with sfast enabled",
-                    "image": PIL.Image.new("RGB", (400, 400)), # anything higher than this size cause the model to OOM
-                }
-
-                logger.info("Warming up Upscale pipeline...")
-                total_time = 0
-                for ii in range(SFAST_WARMUP_ITERATIONS):
-                    t = time.time()
-                    try:
-                        self.ldm(**warmup_kwargs).images
-                    except Exception as e:
-                        # FIXME: When out of memory, pipeline is corrupted.
-                        logger.error(f"Upscale pipeline warmup error: {e}")
-                        raise e
-                    iteration_time = time.time() - t
-                    total_time += iteration_time
-                    logger.info(
-                        "Warmup iteration %s took %s seconds", ii + 1, iteration_time
-                    )
-                logger.info("Total warmup time: %s seconds", total_time)
+                logger.warning(
+                    "The 'SFAST_WARMUP' flag is not yet supported for the "
+                    "UpscalePipeline and will be ignored. As a result the first "
+                    "call may be slow if 'SFAST' is enabled."
+                )
 
         if deepcache_enabled and not (
             is_lightning_model(model_id) or is_turbo_model(model_id)

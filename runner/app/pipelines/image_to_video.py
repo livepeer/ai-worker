@@ -19,8 +19,6 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 logger = logging.getLogger(__name__)
 
-SFAST_WARMUP_ITERATIONS = 2  # Model warm-up iterations when SFAST is enabled.
-
 
 class ImageToVideoPipeline(Pipeline):
     def __init__(self, model_id: str):
@@ -70,32 +68,11 @@ class ImageToVideoPipeline(Pipeline):
             if os.getenv("SFAST_WARMUP", "true").lower() == "true":
                 # Retrieve default model params.
                 # TODO: Retrieve defaults from Pydantic class in route.
-                warmup_kwargs = {
-                    "image": PIL.Image.new("RGB", (576, 1024)),
-                    "height": 576,
-                    "width": 1024,
-                    "fps": 6,
-                    "motion_bucket_id": 127,
-                    "noise_aug_strength": 0.02,
-                    "decode_chunk_size": 4,
-                }
-
-                logger.info("Warming up ImageToVideoPipeline pipeline...")
-                total_time = 0
-                for ii in range(SFAST_WARMUP_ITERATIONS):
-                    t = time.time()
-                    try:
-                        self.ldm(**warmup_kwargs).frames
-                    except Exception as e:
-                        # FIXME: When out of memory, pipeline is corrupted.
-                        logger.error(f"ImageToVideoPipeline warmup error: {e}")
-                        raise e
-                    iteration_time = time.time() - t
-                    total_time += iteration_time
-                    logger.info(
-                        "Warmup iteration %s took %s seconds", ii + 1, iteration_time
-                    )
-                logger.info("Total warmup time: %s seconds", total_time)
+                logger.warning(
+                    "The 'SFAST_WARMUP' flag is not yet supported for the "
+                    "TextToImagePipeline and will be ignored. As a result the first "
+                    "call may be slow if 'SFAST' is enabled."
+                )
 
         if deepcache_enabled:
             logger.info(
