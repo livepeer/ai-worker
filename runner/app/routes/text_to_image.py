@@ -1,10 +1,12 @@
 import logging
 import os
 import random
+from typing import Annotated
 
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.routes.util import HTTPError, ImageResponse, http_error, image_to_data_url
+
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -74,10 +76,10 @@ async def text_to_image(
     # once LIV-243 and LIV-379 are resolved.
     images = []
     has_nsfw_concept = []
-    params.num_images_per_prompt = 1
+    num_images_per_prompt = 1
     for seed in seeds:
         try:
-            params.seed = seed
+            seed = seed
             kwargs = {k: v for k, v in params.model_dump().items() if k != "model_id"}
             imgs, nsfw_check = pipeline(**kwargs)
             images.extend(imgs)
