@@ -22,17 +22,17 @@ class TextToImageParams(BaseModel):
     # supports OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
     model_id: Annotated[
         str,
-        Field(default="", description=""),
+        Field(default="", description="The huggingface model ID to run the inference on (i.e. SG161222/RealVisXL_V4.0_Lightning:)"),
     ]
-    prompt: Annotated[str, Field(description="")]
-    height: Annotated[int, Field(default=576, description="")]
-    width: Annotated[int, Field(default=1024, description="")]
-    guidance_scale: Annotated[float, Field(default=7.5, description="")]
-    negative_prompt: Annotated[str, Field(default="", description="")]
-    safety_check: Annotated[bool, Field(default=True, description="")]
-    seed: Annotated[int, Field(default=None, description="")]
-    num_inference_steps: Annotated[int, Field(default=50, description="")]
-    num_images_per_prompt: Annotated[int, Field(default=1, description="")]
+    prompt: Annotated[str, Field(description="The prompt or prompts to guide image generation. If not defined, you need to pass prompt_embeds.")]
+    height: Annotated[int, Field(default=576, description="The height in pixels of the generated image.")]
+    width: Annotated[int, Field(default=1024, description="The width in pixels of the generated image.")]
+    guidance_scale: Annotated[float, Field(default=7.5, description="A higher guidance scale value encourages the model to generate images closely linked to the text prompt at the expense of lower image quality. Guidance scale is enabled when guidance_scale > 1.")]
+    negative_prompt: Annotated[str, Field(default="", description="The prompt or prompts to guide what to not include in image generation. If not defined, you need to pass negative_prompt_embeds instead. Ignored when not using guidance (guidance_scale < 1).")]
+    safety_check: Annotated[bool, Field(default=True, description="Classification module that estimates whether generated images could be considered offensive or harmful. Please refer to the model card for more details about a model’s potential harms.")]
+    seed: Annotated[int, Field(default=None, description="The seed to set.")]
+    num_inference_steps: Annotated[int, Field(default=50, description="The number of denoising steps. More denoising steps usually lead to a higher quality image at the expense of slower inference.")]
+    num_images_per_prompt: Annotated[int, Field(default=1, description="The number of images to generate per prompt.")]
 
 
 RESPONSES = {
