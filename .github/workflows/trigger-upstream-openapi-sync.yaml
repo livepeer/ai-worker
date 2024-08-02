@@ -32,7 +32,7 @@ jobs:
         uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.SDKS_TRIGGER_PAT }}
-          repository: rickstaa/ai-sdk-js
+          repository: livepeer/ai-sdk-js
           event-type: update-ai-openapi
 
           client-payload: >-
@@ -57,7 +57,7 @@ jobs:
         uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.DOCS_TRIGGER_PAT }}
-          repository: rickstaa/docs
+          repository: livepeer/docs
           event-type: update-ai-openapi
           client-payload: >-
             {
