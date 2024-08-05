@@ -253,6 +253,12 @@ func NewLlmGenerateMultipartWriter(w io.Writer, req BodyLlmGenerateLlmGeneratePo
 		return nil, fmt.Errorf("failed to write prompt field: %w", err)
 	}
 
+	if req.History != nil {
+		if err := mw.WriteField("history", *req.History); err != nil {
+			return nil, fmt.Errorf("failed to write history field: %w", err)
+		}
+	}
+
 	if req.ModelId != nil {
 		if err := mw.WriteField("model_id", *req.ModelId); err != nil {
 			return nil, fmt.Errorf("failed to write model_id field: %w", err)
@@ -274,6 +280,12 @@ func NewLlmGenerateMultipartWriter(w io.Writer, req BodyLlmGenerateLlmGeneratePo
 	if req.MaxTokens != nil {
 		if err := mw.WriteField("max_tokens", strconv.Itoa(*req.MaxTokens)); err != nil {
 			return nil, fmt.Errorf("failed to write max_tokens field: %w", err)
+		}
+	}
+
+	if req.Stream != nil {
+		if err := mw.WriteField("stream", fmt.Sprintf("%v", *req.Stream)); err != nil {
+			return nil, fmt.Errorf("failed to write stream field: %w", err)
 		}
 	}
 
