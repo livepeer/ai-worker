@@ -133,8 +133,7 @@ class LLMGeneratePipeline(Pipeline):
         if system_msg:
             conversation.append({"role": "system", "content": system_msg})
         if history:
-            for user, assistant in history:
-                conversation.extend([{"role": "user", "content": user}, {"role": "assistant", "content": assistant}])
+           conversation.extend(history)
         conversation.append({"role": "user", "content": prompt})
 
         input_ids = self.tokenizer.apply_chat_template(conversation, return_tensors="pt").to(self.model.device)
