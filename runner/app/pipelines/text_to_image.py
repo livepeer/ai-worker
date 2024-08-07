@@ -11,7 +11,7 @@ from app.pipelines.utils import (SafetyChecker, get_model_dir,
                                  is_turbo_model, split_prompt)
 from diffusers import (AutoPipelineForText2Image, EulerDiscreteScheduler,
                        StableDiffusion3Pipeline, StableDiffusionXLPipeline,
-                       UNet2DConditionModel)
+                       UNet2DConditionModel, FluxPipeline)
 from diffusers.models import AutoencoderKL
 from huggingface_hub import file_download, hf_hub_download
 from safetensors.torch import load_file
@@ -25,6 +25,7 @@ class ModelName(Enum):
     SDXL_LIGHTNING = "ByteDance/SDXL-Lightning"
     SD3_MEDIUM = "stabilityai/stable-diffusion-3-medium-diffusers"
     REALISTIC_VISION_V6 = "SG161222/Realistic_Vision_V6.0_B1_noVAE"
+    FLUX_1_SCHNELL = "black-forest-labs/FLUX.1-schnell"
 
     @classmethod
     def list(cls):
@@ -108,6 +109,12 @@ class TextToImagePipeline(Pipeline):
             )
         elif ModelName.SD3_MEDIUM.value in model_id:
             self.ldm = StableDiffusion3Pipeline.from_pretrained(model_id, **kwargs).to(
+                torch_device
+            )
+        elif ModelName.FLUX_1_SCHNELL.value in model_id:
+            # Decrease precision to preven OOM errors.
+            kwargs["torch_dtype"] = torch.bfloat16
+            self.ldm = FluxPipeline.from_pretrained(model_id, **kwargs).to(
                 torch_device
             )
         else:
