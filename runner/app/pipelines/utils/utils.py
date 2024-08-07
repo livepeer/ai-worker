@@ -12,6 +12,7 @@ from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
 from PIL import Image
 from torch import dtype as TorchDtype
 from transformers import CLIPFeatureExtractor
+from typing import Dict
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +85,7 @@ def split_prompt(
     separator: str = "|",
     key_prefix: str = "prompt",
     max_splits: int = -1,
-) -> dict[str, str]:
+) -> Dict[str, str]:
     """Splits an input prompt into prompts, including the main prompt, with customizable
     key naming.
 
@@ -98,13 +99,16 @@ def split_prompt(
     Returns:
         Dict[str, str]: A dictionary of all prompts, including the main prompt.
     """
-    prompts = input_prompt.split(separator, max_splits - 1)
-    start_index = 1 if max_splits < 0 else max(1, len(prompts) - max_splits)
+    prompts = [prompt.strip() for prompt in input_prompt.split(separator, max_splits) if prompt.strip()]
+    if not prompts:
+        return {}
+    
+    start_index = max(1, len(prompts) - max_splits) if max_splits >= 0 else 1
 
-    prompt_dict = {f"{key_prefix}": prompts[0].strip()}
+    prompt_dict = {f"{key_prefix}": prompts[0]}
     prompt_dict.update(
         {
-            f"{key_prefix}_{i+1}": prompt.strip()
+            f"{key_prefix}_{i+1}": prompt
             for i, prompt in enumerate(prompts[1:], start=start_index)
         }
     )
