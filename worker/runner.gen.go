@@ -39,11 +39,9 @@ type BodyAudioToTextAudioToTextPost struct {
 
 // BodyFrameInterpolationFrameInterpolationPost defines model for Body_frame_interpolation_frame_interpolation_post.
 type BodyFrameInterpolationFrameInterpolationPost struct {
-	Image1      *openapi_types.File `json:"image1,omitempty"`
-	Image2      *openapi_types.File `json:"image2,omitempty"`
-	ImageDir    *string             `json:"image_dir,omitempty"`
 	InterFrames *int                `json:"inter_frames,omitempty"`
-	ModelId     string              `json:"model_id"`
+	ModelId     *string             `json:"model_id,omitempty"`
+	Video       *openapi_types.File `json:"video,omitempty"`
 }
 
 // BodyImageToImageImageToImagePost defines model for Body_image_to_image_image_to_image_post.
@@ -161,11 +159,14 @@ type Chunk struct {
 	Timestamp []interface{} `json:"timestamp"`
 }
 
+// FrameInterpolationMultipartBody defines parameters for FrameInterpolation.
+type FrameInterpolationMultipartBody = BodyFrameInterpolationFrameInterpolationPost
+
 // AudioToTextMultipartRequestBody defines body for AudioToText for multipart/form-data ContentType.
 type AudioToTextMultipartRequestBody = BodyAudioToTextAudioToTextPost
 
 // FrameInterpolationMultipartRequestBody defines body for FrameInterpolation for multipart/form-data ContentType.
-type FrameInterpolationMultipartRequestBody = BodyFrameInterpolationFrameInterpolationPost
+type FrameInterpolationMultipartRequestBody = FrameInterpolationMultipartBody
 
 // ImageToImageMultipartRequestBody defines body for ImageToImage for multipart/form-data ContentType.
 type ImageToImageMultipartRequestBody = BodyImageToImageImageToImagePost
@@ -472,7 +473,7 @@ func NewFrameInterpolationRequestWithBody(server string, contentType string, bod
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/frame_interpolation")
+	operationPath := fmt.Sprintf("/frame-interpolation")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -743,7 +744,7 @@ func (r AudioToTextResponse) StatusCode() int {
 type FrameInterpolationResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *ImageResponse
+	JSON200      *VideoResponse
 	JSON400      *HTTPError
 	JSON401      *HTTPError
 	JSON422      *HTTPValidationError
@@ -1039,7 +1040,7 @@ func ParseFrameInterpolationResponse(rsp *http.Response) (*FrameInterpolationRes
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ImageResponse
+		var dest VideoResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1326,7 +1327,7 @@ type ServerInterface interface {
 	// (POST /audio-to-text)
 	AudioToText(w http.ResponseWriter, r *http.Request)
 	// Frame Interpolation
-	// (POST /frame_interpolation)
+	// (POST /frame-interpolation)
 	FrameInterpolation(w http.ResponseWriter, r *http.Request)
 	// Health
 	// (GET /health)
@@ -1356,7 +1357,7 @@ func (_ Unimplemented) AudioToText(w http.ResponseWriter, r *http.Request) {
 }
 
 // Frame Interpolation
-// (POST /frame_interpolation)
+// (POST /frame-interpolation)
 func (_ Unimplemented) FrameInterpolation(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
@@ -1634,7 +1635,7 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/audio-to-text", wrapper.AudioToText)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/frame_interpolation", wrapper.FrameInterpolation)
+		r.Post(options.BaseURL+"/frame-interpolation", wrapper.FrameInterpolation)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/health", wrapper.Health)
@@ -1658,33 +1659,36 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

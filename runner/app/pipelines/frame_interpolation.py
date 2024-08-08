@@ -1,4 +1,5 @@
 import torch
+import os
 from torchvision.transforms import v2
 from tqdm import tqdm
 import bisect
@@ -10,7 +11,7 @@ class FILMPipeline:
     model: torch.jit.ScriptModule
 
     def __init__(self, model_id: str):
-        self.model_id = model_id
+        model_id = os.environ.get("MODEL_ID", "")
         model_dir = get_model_dir()  # Get the directory where models are stored
         model_path = f"{model_dir}/{model_id}"  # Construct the full path to the model file
         

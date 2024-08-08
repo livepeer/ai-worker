@@ -193,7 +193,7 @@ def video_shredder(video_data, is_file_path=True) -> np.ndarray:
         # Handle in-memory video input
         # Create a temporary file to store in-memory video data
         with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_file:
-            temp_file.write(video_data.getvalue())
+            temp_file.write(video_data)
             temp_file_path = temp_file.name
         
         # Open the temporary video file

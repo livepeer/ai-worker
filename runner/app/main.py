@@ -48,7 +48,7 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
             from app.pipelines.audio_to_text import AudioToTextPipeline
 
             return AudioToTextPipeline(model_id)
-        case "FILMPipeline":
+        case "frame-interpolation":
             from app.pipelines.frame_interpolation import FILMPipeline
 
             return FILMPipeline(model_id)
@@ -80,7 +80,7 @@ def load_route(pipeline: str) -> any:
             from app.routes import audio_to_text
 
             return audio_to_text.router
-        case "FILMPipeline":
+        case "frame-interpolation":
             from app.routes import frame_interpolation
 
             return frame_interpolation.router

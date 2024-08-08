@@ -332,15 +332,15 @@
                 ]
             }
         },
-        "/frame_interpolation": {
+        "/llm-generate": {
             "post": {
-                "summary": "Frame Interpolation",
-                "operationId": "frame_interpolation",
+                "summary": "Llm Generate",
+                "operationId": "llm_generate",
                 "requestBody": {
                     "content": {
-                        "multipart/form-data": {
+                        "application/x-www-form-urlencoded": {
                             "schema": {
-                                "$ref": "#/components/schemas/Body_frame_interpolation_frame_interpolation_post"
+                                "$ref": "#/components/schemas/Body_llm_generate_llm_generate_post"
                             }
                         }
                     },
@@ -352,7 +352,84 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/ImageResponse"
+                                    "$ref": "#/components/schemas/LlmResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPError"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPError"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPError"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
+        },
+        "/frame-interpolation": {
+            "post": {
+                "summary": "Frame Interpolation",
+                "operationId": "frame_interpolation",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "allOf": [
+                                    {
+                                        "$ref": "#/components/schemas/Body_frame_interpolation_frame_interpolation_post"
+                                    }
+                                ],
+                                "title": "Body"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/VideoResponse"
                                 }
                             }
                         }
@@ -517,22 +594,13 @@
                 "properties": {
                     "model_id": {
                         "type": "string",
-                        "title": "Model Id"
-                    },
-                    "image1": {
-                        "type": "string",
-                        "format": "binary",
-                        "title": "Image1"
-                    },
-                    "image2": {
-                        "type": "string",
-                        "format": "binary",
-                        "title": "Image2"
-                    },
-                    "image_dir": {
-                        "type": "string",
-                        "title": "Image Dir",
+                        "title": "Model Id",
                         "default": ""
+                    },
+                    "video": {
+                        "type": "string",
+                        "format": "binary",
+                        "title": "Video"
                     },
                     "inter_frames": {
                         "type": "integer",
@@ -541,9 +609,6 @@
                     }
                 },
                 "type": "object",
-                "required": [
-                    "model_id"
-                ],
                 "title": "Body_frame_interpolation_frame_interpolation_post"
             },
             "Body_image_to_image_image_to_image_post": {
