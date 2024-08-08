@@ -1,5 +1,7 @@
 import logging
 import os
+import sys
+import cv2
 from contextlib import asynccontextmanager
 
 from app.routes import health
@@ -15,8 +17,8 @@ async def lifespan(app: FastAPI):
 
     app.include_router(health.router)
 
-    pipeline = os.environ["PIPELINE"]
-    model_id = os.environ["MODEL_ID"]
+    pipeline = os.environ.get("PIPELINE", "") 
+    model_id = os.environ.get("MODEL_ID", "")
 
     app.pipeline = load_pipeline(pipeline, model_id)
     app.include_router(load_route(pipeline))
@@ -46,8 +48,9 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
             from app.pipelines.audio_to_text import AudioToTextPipeline
 
             return AudioToTextPipeline(model_id)
-        case "frame-interpolation":
-            raise NotImplementedError("frame-interpolation pipeline not implemented")
+        case "frame-interpolation":	
+            raise NotImplementedError("frame-interpolation pipeline not implemented")   
+                 
         case "upscale":
             from app.pipelines.upscale import UpscalePipeline
 
@@ -76,8 +79,9 @@ def load_route(pipeline: str) -> any:
             from app.routes import audio_to_text
 
             return audio_to_text.router
-        case "frame-interpolation":
+        case "frame-interpolation":	
             raise NotImplementedError("frame-interpolation pipeline not implemented")
+
         case "upscale":
             from app.routes import upscale
 

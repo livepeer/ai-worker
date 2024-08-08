@@ -1,6 +1,8 @@
 import logging
 import os
 from enum import Enum
+import time
+from compel import Compel, ReturnedEmbeddingsType
 from typing import List, Optional, Tuple
 
 import PIL
@@ -17,7 +19,6 @@ from huggingface_hub import file_download, hf_hub_download
 from safetensors.torch import load_file
 
 logger = logging.getLogger(__name__)
-
 
 class ModelName(Enum):
     """Enumeration mapping model names to their corresponding IDs."""
@@ -156,9 +157,9 @@ class TextToImagePipeline(Pipeline):
 
             self.ldm = compile_model(self.ldm)
 
-            # Warm-up the pipeline.
-            # TODO: Not yet supported for TextToImagePipeline.
             if os.getenv("SFAST_WARMUP", "true").lower() == "true":
+                # Retrieve default model params.
+                # TODO: Retrieve defaults from Pydantic class in route.
                 logger.warning(
                     "The 'SFAST_WARMUP' flag is not yet supported for the "
                     "TextToImagePipeline and will be ignored. As a result the first "
@@ -238,7 +239,24 @@ class TextToImagePipeline(Pipeline):
         )
         kwargs.update(neg_prompts)
 
-        output = self.ldm(prompt=prompt, **kwargs)
+        # we call the compel class and initialise it and try for SDXL models with pooled_embeds
+        try:
+            compel_proc=Compel(tokenizer=self.ldm.tokenizer, text_encoder=self.ldm.text_encoder)
+            prompt_embeds = compel_proc(prompt)
+            output = self.ldm(prompt_embeds=prompt_embeds, **kwargs)            
+        except Exception as e:
+            logger.info(f"Failed to generate prompt embeddings: {e}. Using prompt and pooled embeddings.")            
+            
+            try:
+                compel_proc = Compel(tokenizer=[self.ldm.tokenizer, self.ldm.tokenizer_2],
+                                text_encoder=[self.ldm.text_encoder, self.ldm.text_encoder_2],
+                                returned_embeddings_type=ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
+                                requires_pooled=[False, True])        
+                prompt_embeds, pooled_prompt_embeds = compel_proc(prompt)
+                output = self.ldm(prompt_embeds=prompt_embeds, pooled_prompt_embeds=pooled_prompt_embeds, **kwargs)
+            except Exception as e:
+                logger.info(f"Failed to generate prompt and pooled embeddings: {e}. Trying normal prompt.")
+                output = self.ldm(prompt=prompt, **kwargs)
 
         if safety_check:
             _, has_nsfw_concept = self._safety_checker.check_nsfw_images(output.images)

@@ -1,5 +1,7 @@
 import logging
 import os
+import time
+from compel import Compel, ReturnedEmbeddingsType 
 from typing import List, Optional, Tuple
 
 import PIL
@@ -15,7 +17,6 @@ from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 logger = logging.getLogger(__name__)
-
 
 class UpscalePipeline(Pipeline):
     def __init__(self, model_id: str):
@@ -63,6 +64,8 @@ class UpscalePipeline(Pipeline):
             # Warm-up the pipeline.
             # TODO: Not yet supported for UpscalePipeline.
             if os.getenv("SFAST_WARMUP", "true").lower() == "true":
+                # Retrieve default model params.
+                # TODO: Retrieve defaults from Pydantic class in route.
                 logger.warning(
                     "The 'SFAST_WARMUP' flag is not yet supported for the "
                     "UpscalePipeline and will be ignored. As a result the first "
@@ -82,7 +85,7 @@ class UpscalePipeline(Pipeline):
         elif deepcache_enabled:
             logger.warning(
                 "DeepCache is not supported for Lightning or Turbo models. "
-                "TextToImagePipeline will NOT be optimized with DeepCache for %s",
+                "UpscalingPiepline will NOT be optimized with DeepCache for %s",
                 model_id,
             )
 
@@ -107,9 +110,31 @@ class UpscalePipeline(Pipeline):
                 ]
 
         if num_inference_steps is None or num_inference_steps < 1:
-            del kwargs["num_inference_steps"]
+            kwargs.pop("num_inference_steps", None)
 
-        output = self.ldm(prompt, image=image, **kwargs)
+        # trying differnt configs of promp_embed for different models
+        try:
+            compel_proc=Compel(tokenizer=self.ldm.tokenizer, text_encoder=self.ldm.text_encoder)
+            prompt=embeds = compel_proc(prompt)
+            output = self.ldm(prompt_embeds=prompt_embeds, image=image, **kwargs)
+        except Exception as e:
+            logging.info(f"Failed to generate prompt embeddings: {e}. Using prompt and pooled embeddings.")
+
+            try:
+                compel_proc = Compel(tokenizer=[self.ldm.tokenizer, self.ldm.tokenizer_2],
+                                text_encoder=[self.ldm.text_encoder, self.ldm.text_encoder_2],
+                                returned_embeddings_type=ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
+                                requires_pooled=[False, True])
+                prompt_embeds, pooled_prompt_embeds = compel_proc(prompt)
+                output = self.ldm(
+                    prompt_embeds=prompt_embeds,
+                    pooled_prompt_embeds=pooled_prompt_embeds,
+                    image=image,
+                    **kwargs
+                )
+            except Exception as e:
+                logging.info(f"Failed to generate prompt and pooled embeddings: {e}. Trying normal prompt.")
+                output = self.ldm(prompt, image=image, **kwargs)
 
         if safety_check:
             _, has_nsfw_concept = self._safety_checker.check_nsfw_images(output.images)
