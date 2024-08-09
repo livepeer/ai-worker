@@ -28,6 +28,8 @@ text_to_image_presets = {
 def load_scheduler_presets(pipeline: str) -> any:
     if pipeline == "TextToImagePipeline":
         return text_to_image_presets
+    elif pipeline == "ImageToImagePipeline":
+        return text_to_image_presets
     else:
         return {}
 
