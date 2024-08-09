@@ -19,8 +19,8 @@ RUN apt-get update && \
 RUN curl https://pyenv.run | bash
 
 # Set environment variables for pyenv
-ENV PYENV_ROOT /root/.pyenv
-ENV PATH $PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH
+ENV PYENV_ROOT=/root/.pyenv
+ENV PATH=$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH
 
 # Install your desired Python version
 ARG PYTHON_VERSION=3.11
@@ -34,8 +34,7 @@ RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools==69.5.1 
   pip install --no-cache-dir torch==2.3.0 torchvision==0.18.0 torchaudio==2.3.0 torchao==0.1
 
 ##installing onediff from https://github.com/siliconflow/onediff?tab=readme-ov-file#1-install-torch-and-diffusers
-RUN python3 -m pip install -U --pre oneflow -f https://github.com/siliconflow/oneflow_releases/releases/expanded_assets/community_cu121 && \
-  python3 -m pip install --pre onediff
+RUN python3 -m pip install -U --pre oneflow -f https://github.com/siliconflow/oneflow_releases/releases/expanded_assets/community_cu121
 
 
 

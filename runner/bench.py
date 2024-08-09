@@ -26,7 +26,10 @@ class BenchMetrics(BaseModel):
 
 def call_pipeline(pipeline: Pipeline, batch_size=1, **kwargs) -> List[any]:
     if isinstance(pipeline, TextToImagePipeline):
-        prompts = [PROMPT] * batch_size
+        if batch_size == 1:
+            prompts = PROMPT
+        else:
+            prompts = [PROMPT] * batch_size
         return pipeline(prompts, **kwargs)
     elif isinstance(pipeline, ImageToImagePipeline):
         prompts = [PROMPT] * batch_size
@@ -47,11 +50,9 @@ def bench_pipeline(
     max_mem_allocated = np.zeros(runs)
     max_mem_reserved = np.zeros(runs)
 
-    kwargs = (
-        {"num_inference_steps": num_inference_steps}
-        if num_inference_steps is not None
-        else {}
-    )
+    kwargs = {}
+    if num_inference_steps is not None:
+        kwargs["num_inference_steps"] = num_inference_steps
 
     for i in range(runs):
         start = time()
@@ -112,12 +113,33 @@ if __name__ == "__main__":
     parser.add_argument(
         "--batch_size", type=int, default=1, required=False, help="the size of a batch"
     )
+    parser.add_argument(
+        "--optimization",
+        type=str,
+        choices=["none", "sfast", "deepcache", "onediff"],
+        default="none",
+        help="the optimization method to use",
+    )
 
     args = parser.parse_args()
 
     print(
-        f"{args.pipeline=} {args.model_id=} {args.runs=} {args.batch_size=} {args.num_inference_steps=}"
+        f"{args.pipeline=} {args.model_id=} {args.runs=} {args.batch_size=} "
+        f"{args.num_inference_steps=} {args.optimization=}"
     )
+
+    # Set the appropriate environment variable based on the optimization choice
+    os.environ["SFAST"] = "false"
+    os.environ["DEEPCACHE"] = "false"
+    #set the default true  as i am testing onediff
+    os.environ["ONEDIFF"] = "true"
+
+    if args.optimization == "sfast":
+        os.environ["SFAST"] = "true"
+    elif args.optimization == "deepcache":
+        os.environ["DEEPCACHE"] = "true"
+    elif args.optimization == "onediff":
+        os.environ["ONEDIFF"] = "true"
 
     start = time()
     pipeline = load_pipeline(args.pipeline, args.model_id)
@@ -127,8 +149,8 @@ if __name__ == "__main__":
     load_max_mem_allocated = torch.cuda.max_memory_allocated() / 1024**3
     load_max_mem_reserved = torch.cuda.max_memory_reserved() / 1024**3
 
-    # Collect pipeline warmup metrics if stable-fast is enabled
-    if os.getenv("SFAST", "").strip().lower() == "true":
+    # Collect pipeline warmup metrics if optimization is enabled
+    if args.optimization != "none":
         warmups = 3
         warmup_metrics = bench_pipeline(
             pipeline, args.batch_size, warmups, args.num_inference_steps
@@ -143,11 +165,12 @@ if __name__ == "__main__":
     print("----AGGREGATE METRICS----")
     print("\n")
 
+    print(f"Optimization: {args.optimization}")
     print(f"pipeline load time: {load_time:.3f}s")
     print(f"pipeline load max GPU memory allocated: {load_max_mem_allocated:.3f}GiB")
     print(f"pipeline load max GPU memory reserved: {load_max_mem_reserved:.3f}GiB")
 
-    if os.getenv("SFAST", "").strip().lower() == "true":
+    if args.optimization != "none":
         print(f"avg warmup inference time: {warmup_metrics.inference_time:.3f}s")
         print(
             f"avg warmup inference time per output: {warmup_metrics.inference_time_per_output:.3f}s"

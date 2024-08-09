@@ -114,10 +114,12 @@ class ImageToImagePipeline(Pipeline):
 
         sfast_enabled = os.getenv("SFAST", "").strip().lower() == "true"
         deepcache_enabled = os.getenv("DEEPCACHE", "").strip().lower() == "true"
-        if sfast_enabled and deepcache_enabled:
+        onediff_enabled = os.getenv("ONEDIFF", "").strip().lower() == "true"
+        if sum([sfast_enabled,deepcache_enabled,onediff_enabled])>1:
             logger.warning(
-                "Both 'SFAST' and 'DEEPCACHE' are enabled. This is not recommended "
-                "as it may lead to suboptimal performance. Please disable one of them."
+                "Multiple optimizations (SFAST, DEEPCACHE, ONEDIFF) are enabled. "
+                "This is not recommended as it may lead to conflicts or suboptimal "
+                "performance. Please enable only one optimization at a time."
             )
 
         if sfast_enabled:
@@ -155,6 +157,13 @@ class ImageToImagePipeline(Pipeline):
                 "ImageToImagePipeline will NOT be optimized with DeepCache for %s",
                 model_id,
             )
+        if onediff_enabled:
+            logger.info(
+                "TextToImagePipeline will be optimized with OneDiff for %s",
+                model_id,
+            )
+            from app.pipelines.optim.onediff import enable_onediff
+            self.ldm = enable_onediff(self.ldm)
 
         safety_checker_device = os.getenv("SAFETY_CHECKER_DEVICE", "cuda").lower()
         self._safety_checker = SafetyChecker(device=safety_checker_device)

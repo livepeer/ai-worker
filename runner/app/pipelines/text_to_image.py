@@ -10,8 +10,7 @@ from app.pipelines.utils import (SafetyChecker, get_model_dir,
                                  get_torch_device, is_lightning_model,
                                  is_turbo_model, split_prompt)
 from diffusers import (AutoPipelineForText2Image, EulerDiscreteScheduler,
-                       StableDiffusion3Pipeline, StableDiffusionXLPipeline,
-                       UNet2DConditionModel)
+                        StableDiffusionXLPipeline,UNet2DConditionModel)
 from diffusers.models import AutoencoderKL
 from huggingface_hub import file_download, hf_hub_download
 from safetensors.torch import load_file
@@ -165,9 +164,9 @@ class TextToImagePipeline(Pipeline):
                 "%s",
                 model_id,
             )
-            from app.pipelines.optim.onediff import compile_model
+            from app.pipelines.optim.onediff import enable_onediff
 
-            self.ldm = compile_model(self.ldm)
+            self.ldm = enable_onediff(self.ldm)
 
 
         if deepcache_enabled and not (
