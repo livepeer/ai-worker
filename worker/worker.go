@@ -319,7 +319,7 @@ func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endp
 		Endpoint:         endpoint,
 		containerTimeout: externalContainerTimeout,
 	}
-	rc, err := NewRunnerContainer(ctx, cfg)
+	rc, err := NewRunnerContainer(ctx, cfg, endpoint.URL)
 	if err != nil {
 		return err
 	}
@@ -354,24 +354,26 @@ func (w *Worker) HasCapacity(pipeline, modelID string) bool {
 	}
 
 	// Check if we have capacity for external containers.
-	name := dockerContainerName(pipeline, modelID)
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	_, ok := w.externalContainers[name]
+	for _, rc := range w.externalContainers {
+		if rc.Pipeline == pipeline && rc.ModelID == modelID {
+			return true
+		}
+	}
 
-	return ok
+	//no managed or external containers have capacity
+	return false
 }
 
 func (w *Worker) borrowContainer(ctx context.Context, pipeline, modelID string) (*RunnerContainer, error) {
 	w.mu.Lock()
 
-	name := dockerContainerName(pipeline, modelID)
-	rc, ok := w.externalContainers[name]
-	if ok {
-		w.mu.Unlock()
-		// We allow concurrent in-flight requests for external containers and assume that it knows
-		// how to handle them
-		return rc, nil
+	for _, rc := range w.externalContainers {
+		if rc.Pipeline == pipeline && rc.ModelID == modelID {
+			w.mu.Unlock()
+			return rc, nil
+		}
 	}
 
 	w.mu.Unlock()
