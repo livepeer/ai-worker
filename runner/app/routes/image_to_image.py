@@ -36,9 +36,9 @@ RESPONSES = {
     include_in_schema=False,
 )
 async def image_to_image(
-    prompt: Annotated[str, Form(description="The prompt or prompts to guide image generation. If not defined, you need to pass prompt_embeds.")],
-    image: Annotated[UploadFile, File(description="Image, numpy array or tensor representing an image batch to be used as the starting point. For both numpy array and pytorch tensor, the expected value range is between [0, 1] If it’s a tensor or a list or tensors, the expected shape should be (B, C, H, W) or (C, H, W). If it is a numpy array or a list of arrays, the expected shape should be (B, H, W, C) or (H, W, C) It can also accept image latents as image, but if passing latents directly it is not encoded again.")],
-    model_id: Annotated[str, Form(description="The huggingface model ID to run the inference on (i.e. SG161222/RealVisXL_V4.0_Lightning:)")] = "",
+    prompt: Annotated[str, Form(description="This is the text description for the image. When prompting use + or - after the word to increase the weight of the word in generation, you can add multiple ++ or -- to increase or decrease weight.")],
+    image: Annotated[UploadFile, File(description="This holds the absolute path to the image file to be transformed.")],
+    model_id: Annotated[str, Form(description="This is the diffusion model for image generation.")] = "",
     strength: Annotated[float, Form(description=" Indicates extent to transform the reference image. Must be between 0 and 1. image is used as a starting point and more noise is added the higher the strength. The number of denoising steps depends on the amount of noise initially added. When strength is 1, added noise is maximum and the denoising process runs for the full number of iterations specified in num_inference_steps. A value of 1 essentially ignores image.")] = 0.8,
     guidance_scale: Annotated[float, Form(description="A higher guidance scale value encourages the model to generate images closely linked to the text prompt at the expense of lower image quality. Guidance scale is enabled when guidance_scale > 1.")] = 7.5,
     image_guidance_scale: Annotated[float, Form(description="Push the generated image towards the initial image. Image guidance scale is enabled by setting image_guidance_scale > 1. Higher image guidance scale encourages generated images that are closely linked to the source image, usually at the expense of lower image quality. This pipeline requires a value of at least 1.")] = 1.5,

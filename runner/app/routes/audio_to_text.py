@@ -56,8 +56,8 @@ def handle_pipeline_error(e: Exception) -> JSONResponse:
     include_in_schema=False,
 )
 async def audio_to_text(
-    audio: Annotated[UploadFile, File(description="List of denoised audio samples of a NumPy array of shape (batch_size, num_channels, sample_rate).")],
-    model_id: Annotated[str, Form(description="The huggingface model ID to run the inference on (i.e. SG161222/RealVisXL_V4.0_Lightning:)")] = "",
+    audio: Annotated[UploadFile, File(description="This is the path to the audio file to be transcribed.")],
+    model_id: Annotated[str, Form(description="This is the diffusion model for image generation.")] = "",
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):

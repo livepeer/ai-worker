@@ -35,8 +35,8 @@ RESPONSES = {
     include_in_schema=False,
 )
 async def image_to_video(
-    image: Annotated[UploadFile, File(description="Image, numpy array or tensor representing an image batch to be used as the starting point. For both numpy array and pytorch tensor, the expected value range is between [0, 1] If it’s a tensor or a list or tensors, the expected shape should be (B, C, H, W) or (C, H, W). If it is a numpy array or a list of arrays, the expected shape should be (B, H, W, C) or (H, W, C) It can also accept image latents as image, but if passing latents directly it is not encoded again.")],
-    model_id: Annotated[str, Form(description="The huggingface model ID to run the inference on (i.e. SG161222/RealVisXL_V4.0_Lightning:)")] = "",
+    image: Annotated[UploadFile, File(description="This field holds the absolute path to the image file to be transformed.")],
+    model_id: Annotated[str, Form(description="This is the diffusion model for image generation.")] = "",
     height: Annotated[int, Form(description="The height in pixels of the generated image.")] = 576,
     width: Annotated[int, Form(description="The width in pixels of the generated image.")] = 1024,
     fps: Annotated[int, Form(description="the frames per second of the generated video.")] = 6,

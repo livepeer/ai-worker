@@ -22,9 +22,9 @@ class TextToImageParams(BaseModel):
     # supports OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
     model_id: Annotated[
         str,
-        Field(default="", description="The huggingface model ID to run the inference on (i.e. SG161222/RealVisXL_V4.0_Lightning:)"),
+        Field(default="", description="This is the diffusion model for image generation."),
     ]
-    prompt: Annotated[str, Field(description="The prompt or prompts to guide image generation. If not defined, you need to pass prompt_embeds.")]
+    prompt: Annotated[str, Field(description="This is the text description for the image. When prompting use + or - after the word to increase the weight of the word in generation, you can add multiple ++ or -- to increase or decrease weight.")]
     height: Annotated[int, Field(default=576, description="The height in pixels of the generated image.")]
     width: Annotated[int, Field(default=1024, description="The width in pixels of the generated image.")]
     guidance_scale: Annotated[float, Field(default=7.5, description="A higher guidance scale value encourages the model to generate images closely linked to the text prompt at the expense of lower image quality. Guidance scale is enabled when guidance_scale > 1.")]

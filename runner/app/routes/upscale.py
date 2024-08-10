@@ -36,9 +36,9 @@ RESPONSES = {
     include_in_schema=False,
 )
 async def upscale(
-    prompt: Annotated[str, Form(description="The prompt or prompts to guide image generation. If not defined, you need to pass prompt_embeds.")],
-    image: Annotated[UploadFile, File(description="Image, numpy array or tensor representing an image batch to be used as the starting point. For both numpy array and pytorch tensor, the expected value range is between [0, 1] If it’s a tensor or a list or tensors, the expected shape should be (B, C, H, W) or (C, H, W). If it is a numpy array or a list of arrays, the expected shape should be (B, H, W, C) or (H, W, C) It can also accept image latents as image, but if passing latents directly it is not encoded again.")],
-    model_id: Annotated[str, Form(description="The huggingface model ID to run the inference on (i.e. SG161222/RealVisXL_V4.0_Lightning:)")] = "",
+    prompt: Annotated[str, Form(description="This is the text description for the image. When prompting use + or - after the word to increase the weight of the word in generation, you can add multiple ++ or -- to increase or decrease weight.")],
+    image: Annotated[UploadFile, File(description="This field holds the absolute path to the image file to be upscaled.")],
+    model_id: Annotated[str, Form(description="This is the diffusion model for image generation.")] = "",
     safety_check: Annotated[bool, Form(description=" Classification module that estimates whether generated images could be considered offensive or harmful. Please refer to the model card for more details about a model’s potential harms.")] = True,
     seed: Annotated[int, Form(description="The seed to set.")] = None,
     num_inference_steps: Annotated[
