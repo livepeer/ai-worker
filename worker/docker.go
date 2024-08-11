@@ -166,7 +166,8 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	}
 
 	// NOTE: We currently allow only one container per GPU for each pipeline.
-	containerHostPort := containerHostPorts[pipeline][:3] + gpu
+	gpuDevices := strings.Split(gpu, "|")
+	containerHostPort := containerHostPorts[pipeline][:3] + gpuDevices[0]
 	containerName := dockerContainerName(pipeline, modelID, containerHostPort)
 	containerImage := m.defaultImage
 	if pipelineSpecificImage, ok := pipelineToImage[pipeline]; ok {
@@ -198,12 +199,12 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 		},
 	}
 
+	devReq := container.DeviceRequest{Driver: "nvidia", DeviceIDs: gpuDevices, Capabilities: [][]string{{"gpu"}}}
 	gpuOpts := opts.GpuOpts{}
-	gpuOpts.Set("device=" + gpu)
 
 	hostConfig := &container.HostConfig{
 		Resources: container.Resources{
-			DeviceRequests: gpuOpts.Value(),
+			DeviceRequests: append(gpuOpts.Value(), devReq),
 		},
 		Mounts: []mount.Mount{
 			{
