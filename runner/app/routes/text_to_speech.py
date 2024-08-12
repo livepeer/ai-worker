@@ -27,6 +27,7 @@ responses = {
 
 class TextToSpeechParams(BaseModel):
     text_input: Annotated[str, Form()] = ""
+    description: Annotated[str, Form()] = ""
     model_id: str = ""
 
 
@@ -42,7 +43,7 @@ async def text_to_speech(
         if not params.text_input:
             raise ValueError("text_input is required and cannot be empty.")
         
-        result = pipeline(params.text_input)
+        result = pipeline(params.text_input, params.description)
 
     except ValueError as ve:
         logger.error(f"Validation error: {ve}")

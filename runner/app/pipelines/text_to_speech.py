@@ -39,7 +39,7 @@ class TextToSpeechPipeline(Pipeline):
 
 
 
-    def __call__(self, text):
+    def __call__(self, text, description):
         if os.getenv("MOCK_PIPELINE", "").strip().lower() == "true":
             unique_audio_filename = f"{uuid.uuid4()}.wav"
             audio_path = os.path.join("/tmp/", unique_audio_filename)
@@ -48,12 +48,16 @@ class TextToSpeechPipeline(Pipeline):
         unique_audio_filename = f"{uuid.uuid4()}.wav"
         audio_path = os.path.join("/tmp/", unique_audio_filename)
 
-        self.generate_audio(text, audio_path)
+        self.generate_audio(text, description, audio_path)
 
         return audio_path
 
-    def generate_audio(self, text, output_file_name):
-        description = "A female speaker delivers a slightly expressive and animated speech with a moderate speed and pitch. The recording is of very high quality, with the speaker's voice sounding clear and very close up."
+    def generate_audio(self,
+                        text,
+                        description="A female speaker delivers a slightly expressive and animated speech with a moderate speed and pitch. The recording is of very high quality, with the speaker's voice sounding clear and very close up.",
+                        output_file_name="tmp.mp4"):
+        if description == '':
+            description = "A female speaker delivers a slightly expressive and animated speech with a moderate speed and pitch. The recording is of very high quality, with the speaker's voice sounding clear and very close up."
 
         input_ids = self.tokenizer(description, return_tensors="pt").input_ids.to(self.device)
         prompt_input_ids = self.tokenizer(text, return_tensors="pt").input_ids.to(self.device)
