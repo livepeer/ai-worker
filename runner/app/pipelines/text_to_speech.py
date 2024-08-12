@@ -1,6 +1,7 @@
 import uuid
 from app.pipelines.base import Pipeline
 from app.pipelines.utils import get_torch_device, get_model_dir
+from parler_tts import ParlerTTSForConditionalGeneration
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 from huggingface_hub import file_download
 import torch
@@ -18,8 +19,8 @@ class TextToSpeechPipeline(Pipeline):
             return
 
         self.device = get_torch_device()
-
-        self.model = AutoModelForSeq2SeqLM.from_pretrained("parler-tts/parler-tts-large-v1")
+        # torch_dtype = torch.bfloat16
+        self.model = ParlerTTSForConditionalGeneration.from_pretrained("parler-tts/parler-tts-mini-v1", attn_implementation="eager").to(self.device)
         self.tokenizer = AutoTokenizer.from_pretrained("parler-tts/parler-tts-mini-v1")
 
         # # compile the forward pass
@@ -59,7 +60,7 @@ class TextToSpeechPipeline(Pipeline):
 
         generation = self.model.generate(input_ids=input_ids, prompt_input_ids=prompt_input_ids)
         audio_arr = generation.cpu().numpy().squeeze()
-        sf.write("parler_tts_out.wav", audio_arr, self.model.config.sampling_rate)
+        sf.write(output_file_name, audio_arr, self.model.config.sampling_rate)
         return output_file_name
     
     def __str__(self) -> str:
