@@ -31,6 +31,11 @@ type APIError struct {
 	Msg string `json:"msg"`
 }
 
+// AudioResponse defines model for AudioResponse.
+type AudioResponse struct {
+	Audio Media `json:"audio"`
+}
+
 // BodyAudioToTextAudioToTextPost defines model for Body_audio_to_text_audio_to_text_post.
 type BodyAudioToTextAudioToTextPost struct {
 	Audio   openapi_types.File `json:"audio"`
@@ -123,6 +128,12 @@ type TextToImageParams struct {
 	Width              *int     `json:"width,omitempty"`
 }
 
+// TextToSpeechParams defines model for TextToSpeechParams.
+type TextToSpeechParams struct {
+	ModelId   *string `json:"model_id,omitempty"`
+	TextInput *string `json:"text_input,omitempty"`
+}
+
 // ValidationError defines model for ValidationError.
 type ValidationError struct {
 	Loc  []ValidationError_Loc_Item `json:"loc"`
@@ -163,6 +174,9 @@ type ImageToVideoMultipartRequestBody = BodyImageToVideoImageToVideoPost
 
 // TextToImageJSONRequestBody defines body for TextToImage for application/json ContentType.
 type TextToImageJSONRequestBody = TextToImageParams
+
+// TextToSpeechJSONRequestBody defines body for TextToSpeech for application/json ContentType.
+type TextToSpeechJSONRequestBody = TextToSpeechParams
 
 // UpscaleMultipartRequestBody defines body for Upscale for multipart/form-data ContentType.
 type UpscaleMultipartRequestBody = BodyUpscaleUpscalePost
@@ -319,6 +333,11 @@ type ClientInterface interface {
 
 	TextToImage(ctx context.Context, body TextToImageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// TextToSpeechWithBody request with any body
+	TextToSpeechWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	TextToSpeech(ctx context.Context, body TextToSpeechJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// UpscaleWithBody request with any body
 	UpscaleWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
@@ -385,6 +404,30 @@ func (c *Client) TextToImageWithBody(ctx context.Context, contentType string, bo
 
 func (c *Client) TextToImage(ctx context.Context, body TextToImageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewTextToImageRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) TextToSpeechWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTextToSpeechRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) TextToSpeech(ctx context.Context, body TextToSpeechJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewTextToSpeechRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -561,6 +604,46 @@ func NewTextToImageRequestWithBody(server string, contentType string, body io.Re
 	return req, nil
 }
 
+// NewTextToSpeechRequest calls the generic TextToSpeech builder with application/json body
+func NewTextToSpeechRequest(server string, body TextToSpeechJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewTextToSpeechRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewTextToSpeechRequestWithBody generates requests for TextToSpeech with any type of body
+func NewTextToSpeechRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/text-to-speech")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewUpscaleRequestWithBody generates requests for Upscale with any type of body
 func NewUpscaleRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
@@ -649,6 +732,11 @@ type ClientWithResponsesInterface interface {
 	TextToImageWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TextToImageResponse, error)
 
 	TextToImageWithResponse(ctx context.Context, body TextToImageJSONRequestBody, reqEditors ...RequestEditorFn) (*TextToImageResponse, error)
+
+	// TextToSpeechWithBodyWithResponse request with any body
+	TextToSpeechWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TextToSpeechResponse, error)
+
+	TextToSpeechWithResponse(ctx context.Context, body TextToSpeechJSONRequestBody, reqEditors ...RequestEditorFn) (*TextToSpeechResponse, error)
 
 	// UpscaleWithBodyWithResponse request with any body
 	UpscaleWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpscaleResponse, error)
@@ -781,6 +869,35 @@ func (r TextToImageResponse) StatusCode() int {
 	return 0
 }
 
+type TextToSpeechResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *AudioResponse
+	JSON400      *struct {
+		Detail string `json:"detail"`
+	}
+	JSON422 *HTTPValidationError
+	JSON500 *struct {
+		Detail string `json:"detail"`
+	}
+}
+
+// Status returns HTTPResponse.Status
+func (r TextToSpeechResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r TextToSpeechResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type UpscaleResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -858,6 +975,23 @@ func (c *ClientWithResponses) TextToImageWithResponse(ctx context.Context, body 
 		return nil, err
 	}
 	return ParseTextToImageResponse(rsp)
+}
+
+// TextToSpeechWithBodyWithResponse request with arbitrary body returning *TextToSpeechResponse
+func (c *ClientWithResponses) TextToSpeechWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TextToSpeechResponse, error) {
+	rsp, err := c.TextToSpeechWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTextToSpeechResponse(rsp)
+}
+
+func (c *ClientWithResponses) TextToSpeechWithResponse(ctx context.Context, body TextToSpeechJSONRequestBody, reqEditors ...RequestEditorFn) (*TextToSpeechResponse, error) {
+	rsp, err := c.TextToSpeech(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseTextToSpeechResponse(rsp)
 }
 
 // UpscaleWithBodyWithResponse request with arbitrary body returning *UpscaleResponse
@@ -1118,6 +1252,60 @@ func ParseTextToImageResponse(rsp *http.Response) (*TextToImageResponse, error) 
 	return response, nil
 }
 
+// ParseTextToSpeechResponse parses an HTTP response from a TextToSpeechWithResponse call
+func ParseTextToSpeechResponse(rsp *http.Response) (*TextToSpeechResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &TextToSpeechResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AudioResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Detail string `json:"detail"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest HTTPValidationError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Detail string `json:"detail"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	case rsp.StatusCode == 200:
+		// Content-type (audio/mp4) unsupported
+
+	}
+
+	return response, nil
+}
+
 // ParseUpscaleResponse parses an HTTP response from a UpscaleWithResponse call
 func ParseUpscaleResponse(rsp *http.Response) (*UpscaleResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -1189,6 +1377,9 @@ type ServerInterface interface {
 	// Text To Image
 	// (POST /text-to-image)
 	TextToImage(w http.ResponseWriter, r *http.Request)
+	// Text To Speech
+	// (POST /text-to-speech)
+	TextToSpeech(w http.ResponseWriter, r *http.Request)
 	// Upscale
 	// (POST /upscale)
 	Upscale(w http.ResponseWriter, r *http.Request)
@@ -1225,6 +1416,12 @@ func (_ Unimplemented) ImageToVideo(w http.ResponseWriter, r *http.Request) {
 // Text To Image
 // (POST /text-to-image)
 func (_ Unimplemented) TextToImage(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Text To Speech
+// (POST /text-to-speech)
+func (_ Unimplemented) TextToSpeech(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1317,6 +1514,21 @@ func (siw *ServerInterfaceWrapper) TextToImage(w http.ResponseWriter, r *http.Re
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.TextToImage(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// TextToSpeech operation middleware
+func (siw *ServerInterfaceWrapper) TextToSpeech(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.TextToSpeech(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1472,6 +1684,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/text-to-image", wrapper.TextToImage)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/text-to-speech", wrapper.TextToSpeech)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/upscale", wrapper.Upscale)
 	})
 
@@ -1481,31 +1696,33 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
