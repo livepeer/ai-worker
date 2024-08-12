@@ -711,7 +711,7 @@
                     "loras": {
                         "type": "string",
                         "title": "Loras",
-                        "default": ""
+                        "loras": ""
                     },
                     "prompt": {
                         "type": "string",
