@@ -1,10 +1,10 @@
 import logging
 import os
 from contextlib import asynccontextmanager
+
 from app.routes import health
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
-
 
 logger = logging.getLogger(__name__)
 
