@@ -4,7 +4,7 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 
 import numpy as np
 import torch
@@ -12,7 +12,6 @@ from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
 from PIL import Image
 from torch import dtype as TorchDtype
 from transformers import CLIPImageProcessor
-from typing import Dict
 
 logger = logging.getLogger(__name__)
 
@@ -99,10 +98,14 @@ def split_prompt(
     Returns:
         Dict[str, str]: A dictionary of all prompts, including the main prompt.
     """
-    prompts = [prompt.strip() for prompt in input_prompt.split(separator, max_splits) if prompt.strip()]
+    prompts = [
+        prompt.strip()
+        for prompt in input_prompt.split(separator, max_splits)
+        if prompt.strip()
+    ]
     if not prompts:
         return {}
-    
+
     start_index = max(1, len(prompts) - max_splits) if max_splits >= 0 else 1
 
     prompt_dict = {f"{key_prefix}": prompts[0]}

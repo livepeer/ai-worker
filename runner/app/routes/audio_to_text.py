@@ -5,8 +5,7 @@ from typing import Annotated
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.pipelines.utils.audio import AudioConversionError
-from app.routes.util import (HTTPError, TextResponse, file_exceeds_max_size,
-                             http_error)
+from app.routes.util import HTTPError, TextResponse, file_exceeds_max_size, http_error
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer

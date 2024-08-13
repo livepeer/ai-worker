@@ -5,9 +5,13 @@ from typing import List, Optional, Tuple
 import PIL
 import torch
 from app.pipelines.base import Pipeline
-from app.pipelines.utils import (SafetyChecker, get_model_dir,
-                                 get_torch_device, is_lightning_model,
-                                 is_turbo_model)
+from app.pipelines.utils import (
+    SafetyChecker,
+    get_model_dir,
+    get_torch_device,
+    is_lightning_model,
+    is_turbo_model,
+)
 from diffusers import StableDiffusionUpscalePipeline
 from huggingface_hub import file_download
 from PIL import ImageFile
