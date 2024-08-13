@@ -5,8 +5,7 @@ from typing import Annotated
 
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
-from app.routes.util import (HTTPError, ImageResponse, http_error,
-                             image_to_data_url)
+from app.routes.util import HTTPError, ImageResponse, http_error, image_to_data_url
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -36,19 +35,59 @@ RESPONSES = {
     include_in_schema=False,
 )
 async def image_to_image(
-    prompt: Annotated[str, Form(description="This is the text description for the image. When prompting use + or - after the word to increase the weight of the word in generation, you can add multiple ++ or -- to increase or decrease weight.")],
-    image: Annotated[UploadFile, File(description="This holds the absolute path to the image file to be transformed.")],
-    model_id: Annotated[str, Form(description="This is the diffusion model for image generation.")] = "",
-    strength: Annotated[float, Form(description=" Indicates extent to transform the reference image. Must be between 0 and 1. image is used as a starting point and more noise is added the higher the strength. The number of denoising steps depends on the amount of noise initially added. When strength is 1, added noise is maximum and the denoising process runs for the full number of iterations specified in num_inference_steps. A value of 1 essentially ignores image.")] = 0.8,
-    guidance_scale: Annotated[float, Form(description="A higher guidance scale value encourages the model to generate images closely linked to the text prompt at the expense of lower image quality. Guidance scale is enabled when guidance_scale > 1.")] = 7.5,
-    image_guidance_scale: Annotated[float, Form(description="Push the generated image towards the initial image. Image guidance scale is enabled by setting image_guidance_scale > 1. Higher image guidance scale encourages generated images that are closely linked to the source image, usually at the expense of lower image quality. This pipeline requires a value of at least 1.")] = 1.5,
-    negative_prompt: Annotated[str, Form(description="The prompt or prompts to guide what to not include in image generation. If not defined, you need to pass negative_prompt_embeds instead. Ignored when not using guidance (guidance_scale < 1).")] = "",
-    safety_check: Annotated[bool, Form(description="Classification module that estimates whether generated images could be considered offensive or harmful. Please refer to the model card for more details about a model’s potential harms.")] = True,
-    seed: Annotated[int, Form(description="The seed to set.")] = None,
+    prompt: Annotated[
+        str,
+        Form(description="Text prompt(s) to guide image generation."),
+    ],
+    image: Annotated[
+        UploadFile,
+        File(description="Uploaded image to modify with the pipeline."),
+    ],
+    model_id: Annotated[
+        str,
+        Form(description="Hugging Face model ID used for image generation."),
+    ] = "",
+    strength: Annotated[
+        float,
+        Form(
+            description="Degree of transformation applied to the reference image (0 to 1)."
+        ),
+    ] = 0.8,
+    guidance_scale: Annotated[
+        float,
+        Form(
+            description="Encourages model to generate images closely linked to the text prompt (higher values may reduce image quality)."
+        ),
+    ] = 7.5,
+    image_guidance_scale: Annotated[
+        float,
+        Form(
+            description="Degree to which the generated image is pushed towards the initial image."
+        ),
+    ] = 1.5,
+    negative_prompt: Annotated[
+        str,
+        Form(
+            description="Text prompt(s) to guide what to exclude from image generation. Ignored if guidance_scale < 1."
+        ),
+    ] = "",
+    safety_check: Annotated[
+        bool,
+        Form(
+            description="Perform a safety check to estimate if generated images could be offensive or harmful."
+        ),
+    ] = True,
+    seed: Annotated[int, Form(description="Seed for random number generation.")] = None,
     num_inference_steps: Annotated[
-        int, Form(description="The number of denoising steps. More denoising steps usually lead to a higher quality image at the expense of slower inference. This parameter is modulated by strength.")
+        int,
+        Form(
+            description="Number of denoising steps. More steps usually lead to higher quality images but slower inference. Modulated by strength."
+        ),
     ] = 100,  # NOTE: Hardcoded due to varying pipeline values.
-    num_images_per_prompt: Annotated[int, Form(description="The number of images to generate per prompt.")] = 1,
+    num_images_per_prompt: Annotated[
+        int,
+        Form(description="Number of images to generate per prompt."),
+    ] = 1,
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
