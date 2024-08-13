@@ -19,10 +19,10 @@ from app.pipelines.utils import (
 from diffusers import (
     AutoPipelineForText2Image,
     EulerDiscreteScheduler,
+    FluxPipeline,
     StableDiffusion3Pipeline,
     StableDiffusionXLPipeline,
     UNet2DConditionModel,
-    FluxPipeline,
 )
 from diffusers.models import AutoencoderKL
 from huggingface_hub import file_download, hf_hub_download

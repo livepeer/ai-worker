@@ -8,13 +8,21 @@ from typing import List, Optional, Tuple
 import PIL
 import torch
 from app.pipelines.base import Pipeline
-from app.pipelines.utils import (SafetyChecker, get_model_dir,
-                                 get_torch_device, is_lightning_model,
-                                 is_turbo_model)
-from diffusers import (AutoPipelineForImage2Image,
-                       EulerAncestralDiscreteScheduler, EulerDiscreteScheduler,
-                       StableDiffusionInstructPix2PixPipeline,
-                       StableDiffusionXLPipeline, UNet2DConditionModel)
+from app.pipelines.utils import (
+    SafetyChecker,
+    get_model_dir,
+    get_torch_device,
+    is_lightning_model,
+    is_turbo_model,
+)
+from diffusers import (
+    AutoPipelineForImage2Image,
+    EulerAncestralDiscreteScheduler,
+    EulerDiscreteScheduler,
+    StableDiffusionInstructPix2PixPipeline,
+    StableDiffusionXLPipeline,
+    UNet2DConditionModel,
+)
 from huggingface_hub import file_download, hf_hub_download
 from PIL import ImageFile
 from safetensors.torch import load_file
