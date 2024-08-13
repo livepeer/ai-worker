@@ -24,6 +24,12 @@ class VideoResponse(BaseModel):
     frames: List[List[Media]]
 
 
+class MasksResponse(BaseModel):
+    masks: str
+    iou_predictions: str
+    low_res_masks: str
+
+
 class chunk(BaseModel):
     timestamp: tuple
     text: str
