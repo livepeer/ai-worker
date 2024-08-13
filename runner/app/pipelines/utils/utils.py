@@ -11,7 +11,7 @@ import torch
 from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
 from PIL import Image
 from torch import dtype as TorchDtype
-from transformers import CLIPFeatureExtractor
+from transformers import CLIPImageProcessor
 from typing import Dict
 
 logger = logging.getLogger(__name__)
@@ -147,7 +147,7 @@ class SafetyChecker:
         self._safety_checker = StableDiffusionSafetyChecker.from_pretrained(
             "CompVis/stable-diffusion-safety-checker"
         ).to(self.device)
-        self._feature_extractor = CLIPFeatureExtractor.from_pretrained(
+        self._feature_extractor = CLIPImageProcessor.from_pretrained(
             "openai/clip-vit-base-patch32"
         )
 
