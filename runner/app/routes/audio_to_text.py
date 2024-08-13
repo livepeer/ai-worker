@@ -5,8 +5,7 @@ from typing import Annotated
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.pipelines.utils.audio import AudioConversionError
-from app.routes.util import (HTTPError, TextResponse, file_exceeds_max_size,
-                             http_error)
+from app.routes.util import HTTPError, TextResponse, file_exceeds_max_size, http_error
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -56,8 +55,13 @@ def handle_pipeline_error(e: Exception) -> JSONResponse:
     include_in_schema=False,
 )
 async def audio_to_text(
-    audio: Annotated[UploadFile, File()],
-    model_id: Annotated[str, Form()] = "",
+    audio: Annotated[
+        UploadFile, File(description="Uploaded audio file to be transcribed.")
+    ],
+    model_id: Annotated[
+        str,
+        Form(description="Hugging Face model ID used for transcription."),
+    ] = "",
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
