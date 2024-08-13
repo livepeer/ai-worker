@@ -5,8 +5,7 @@ from typing import Annotated
 
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
-from app.routes.util import (HTTPError, ImageResponse, http_error,
-                             image_to_data_url)
+from app.routes.util import HTTPError, ImageResponse, http_error, image_to_data_url
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -36,19 +35,59 @@ RESPONSES = {
     include_in_schema=False,
 )
 async def image_to_image(
-    prompt: Annotated[str, Form()],
-    image: Annotated[UploadFile, File()],
-    model_id: Annotated[str, Form()] = "",
-    strength: Annotated[float, Form()] = 0.8,
-    guidance_scale: Annotated[float, Form()] = 7.5,
-    image_guidance_scale: Annotated[float, Form()] = 1.5,
-    negative_prompt: Annotated[str, Form()] = "",
-    safety_check: Annotated[bool, Form()] = True,
-    seed: Annotated[int, Form()] = None,
+    prompt: Annotated[
+        str,
+        Form(description="Text prompt(s) to guide image generation."),
+    ],
+    image: Annotated[
+        UploadFile,
+        File(description="Uploaded image to modify with the pipeline."),
+    ],
+    model_id: Annotated[
+        str,
+        Form(description="Hugging Face model ID used for image generation."),
+    ] = "",
+    strength: Annotated[
+        float,
+        Form(
+            description="Degree of transformation applied to the reference image (0 to 1)."
+        ),
+    ] = 0.8,
+    guidance_scale: Annotated[
+        float,
+        Form(
+            description="Encourages model to generate images closely linked to the text prompt (higher values may reduce image quality)."
+        ),
+    ] = 7.5,
+    image_guidance_scale: Annotated[
+        float,
+        Form(
+            description="Degree to which the generated image is pushed towards the initial image."
+        ),
+    ] = 1.5,
+    negative_prompt: Annotated[
+        str,
+        Form(
+            description="Text prompt(s) to guide what to exclude from image generation. Ignored if guidance_scale < 1."
+        ),
+    ] = "",
+    safety_check: Annotated[
+        bool,
+        Form(
+            description="Perform a safety check to estimate if generated images could be offensive or harmful."
+        ),
+    ] = True,
+    seed: Annotated[int, Form(description="Seed for random number generation.")] = None,
     num_inference_steps: Annotated[
-        int, Form()
+        int,
+        Form(
+            description="Number of denoising steps. More steps usually lead to higher quality images but slower inference. Modulated by strength."
+        ),
     ] = 100,  # NOTE: Hardcoded due to varying pipeline values.
-    num_images_per_prompt: Annotated[int, Form()] = 1,
+    num_images_per_prompt: Annotated[
+        int,
+        Form(description="Number of images to generate per prompt."),
+    ] = 1,
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):

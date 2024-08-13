@@ -5,8 +5,7 @@ from typing import Annotated
 
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
-from app.routes.util import (HTTPError, ImageResponse, http_error,
-                             image_to_data_url)
+from app.routes.util import HTTPError, ImageResponse, http_error, image_to_data_url
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -22,17 +21,59 @@ class TextToImageParams(BaseModel):
     # supports OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
     model_id: Annotated[
         str,
-        Field(default="", description=""),
+        Field(
+            default="", description="Hugging Face model ID used for image generation."
+        ),
     ]
-    prompt: Annotated[str, Field(description="")]
-    height: Annotated[int, Field(default=576, description="")]
-    width: Annotated[int, Field(default=1024, description="")]
-    guidance_scale: Annotated[float, Field(default=7.5, description="")]
-    negative_prompt: Annotated[str, Field(default="", description="")]
-    safety_check: Annotated[bool, Field(default=True, description="")]
-    seed: Annotated[int, Field(default=None, description="")]
-    num_inference_steps: Annotated[int, Field(default=50, description="")]
-    num_images_per_prompt: Annotated[int, Field(default=1, description="")]
+    prompt: Annotated[
+        str,
+        Field(
+            description="Text prompt(s) to guide image generation. Separate multiple prompts with '|' if supported by the model."
+        ),
+    ]
+    height: Annotated[
+        int,
+        Field(default=576, description="The height in pixels of the generated image."),
+    ]
+    width: Annotated[
+        int,
+        Field(default=1024, description="The width in pixels of the generated image."),
+    ]
+    guidance_scale: Annotated[
+        float,
+        Field(
+            default=7.5,
+            description="Encourages model to generate images closely linked to the text prompt (higher values may reduce image quality).",
+        ),
+    ]
+    negative_prompt: Annotated[
+        str,
+        Field(
+            default="",
+            description="Text prompt(s) to guide what to exclude from image generation. Ignored if guidance_scale < 1.",
+        ),
+    ]
+    safety_check: Annotated[
+        bool,
+        Field(
+            default=True,
+            description="Perform a safety check to estimate if generated images could be offensive or harmful.",
+        ),
+    ]
+    seed: Annotated[
+        int, Field(default=None, description="Seed for random number generation.")
+    ]
+    num_inference_steps: Annotated[
+        int,
+        Field(
+            default=50,
+            description="Number of denoising steps. More steps usually lead to higher quality images but slower inference. Modulated by strength.",
+        ),
+    ]
+    num_images_per_prompt: Annotated[
+        int,
+        Field(default=1, description="Number of images to generate per prompt."),
+    ]
 
 
 RESPONSES = {

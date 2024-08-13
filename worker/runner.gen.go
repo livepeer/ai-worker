@@ -33,47 +33,101 @@ type APIError struct {
 
 // BodyAudioToTextAudioToTextPost defines model for Body_audio_to_text_audio_to_text_post.
 type BodyAudioToTextAudioToTextPost struct {
-	Audio   openapi_types.File `json:"audio"`
-	ModelId *string            `json:"model_id,omitempty"`
+	// Audio Uploaded audio file to be transcribed.
+	Audio openapi_types.File `json:"audio"`
+
+	// ModelId Hugging Face model ID used for transcription.
+	ModelId *string `json:"model_id,omitempty"`
 }
 
 // BodyImageToImageImageToImagePost defines model for Body_image_to_image_image_to_image_post.
 type BodyImageToImageImageToImagePost struct {
-	GuidanceScale      *float32           `json:"guidance_scale,omitempty"`
-	Image              openapi_types.File `json:"image"`
-	ImageGuidanceScale *float32           `json:"image_guidance_scale,omitempty"`
-	ModelId            *string            `json:"model_id,omitempty"`
-	NegativePrompt     *string            `json:"negative_prompt,omitempty"`
-	NumImagesPerPrompt *int               `json:"num_images_per_prompt,omitempty"`
-	NumInferenceSteps  *int               `json:"num_inference_steps,omitempty"`
-	Prompt             string             `json:"prompt"`
-	SafetyCheck        *bool              `json:"safety_check,omitempty"`
-	Seed               *int               `json:"seed,omitempty"`
-	Strength           *float32           `json:"strength,omitempty"`
+	// GuidanceScale Encourages model to generate images closely linked to the text prompt (higher values may reduce image quality).
+	GuidanceScale *float32 `json:"guidance_scale,omitempty"`
+
+	// Image Uploaded image to modify with the pipeline.
+	Image openapi_types.File `json:"image"`
+
+	// ImageGuidanceScale Degree to which the generated image is pushed towards the initial image.
+	ImageGuidanceScale *float32 `json:"image_guidance_scale,omitempty"`
+
+	// ModelId Hugging Face model ID used for image generation.
+	ModelId *string `json:"model_id,omitempty"`
+
+	// NegativePrompt Text prompt(s) to guide what to exclude from image generation. Ignored if guidance_scale < 1.
+	NegativePrompt *string `json:"negative_prompt,omitempty"`
+
+	// NumImagesPerPrompt Number of images to generate per prompt.
+	NumImagesPerPrompt *int `json:"num_images_per_prompt,omitempty"`
+
+	// NumInferenceSteps Number of denoising steps. More steps usually lead to higher quality images but slower inference. Modulated by strength.
+	NumInferenceSteps *int `json:"num_inference_steps,omitempty"`
+
+	// Prompt Text prompt(s) to guide image generation.
+	Prompt string `json:"prompt"`
+
+	// SafetyCheck Perform a safety check to estimate if generated images could be offensive or harmful.
+	SafetyCheck *bool `json:"safety_check,omitempty"`
+
+	// Seed Seed for random number generation.
+	Seed *int `json:"seed,omitempty"`
+
+	// Strength Degree of transformation applied to the reference image (0 to 1).
+	Strength *float32 `json:"strength,omitempty"`
 }
 
 // BodyImageToVideoImageToVideoPost defines model for Body_image_to_video_image_to_video_post.
 type BodyImageToVideoImageToVideoPost struct {
-	Fps               *int               `json:"fps,omitempty"`
-	Height            *int               `json:"height,omitempty"`
-	Image             openapi_types.File `json:"image"`
-	ModelId           *string            `json:"model_id,omitempty"`
-	MotionBucketId    *int               `json:"motion_bucket_id,omitempty"`
-	NoiseAugStrength  *float32           `json:"noise_aug_strength,omitempty"`
-	NumInferenceSteps *int               `json:"num_inference_steps,omitempty"`
-	SafetyCheck       *bool              `json:"safety_check,omitempty"`
-	Seed              *int               `json:"seed,omitempty"`
-	Width             *int               `json:"width,omitempty"`
+	// Fps The frames per second of the generated video.
+	Fps *int `json:"fps,omitempty"`
+
+	// Height The height in pixels of the generated video.
+	Height *int `json:"height,omitempty"`
+
+	// Image Uploaded image to generate a video from.
+	Image openapi_types.File `json:"image"`
+
+	// ModelId Hugging Face model ID used for video generation.
+	ModelId *string `json:"model_id,omitempty"`
+
+	// MotionBucketId Used for conditioning the amount of motion for the generation. The higher the number the more motion will be in the video.
+	MotionBucketId *int `json:"motion_bucket_id,omitempty"`
+
+	// NoiseAugStrength Amount of noise added to the conditioning image. Higher values reduce resemblance to the conditioning image and increase motion.
+	NoiseAugStrength *float32 `json:"noise_aug_strength,omitempty"`
+
+	// NumInferenceSteps Number of denoising steps. More steps usually lead to higher quality images but slower inference. Modulated by strength.
+	NumInferenceSteps *int `json:"num_inference_steps,omitempty"`
+
+	// SafetyCheck Perform a safety check to estimate if generated images could be offensive or harmful.
+	SafetyCheck *bool `json:"safety_check,omitempty"`
+
+	// Seed Seed for random number generation.
+	Seed *int `json:"seed,omitempty"`
+
+	// Width The width in pixels of the generated video.
+	Width *int `json:"width,omitempty"`
 }
 
 // BodyUpscaleUpscalePost defines model for Body_upscale_upscale_post.
 type BodyUpscaleUpscalePost struct {
-	Image             openapi_types.File `json:"image"`
-	ModelId           *string            `json:"model_id,omitempty"`
-	NumInferenceSteps *int               `json:"num_inference_steps,omitempty"`
-	Prompt            string             `json:"prompt"`
-	SafetyCheck       *bool              `json:"safety_check,omitempty"`
-	Seed              *int               `json:"seed,omitempty"`
+	// Image Uploaded image to modify with the pipeline.
+	Image openapi_types.File `json:"image"`
+
+	// ModelId Hugging Face model ID used for upscaled image generation.
+	ModelId *string `json:"model_id,omitempty"`
+
+	// NumInferenceSteps Number of denoising steps. More steps usually lead to higher quality images but slower inference. Modulated by strength.
+	NumInferenceSteps *int `json:"num_inference_steps,omitempty"`
+
+	// Prompt Text prompt(s) to guide upscaled image generation.
+	Prompt string `json:"prompt"`
+
+	// SafetyCheck Perform a safety check to estimate if generated images could be offensive or harmful.
+	SafetyCheck *bool `json:"safety_check,omitempty"`
+
+	// Seed Seed for random number generation.
+	Seed *int `json:"seed,omitempty"`
 }
 
 // HTTPError defines model for HTTPError.
@@ -111,16 +165,35 @@ type TextResponse struct {
 
 // TextToImageParams defines model for TextToImageParams.
 type TextToImageParams struct {
-	GuidanceScale      *float32 `json:"guidance_scale,omitempty"`
-	Height             *int     `json:"height,omitempty"`
-	ModelId            *string  `json:"model_id,omitempty"`
-	NegativePrompt     *string  `json:"negative_prompt,omitempty"`
-	NumImagesPerPrompt *int     `json:"num_images_per_prompt,omitempty"`
-	NumInferenceSteps  *int     `json:"num_inference_steps,omitempty"`
-	Prompt             string   `json:"prompt"`
-	SafetyCheck        *bool    `json:"safety_check,omitempty"`
-	Seed               *int     `json:"seed,omitempty"`
-	Width              *int     `json:"width,omitempty"`
+	// GuidanceScale Encourages model to generate images closely linked to the text prompt (higher values may reduce image quality).
+	GuidanceScale *float32 `json:"guidance_scale,omitempty"`
+
+	// Height The height in pixels of the generated image.
+	Height *int `json:"height,omitempty"`
+
+	// ModelId Hugging Face model ID used for image generation.
+	ModelId *string `json:"model_id,omitempty"`
+
+	// NegativePrompt Text prompt(s) to guide what to exclude from image generation. Ignored if guidance_scale < 1.
+	NegativePrompt *string `json:"negative_prompt,omitempty"`
+
+	// NumImagesPerPrompt Number of images to generate per prompt.
+	NumImagesPerPrompt *int `json:"num_images_per_prompt,omitempty"`
+
+	// NumInferenceSteps Number of denoising steps. More steps usually lead to higher quality images but slower inference. Modulated by strength.
+	NumInferenceSteps *int `json:"num_inference_steps,omitempty"`
+
+	// Prompt Text prompt(s) to guide image generation. Separate multiple prompts with '|' if supported by the model.
+	Prompt string `json:"prompt"`
+
+	// SafetyCheck Perform a safety check to estimate if generated images could be offensive or harmful.
+	SafetyCheck *bool `json:"safety_check,omitempty"`
+
+	// Seed Seed for random number generation.
+	Seed *int `json:"seed,omitempty"`
+
+	// Width The width in pixels of the generated image.
+	Width *int `json:"width,omitempty"`
 }
 
 // ValidationError defines model for ValidationError.
@@ -1481,31 +1554,42 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"NjpBLjUAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
