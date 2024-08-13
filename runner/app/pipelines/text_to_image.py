@@ -8,12 +8,22 @@ from typing import List, Optional, Tuple
 import PIL
 import torch
 from app.pipelines.base import Pipeline
-from app.pipelines.utils import (SafetyChecker, get_model_dir,
-                                 get_torch_device, is_lightning_model,
-                                 is_turbo_model, split_prompt)
-from diffusers import (AutoPipelineForText2Image, EulerDiscreteScheduler,
-                       StableDiffusion3Pipeline, StableDiffusionXLPipeline,
-                       UNet2DConditionModel, FluxPipeline)
+from app.pipelines.utils import (
+    SafetyChecker,
+    get_model_dir,
+    get_torch_device,
+    is_lightning_model,
+    is_turbo_model,
+    split_prompt,
+)
+from diffusers import (
+    AutoPipelineForText2Image,
+    EulerDiscreteScheduler,
+    StableDiffusion3Pipeline,
+    StableDiffusionXLPipeline,
+    UNet2DConditionModel,
+    FluxPipeline,
+)
 from diffusers.models import AutoencoderKL
 from huggingface_hub import file_download, hf_hub_download
 from safetensors.torch import load_file
@@ -66,7 +76,7 @@ class TextToImagePipeline(Pipeline):
         if os.environ.get("BFLOAT16"):
             logger.info("TextToImagePipeline using bfloat16 precision for %s", model_id)
             kwargs["torch_dtype"] = torch.bfloat16
-        
+
         # Load VAE for specific models.
         if ModelName.REALISTIC_VISION_V6.value in model_id:
             vae = AutoencoderKL.from_pretrained("stabilityai/sd-vae-ft-ema")
@@ -89,9 +99,14 @@ class TextToImagePipeline(Pipeline):
                 # Default to 2step
                 unet_id = "sdxl_lightning_2step_unet"
 
-            unet = UNet2DConditionModel.from_config(
-                base, subfolder="unet", cache_dir=kwargs["cache_dir"]
-            ).to(torch_device, kwargs["torch_dtype"])
+            unet_config = UNet2DConditionModel.load_config(
+                pretrained_model_name_or_path=base,
+                subfolder="unet",
+                cache_dir=kwargs["cache_dir"],
+            )
+            unet = UNet2DConditionModel.from_config(unet_config).to(
+                torch_device, kwargs["torch_dtype"]
+            )
             unet.load_state_dict(
                 load_file(
                     hf_hub_download(
@@ -117,9 +132,7 @@ class TextToImagePipeline(Pipeline):
         elif ModelName.FLUX_1_SCHNELL.value in model_id:
             # Decrease precision to preven OOM errors.
             kwargs["torch_dtype"] = torch.bfloat16
-            self.ldm = FluxPipeline.from_pretrained(model_id, **kwargs).to(
-                torch_device
-            )
+            self.ldm = FluxPipeline.from_pretrained(model_id, **kwargs).to(torch_device)
         else:
             self.ldm = AutoPipelineForText2Image.from_pretrained(model_id, **kwargs).to(
                 torch_device
