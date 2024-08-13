@@ -35,7 +35,7 @@ class ModelName(Enum):
 
 class TextToImagePipeline(Pipeline):
     def __init__(self, model_id: str):
-        self.loaded_loras = ""
+        self.loaded_loras = []
         self.model_id = model_id
         kwargs = {"cache_dir": get_model_dir()}
 
@@ -204,15 +204,14 @@ class TextToImagePipeline(Pipeline):
                 ]
 
         # Dynamically (un)load LoRas. Defaults to "" when not passed, so should always be present in kwargs
-        if self.loaded_loras != kwargs["loras"]:
+        if kwargs["loras"] is None:
             # Unload previously loaded LoRas
             # NOTE: we might want to keep LoRas loaded and only reset their weights
             # TODO: run tests with VRAM usage. We should be able to keep the last x LoRas loaded without issues
-            if self.loaded_loras != "":
-                self.ldm.unload_lora_weights()
+            self.ldm.unload_lora_weights()
+        else:
             # Remember requested LoRas and their weights
-            self.loaded_loras = kwargs["loras"]
-            load_loras(self.ldm, self.loaded_loras)
+            self.loaded_loras = load_loras(self.ldm, kwargs["loras"], self.loaded_loras)
         # Do not pass the lora param to the model when running inference
         del kwargs["loras"]
 
