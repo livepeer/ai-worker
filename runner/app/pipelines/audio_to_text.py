@@ -45,7 +45,11 @@ class AudioToTextPipeline(Pipeline):
             kwargs["torch_dtype"] = torch.bfloat16
 
         model = AutoModelForSpeechSeq2Seq.from_pretrained(
-            model_id, low_cpu_mem_usage=True, use_safetensors=True, cache_dir=get_model_dir(), **kwargs
+            model_id,
+            low_cpu_mem_usage=True,
+            use_safetensors=True,
+            cache_dir=get_model_dir(),
+            **kwargs,
         ).to(torch_device)
 
         processor = AutoProcessor.from_pretrained(model_id, cache_dir=get_model_dir())
