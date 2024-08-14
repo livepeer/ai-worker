@@ -405,15 +405,15 @@
                 ]
             }
         },
-        "/sam2": {
+        "/segment-anything-2": {
             "post": {
-                "summary": "Sam2",
-                "operationId": "SAM2",
+                "summary": "Segmentanything2",
+                "operationId": "SegmentAnything2",
                 "requestBody": {
                     "content": {
                         "multipart/form-data": {
                             "schema": {
-                                "$ref": "#/components/schemas/Body_SAM2_sam2_post"
+                                "$ref": "#/components/schemas/Body_SegmentAnything2_segment_anything_2_post"
                             }
                         }
                     },
@@ -494,7 +494,7 @@
                 ],
                 "title": "APIError"
             },
-            "Body_SAM2_sam2_post": {
+            "Body_SegmentAnything2_segment_anything_2_post": {
                 "properties": {
                     "image": {
                         "type": "string",
@@ -542,7 +542,7 @@
                 "required": [
                     "image"
                 ],
-                "title": "Body_SAM2_sam2_post"
+                "title": "Body_SegmentAnything2_segment_anything_2_post"
             },
             "Body_audio_to_text_audio_to_text_post": {
                 "properties": {

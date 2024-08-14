@@ -22,14 +22,14 @@ RESPONSES = {
 }
 
 
-@router.post("/sam2", response_model=MasksResponse, responses=RESPONSES)
+@router.post("/segment-anything-2", response_model=MasksResponse, responses=RESPONSES)
 @router.post(
-    "/sam2/",
+    "/segment-anything-2/",
     response_model=MasksResponse,
     responses=RESPONSES,
     include_in_schema=False,
 )
-async def SAM2(
+async def SegmentAnything2(
     image: Annotated[UploadFile, File()],
     model_id: Annotated[str, Form()] = "",
     point_coords: Annotated[str, Form()] = None,
@@ -83,11 +83,11 @@ async def SAM2(
             normalize_coords=normalize_coords,
         )
     except Exception as e:
-        logger.error(f"Sam2 error: {e}")
+        logger.error(f"Segment Anything 2 error: {e}")
         logger.exception(e)
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=http_error("Sam2 error"),
+            content=http_error("Segment Anything 2 error"),
         )
 
     return {

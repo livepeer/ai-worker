@@ -52,10 +52,10 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
             from app.pipelines.upscale import UpscalePipeline
 
             return UpscalePipeline(model_id)
-        case "sam2":
-            from app.pipelines.segment_anything_2 import SAM2Pipeline
+        case "segment-anything-2":
+            from app.pipelines.segment_anything_2 import SegmentAnything2Pipeline
 
-            return SAM2Pipeline(model_id)
+            return SegmentAnything2Pipeline(model_id)
         case _:
             raise EnvironmentError(
                 f"{pipeline} is not a valid pipeline for model {model_id}"
@@ -86,7 +86,7 @@ def load_route(pipeline: str) -> any:
             from app.routes import upscale
 
             return upscale.router
-        case "sam2":
+        case "segment-anything-2":
             from app.routes import segment_anything_2
 
             return segment_anything_2.router
