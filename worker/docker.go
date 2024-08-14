@@ -177,6 +177,7 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 		},
 		ExposedPorts: nat.PortSet{
 			containerPort: struct{}{},
+			"5678/tcp":    struct{}{},
 		},
 		Labels: map[string]string{
 			containerCreatorLabel: containerCreator,
@@ -203,6 +204,12 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 				{
 					HostIP:   "0.0.0.0",
 					HostPort: containerHostPort,
+				},
+			},
+			"5678/tcp": []nat.PortBinding{
+				{
+					HostIP:   "0.0.0.0",
+					HostPort: "5678",
 				},
 			},
 		},
