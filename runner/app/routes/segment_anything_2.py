@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from typing import Annotated
@@ -103,7 +104,7 @@ async def SAM2(
         )
 
     return {
-        "masks": str(masks.tolist()),
-        "iou_predictions": str(iou_predictions.tolist()),
-        "low_res_masks": str(low_res_masks.tolist()),
+        "masks": json.dumps(masks.tolist()),
+        "iou_predictions": json.dumps(iou_predictions.tolist()),
+        "low_res_masks": json.dumps(low_res_masks.tolist()),
     }

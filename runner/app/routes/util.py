@@ -124,7 +124,7 @@ def json_str_to_np_array(
             array = np.array(json.loads(data))
             return array
         except json.JSONDecodeError as e:
-            error_message = f"Error parsing JSON"
+            error_message = "Error parsing JSON"
             if var_name:
                 error_message += f" for {var_name}"
             error_message += f": {e}"
