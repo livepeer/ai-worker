@@ -1,15 +1,20 @@
 import logging
 import os
 from typing import Annotated
-import numpy as np
 
-from PIL import Image
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
-from app.routes.util import HTTPError, MasksResponse, http_error
-from fastapi import APIRouter, Depends, status, UploadFile, File, Form
+from app.routes.util import (
+    HTTPError,
+    InferenceError,
+    MasksResponse,
+    http_error,
+    json_str_to_np_array,
+)
+from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from PIL import Image
 
 router = APIRouter()
 
@@ -60,15 +65,16 @@ async def SAM2(
             ),
         )
 
-    # Convert form data strings to numpy arrays
-    point_coords = (
-        np.fromstring(point_coords, sep=",").reshape(-1, 2) if point_coords else None
-    )
-    point_labels = np.fromstring(point_labels, sep=",") if point_labels else None
-    box = np.fromstring(box, sep=",").reshape(-1, 4) if box else None
-    mask_input = (
-        np.fromstring(mask_input, sep=",").reshape(-1, 2) if mask_input else None
-    )
+    try:
+        point_coords = json_str_to_np_array(point_coords, var_name="point_coords")
+        point_labels = json_str_to_np_array(point_labels, var_name="point_labels")
+        box = json_str_to_np_array(box, var_name="box")
+        mask_input = json_str_to_np_array(mask_input, var_name="mask_input")
+    except ValueError as e:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content=http_error(str(e)),
+        )
 
     try:
         image = Image.open(image.file)
@@ -83,11 +89,17 @@ async def SAM2(
             normalize_coords=normalize_coords,
         )
     except Exception as e:
-        logger.error(f"Sam2 error: {e}")
+        logger.error(f"SAM2 error: {e}")
         logger.exception(e)
+        if isinstance(e, InferenceError):
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content=http_error(str(e)),
+            )
+
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=http_error("Sam2 error"),
+            content=http_error("SAM2 error"),
         )
 
     return {

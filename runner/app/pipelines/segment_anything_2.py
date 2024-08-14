@@ -3,10 +3,8 @@ from typing import List, Optional, Tuple
 
 import PIL
 from app.pipelines.base import Pipeline
-from app.pipelines.utils import (
-    get_model_dir,
-    get_torch_device,
-)
+from app.pipelines.utils import get_torch_device
+from app.routes.util import InferenceError
 from sam2.sam2_image_predictor import SAM2ImagePredictor
 
 logger = logging.getLogger(__name__)
@@ -29,7 +27,12 @@ class SAM2Pipeline(Pipeline):
 
         self.tm.set_image(image)
 
-        return self.tm.predict(**kwargs)
+        try:
+            prediction = self.tm.predict(**kwargs)
+        except Exception as e:
+            raise InferenceError(original_exception=e)
+
+        return prediction
 
     def __str__(self) -> str:
         return f"Sam2 model_id={self.model_id}"
