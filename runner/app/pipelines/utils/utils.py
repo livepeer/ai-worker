@@ -178,13 +178,11 @@ def frames_compactor(
 def video_shredder(video_data, is_file_path=True) -> np.ndarray:
     """
     Extract frames from a video file or in-memory video data and return them as a NumPy array.
-    
     Args:
-        video_data (str or BytesIO): Path to the input video file or in-memory video data.
-        is_file_path (bool): Indicates if video_data is a file path (True) or in-memory data (False).
-    
+    video_data (str or BytesIO): Path to the input video file or in-memory video data.
+    is_file_path (bool): Indicates if video_data is a file path (True) or in-memory data (False).
     Returns:
-        np.ndarray: Array of frames with shape (num_frames, height, width, channels).
+    np.ndarray: Array of frames with shape (num_frames, height, width, channels).
     """
     if is_file_path:
         # Handle file-based video input
@@ -195,31 +193,49 @@ def video_shredder(video_data, is_file_path=True) -> np.ndarray:
         with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_file:
             temp_file.write(video_data)
             temp_file_path = temp_file.name
-        
-        # Open the temporary video file
-        video_capture = cv2.VideoCapture(temp_file_path)
+            # Open the temporary video file
+            video_capture = cv2.VideoCapture(temp_file_path)
 
     if not video_capture.isOpened():
         raise ValueError("Error opening video data")
 
+    # Get the video frame rate
+    fps = video_capture.get(cv2.CAP_PROP_FPS)
+    
+    # Get the video frame count
+    frame_count = video_capture.get(cv2.CAP_PROP_FRAME_COUNT)
+    
+    # Create a list to store the extracted frames
     frames = []
-    success, frame = video_capture.read()
     
-    while success:
-        frames.append(frame)
+    # Extract frames based on the video frame rate and timing
+    for i in range(int(frame_count)):
+        # Get the current video frame timestamp
+        timestamp = i / fps
+        
+        # Set the current position of the video capture
+        video_capture.set(cv2.CAP_PROP_POS_MSEC, timestamp * 1000)
+        
+        # Extract the frame at the current timestamp
         success, frame = video_capture.read()
+        
+        # Add the extracted frame to the list of frames
+        frames.append(frame)
     
+    # Release the video capture
     video_capture.release()
-
+    
     # Delete the temporary file if it was created
     if not is_file_path:
         os.remove(temp_file_path)
     
-    # Convert list of frames to a NumPy array
+    # Convert the list of frames to a NumPy array
     frames_array = np.array(frames)
+    
     print(f"Extracted {frames_array.shape[0]} frames from video in shape of {frames_array.shape}")
     
     return frames_array
+
 
 class SafetyChecker:
     """Checks images for unsafe or inappropriate content using a pretrained model.
@@ -281,13 +297,11 @@ class DirectoryReader:
     def __init__(self, dir: str):
         self.paths = sorted(
             glob.glob(os.path.join(dir, "*")),
-            key=lambda x: int(os.path.basename(x).split(".")[0]),
+            key=lambda x: (int(os.path.basename(x).split(".")[0]), x)
         )
         self.nb_frames = len(self.paths)
         self.idx = 0
-
         assert self.nb_frames > 0, "no frames found in directory"
-
         first_img = Image.open(self.paths[0])
         self.height = first_img.height
         self.width = first_img.width
@@ -301,14 +315,16 @@ class DirectoryReader:
     def get_frame(self):
         if self.idx >= self.nb_frames:
             return None
-
         path = self.paths[self.idx]
-        self.idx += 1
-
-        img = Image.open(path)
-        transforms = v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=True)])
-
-        return transforms(img) 
+        try:
+            img = Image.open(path)
+            transforms = v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=True)])
+            frame = transforms(img)
+            self.idx += 1
+            return frame
+        except Exception as e:
+            logger.error(f"Error reading frame {self.idx}: {e}")
+            return None
 
 class DirectoryWriter:
     def __init__(self, dir: str):

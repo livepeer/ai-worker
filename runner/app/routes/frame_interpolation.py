@@ -37,7 +37,7 @@ RESPONSES = {
 )
 async def frame_interpolation(
     model_id: Annotated[str, Form()] = "",
-    video: Annotated[UploadFile, File()]=None,
+    video: Annotated[UploadFile, File()]= None,
     inter_frames: Annotated[int, Form()] = 2,
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
@@ -64,11 +64,13 @@ async def frame_interpolation(
         # Extract frames from video
         video_data = await video.read()
         frames = video_shredder(video_data, is_file_path=False)
-
         # Save frames to temporary directory
         for i, frame in enumerate(frames):
-            frame_path = os.path.join(temp_input_dir, f"{i}.png")
-            cv2.imwrite(frame_path, frame)
+            try:
+                frame_path = os.path.join(temp_input_dir, f"{i}.png")
+                cv2.imwrite(frame_path, frame)
+            except Exception as e:
+                logger.error(f"Error saving frame {i}: {e}")
 
         # Create DirectoryReader and DirectoryWriter
         reader = DirectoryReader(temp_input_dir)
@@ -81,10 +83,18 @@ async def frame_interpolation(
 
         # Collect output frames
         output_frames = []
-        for frame_path in sorted(glob.glob(os.path.join(temp_output_dir, "*.png"))):
-            frame = Image.open(frame_path)
-            output_frames.append(frame)
-    # Wrap output frames in a list of batches (with a single batch in this case)
+        path_to_file = sorted(
+            glob.glob(os.path.join(temp_output_dir, "*")),
+            key=lambda x: (int(os.path.basename(x).split(".")[0]), x)
+        )
+        for frame_in_path in path_to_file:
+            try:
+                frame = Image.open(frame_in_path)
+                output_frames.append(frame)
+            except Exception as e:
+                logger.error(f"Error reading frame {frame_in_path}: {e}")
+
+        # Wrap output frames in a list of batches (with a single batch in this case)
         output_images = [[{"url": image_to_data_url(frame), "seed": 0, "nsfw": False} for frame in output_frames]]
 
     except Exception as e:
@@ -96,11 +106,11 @@ async def frame_interpolation(
         )
     finally:
         # Clean up temporary directories
-        for file_path in glob.glob(os.path.join(temp_input_dir, "*")):
-            os.remove(file_path)
+        for path_to_file in glob.glob(os.path.join(temp_input_dir, "*")):
+            os.remove(path_to_file)
         os.rmdir(temp_input_dir)
-        for file_path in glob.glob(os.path.join(temp_output_dir, "*")):
-            os.remove(file_path)
+        for path_to_file in glob.glob(os.path.join(temp_output_dir, "*")):
+            os.remove(path_to_file)
         os.rmdir(temp_output_dir)
 
     return {"frames": output_images}
