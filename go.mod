@@ -5,7 +5,7 @@ go 1.21.5
 require (
 	github.com/deepmap/oapi-codegen/v2 v2.2.0
 	github.com/docker/cli v24.0.5+incompatible
-	github.com/docker/docker v26.1.4+incompatible
+	github.com/docker/docker v26.1.5+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/getkin/kin-openapi v0.124.0
 	github.com/go-chi/chi/v5 v5.0.12
