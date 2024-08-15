@@ -241,7 +241,7 @@ func NewAudioToTextMultipartWriter(w io.Writer, req AudioToTextMultipartRequestB
 	return mw, nil
 }
 
-func NewSegmentAnything2Writer(w io.Writer, req SegmentAnything2MultipartRequestBody) (*multipart.Writer, error) {
+func NewSegmentAnything2MultipartWriter(w io.Writer, req SegmentAnything2MultipartRequestBody) (*multipart.Writer, error) {
 	mw := multipart.NewWriter(w)
 	writer, err := mw.CreateFormFile("image", req.Image.Filename())
 	if err != nil {
