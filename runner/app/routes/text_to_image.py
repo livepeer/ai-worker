@@ -28,7 +28,10 @@ class TextToImageParams(BaseModel):
     prompt: Annotated[
         str,
         Field(
-            description="Text prompt(s) to guide image generation. Separate multiple prompts with '|' if supported by the model."
+            description=(
+                "Text prompt(s) to guide image generation. Separate multiple prompts "
+                "with '|' if supported by the model."
+            )
         ),
     ]
     height: Annotated[
@@ -43,21 +46,30 @@ class TextToImageParams(BaseModel):
         float,
         Field(
             default=7.5,
-            description="Encourages model to generate images closely linked to the text prompt (higher values may reduce image quality).",
+            description=(
+                "Encourages model to generate images closely linked to the text prompt "
+                "(higher values may reduce image quality)."
+            ),
         ),
     ]
     negative_prompt: Annotated[
         str,
         Field(
             default="",
-            description="Text prompt(s) to guide what to exclude from image generation. Ignored if guidance_scale < 1.",
+            description=(
+                "Text prompt(s) to guide what to exclude from image generation. "
+                "Ignored if guidance_scale < 1."
+            ),
         ),
     ]
     safety_check: Annotated[
         bool,
         Field(
             default=True,
-            description="Perform a safety check to estimate if generated images could be offensive or harmful.",
+            description=(
+                "Perform a safety check to estimate if generated images could be "
+                "offensive or harmful."
+            ),
         ),
     ]
     seed: Annotated[
@@ -67,7 +79,10 @@ class TextToImageParams(BaseModel):
         int,
         Field(
             default=50,
-            description="Number of denoising steps. More steps usually lead to higher quality images but slower inference. Modulated by strength.",
+            description=(
+                "Number of denoising steps. More steps usually lead to higher quality "
+                "images but slower inference. Modulated by strength."
+            ),
         ),
     ]
     num_images_per_prompt: Annotated[

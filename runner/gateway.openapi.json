@@ -639,17 +639,6 @@
                 "type": "object",
                 "title": "HTTPValidationError"
             },
-            "HealthCheck": {
-                "properties": {
-                    "status": {
-                        "type": "string",
-                        "title": "Status",
-                        "default": "OK"
-                    }
-                },
-                "type": "object",
-                "title": "HealthCheck"
-            },
             "ImageResponse": {
                 "properties": {
                     "images": {

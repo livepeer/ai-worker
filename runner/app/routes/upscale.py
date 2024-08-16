@@ -50,14 +50,20 @@ async def upscale(
     safety_check: Annotated[
         bool,
         Form(
-            description="Perform a safety check to estimate if generated images could be offensive or harmful."
+            description=(
+                "Perform a safety check to estimate if generated images could be "
+                "offensive or harmful."
+            )
         ),
     ] = True,
     seed: Annotated[int, Form(description="Seed for random number generation.")] = None,
     num_inference_steps: Annotated[
         int,
         Form(
-            description="Number of denoising steps. More steps usually lead to higher quality images but slower inference. Modulated by strength."
+            description=(
+                "Number of denoising steps. More steps usually lead to higher quality "
+                "images but slower inference. Modulated by strength."
+            )
         ),
     ] = 75,  # NOTE: Hardcoded due to varying pipeline values.
     pipeline: Pipeline = Depends(get_pipeline),
