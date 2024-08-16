@@ -53,26 +53,38 @@ async def image_to_video(
     motion_bucket_id: Annotated[
         int,
         Form(
-            description="Used for conditioning the amount of motion for the generation. The higher the number the more motion will be in the video."
+            description=(
+                "Used for conditioning the amount of motion for the generation. The "
+                "higher the number the more motion will be in the video."
+            )
         ),
     ] = 127,
     noise_aug_strength: Annotated[
         float,
         Form(
-            description="Amount of noise added to the conditioning image. Higher values reduce resemblance to the conditioning image and increase motion."
+            description=(
+                "Amount of noise added to the conditioning image. Higher values reduce "
+                "resemblance to the conditioning image and increase motion."
+            )
         ),
     ] = 0.02,
     safety_check: Annotated[
         bool,
         Form(
-            description="Perform a safety check to estimate if generated images could be offensive or harmful."
+            description=(
+                "Perform a safety check to estimate if generated images could be "
+                "offensive or harmful."
+            )
         ),
     ] = True,
     seed: Annotated[int, Form(description="Seed for random number generation.")] = None,
     num_inference_steps: Annotated[
         int,
         Form(
-            description="Number of denoising steps. More steps usually lead to higher quality images but slower inference. Modulated by strength."
+            description=(
+                "Number of denoising steps. More steps usually lead to higher quality "
+                "images but slower inference. Modulated by strength."
+            )
         ),
     ] = 25,  # NOTE: Hardcoded due to varying pipeline values.
     pipeline: Pipeline = Depends(get_pipeline),

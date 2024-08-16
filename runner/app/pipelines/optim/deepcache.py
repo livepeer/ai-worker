@@ -1,7 +1,7 @@
 """This module provides a function to enable DeepCache optimization for the pipeline.
 
 For more information, see the DeepCache project on GitHub: https://github.com/horseee/DeepCache
-"""
+"""  # noqa: E501
 
 import logging
 
