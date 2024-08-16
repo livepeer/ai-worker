@@ -103,7 +103,7 @@ def write_openapi(fname, entrypoint="runner"):
     if entrypoint == "gateway":
         print("Translating OpenAPI schema from 'runner' to 'gateway' entrypoint...")
         openapi = translate_to_gateway(openapi)
-        fname = os.path.splitext(fname)[0] + "_gateway" + os.path.splitext(fname)[1]
+        fname = f"gateway.{fname}"
 
     # Write OpenAPI schema to file.
     with open(fname, "w") as f:
@@ -135,15 +135,16 @@ if __name__ == "__main__":
     parser.add_argument(
         "--entrypoint",
         type=str,
-        choices=["gateway", "runner"],
-        default="runner",
+        choices=["runner", "gateway"],
+        default=["runner", "gateway"],
+        nargs="+",
         help=(
-            "The entrypoint to generate the OpenAPI schema for, either 'gateway' or "
-            "'runner'. Default is 'runner'",
+            "The entrypoint to generate the OpenAPI schema for, options are 'runner' "
+            "and 'gateway'. Default is both."
         ),
     )
     args = parser.parse_args()
 
-    write_openapi(f"openapi.{args.type.lower()}", args.entrypoint)
-
-
+    # Generate orchestrator and Gateway facing OpenAPI schemas.
+    for entrypoint in args.entrypoint:
+        write_openapi(f"openapi.{args.type.lower()}", entrypoint)
