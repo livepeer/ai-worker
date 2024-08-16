@@ -93,7 +93,8 @@ def split_prompt(
         separator (str): The character used to split the input prompt. Defaults to '|'.
         key_prefix (str): Prefix for keys in the returned dictionary for all prompts,
             including the main prompt. Defaults to 'prompt'.
-        max_splits (int): Maximum number of splits to perform. Defaults to -1 (no limit).
+        max_splits (int): Maximum number of splits to perform. Defaults to -1 (no
+            limit).
 
     Returns:
         Dict[str, str]: A dictionary of all prompts, including the main prompt.
