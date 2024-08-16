@@ -1,7 +1,6 @@
 import argparse
 import copy
 import json
-import os
 
 import yaml
 from app.main import app, use_route_names_as_operation_ids
@@ -41,8 +40,9 @@ def translate_to_gateway(openapi):
     Returns:
         dict: The translated OpenAPI schema.
     """
-    # Remove 'health' endpoint
+    # Remove 'health' related endpoints and schemas.
     openapi["paths"].pop("/health")
+    openapi["components"]["schemas"].pop("HealthCheck")
 
     # Enforce 'model_id' in all endpoints
     for _, methods in openapi["paths"].items():
