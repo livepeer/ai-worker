@@ -86,8 +86,8 @@ class ImageToImagePipeline(Pipeline):
             elif "8step" in model_id:
                 unet_id = "sdxl_lightning_8step_unet"
             else:
-                # Default to 2step
-                unet_id = "sdxl_lightning_2step_unet"
+                # Default to 8step
+                unet_id = "sdxl_lightning_8step_unet"
 
             unet_config = UNet2DConditionModel.load_config(
                 pretrained_model_name_or_path=base,
@@ -225,7 +225,8 @@ class ImageToImagePipeline(Pipeline):
             elif "8step" in self.model_id:
                 kwargs["num_inference_steps"] = 8
             else:
-                kwargs["num_inference_steps"] = 2
+                # Default to 8step
+                kwargs["num_inference_steps"] = 8
 
         # trying different cases for prompt_embed because some models dont support without pooled_prompt_embeds.
         try:
