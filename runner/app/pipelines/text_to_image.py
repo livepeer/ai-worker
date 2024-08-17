@@ -93,8 +93,8 @@ class TextToImagePipeline(Pipeline):
             elif "8step" in model_id:
                 unet_id = "sdxl_lightning_8step_unet"
             else:
-                # Default to 2step
-                unet_id = "sdxl_lightning_2step_unet"
+                # Default to 8step
+                unet_id = "sdxl_lightning_8step_unet"
 
             unet_config = UNet2DConditionModel.load_config(
                 pretrained_model_name_or_path=base,
