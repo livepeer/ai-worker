@@ -43,11 +43,14 @@ class AudioToTextPipeline(Pipeline):
             kwargs["torch_dtype"] = torch.float16
             kwargs["variant"] = "fp16"
 
-        if os.environ.get("FLOAT16"):
+        float16_enabled = os.getenv("FLOAT16", "").strip().lower() == "true"
+        bfloat16_enabled = os.getenv("BFLOAT16", "").strip().lower() == "true"
+
+        if float16_enabled:
             logger.info("AudioToTextPipeline using float16 precision for %s", model_id)
             kwargs["torch_dtype"] = torch.float16
 
-        if os.environ.get("BFLOAT16"):
+        if bfloat16_enabled:
             logger.info("AudioToTextPipeline using bfloat16 precision for %s", model_id)
             kwargs["torch_dtype"] = torch.bfloat16
 
