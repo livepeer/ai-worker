@@ -101,7 +101,7 @@ def translate_to_gateway(openapi):
     return openapi
 
 
-def write_openapi(fname, entrypoint="runner", version):
+def write_openapi(fname, entrypoint="runner", version="0.0.0"):
     """Write OpenAPI schema to file.
 
     Args:
@@ -109,7 +109,7 @@ def write_openapi(fname, entrypoint="runner", version):
             type. Either 'json' or 'yaml'.
         entrypoint (str): The entrypoint to generate the OpenAPI schema for, either
             'gateway' or 'runner'. Default is 'runner'.
-        version (str): The version to set in the OpenAPI schema.
+        version (str): The version to set in the OpenAPI schema. Default is '0.0.0'.
     """
     app.include_router(health.router)
     app.include_router(text_to_image.router)
