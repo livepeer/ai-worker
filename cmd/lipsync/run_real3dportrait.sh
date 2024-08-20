@@ -18,11 +18,11 @@ which python
 python --version
 
 # Set PYTHONPATH
-export PYTHONPATH="/models--yerfor--Real3DPortrait/cloned:$PYTHONPATH"
-cd /models--yerfor--Real3DPortrait/cloned
+export PYTHONPATH="/models/models--yerfor--Real3DPortrait:$PYTHONPATH"
+cd /models/models--yerfor--Real3DPortrait
 
 # Run the Real3DPortrait inference command
-python /models--yerfor--Real3DPortrait/cloned/inference/real3d_infer.py \
+python /models/models--yerfor--Real3DPortrait/inference/real3d_infer.py \
   --src_img "$1" \
   --drv_aud "$2" \
   --out_name "$3" \

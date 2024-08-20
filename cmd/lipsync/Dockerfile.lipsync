@@ -65,12 +65,13 @@ RUN wget http://mirrors.edge.kernel.org/ubuntu/pool/main/g/glibc/libc6_2.35-0ubu
 RUN apt-get update && apt-get install -y --no-install-recommends \
     cuda-toolkit-12-1
 
-
 # Set environment variables for CUDA
 ENV CUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda
 ENV CUDA_NVCC_EXECUTABLE=/usr/local/cuda/bin/nvcc
 ENV CUDA_INCLUDE_DIRS=/usr/local/cuda/include
 ENV CUDA_CUDART_LIBRARY=/usr/local/cuda/lib64/libcudart.so
+ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+
 
 # Verify CUDA installation and paths
 RUN echo "CUDA Toolkit Root: $CUDA_TOOLKIT_ROOT_DIR" && \
@@ -81,7 +82,6 @@ RUN echo "CUDA Toolkit Root: $CUDA_TOOLKIT_ROOT_DIR" && \
     ls -l $CUDA_TOOLKIT_ROOT_DIR && \
     ls -l $CUDA_INCLUDE_DIRS && \
     ls -l /usr/local/cuda/lib64/
-
 
 RUN apt-get update && apt-get install -y --no-install-recommends cmake
 # Verify CMake installation
@@ -94,9 +94,12 @@ RUN apt-get update && apt-get install -y \
     libjack-jackd2-dev
 
 # Step 8: Install other Python dependencies via pip
-
-
 RUN /bin/bash -c "source activate $ENV_NAME && pip install -r $REPO_DIR/cloned/docs/prepare_env/requirements.txt -v"
 
-# Set the entrypoint for the container
+# Back to the runner app
+WORKDIR /app
+# Copy the application files
+COPY ./runner/app/ /app/app
+COPY ./cmd/lipsync/run_real3dportrait.sh /app/run_real3dportrait.sh
+
 CMD ["uvicorn", "app.main:app", "--log-config", "app/cfg/uvicorn_logging_config.json", "--host", "0.0.0.0", "--port", "8000"]
