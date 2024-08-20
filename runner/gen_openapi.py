@@ -101,7 +101,7 @@ def translate_to_gateway(openapi):
     return openapi
 
 
-def write_openapi(fname, entrypoint="runner", version=None):
+def write_openapi(fname, entrypoint="runner", version):
     """Write OpenAPI schema to file.
 
     Args:
