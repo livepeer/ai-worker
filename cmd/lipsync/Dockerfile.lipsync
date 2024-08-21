@@ -4,19 +4,63 @@ FROM livepeer/ai-runner:base
 # Set non-interactive frontend
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Install prerequisites and Anaconda dependencies
+# Install prerequisites and necessary libraries
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    cmake \
+    wget \
+    bzip2 \
+    git \
+    portaudio19-dev \
+    libasound2-dev \
+    libjack-jackd2-dev \
+    libopenblas-dev \
+    liblapack-dev \
+    build-essential \
+    autoconf \
+    automake \
+    libtool \
+    pkg-config \
+    nasm \
+    libpng-dev \
+    libjpeg-dev \
+    libwebp-dev \
+    libbrotli-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+# Download and build JPEG XL from source
+RUN git clone https://github.com/libjxl/libjxl.git /tmp/libjxl && \
+    cd /tmp/libjxl && \
+    git submodule update --init --recursive && \
+    mkdir build && cd build && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig && \
+    rm -rf /tmp/libjxl
+
+# Download and install GLIBC 2.35
+RUN wget http://mirrors.edge.kernel.org/ubuntu/pool/main/g/glibc/libc6_2.35-0ubuntu3_amd64.deb && \
+    dpkg -i libc6_2.35-0ubuntu3_amd64.deb || apt-get install -f -y
+
+# Install CUDA development components
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    cuda-toolkit-12-1
+
+# Set environment variables for CUDAx
+ENV CUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda \
+    CUDA_NVCC_EXECUTABLE=/usr/local/cuda/bin/nvcc \
+    CUDA_INCLUDE_DIRS=/usr/local/cuda/include \
+    CUDA_CUDART_LIBRARY=/usr/local/cuda/lib64/libcudart.so \
+    LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+
 # Define the Python version for conda environment
 ARG PYTHON_VERSION=3.9
 
-# Install prerequisites and Anaconda dependencies
-RUN apt-get update && \
-    apt-get install -y wget bzip2 git && \
-    rm -rf /var/lib/apt/lists/*
-
 # Set environment variables for Anaconda
 ENV CONDA_INSTALLER=Anaconda3-2024.06-1-Linux-x86_64.sh \
-    CONDA_DIR=/models--yerfor--Real3DPortrait/anaconda3 \
-    REPO_URL=https://github.com/yerfor/Real3DPortrait.git \
-    REPO_DIR=/models--yerfor--Real3DPortrait \
+    CONDA_DIR=/models/models--yerfor--Real3DPortrait/anaconda3 \
+    REPO_DIR=/models/models--yerfor--Real3DPortrait \
     ENV_NAME=real3dportrait
 
 # Step 1: Download and install Anaconda
@@ -26,79 +70,33 @@ RUN wget https://repo.anaconda.com/archive/$CONDA_INSTALLER && \
 
 # Add conda to PATH
 ENV PATH="$CONDA_DIR/bin:$PATH"
+# Clone the repository
+ARG REPO_URL=https://github.com/pschroedl/Real3DPortrait.git
+ARG REQ_TXT_PATH=/Real3DPortrait_temp_repo
+RUN git clone --single-branch --branch resolve_dependency_conflicts $REPO_URL $REQ_TXT_PATH
 
-# Step 2: Clone the repository containing inference.py if it doesn't already exist
-RUN [ ! -d $REPO_DIR ] && git clone $REPO_URL $REPO_DIR || echo "Repository already exists."
-
-# Set the working directory to the cloned repository
+# Set the working directory to the mounted repository from the host
 WORKDIR $REPO_DIR
 
 # Step 3: Create the conda environment with the specified Python version
 RUN conda create -p $CONDA_DIR/envs/$ENV_NAME python=$PYTHON_VERSION -y
 
-# Step 4: Install dependencies in the conda environment
+# Install dependencies, ensure setuptools compatibility, and install mmcv and additional dependencies in one step
+# Install dependencies, ensure setuptools compatibility, and install mmcv and additional dependencies
 RUN /bin/bash -c "source activate $ENV_NAME && \
-    conda install -p $CONDA_DIR/envs/$ENV_NAME conda-forge::ffmpeg -y && \
-    conda install -p $CONDA_DIR/envs/$ENV_NAME pytorch torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia -y && \
-    conda install -p $CONDA_DIR/envs/$ENV_NAME pytorch3d::pytorch3d -y && \
-    pip install cython openmim==0.3.9"
+    conda install -p $CONDA_DIR/envs/$ENV_NAME conda-forge::ffmpeg pytorch torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia -y && \
+    conda install -p $CONDA_DIR/envs/$ENV_NAME pytorch3d -c pytorch3d -y && \
+    conda install -p $CONDA_DIR/envs/$ENV_NAME setuptools=59.5.0 -y && \
+    pip install cython openmim==0.3.9 && \
+    mim install mmcv==2.1.0"
 
-# Step 5: Ensure setuptools is compatible
-RUN /bin/bash -c "source activate $ENV_NAME && conda install setuptools==59.5.0 -y"
+RUN /bin/bash -c "source activate $ENV_NAME && \
+    pip install numpy==1.23.0 scipy==1.11.1 setuptools==59.5.0"
+RUN /bin/bash -c "source activate $ENV_NAME && \
+    pip install -r $REQ_TXT_PATH/docs/prepare_env/requirements.txt -v --use-deprecated=legacy-resolver && \
+    pip show torchshow"
 
-# Step 6: Verify that the correct Python version is being used and the conda environment is activated
-RUN /bin/bash -c "source activate $ENV_NAME && python --version && which python && conda env list"
-
-# Step 7: Install mmcv via mim
-RUN /bin/bash -c "source activate $ENV_NAME && mim install mmcv==2.1.0"
-
-# Set the working directory to the cloned repository
-WORKDIR $REPO_DIR
-RUN git clone $REPO_URL $REPO_DIR/cloned
-# Step 8: Debugging - List the contents of the directory to verify the file exists
-RUN /bin/bash -c "source activate $ENV_NAME && ls -al /$REPO_DIR/cloned"
-# Download and install GLIBC 2.35
-RUN wget http://mirrors.edge.kernel.org/ubuntu/pool/main/g/glibc/libc6_2.35-0ubuntu3_amd64.deb && \
-    dpkg -i libc6_2.35-0ubuntu3_amd64.deb || apt-get install -f -y
-
-# Install CUDA development components
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    cuda-toolkit-12-1
-
-# Set environment variables for CUDA
-ENV CUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda
-ENV CUDA_NVCC_EXECUTABLE=/usr/local/cuda/bin/nvcc
-ENV CUDA_INCLUDE_DIRS=/usr/local/cuda/include
-ENV CUDA_CUDART_LIBRARY=/usr/local/cuda/lib64/libcudart.so
-ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
-
-
-# Verify CUDA installation and paths
-RUN echo "CUDA Toolkit Root: $CUDA_TOOLKIT_ROOT_DIR" && \
-    echo "CUDA NVCC Executable: $CUDA_NVCC_EXECUTABLE" && \
-    echo "CUDA Include Dirs: $CUDA_INCLUDE_DIRS" && \
-    echo "CUDA CUDART Library: $CUDA_CUDART_LIBRARY" && \
-    nvcc --version && \
-    ls -l $CUDA_TOOLKIT_ROOT_DIR && \
-    ls -l $CUDA_INCLUDE_DIRS && \
-    ls -l /usr/local/cuda/lib64/
-
-RUN apt-get update && apt-get install -y --no-install-recommends cmake
-# Verify CMake installation
-# RUN cmake --version
-# RUN which cmake
-
-RUN apt-get update && apt-get install -y \
-    portaudio19-dev \
-    libasound2-dev \
-    libjack-jackd2-dev
-
-# Step 8: Install other Python dependencies via pip
-RUN /bin/bash -c "source activate $ENV_NAME && pip install -r $REPO_DIR/cloned/docs/prepare_env/requirements.txt -v"
-
-# Back to the runner app
 WORKDIR /app
-# Copy the application files
 COPY ./runner/app/ /app/app
 COPY ./cmd/lipsync/run_real3dportrait.sh /app/run_real3dportrait.sh
 

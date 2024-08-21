@@ -11,8 +11,13 @@ activate_conda_env() {
   fi
 }
 
-activate_conda_env "/models--yerfor--Real3DPortrait/anaconda3"
-
+# activate_conda_env "/models/models--yerfor--Real3DPortrait/anaconda3"
+# Activate the conda environment
+source /models/models--yerfor--Real3DPortrait/anaconda3/etc/profile.d/conda.sh
+eval "$(/models/models--yerfor--Real3DPortrait/anaconda3/bin/conda shell.bash hook)"
+conda init
+source /root/.bashrc
+conda activate real3dportrait
 # Debugging: Check which Python is being used - 3.9 is used by the conda env for real3dportrait
 which python
 python --version
