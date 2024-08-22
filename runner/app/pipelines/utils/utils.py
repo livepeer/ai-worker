@@ -196,6 +196,7 @@ def load_loras(pipeline: any, requested_lora: str, loaded_loras: list) -> list:
     if len(loaded_loras) > 0: 
         pipeline.unload_lora_weights()
         
+    lora = {}
     try:
         lora = json.loads(requested_lora)
     except Exception as e:
