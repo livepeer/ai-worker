@@ -228,7 +228,7 @@ type TextToImageParams struct {
 	Height *int `json:"height,omitempty"`
 
 	// Loras A lora and weight to use for image generation. example: { "nerijs/pixel-art-xl" : 1.2 }
-	Loras string `json:"loras"`
+	Loras *string `json:"loras,omitempty"`
 
 	// ModelId Hugging Face model ID used for image generation.
 	ModelId *string `json:"model_id,omitempty"`
