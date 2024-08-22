@@ -187,7 +187,7 @@ def load_loras(pipeline: any, requested_lora: str, loaded_loras: list) -> list:
         loras: JSON string with key-value pairs, where the key is the repository to load LoRas from and the value is the strength (float with a minimum value of 0.0) to assign to the LoRa.
     """
     # No LoRas to load
-    if requested_loras == "" or requested_loras == None:
+    if requested_lora == "" or requested_lora == None:
         return;
     # Parse LoRas param as JSON to extract key-value pairs
     # Build a list of adapter names and their requested strength
