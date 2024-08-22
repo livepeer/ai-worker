@@ -179,7 +179,7 @@ class SafetyChecker:
         )
         return images, has_nsfw_concept
 
-def load_loras(pipeline: any, requested_loras: str):
+def load_loras(pipeline: any, requested_lora: str, loaded_loras: list) -> list:
     """Loads LoRas and sets their weights into the given pipeline.
 
     Args:
@@ -190,20 +190,26 @@ def load_loras(pipeline: any, requested_loras: str):
     if requested_loras == "" or requested_loras == None:
         return;
     # Parse LoRas param as JSON to extract key-value pairs
-    try:
-        loras = json.loads(requested_loras)
-    except Exception as e:
-        logger.warning(
-            "Unable to parse '" + requested_loras + "' as JSON. Continuing inference without loading LoRas"
-        )
-        return
     # Build a list of adapter names and their requested strength
     adapters = []
     strengths = []
-    for adapter, val in loras.items():
+    if len(loaded_loras) > 0: 
+        pipeline.unload_lora_weights()
+        
+    try:
+        lora = json.loads(requested_lora)
+    except Exception as e:
+        logger.warning(
+            f"Unable to parse '{requested_lora}' as JSON. Continuing inference without loading this LoRa"
+        )
+        
+    for adapter, val in lora.items():
+        if adapter in loaded_loras:
+            pipeline.unload_lora_weights()
+
         # Sanity check: strength should be a number with a minimum value of 0.0
         try:
-            strength = int(val)
+            strength = float(val)
         except ValueError:
             logger.warning(
                 "Skipping requested LoRa " + adapter + ", as it's requested strength (" + val + ") is not a number"
@@ -214,7 +220,6 @@ def load_loras(pipeline: any, requested_loras: str):
                 "Clipping strength of LoRa " + adapter + " to 0.0, as it's requested strength (" + val + ") is negative"
             )
             strength = 0.0
-        # Load in LoRa weights if its repository exists on HuggingFace
         try:
             # TODO: If we decide to keep LoRas loaded (and only set their weight to 0), make sure that reloading them causes no performance hit or other issues
             pipeline.load_lora_weights(adapter, adapter_name=adapter)
@@ -227,4 +232,6 @@ def load_loras(pipeline: any, requested_loras: str):
         adapters.append(adapter)
         strengths.append(strength)
     # Set weights for all loaded adapters
-    pipeline.set_adapters(adapters, strengths)
+    if len(adapters) > 0:
+        pipeline.set_adapters(adapters, strengths)
+    return adapters
