@@ -190,7 +190,7 @@ class ImageToImagePipeline(Pipeline):
                 ]
 
         # Dynamically (un)load LoRas. Defaults to "" when not passed, so should always be present in kwargs
-        if kwargs["loras"] is None:
+        if kwargs["loras"] == "":
             # Unload previously loaded LoRas
             # NOTE: we might want to keep LoRas loaded and only reset their weights
             # TODO: run tests with VRAM usage. We should be able to keep the last x LoRas loaded without issues

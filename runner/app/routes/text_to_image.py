@@ -28,7 +28,7 @@ class TextToImageParams(BaseModel):
     loras: Annotated[
         str, 
         Field(
-            default=None,
+            default="",
             description=(
                 "A lora and weight to use for image generation. "
                 "example: { \"nerijs/pixel-art-xl\" : 1.2 } "
