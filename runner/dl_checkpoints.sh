@@ -34,7 +34,8 @@ function download_beta_models() {
 
     # Download upscale models
     huggingface-cli download stabilityai/stable-diffusion-x4-upscaler --include "*.fp16.safetensors" --cache-dir models
-
+    huggingface-cli download ad-astra-video/upscalers --cache-dir models
+    
     # Download audio-to-text models.
     huggingface-cli download openai/whisper-large-v3 --include "*.safetensors" "*.json" --cache-dir models
     huggingface-cli download distil-whisper/distil-large-v3 --include "*.safetensors" "*.json" --cache-dir models
