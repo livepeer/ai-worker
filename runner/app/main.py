@@ -112,6 +112,10 @@ def load_route(pipeline: str) -> any:
             from app.routes import upscale
 
             return upscale.router
+        case "sentiment-analysis":
+            from app.routes import sentiment_analysis
+
+            return sentiment_analysis.router
         case "segment-anything-2":
             from app.routes import segment_anything_2
 
