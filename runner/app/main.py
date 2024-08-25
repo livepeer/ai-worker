@@ -58,6 +58,10 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
             from app.pipelines.upscale import UpscalePipeline
 
             return UpscalePipeline(model_id)
+        case "sentiment-analysis":
+            from app.pipelines.sentiment_analysis import SentimentAnalysisPipeline
+
+            return SentimentAnalysisPipeline(model_id)
         case "segment-anything-2":
             from app.pipelines.segment_anything_2 import SegmentAnything2Pipeline
 
