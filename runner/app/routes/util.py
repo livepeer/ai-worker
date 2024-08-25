@@ -2,7 +2,7 @@ import base64
 import io
 import json
 import os
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 import numpy as np
 from fastapi import UploadFile
@@ -56,6 +56,15 @@ class TextResponse(BaseModel):
 
     text: str = Field(..., description="The generated text.")
     chunks: List[chunk] = Field(..., description="The generated text chunks.")
+
+
+class LabelScore(BaseModel):
+    label: Literal["negative", "neutral", "positive"]
+    score: float
+
+
+class SentimentAnalysisResponse(BaseModel):
+    results: list[LabelScore]
 
 
 class APIError(BaseModel):
