@@ -44,6 +44,9 @@ function download_beta_models() {
     huggingface-cli download facebook/sam2-hiera-large --include "*.pt" "*.yaml" --cache-dir models
     huggingface-cli download parler-tts/parler-tts-large-v1 --include "*.safetensors" "*.json" "*.model" --cache-dir models
 
+    # Download sentiment-analysis models.
+    huggingface-cli download cardiffnlp/twitter-roberta-base-sentiment-latest --include "*.json" "*.txt" "*.bin" --cache-dir models
+
     printf "\nDownloading token-gated models...\n"
 
     # Download image-to-video models (token-gated).
