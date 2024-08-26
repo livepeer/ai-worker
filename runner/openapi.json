@@ -33,6 +33,7 @@
         "/text-to-image": {
             "post": {
                 "summary": "Text To Image",
+                "description": "Generate images from text prompts.",
                 "operationId": "text_to_image",
                 "requestBody": {
                     "content": {
@@ -106,6 +107,7 @@
         "/image-to-image": {
             "post": {
                 "summary": "Image To Image",
+                "description": "Apply image transformations to a provided image.",
                 "operationId": "image_to_image",
                 "requestBody": {
                     "content": {
@@ -179,6 +181,7 @@
         "/image-to-video": {
             "post": {
                 "summary": "Image To Video",
+                "description": "Generate a video from a provided image.",
                 "operationId": "image_to_video",
                 "requestBody": {
                     "content": {
@@ -252,6 +255,7 @@
         "/upscale": {
             "post": {
                 "summary": "Upscale",
+                "description": "Upscale an image by increasing its resolution.",
                 "operationId": "upscale",
                 "requestBody": {
                     "content": {
@@ -325,6 +329,7 @@
         "/audio-to-text": {
             "post": {
                 "summary": "Audio To Text",
+                "description": "Transcribe audio files to text.",
                 "operationId": "audio_to_text",
                 "requestBody": {
                     "content": {
