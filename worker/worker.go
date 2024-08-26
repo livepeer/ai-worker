@@ -85,7 +85,7 @@ func (w *Worker) TextToImage(ctx context.Context, req GenTextToImageJSONRequestB
 			return nil, err
 		}
 		slog.Error("text-to-image container returned 400", slog.String("err", string(val)))
-		return nil, errors.New("text-to-image container returned 400")
+		return nil, errors.New("text-to-image container returned 400: " + string(val))
 	}
 
 	if resp.JSON500 != nil {
