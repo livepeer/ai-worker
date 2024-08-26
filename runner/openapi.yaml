@@ -251,10 +251,12 @@ components:
         msg:
           type: string
           title: Msg
+          description: The error message.
       type: object
       required:
       - msg
       title: APIError
+      description: API error response model.
     Body_audio_to_text_audio_to_text_post:
       properties:
         audio:
@@ -436,11 +438,14 @@ components:
     HTTPError:
       properties:
         detail:
-          $ref: '#/components/schemas/APIError'
+          allOf:
+          - $ref: '#/components/schemas/APIError'
+          description: Detailed error information.
       type: object
       required:
       - detail
       title: HTTPError
+      description: HTTP error response model.
     HTTPValidationError:
       properties:
         detail:
@@ -465,42 +470,51 @@ components:
             $ref: '#/components/schemas/Media'
           type: array
           title: Images
+          description: The generated images.
       type: object
       required:
       - images
       title: ImageResponse
+      description: Response model for image generation.
     Media:
       properties:
         url:
           type: string
           title: Url
+          description: The URL where the media can be accessed.
         seed:
           type: integer
           title: Seed
+          description: The seed used to generate the media.
         nsfw:
           type: boolean
           title: Nsfw
+          description: Whether the media was flagged as NSFW.
       type: object
       required:
       - url
       - seed
       - nsfw
       title: Media
+      description: A media object containing information about the generated media.
     TextResponse:
       properties:
         text:
           type: string
           title: Text
+          description: The generated text.
         chunks:
           items:
             $ref: '#/components/schemas/chunk'
           type: array
           title: Chunks
+          description: The generated text chunks.
       type: object
       required:
       - text
       - chunks
       title: TextResponse
+      description: Response model for text generation.
     TextToImageParams:
       properties:
         model_id:
@@ -590,24 +604,29 @@ components:
             type: array
           type: array
           title: Frames
+          description: The generated video frames.
       type: object
       required:
       - frames
       title: VideoResponse
+      description: Response model for video generation.
     chunk:
       properties:
         timestamp:
           items: {}
           type: array
           title: Timestamp
+          description: The timestamp of the chunk.
         text:
           type: string
           title: Text
+          description: The text of the chunk.
       type: object
       required:
       - timestamp
       - text
       title: chunk
+      description: A chunk of text with a timestamp.
   securitySchemes:
     HTTPBearer:
       type: http

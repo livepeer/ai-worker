@@ -417,14 +417,16 @@
                 "properties": {
                     "msg": {
                         "type": "string",
-                        "title": "Msg"
+                        "title": "Msg",
+                        "description": "The error message."
                     }
                 },
                 "type": "object",
                 "required": [
                     "msg"
                 ],
-                "title": "APIError"
+                "title": "APIError",
+                "description": "API error response model."
             },
             "Body_audio_to_text_audio_to_text_post": {
                 "properties": {
@@ -636,14 +638,20 @@
             "HTTPError": {
                 "properties": {
                     "detail": {
-                        "$ref": "#/components/schemas/APIError"
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/APIError"
+                            }
+                        ],
+                        "description": "Detailed error information."
                     }
                 },
                 "type": "object",
                 "required": [
                     "detail"
                 ],
-                "title": "HTTPError"
+                "title": "HTTPError",
+                "description": "HTTP error response model."
             },
             "HTTPValidationError": {
                 "properties": {
@@ -676,28 +684,33 @@
                             "$ref": "#/components/schemas/Media"
                         },
                         "type": "array",
-                        "title": "Images"
+                        "title": "Images",
+                        "description": "The generated images."
                     }
                 },
                 "type": "object",
                 "required": [
                     "images"
                 ],
-                "title": "ImageResponse"
+                "title": "ImageResponse",
+                "description": "Response model for image generation."
             },
             "Media": {
                 "properties": {
                     "url": {
                         "type": "string",
-                        "title": "Url"
+                        "title": "Url",
+                        "description": "The URL where the media can be accessed."
                     },
                     "seed": {
                         "type": "integer",
-                        "title": "Seed"
+                        "title": "Seed",
+                        "description": "The seed used to generate the media."
                     },
                     "nsfw": {
                         "type": "boolean",
-                        "title": "Nsfw"
+                        "title": "Nsfw",
+                        "description": "Whether the media was flagged as NSFW."
                     }
                 },
                 "type": "object",
@@ -706,20 +719,23 @@
                     "seed",
                     "nsfw"
                 ],
-                "title": "Media"
+                "title": "Media",
+                "description": "A media object containing information about the generated media."
             },
             "TextResponse": {
                 "properties": {
                     "text": {
                         "type": "string",
-                        "title": "Text"
+                        "title": "Text",
+                        "description": "The generated text."
                     },
                     "chunks": {
                         "items": {
                             "$ref": "#/components/schemas/chunk"
                         },
                         "type": "array",
-                        "title": "Chunks"
+                        "title": "Chunks",
+                        "description": "The generated text chunks."
                     }
                 },
                 "type": "object",
@@ -727,7 +743,8 @@
                     "text",
                     "chunks"
                 ],
-                "title": "TextResponse"
+                "title": "TextResponse",
+                "description": "Response model for text generation."
             },
             "TextToImageParams": {
                 "properties": {
@@ -839,25 +856,29 @@
                             "type": "array"
                         },
                         "type": "array",
-                        "title": "Frames"
+                        "title": "Frames",
+                        "description": "The generated video frames."
                     }
                 },
                 "type": "object",
                 "required": [
                     "frames"
                 ],
-                "title": "VideoResponse"
+                "title": "VideoResponse",
+                "description": "Response model for video generation."
             },
             "chunk": {
                 "properties": {
                     "timestamp": {
                         "items": {},
                         "type": "array",
-                        "title": "Timestamp"
+                        "title": "Timestamp",
+                        "description": "The timestamp of the chunk."
                     },
                     "text": {
                         "type": "string",
-                        "title": "Text"
+                        "title": "Text",
+                        "description": "The text of the chunk."
                     }
                 },
                 "type": "object",
@@ -865,7 +886,8 @@
                     "timestamp",
                     "text"
                 ],
-                "title": "chunk"
+                "title": "chunk",
+                "description": "A chunk of text with a timestamp."
             }
         },
         "securitySchemes": {
