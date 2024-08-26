@@ -26,7 +26,12 @@ RESPONSES = {
 
 # TODO: Make model_id and other None properties optional once Go codegen tool supports
 # OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
-@router.post("/image-to-video", response_model=VideoResponse, responses=RESPONSES)
+@router.post(
+    "/image-to-video",
+    response_model=VideoResponse,
+    responses=RESPONSES,
+    description="Generate a video from a provided image.",
+)
 @router.post(
     "/image-to-video/",
     response_model=VideoResponse,

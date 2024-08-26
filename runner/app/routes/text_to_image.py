@@ -98,7 +98,12 @@ RESPONSES = {
 }
 
 
-@router.post("/text-to-image", response_model=ImageResponse, responses=RESPONSES)
+@router.post(
+    "/text-to-image",
+    response_model=ImageResponse,
+    responses=RESPONSES,
+    description="Generate images from text prompts.",
+)
 @router.post(
     "/text-to-image/",
     response_model=ImageResponse,
