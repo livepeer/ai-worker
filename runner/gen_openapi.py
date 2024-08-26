@@ -162,8 +162,8 @@ if __name__ == "__main__":
         "--type",
         type=str,
         choices=["json", "yaml"],
-        default="json",
-        help="File type to write to, either 'json' or 'yaml'. Default is 'json'",
+        default="yaml",
+        help="File type to write to, either 'json' or 'yaml'. Default is 'yaml'",
     )
     parser.add_argument(
         "--entrypoint",
