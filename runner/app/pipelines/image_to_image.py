@@ -25,6 +25,8 @@ from huggingface_hub import file_download, hf_hub_download
 from PIL import ImageFile
 from safetensors.torch import load_file
 
+from app.pipelines.utils.utils import LoraLoadingError
+
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 logger = logging.getLogger(__name__)
@@ -197,7 +199,11 @@ class ImageToImagePipeline(Pipeline):
             self.ldm.unload_lora_weights()
         else:
             # Remember requested LoRas and their weights
-            self.loaded_loras = load_loras(self.ldm, kwargs["loras"], self.loaded_loras)
+            try:
+                self.loaded_loras = load_loras(self.ldm, kwargs["loras"], self.loaded_loras)
+            except Exception as e:
+                raise LoraLoadingError(f"Error loading LoRas: {e}")
+            
         # Do not pass the lora param to the model when running inference
         del kwargs["loras"]
 

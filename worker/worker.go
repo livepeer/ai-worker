@@ -132,8 +132,9 @@ func (w *Worker) ImageToImage(ctx context.Context, req GenImageToImageMultipartR
 		if err != nil {
 			return nil, err
 		}
+
 		slog.Error("image-to-image container returned 400", slog.String("err", string(val)))
-		return nil, errors.New("image-to-image container returned 400")
+		return nil, errors.New("image-to-image container returned 400: " + string(val))
 	}
 
 	if resp.JSON500 != nil {

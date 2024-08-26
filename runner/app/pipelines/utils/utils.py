@@ -18,6 +18,8 @@ from transformers import CLIPImageProcessor
 
 logger = logging.getLogger(__name__)
 
+class LoraLoadingError(Exception):
+    pass
 
 def get_model_dir() -> Path:
     return Path(os.environ["MODEL_DIR"])
@@ -197,10 +199,10 @@ def load_loras(pipeline: any, requested_lora: str, loaded_loras: list) -> list:
     try:
         lora = json.loads(requested_lora)
     except Exception as e:
-        logger.warning(
-            f"Unable to parse '{requested_lora}' as JSON. Continuing inference without loading this LoRa"
-        )
-        
+        error_message = f"Unable to parse '{requested_lora}' as JSON. Continuing inference without loading this LoRa"
+        logger.warning(error_message)
+        raise LoraLoadingError(error_message)
+
     for adapter, val in lora.items():
         if adapter in loaded_loras:
             pipeline.unload_lora_weights()
@@ -209,23 +211,21 @@ def load_loras(pipeline: any, requested_lora: str, loaded_loras: list) -> list:
         try:
             strength = float(val)
         except ValueError:
-            logger.warning(
-                "Skipping requested LoRa " + adapter + ", as it's requested strength (" + val + ") is not a number"
-            )
-            continue
-        if strength < 0.0:
-            logger.warning(
-                "Clipping strength of LoRa " + adapter + " to 0.0, as it's requested strength (" + val + ") is negative"
-            )
+            logger.warning(f"Skipping requested LoRa {adapter}, as it's requested strength ({val}) is not a number")
+            raise LoraLoadingError(error_message)
+
+        if strength < 0.0: 
+            error_message = f"Clipping strength of LoRa " + adapter + " to 0.0, as it's requested strength (" + val + ") is negative"
+            logger.warning(error_message)
             strength = 0.0
         try:
             # TODO: If we decide to keep LoRas loaded (and only set their weight to 0), make sure that reloading them causes no performance hit or other issues
             pipeline.load_lora_weights(adapter, adapter_name=adapter)
         except Exception as e:
-            logger.warning(
-                "Unable to load LoRas for adapter '" + adapter + "' (" + type(e).__name__ + ")"
-            )
-            continue
+            error_message = "Unable to load LoRas for adapter '" + adapter + "' (" + type(e).__name__ + ")"
+            logger.warning(error_message)
+            raise LoraLoadingError(error_message)
+
         # Remember adapter name and their associated strength
         adapters.append(adapter)
         strengths.append(strength)
