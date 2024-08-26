@@ -103,7 +103,7 @@ async def SegmentAnything2(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=http_error("Segment Anything 2 error"),
         )
-    
+
     # Return masks sorted by descending score as JSON.
     sorted_ind = np.argsort(scores)[::-1]
     return {
