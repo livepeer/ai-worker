@@ -37,7 +37,7 @@ async def SegmentAnything2(
     box: Annotated[str, Form()] = None,
     mask_input: Annotated[str, Form()] = None,
     multimask_output: Annotated[bool, Form()] = True,
-    return_logits: Annotated[bool, Form()] = False,
+    return_logits: Annotated[bool, Form()] = True,
     normalize_coords: Annotated[bool, Form()] = True,
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
@@ -72,7 +72,7 @@ async def SegmentAnything2(
 
     try:
         image = Image.open(image.file)
-        masks, iou_predictions, low_res_masks = pipeline(
+        masks, scores, low_res_mask_logits = pipeline(
             image,
             point_coords=point_coords,
             point_labels=point_labels,
@@ -89,9 +89,9 @@ async def SegmentAnything2(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=http_error("Segment Anything 2 error"),
         )
-
+    sorted_ind = np.argsort(scores)[::-1]
     return {
-        "masks": str(masks.tolist()),
-        "iou_predictions": str(iou_predictions.tolist()),
-        "low_res_masks": str(low_res_masks.tolist()),
+        "masks": str(masks[sorted_ind].tolist()),
+        "scores": str(scores[sorted_ind].tolist()),
+        "logits": str(low_res_mask_logits[sorted_ind].tolist()),
     }

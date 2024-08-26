@@ -530,7 +530,7 @@
                     "return_logits": {
                         "type": "boolean",
                         "title": "Return Logits",
-                        "default": false
+                        "default": true
                     },
                     "normalize_coords": {
                         "type": "boolean",
@@ -809,20 +809,20 @@
                         "type": "string",
                         "title": "Masks"
                     },
-                    "iou_predictions": {
+                    "scores": {
                         "type": "string",
-                        "title": "Iou Predictions"
+                        "title": "Scores"
                     },
-                    "low_res_masks": {
+                    "logits": {
                         "type": "string",
-                        "title": "Low Res Masks"
+                        "title": "Logits"
                     }
                 },
                 "type": "object",
                 "required": [
                     "masks",
-                    "iou_predictions",
-                    "low_res_masks"
+                    "scores",
+                    "logits"
                 ],
                 "title": "MasksResponse"
             },

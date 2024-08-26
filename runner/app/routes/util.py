@@ -26,8 +26,8 @@ class VideoResponse(BaseModel):
 
 class MasksResponse(BaseModel):
     masks: str
-    iou_predictions: str
-    low_res_masks: str
+    scores: str
+    logits: str
 
 
 class chunk(BaseModel):
