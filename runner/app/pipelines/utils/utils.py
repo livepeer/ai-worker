@@ -199,7 +199,7 @@ def load_loras(pipeline: any, requested_lora: str, loaded_loras: list) -> list:
     try:
         lora = json.loads(requested_lora)
     except Exception as e:
-        error_message = f"Unable to parse '{requested_lora}' as JSON. Continuing inference without loading this LoRa"
+        error_message = f"Unable to parse '{requested_lora}' as JSON."
         logger.warning(error_message)
         raise LoraLoadingError(error_message)
 
