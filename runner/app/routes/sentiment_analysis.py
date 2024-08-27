@@ -43,7 +43,8 @@ def handle_pipeline_error(e: Exception) -> JSONResponse:
 @router.post(
     "/sentiment-analysis",
     response_model=SentimentAnalysisResponse,
-    responses=RESPONSES
+    responses=RESPONSES,
+    description="Analyze the sentiment of the provided text."
 )
 @router.post(
     "/sentiment-analysis/",
