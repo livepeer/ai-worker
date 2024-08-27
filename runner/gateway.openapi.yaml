@@ -349,6 +349,11 @@ components:
           title: Model Id
           description: Hugging Face model ID used for image generation.
           default: ''
+        loras:
+          type: string
+          title: Loras
+          description: A lora and weight to use for image generation.
+          default: ''
         strength:
           type: number
           title: Strength
@@ -652,6 +657,12 @@ components:
           type: string
           title: Model Id
           description: Hugging Face model ID used for image generation.
+          default: ''
+        loras:
+          type: string
+          title: Loras
+          description: 'A lora and weight to use for image generation. example: {
+            "nerijs/pixel-art-xl" : 1.2 } '
           default: ''
         prompt:
           type: string
