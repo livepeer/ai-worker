@@ -17,7 +17,6 @@ logger = logging.getLogger(__name__)
 RESPONSES = {
     status.HTTP_400_BAD_REQUEST: {"model": HTTPError},
     status.HTTP_401_UNAUTHORIZED: {"model": HTTPError},
-    status.HTTP_413_REQUEST_ENTITY_TOO_LARGE: {"model": HTTPError},
     status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPError},
 }
 
