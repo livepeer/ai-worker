@@ -32,12 +32,12 @@ SERVERS = [
 ]
 
 
-def get_latest_git_release_tag():
+def get_latest_git_release_tag() -> str:
     """
     Get the latest Git release tag that follows semantic versioning.
 
     Returns:
-        str: The latest Git release tag, or None if an error occurred.
+        The latest Git release tag, or None if an error occurred.
     """
     try:
         command = (
@@ -54,7 +54,7 @@ def get_latest_git_release_tag():
         return None
 
 
-def translate_to_gateway(openapi):
+def translate_to_gateway(openapi: dict) -> dict:
     """Translate the OpenAPI schema from the 'runner' entrypoint to the 'gateway'
     entrypoint created by the https://github.com/livepeer/go-livepeer package.
 
@@ -66,10 +66,10 @@ def translate_to_gateway(openapi):
             response.
 
     Args:
-        openapi (dict): The OpenAPI schema to be translated.
+        openapi: The OpenAPI schema to be translated.
 
     Returns:
-        dict: The translated OpenAPI schema.
+        The translated OpenAPI schema.
     """
     # Remove 'health' related endpoints and schemas.
     openapi["paths"].pop("/health")
@@ -101,15 +101,15 @@ def translate_to_gateway(openapi):
     return openapi
     
 
-def write_openapi(fname, entrypoint="runner", version="0.0.0"):
+def write_openapi(fname: str, entrypoint: str = "runner", version: str = "0.0.0"):
     """Write OpenAPI schema to file.
 
     Args:
-        fname (str): The file name to write to. The file extension determines the file
+        fname: The file name to write to. The file extension determines the file
             type. Either 'json' or 'yaml'.
-        entrypoint (str): The entrypoint to generate the OpenAPI schema for, either
+        entrypoint: The entrypoint to generate the OpenAPI schema for, either
             'gateway' or 'runner'. Default is 'runner'.
-        version (str): The version to set in the OpenAPI schema. Default is '0.0.0'.
+        version: The version to set in the OpenAPI schema. Default is '0.0.0'.
     """
     app.include_router(health.router)
     app.include_router(text_to_image.router)
