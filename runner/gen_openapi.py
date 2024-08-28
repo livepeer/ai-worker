@@ -29,6 +29,10 @@ SERVERS = [
         "url": "https://dream-gateway.livepeer.cloud",
         "description": "Livepeer Cloud Community Gateway",
     },
+    {
+        "url": "https://livepeer.studio/api/beta/generate",
+        "description": "Livepeer Studio Gateway",
+    }
 ]
 
 
