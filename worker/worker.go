@@ -326,7 +326,7 @@ func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endp
 
 	name := dockerContainerName(pipeline, modelID)
 	slog.Info("Starting external container", slog.String("name", name), slog.String("modelID", modelID))
-	w.externalContainers[name] = rc
+	w.externalContainers[endpoint.URL] = rc
 
 	return nil
 }
