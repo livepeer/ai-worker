@@ -9,8 +9,8 @@ require (
 	github.com/docker/go-connections v0.4.0
 	github.com/getkin/kin-openapi v0.124.0
 	github.com/go-chi/chi/v5 v5.0.12
+	github.com/google/uuid v1.5.0
 	github.com/oapi-codegen/runtime v1.1.1
-	github.com/thanhpk/randstr v1.0.6
 	github.com/vincent-petithory/dataurl v1.0.0
 )
 
@@ -23,7 +23,6 @@ require (
 	github.com/go-openapi/jsonpointer v0.20.2 // indirect
 	github.com/go-openapi/swag v0.22.8 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/google/uuid v1.5.0 // indirect
 	github.com/invopop/yaml v0.2.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect

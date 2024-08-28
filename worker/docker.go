@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 	"sync"
@@ -15,7 +16,7 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
-	"github.com/thanhpk/randstr"
+	"github.com/google/uuid"
 )
 
 const containerModelDir = "/models"
@@ -190,6 +191,7 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	gpuOpts := opts.GpuOpts{}
 	gpuOpts.Set("device=" + gpu)
 
+	// NOTE: We currently allow only one container per GPU.
 	containerHostPort := containerHostPorts[pipeline][:3] + gpu
 	hostConfig := &container.HostConfig{
 		Resources: container.Resources{
@@ -313,10 +315,11 @@ func removeExistingContainers(ctx context.Context, client *client.Client) error 
 	return nil
 }
 
+// dockerContainerName generates a unique container name based on the pipeline, model ID, and a random UUID.
 func dockerContainerName(pipeline string, modelID string) string {
-	// text-to-image, stabilityai/sd-turbo -> text-to-image_stabilityai_sd-turbo
-	// image-to-video, stabilityai/stable-video-diffusion-img2vid-xt -> image-to-video_stabilityai_stable-video-diffusion-img2vid-xt
-	return strings.ReplaceAll(pipeline+"_"+modelID+"_"+randstr.String(10), "/", "_")
+	uuid := uuid.New().String()
+	sanitizedModelID := strings.NewReplacer("/", "-", "_", "-").Replace(modelID)
+	return fmt.Sprintf("%s_%s_%s", pipeline, sanitizedModelID, uuid)
 }
 
 func dockerRemoveContainer(client *client.Client, containerID string) error {
