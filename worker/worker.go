@@ -324,9 +324,9 @@ func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endp
 		return err
 	}
 
-	name := dockerContainerName(pipeline, modelID)
+	name := dockerContainerName(pipeline, modelID, endpoint.URL)
 	slog.Info("Starting external container", slog.String("name", name), slog.String("modelID", modelID))
-	w.externalContainers[endpoint.URL] = rc
+	w.externalContainers[name] = rc
 
 	return nil
 }
@@ -372,6 +372,7 @@ func (w *Worker) borrowContainer(ctx context.Context, pipeline, modelID string) 
 	for _, rc := range w.externalContainers {
 		if rc.Pipeline == pipeline && rc.ModelID == modelID {
 			w.mu.Unlock()
+			// Assume external containers can handle concurrent in-flight requests.
 			return rc, nil
 		}
 	}
