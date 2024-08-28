@@ -11,7 +11,6 @@ require (
 	github.com/go-chi/chi/v5 v5.0.12
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/vincent-petithory/dataurl v1.0.0
-	golang.org/x/exp v0.0.0-20240823005443-9b4947da3948
 )
 
 require (
