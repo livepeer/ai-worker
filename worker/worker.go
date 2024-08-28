@@ -362,7 +362,7 @@ func (w *Worker) HasCapacity(pipeline, modelID string) bool {
 		}
 	}
 
-	//no managed or external containers have capacity
+	// No managed or external containers have capacity
 	return false
 }
 

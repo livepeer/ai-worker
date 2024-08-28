@@ -161,7 +161,7 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 
 	// NOTE: We currently allow only one container per GPU for each pipeline.
 	containerHostPort := containerHostPorts[pipeline][:3] + gpu
-	containerName := fmt.Sprintf("%s_%s", dockerContainerName(pipeline, modelID), containerHostPort)
+	containerName := dockerContainerName(pipeline, modelID, containerHostPort)
 
 	slog.Info("Starting managed container", slog.String("gpu", gpu), slog.String("name", containerName), slog.String("modelID", modelID))
 
@@ -313,9 +313,12 @@ func removeExistingContainers(ctx context.Context, client *client.Client) error 
 	return nil
 }
 
-// dockerContainerName generates a unique container name based on the pipeline, model ID
-func dockerContainerName(pipeline string, modelID string) string {
+// dockerContainerName generates a unique container name based on the pipeline, model ID, and an optional suffix.
+func dockerContainerName(pipeline string, modelID string, suffix ...string) string {
 	sanitizedModelID := strings.NewReplacer("/", "-", "_", "-").Replace(modelID)
+	if len(suffix) > 0 {
+		return fmt.Sprintf("%s_%s_%s", pipeline, sanitizedModelID, suffix[0])
+	}
 	return fmt.Sprintf("%s_%s", pipeline, sanitizedModelID)
 }
 
