@@ -305,7 +305,7 @@ func (w *Worker) AudioToText(ctx context.Context, req AudioToTextMultipartReques
 }
 
 func (w *Worker) SegmentAnything2(ctx context.Context, req SegmentAnything2MultipartRequestBody) (*MasksResponse, error) {
-	c, err := w.borrowContainer(ctx, "segment anything 2", *req.ModelId)
+	c, err := w.borrowContainer(ctx, "segment-anything-2", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
