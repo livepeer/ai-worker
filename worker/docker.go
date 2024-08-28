@@ -16,7 +16,6 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
-	"github.com/google/uuid"
 )
 
 const containerModelDir = "/models"
@@ -118,7 +117,6 @@ func (m *DockerManager) Borrow(ctx context.Context, pipeline, modelID string) (*
 		}
 	}
 
-	containerName := dockerContainerName(pipeline, modelID)
 	// The container does not exist so try to create it
 	var err error
 	// TODO: Optimization flags for dynamically loaded (borrowed) containers are not currently supported due to startup delays.
@@ -128,7 +126,7 @@ func (m *DockerManager) Borrow(ctx context.Context, pipeline, modelID string) (*
 	}
 
 	// Remove container so it is unavailable until Return() is called
-	delete(m.containers, containerName)
+	delete(m.containers, rc.Name)
 	return rc, nil
 }
 
@@ -156,12 +154,14 @@ func (m *DockerManager) HasCapacity(ctx context.Context, pipeline, modelID strin
 }
 
 func (m *DockerManager) createContainer(ctx context.Context, pipeline string, modelID string, keepWarm bool, optimizationFlags OptimizationFlags) (*RunnerContainer, error) {
-	containerName := dockerContainerName(pipeline, modelID)
-
 	gpu, err := m.allocGPU(ctx)
 	if err != nil {
 		return nil, err
 	}
+
+	// NOTE: We currently allow only one container per GPU for each pipeline.
+	containerHostPort := containerHostPorts[pipeline][:3] + gpu
+	containerName := fmt.Sprintf("%s_%s", dockerContainerName(pipeline, modelID), containerHostPort)
 
 	slog.Info("Starting managed container", slog.String("gpu", gpu), slog.String("name", containerName), slog.String("modelID", modelID))
 
@@ -191,8 +191,6 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	gpuOpts := opts.GpuOpts{}
 	gpuOpts.Set("device=" + gpu)
 
-	// NOTE: We currently allow only one container per GPU.
-	containerHostPort := containerHostPorts[pipeline][:3] + gpu
 	hostConfig := &container.HostConfig{
 		Resources: container.Resources{
 			DeviceRequests: gpuOpts.Value(),
@@ -315,11 +313,10 @@ func removeExistingContainers(ctx context.Context, client *client.Client) error 
 	return nil
 }
 
-// dockerContainerName generates a unique container name based on the pipeline, model ID, and a random UUID.
+// dockerContainerName generates a unique container name based on the pipeline, model ID
 func dockerContainerName(pipeline string, modelID string) string {
-	uuid := uuid.New().String()
 	sanitizedModelID := strings.NewReplacer("/", "-", "_", "-").Replace(modelID)
-	return fmt.Sprintf("%s_%s_%s", pipeline, sanitizedModelID, uuid)
+	return fmt.Sprintf("%s_%s", pipeline, sanitizedModelID)
 }
 
 func dockerRemoveContainer(client *client.Client, containerID string) error {
