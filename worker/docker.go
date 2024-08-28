@@ -3,7 +3,10 @@ package worker
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -150,12 +153,27 @@ func (m *DockerManager) HasCapacity(ctx context.Context, pipeline, modelID strin
 	return err == nil
 }
 
+// ModelExists checks that the models directory and specific model folder exists before loading a container or processing a request
+func (m *DockerManager) ModelExists(modelID string) bool {
+	modelPathCheck := filepath.Join(m.modelDir, "models--"+strings.ReplaceAll(modelID, "/", "--"))
+	if _, err := os.Stat(modelPathCheck); os.IsNotExist(err) {
+		slog.Error(fmt.Sprintf("model %s does not exist at %s", modelID, modelPathCheck))
+		return false
+	} else {
+		return true
+	}
+}
+
 func (m *DockerManager) createContainer(ctx context.Context, pipeline string, modelID string, keepWarm bool, optimizationFlags OptimizationFlags) (*RunnerContainer, error) {
 	containerName := dockerContainerName(pipeline, modelID)
 
 	gpu, err := m.allocGPU(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	if !m.ModelExists(modelID) {
+		return nil, fmt.Errorf("model %s does not exist", modelID)
 	}
 
 	slog.Info("Starting managed container", slog.String("gpu", gpu), slog.String("name", containerName), slog.String("modelID", modelID))
