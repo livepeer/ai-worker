@@ -107,7 +107,7 @@ async def SegmentAnything2(
     # Return masks sorted by descending score as JSON.
     sorted_ind = np.argsort(scores)[::-1]
     return {
-        "masks":  json.dumps(masks[sorted_ind].tolist()),
-        "scores":  json.dumps(scores[sorted_ind].tolist()),
-        "logits":  json.dumps(low_res_mask_logits[sorted_ind].tolist()),
+        "masks":  str(masks[sorted_ind].tolist()),
+        "scores":  str(scores[sorted_ind].tolist()),
+        "logits":  str(low_res_mask_logits[sorted_ind].tolist()),
     }
