@@ -1,4 +1,5 @@
 import json
+import numpy as np
 import logging
 import os
 from typing import Annotated
@@ -28,14 +29,14 @@ RESPONSES = {
 }
 
 
-@router.post("/sam2", response_model=MasksResponse, responses=RESPONSES)
+@router.post("/segment-anything-2", response_model=MasksResponse, responses=RESPONSES)
 @router.post(
-    "/sam2/",
+    "/segment-anything-2/",
     response_model=MasksResponse,
     responses=RESPONSES,
     include_in_schema=False,
 )
-async def SAM2(
+async def SegmentAnything2(
     image: Annotated[UploadFile, File()],
     model_id: Annotated[str, Form()] = "",
     point_coords: Annotated[str, Form()] = None,
@@ -43,7 +44,7 @@ async def SAM2(
     box: Annotated[str, Form()] = None,
     mask_input: Annotated[str, Form()] = None,
     multimask_output: Annotated[bool, Form()] = True,
-    return_logits: Annotated[bool, Form()] = False,
+    return_logits: Annotated[bool, Form()] = True,
     normalize_coords: Annotated[bool, Form()] = True,
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
@@ -79,7 +80,7 @@ async def SAM2(
 
     try:
         image = Image.open(image.file)
-        masks, iou_predictions, low_res_masks = pipeline(
+        masks, scores, low_res_mask_logits = pipeline(
             image,
             point_coords=point_coords,
             point_labels=point_labels,
@@ -90,7 +91,7 @@ async def SAM2(
             normalize_coords=normalize_coords,
         )
     except Exception as e:
-        logger.error(f"SAM2 error: {e}")
+        logger.error(f"Segment Anything 2 error: {e}")
         logger.exception(e)
         if isinstance(e, InferenceError):
             return JSONResponse(
@@ -100,11 +101,13 @@ async def SAM2(
 
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=http_error("SAM2 error"),
+            content=http_error("Segment Anything 2 error"),
         )
-
+    
+    # Return masks sorted by descending score as JSON.
+    sorted_ind = np.argsort(scores)[::-1]
     return {
-        "masks": json.dumps(masks.tolist()),
-        "iou_predictions": json.dumps(iou_predictions.tolist()),
-        "low_res_masks": json.dumps(low_res_masks.tolist()),
+        "masks":  json.dumps(masks[sorted_ind].tolist()),
+        "scores":  json.dumps(scores[sorted_ind].tolist()),
+        "logits":  json.dumps(low_res_mask_logits[sorted_ind].tolist()),
     }

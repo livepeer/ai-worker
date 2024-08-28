@@ -10,7 +10,7 @@ from sam2.sam2_image_predictor import SAM2ImagePredictor
 logger = logging.getLogger(__name__)
 
 
-class SAM2Pipeline(Pipeline):
+class SegmentAnything2Pipeline(Pipeline):
     def __init__(self, model_id: str):
         self.model_id = model_id
 
@@ -35,4 +35,4 @@ class SAM2Pipeline(Pipeline):
         return prediction
 
     def __str__(self) -> str:
-        return f"Sam2 model_id={self.model_id}"
+        return f"Segment Anything 2 model_id={self.model_id}"
