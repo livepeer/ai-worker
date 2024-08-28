@@ -27,7 +27,12 @@ RESPONSES = {
 
 # TODO: Make model_id and other None properties optional once Go codegen tool supports
 # OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
-@router.post("/upscale", response_model=ImageResponse, responses=RESPONSES)
+@router.post(
+    "/upscale",
+    response_model=ImageResponse,
+    responses=RESPONSES,
+    description="Upscale an image by increasing its resolution.",
+)
 @router.post(
     "/upscale/",
     response_model=ImageResponse,
@@ -50,14 +55,20 @@ async def upscale(
     safety_check: Annotated[
         bool,
         Form(
-            description="Perform a safety check to estimate if generated images could be offensive or harmful."
+            description=(
+                "Perform a safety check to estimate if generated images could be "
+                "offensive or harmful."
+            )
         ),
     ] = True,
     seed: Annotated[int, Form(description="Seed for random number generation.")] = None,
     num_inference_steps: Annotated[
         int,
         Form(
-            description="Number of denoising steps. More steps usually lead to higher quality images but slower inference. Modulated by strength."
+            description=(
+                "Number of denoising steps. More steps usually lead to higher quality "
+                "images but slower inference. Modulated by strength."
+            )
         ),
     ] = 75,  # NOTE: Hardcoded due to varying pipeline values.
     pipeline: Pipeline = Depends(get_pipeline),

@@ -1,7 +1,7 @@
 """This module provides a function to enable StableFast optimization for the pipeline.
 
 For more information, see the DeepCache project on GitHub: https://github.com/chengzeyi/stable-fast
-"""
+"""  # noqa: E501
 
 import logging
 
@@ -25,13 +25,13 @@ def compile_model(pipe):
     # NOTE: Disable Triton if kernel generation, compilation, and fine-tuning are slow,
     # especially due to insufficient GPU VRAM or outdated architecture.
     try:
-        import xformers
+        import xformers  # noqa: F401
 
         config.enable_xformers = True
     except ImportError:
         logger.info("xformers not installed, skip")
     try:
-        import triton
+        import triton   # noqa: F401
 
         config.enable_triton = True
     except ImportError:

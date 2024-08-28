@@ -47,7 +47,12 @@ def handle_pipeline_error(e: Exception) -> JSONResponse:
     )
 
 
-@router.post("/audio-to-text", response_model=TextResponse, responses=RESPONSES)
+@router.post(
+    "/audio-to-text",
+    response_model=TextResponse,
+    responses=RESPONSES,
+    description="Transcribe audio files to text.",
+)
 @router.post(
     "/audio-to-text/",
     response_model=TextResponse,

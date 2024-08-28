@@ -67,13 +67,16 @@ def bench_pipeline(
 
         print(f"inference {i} {batch_size=} time: {inference_time[i]:.3f}s")
         print(
-            f"inference {i} {batch_size=} time per output: {inference_time_per_output[i]:.3f}s"
+            f"inference {i} {batch_size=} time per output: "
+            f"{inference_time_per_output[i]:.3f}s"
         )
         print(
-            f"inference {i} {batch_size=} max GPU memory allocated: {max_mem_allocated[i]:.3f}GiB"
+            f"inference {i} {batch_size=} max GPU memory allocated: "
+            f"{max_mem_allocated[i]:.3f}GiB"
         )
         print(
-            f"inference {i} {batch_size=} max GPU memory reserved: {max_mem_reserved[i]:.3f}GiB"
+            f"inference {i} {batch_size=} max GPU memory reserved: "
+            f"{max_mem_reserved[i]:.3f}GiB"
         )
 
     return BenchMetrics(
@@ -116,7 +119,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     print(
-        f"{args.pipeline=} {args.model_id=} {args.runs=} {args.batch_size=} {args.num_inference_steps=}"
+        f"{args.pipeline=} {args.model_id=} {args.runs=} {args.batch_size=} "
+        f"{args.num_inference_steps=}"
     )
 
     start = time()
@@ -150,13 +154,16 @@ if __name__ == "__main__":
     if os.getenv("SFAST", "").strip().lower() == "true":
         print(f"avg warmup inference time: {warmup_metrics.inference_time:.3f}s")
         print(
-            f"avg warmup inference time per output: {warmup_metrics.inference_time_per_output:.3f}s"
+            f"avg warmup inference time per output: "
+            f"{warmup_metrics.inference_time_per_output:.3f}s"
         )
         print(
-            f"avg warmup inference max GPU memory allocated: {warmup_metrics.max_mem_allocated:.3f}GiB"
+            f"avg warmup inference max GPU memory allocated: "
+            f"{warmup_metrics.max_mem_allocated:.3f}GiB"
         )
         print(
-            f"avg warmup inference max GPU memory reserved: {warmup_metrics.max_mem_reserved:.3f}GiB"
+            f"avg warmup inference max GPU memory reserved: "
+            f"{warmup_metrics.max_mem_reserved:.3f}GiB"
         )
 
     print(f"avg inference time: {metrics.inference_time:.3f}s")

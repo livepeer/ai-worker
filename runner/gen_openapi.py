@@ -1,7 +1,6 @@
 import argparse
 import copy
 import json
-import os
 
 import yaml
 from app.main import app, use_route_names_as_operation_ids
@@ -15,6 +14,15 @@ from app.routes import (
     upscale,
 )
 from fastapi.openapi.utils import get_openapi
+import subprocess
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger(__name__)
 
 # Specify Endpoints for OpenAPI schema generation.
 SERVERS = [
@@ -25,7 +33,29 @@ SERVERS = [
 ]
 
 
-def translate_to_gateway(openapi):
+def get_latest_git_release_tag() -> str:
+    """
+    Get the latest Git release tag that follows semantic versioning.
+
+    Returns:
+        The latest Git release tag, or None if an error occurred.
+    """
+    try:
+        command = (
+            "git tag -l 'v*' | grep -E '^v[0-9]+\\.[0-9]+\\.[0-9]+$' | sort -V | "
+            "tail -n 1"
+        )
+        latest_tag = subprocess.check_output(command, shell=True, text=True)
+        return latest_tag.strip()
+    except subprocess.CalledProcessError as e:
+        logger.error("Error occurred while getting the latest git tag: %s", e)
+        return None
+    except Exception as e:
+        logger.error("Unexpected error: %s", e)
+        return None
+
+
+def translate_to_gateway(openapi: dict) -> dict:
     """Translate the OpenAPI schema from the 'runner' entrypoint to the 'gateway'
     entrypoint created by the https://github.com/livepeer/go-livepeer package.
 
@@ -37,13 +67,14 @@ def translate_to_gateway(openapi):
             response.
 
     Args:
-        openapi (dict): The OpenAPI schema to be translated.
+        openapi: The OpenAPI schema to be translated.
 
     Returns:
-        dict: The translated OpenAPI schema.
+        The translated OpenAPI schema.
     """
-    # Remove 'health' endpoint
+    # Remove 'health' related endpoints and schemas.
     openapi["paths"].pop("/health")
+    openapi["components"]["schemas"].pop("HealthCheck")
 
     # Enforce 'model_id' in all endpoints
     for _, methods in openapi["paths"].items():
@@ -71,14 +102,15 @@ def translate_to_gateway(openapi):
     return openapi
 
 
-def write_openapi(fname, entrypoint="runner"):
+def write_openapi(fname: str, entrypoint: str = "runner", version: str = "0.0.0"):
     """Write OpenAPI schema to file.
 
     Args:
-        fname (str): The file name to write to. The file extension determines the file
+        fname: The file name to write to. The file extension determines the file
             type. Either 'json' or 'yaml'.
-        entrypoint (str): The entrypoint to generate the OpenAPI schema for, either
+        entrypoint: The entrypoint to generate the OpenAPI schema for, either
             'gateway' or 'runner'. Default is 'runner'.
+        version: The version to set in the OpenAPI schema. Default is '0.0.0'.
     """
     app.include_router(health.router)
     app.include_router(text_to_image.router)
@@ -90,10 +122,10 @@ def write_openapi(fname, entrypoint="runner"):
 
     use_route_names_as_operation_ids(app)
 
-    print(f"Generating OpenAPI schema for '{entrypoint}' entrypoint...")
+    logger.info(f"Generating OpenAPI schema for '{entrypoint}' entrypoint...")
     openapi = get_openapi(
         title="Livepeer AI Runner",
-        version="0.1.0",
+        version=version,
         openapi_version=app.openapi_version,
         description="An application to run AI pipelines",
         routes=app.routes,
@@ -102,13 +134,15 @@ def write_openapi(fname, entrypoint="runner"):
 
     # Translate OpenAPI schema to 'gateway' side entrypoint if requested.
     if entrypoint == "gateway":
-        print("Translating OpenAPI schema from 'runner' to 'gateway' entrypoint...")
+        logger.info(
+            "Translating OpenAPI schema from 'runner' to 'gateway' entrypoint..."
+        )
         openapi = translate_to_gateway(openapi)
-        fname = os.path.splitext(fname)[0] + "_gateway" + os.path.splitext(fname)[1]
+        fname = f"gateway.{fname}"
 
     # Write OpenAPI schema to file.
     with open(fname, "w") as f:
-        print(f"Writing OpenAPI schema to '{fname}'...")
+        logger.info(f"Writing OpenAPI schema to '{fname}'...")
         if fname.endswith(".yaml"):
             yaml.dump(
                 openapi,
@@ -121,7 +155,7 @@ def write_openapi(fname, entrypoint="runner"):
                 f,
                 indent=4,  # Make human readable.
             )
-        print("OpenAPI schema generated and saved.")
+        logger.info("OpenAPI schema generated and saved.")
 
 
 if __name__ == "__main__":
@@ -130,19 +164,28 @@ if __name__ == "__main__":
         "--type",
         type=str,
         choices=["json", "yaml"],
-        default="json",
-        help="File type to write to, either 'json' or 'yaml'. Default is 'json'",
+        default="yaml",
+        help="File type to write to, either 'json' or 'yaml'. Default is 'yaml'",
     )
     parser.add_argument(
         "--entrypoint",
         type=str,
-        choices=["gateway", "runner"],
-        default="runner",
+        choices=["runner", "gateway"],
+        default=["runner", "gateway"],
+        nargs="+",
         help=(
-            "The entrypoint to generate the OpenAPI schema for, either 'gateway' or "
-            "'runner'. Default is 'runner'",
+            "The entrypoint to generate the OpenAPI schema for, options are 'runner' "
+            "and 'gateway'. Default is both."
         ),
     )
     args = parser.parse_args()
 
-    write_openapi(f"openapi.{args.type.lower()}", args.entrypoint)
+    # Set the 'version' to the latest Git release tag.
+    latest_tag = get_latest_git_release_tag()
+
+    # Generate orchestrator and Gateway facing OpenAPI schemas.
+    logger.info("Generating OpenAPI schema version: $latest_tag")
+    for entrypoint in args.entrypoint:
+        write_openapi(
+            f"openapi.{args.type.lower()}", entrypoint=entrypoint, version=latest_tag
+        )
