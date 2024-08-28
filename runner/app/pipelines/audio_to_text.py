@@ -54,7 +54,7 @@ class AudioToTextPipeline(Pipeline):
 
         processor = AutoProcessor.from_pretrained(model_id, cache_dir=get_model_dir())
 
-        self.ldm = pipeline(
+        self.tm = pipeline(
             "automatic-speech-recognition",
             model=model,
             tokenizer=processor.tokenizer,
@@ -76,7 +76,7 @@ class AudioToTextPipeline(Pipeline):
             converted_bytes = audio_converter.convert(audio, "mp3")
             audio_converter.write_bytes_to_file(converted_bytes, audio)
 
-        return self.ldm(audio.file.read(), **kwargs)
+        return self.tm(audio.file.read(), **kwargs)
 
     def __str__(self) -> str:
         return f"AudioToTextPipeline model_id={self.model_id}"
