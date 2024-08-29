@@ -32,7 +32,7 @@ SERVERS = [
     {
         "url": "https://livepeer.studio/api/beta/generate",
         "description": "Livepeer Studio Gateway",
-    }
+    },
 ]
 
 
@@ -180,10 +180,16 @@ if __name__ == "__main__":
             "and 'gateway'. Default is both."
         ),
     )
+    parser.add_argument(
+        "--version",
+        type=str,
+        default=None,
+        help="The OpenAPI schema version. Default is latest Git semver tag.",
+    )
     args = parser.parse_args()
 
     # Set the 'version' to the latest Git release tag.
-    latest_tag = get_latest_git_release_tag()
+    latest_tag = args.version if args.version else get_latest_git_release_tag()
 
     # Generate orchestrator and Gateway facing OpenAPI schemas.
     logger.info("Generating OpenAPI schema version: $latest_tag")
