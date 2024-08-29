@@ -60,6 +60,9 @@ function download_all_models() {
 
     # Download image-to-video models.
     huggingface-cli download stabilityai/stable-video-diffusion-img2vid-xt --include "*.fp16.safetensors" "*.json" --cache-dir models
+
+    # Download audio generation model
+    huggingface-cli download stabilityai/stable-audio-open-1.0 --include "*.safetensors" "*.json" "*.bin" --cache-dir models
 }
 
 # Enable HF transfer acceleration.
