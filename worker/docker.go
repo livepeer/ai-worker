@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 	"sync"
@@ -31,11 +32,11 @@ const containerCreator = "ai-worker"
 // using the GPU we stop it so we don't have to worry about having enough ports
 var containerHostPorts = map[string]string{
 	"text-to-image":      "8000",
-	"image-to-image":     "8001",
-	"image-to-video":     "8002",
-	"upscale":            "8003",
-	"audio-to-text":      "8004",
-	"segment-anything-2": "8005",
+	"image-to-image":     "8100",
+	"image-to-video":     "8200",
+	"upscale":            "8300",
+	"audio-to-text":      "8400",
+	"segment-anything-2": "8500",
 }
 
 type DockerManager struct {
@@ -110,40 +111,42 @@ func (m *DockerManager) Borrow(ctx context.Context, pipeline, modelID string) (*
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	containerName := dockerContainerName(pipeline, modelID)
-	rc, ok := m.containers[containerName]
-	if !ok {
-		// The container does not exist so try to create it
-		var err error
-		// TODO: Optimization flags for dynamically loaded (borrowed) containers are not currently supported due to startup delays.
-		rc, err = m.createContainer(ctx, pipeline, modelID, false, map[string]EnvValue{})
-		if err != nil {
-			return nil, err
+	for _, runner := range m.containers {
+		if runner.Pipeline == pipeline && runner.ModelID == modelID {
+			delete(m.containers, runner.Name)
+			return runner, nil
 		}
 	}
 
+	// The container does not exist so try to create it
+	var err error
+	// TODO: Optimization flags for dynamically loaded (borrowed) containers are not currently supported due to startup delays.
+	rc, err := m.createContainer(ctx, pipeline, modelID, false, map[string]EnvValue{})
+	if err != nil {
+		return nil, err
+	}
+
 	// Remove container so it is unavailable until Return() is called
-	delete(m.containers, containerName)
+	delete(m.containers, rc.Name)
 	return rc, nil
 }
 
 func (m *DockerManager) Return(rc *RunnerContainer) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.containers[dockerContainerName(rc.Pipeline, rc.ModelID)] = rc
+	m.containers[rc.Name] = rc
 }
 
 // HasCapacity checks if an unused managed container exists or if a GPU is available for a new container.
 func (m *DockerManager) HasCapacity(ctx context.Context, pipeline, modelID string) bool {
-	containerName := dockerContainerName(pipeline, modelID)
-
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	// Check if unused managed container exists for the requested model.
-	_, ok := m.containers[containerName]
-	if ok {
-		return true
+	for _, rc := range m.containers {
+		if rc.Pipeline == pipeline && rc.ModelID == modelID {
+			return true
+		}
 	}
 
 	// Check for available GPU to allocate for a new container for the requested model.
@@ -152,12 +155,14 @@ func (m *DockerManager) HasCapacity(ctx context.Context, pipeline, modelID strin
 }
 
 func (m *DockerManager) createContainer(ctx context.Context, pipeline string, modelID string, keepWarm bool, optimizationFlags OptimizationFlags) (*RunnerContainer, error) {
-	containerName := dockerContainerName(pipeline, modelID)
-
 	gpu, err := m.allocGPU(ctx)
 	if err != nil {
 		return nil, err
 	}
+
+	// NOTE: We currently allow only one container per GPU for each pipeline.
+	containerHostPort := containerHostPorts[pipeline][:3] + gpu
+	containerName := dockerContainerName(pipeline, modelID, containerHostPort)
 
 	slog.Info("Starting managed container", slog.String("gpu", gpu), slog.String("name", containerName), slog.String("modelID", modelID))
 
@@ -188,7 +193,6 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	gpuOpts := opts.GpuOpts{}
 	gpuOpts.Set("device=" + gpu)
 
-	containerHostPort := containerHostPorts[pipeline]
 	hostConfig := &container.HostConfig{
 		Resources: container.Resources{
 			DeviceRequests: gpuOpts.Value(),
@@ -257,7 +261,7 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 		containerTimeout: runnerContainerTimeout,
 	}
 
-	rc, err := NewRunnerContainer(ctx, cfg)
+	rc, err := NewRunnerContainer(ctx, cfg, containerName)
 	if err != nil {
 		dockerRemoveContainer(m.dockerClient, resp.ID)
 		return nil, err
@@ -317,10 +321,13 @@ func removeExistingContainers(ctx context.Context, client *client.Client) error 
 	return nil
 }
 
-func dockerContainerName(pipeline string, modelID string) string {
-	// text-to-image, stabilityai/sd-turbo -> text-to-image_stabilityai_sd-turbo
-	// image-to-video, stabilityai/stable-video-diffusion-img2vid-xt -> image-to-video_stabilityai_stable-video-diffusion-img2vid-xt
-	return strings.ReplaceAll(pipeline+"_"+modelID, "/", "_")
+// dockerContainerName generates a unique container name based on the pipeline, model ID, and an optional suffix.
+func dockerContainerName(pipeline string, modelID string, suffix ...string) string {
+	sanitizedModelID := strings.NewReplacer("/", "-", "_", "-").Replace(modelID)
+	if len(suffix) > 0 {
+		return fmt.Sprintf("%s_%s_%s", pipeline, sanitizedModelID, suffix[0])
+	}
+	return fmt.Sprintf("%s_%s", pipeline, sanitizedModelID)
 }
 
 func dockerRemoveContainer(client *client.Client, containerID string) error {
