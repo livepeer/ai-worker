@@ -1,81 +1,68 @@
-mport logging
-import os
-from typing import List, Tuple
+import logging
 import io
-
+import uuid
 import torch
-import soundfile as sf
+import torchaudio
+from einops import rearrange
+from fastapi import UploadFile
 from app.pipelines.base import Pipeline
 from app.pipelines.utils import get_model_dir, get_torch_device
-from fastapi import UploadFile
-from huggingface_hub import file_download
-from diffusers import StableAudioPipeline
+from stable_audio_tools import get_pretrained_model
+from stable_audio_tools.inference.generation import generate_diffusion_cond
 
 logger = logging.getLogger(__name__)
 
 class TextToAudioPipeline(Pipeline):
-    def __init__(self, model_id: str):
+    def __init__(self, model_id: str = "stabilityai/stable-audio-open-1.0"):
         self.model_id = model_id
-        kwargs = {}
+        self.device = get_torch_device()
+        
+        logger.info(f"Initializing TextToAudioPipeline with model_id={model_id}")
+        
+        self.model, self.model_config = self.load_model()
+        self.sample_rate = self.model_config["sample_rate"]
+        self.sample_size = self.model_config["sample_size"]
+        
+        logger.info(f"Model loaded. Sample rate: {self.sample_rate}, Sample size: {self.sample_size}")
 
-        torch_device = get_torch_device()
-        folder_name = file_download.repo_folder_name(
-            repo_id=model_id, repo_type="model"
+    def load_model(self):
+        logger.info("Loading model...")
+        model, model_config = get_pretrained_model(self.model_id)
+        model = model.to(self.device)
+        logger.info("Model loaded and moved to device successfully.")
+        return model, model_config
+
+    def __call__(self, prompt: str, seconds_total: int = 30, steps: int = 100, cfg_scale: float = 7) -> UploadFile:
+        logger.info(f"Generating audio for prompt: '{prompt}'")
+        logger.info(f"Parameters: Duration={seconds_total}s, Steps={steps}, CFG Scale={cfg_scale}")
+
+        conditioning = [{
+            "prompt": prompt,
+            "seconds_start": 0,
+            "seconds_total": seconds_total
+        }]
+
+        output = generate_diffusion_cond(
+            self.model,
+            steps=steps,
+            cfg_scale=cfg_scale,
+            conditioning=conditioning,
+            sample_size=self.sample_size,
+            sigma_min=0.3,
+            sigma_max=500,
+            sampler_type="dpmpp-3m-sde",
+            device=self.device
         )
-        folder_path = os.path.join(get_model_dir(), folder_name)
-        # Load fp16 variant if fp16 safetensors files are found in cache
-        has_fp16_variant = any(
-            ".fp16.safetensors" in fname
-            for _, _, files in os.walk(folder_path)
-            for fname in files
-        )
-        if torch_device != "cpu" and has_fp16_variant:
-            logger.info("TextToAudioPipeline loading fp16 variant for %s", model_id)
 
-            kwargs["torch_dtype"] = torch.float16
-            kwargs["variant"] = "fp16"
+        output = rearrange(output, "b d n -> d (b n)")
+        output = output.to(torch.float32).div(torch.max(torch.abs(output))).clamp(-1, 1).mul(32767).to(torch.int16).cpu()
 
-        if os.environ.get("BFLOAT16"):
-            logger.info("TextToAudioPipeline using bfloat16 precision for %s", model_id)
-            kwargs["torch_dtype"] = torch.bfloat16
+        buffer = io.BytesIO()
+        torchaudio.save(buffer, output, self.sample_rate, format="wav")
+        buffer.seek(0)
 
-        logger.info(f"Loading StableAudioPipeline with model: {model_id}")
-        self.tam = StableAudioPipeline.from_pretrained(
-            model_id,
-            cache_dir=get_model_dir(),
-            **kwargs
-        ).to(torch_device)
-
-    def __call__(self, prompt: str, **kwargs) -> Tuple[List[io.BytesIO], List[bool]]:
-        num_inference_steps = kwargs.get("num_inference_steps", 50)
-        audio_length_in_s = kwargs.get("audio_length_in_s", 10.0)
-        negative_prompt = kwargs.get("negative_prompt", None)
-        seed = kwargs.get("seed", None)
-
-        if seed is not None:
-            generator = torch.Generator(get_torch_device()).manual_seed(seed)
-            kwargs["generator"] = generator
-
-        audio = self.tam(
-            prompt=prompt,
-            negative_prompt=negative_prompt,
-            num_inference_steps=num_inference_steps,
-            audio_length_in_s=audio_length_in_s,
-            **kwargs
-        ).audios
-
-        audio_buffers = []
-        for output in audio:
-            output = output.cpu().numpy()
-            audio_buffer = io.BytesIO()
-            sf.write(audio_buffer, output, self.tam.sampling_rate, format='wav')
-            audio_buffer.seek(0)
-            audio_buffers.append(audio_buffer)
-
-        # StableAudioPipeline doesn't have a built-in safety checker
-        has_nsfw_concept = [False] * len(audio_buffers)
-
-        return audio_buffers, has_nsfw_concept
+        filename = f"generated_audio_{uuid.uuid4().hex}.wav"
+        return UploadFile(filename=filename, file=buffer)
 
     def __str__(self) -> str:
         return f"TextToAudioPipeline model_id={self.model_id}"
