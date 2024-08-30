@@ -255,7 +255,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TextToAudioParams'
+              $ref: '#/components/schemas/Body_text_to_audio_post'
         required: true
       responses:
         '200':
@@ -318,7 +318,32 @@ components:
       type: object
       required:
       - audio
-      title: Body_audio_to_text_audio_to_text_post
+      title: Body_audio_to_text_audio_to_text_post'
+    Body_text_to_audio_post:
+      properties:
+        prompt:
+          type: string
+          title: Prompt
+          description: Text prompt to generate audio from.
+        seconds_total:
+          type: integer
+          title: Seconds Total
+          description: Total duration of the generated audio in seconds.
+          default: 30
+        steps:
+          type: integer
+          title: Steps
+          description: Number of inference steps for audio generation.
+          default: 100
+        cfg_scale:
+          type: number
+          title: CFG Scale
+          description: Classifier-free guidance scale for audio generation.
+          default: 7.0
+      type: object
+      required:
+      - prompt
+      title: Body_text_to_audio_post
     Body_image_to_image_image_to_image_post:
       properties:
         prompt:
@@ -656,6 +681,15 @@ components:
       - frames
       title: VideoResponse
       description: Response model for video generation.
+    AudioResponse:
+      properties:
+        audio:
+          $ref: '#/components/schemas/Media'
+      type: object
+      required:
+      - audio
+      title: AudioResponse
+      description: Response model for audio generation.
     chunk:
       properties:
         timestamp:
