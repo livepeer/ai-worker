@@ -45,7 +45,7 @@ def handle_pipeline_error(e: Exception) -> JSONResponse:
     include_in_schema=False,
 )
 async def text_to_audio(
-    request: TextToAudioRequest,
+    request: Body_text_to_audio_post,
     model_id: Annotated[str, Form()] = "",
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
