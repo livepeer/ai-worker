@@ -45,7 +45,9 @@ RESPONSES = {
     include_in_schema=False,
 )
 async def segment_anything_2(
-    image: Annotated[UploadFile, File(description="Image to segment.")],
+    image: Annotated[
+        UploadFile, File(description="Image to segment.", media_type="image/*")
+    ],
     model_id: Annotated[
         str, Form(description="Hugging Face model ID used for image generation.")
     ] = "",
