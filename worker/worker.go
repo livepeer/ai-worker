@@ -40,14 +40,13 @@ func (sb EnvValue) String() string {
 type OptimizationFlags map[string]EnvValue
 
 type Worker struct {
-	manager *DockerManager
-
+	manager            *DockerManager
 	externalContainers map[string]*RunnerContainer
 	mu                 *sync.Mutex
 }
 
-func NewWorker(containerImageID string, gpus []string, modelDir string) (*Worker, error) {
-	manager, err := NewDockerManager(containerImageID, gpus, modelDir)
+func NewWorker(defaultImage string, gpus []string, modelDir string) (*Worker, error) {
+	manager, err := NewDockerManager(defaultImage, gpus, modelDir)
 	if err != nil {
 		return nil, err
 	}

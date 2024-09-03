@@ -33,7 +33,7 @@ func main() {
 
 	modelID := "stabilityai/sd-turbo"
 
-	w, err := worker.NewWorker(containerImageID, gpus, modelsDir)
+	w, err := worker.NewWorker(gpus, modelsDir)
 	if err != nil {
 		slog.Error("Error creating worker", slog.String("error", err.Error()))
 		return
@@ -44,7 +44,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if err := w.Warm(ctx, containerName, modelID, worker.RunnerEndpoint{}, worker.OptimizationFlags{}); err != nil {
+	if err := w.Warm(ctx, containerName, modelID, worker.RunnerEndpoint{}, worker.OptimizationFlags{}, containerImageID); err != nil {
 		slog.Error("Error warming container", slog.String("error", err.Error()))
 		return
 	}

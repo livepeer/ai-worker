@@ -27,10 +27,11 @@ type RunnerEndpoint struct {
 }
 
 type RunnerContainerConfig struct {
-	Type     RunnerContainerType
-	Pipeline string
-	ModelID  string
-	Endpoint RunnerEndpoint
+	Type             RunnerContainerType
+	Pipeline         string
+	ModelID          string
+	Endpoint         RunnerEndpoint
+	ContainerImageID string
 
 	// For managed containers only
 	ID               string
