@@ -259,9 +259,20 @@ func NewSegmentAnything2MultipartWriter(w io.Writer, req SegmentAnything2Multipa
 	if copied != imageSize {
 		return nil, fmt.Errorf("failed to copy image to multipart request imageBytes=%v copiedBytes=%v", imageSize, copied)
 	}
-	// Handle input fields
+
+	// Handle input fields.
 	if req.ModelId != nil {
 		if err := mw.WriteField("model_id", *req.ModelId); err != nil {
+			return nil, err
+		}
+	}
+	if req.PointCoords != nil {
+		if err := mw.WriteField("point_coords", *req.PointCoords); err != nil {
+			return nil, err
+		}
+	}
+	if req.PointLabels != nil {
+		if err := mw.WriteField("point_labels", *req.PointLabels); err != nil {
 			return nil, err
 		}
 	}
@@ -280,23 +291,13 @@ func NewSegmentAnything2MultipartWriter(w io.Writer, req SegmentAnything2Multipa
 			return nil, err
 		}
 	}
-	if req.NormalizeCoords != nil {
-		if err := mw.WriteField("normalize_coords", strconv.FormatBool(*req.NormalizeCoords)); err != nil {
-			return nil, err
-		}
-	}
-	if req.PointCoords != nil {
-		if err := mw.WriteField("point_coords", *req.PointCoords); err != nil {
-			return nil, err
-		}
-	}
-	if req.PointLabels != nil {
-		if err := mw.WriteField("point_labels", *req.PointLabels); err != nil {
-			return nil, err
-		}
-	}
 	if req.ReturnLogits != nil {
 		if err := mw.WriteField("return_logits", strconv.FormatBool(*req.ReturnLogits)); err != nil {
+			return nil, err
+		}
+	}
+	if req.NormalizeCoords != nil {
+		if err := mw.WriteField("normalize_coords", strconv.FormatBool(*req.NormalizeCoords)); err != nil {
 			return nil, err
 		}
 	}
