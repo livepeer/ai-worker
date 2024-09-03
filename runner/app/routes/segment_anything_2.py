@@ -1,9 +1,8 @@
-import json
-import numpy as np
 import logging
 import os
 from typing import Annotated
 
+import numpy as np
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.routes.util import (
@@ -16,7 +15,9 @@ from app.routes.util import (
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from PIL import Image
+from PIL import Image, ImageFile
+
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 router = APIRouter()
 
@@ -29,7 +30,14 @@ RESPONSES = {
 }
 
 
-@router.post("/segment-anything-2", response_model=MasksResponse, responses=RESPONSES)
+# TODO: Make model_id and other None properties optional once Go codegen tool supports
+# OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373.
+@router.post(
+    "/segment-anything-2",
+    response_model=MasksResponse,
+    responses=RESPONSES,
+    description="Segment objects in an image.",
+)
 @router.post(
     "/segment-anything-2/",
     response_model=MasksResponse,
@@ -37,15 +45,52 @@ RESPONSES = {
     include_in_schema=False,
 )
 async def SegmentAnything2(
-    image: Annotated[UploadFile, File()],
-    model_id: Annotated[str, Form()] = "",
-    point_coords: Annotated[str, Form()] = None,
-    point_labels: Annotated[str, Form()] = None,
-    box: Annotated[str, Form()] = None,
-    mask_input: Annotated[str, Form()] = None,
-    multimask_output: Annotated[bool, Form()] = True,
-    return_logits: Annotated[bool, Form()] = True,
-    normalize_coords: Annotated[bool, Form()] = True,
+    image: Annotated[UploadFile, File(description="Image to segment.")],
+    model_id: Annotated[
+        str, Form(description="Hugging Face model ID used for image generation.")
+    ] = "",
+    point_coords: Annotated[
+        str,
+        Form(
+            description="Nx2 array of point prompts to the model, where each point is in (X,Y) in pixels."
+        ),
+    ] = None,
+    point_labels: Annotated[
+        str,
+        Form(
+            description="Labels for the point prompts, where 1 indicates a foreground point and 0 indicates a background point."
+        ),
+    ] = None,
+    box: Annotated[
+        str,
+        Form(
+            description="A length 4 array given as a box prompt to the model, in XYXY format."
+        ),
+    ] = None,
+    mask_input: Annotated[
+        str,
+        Form(
+            description="A low-resolution mask input to the model, typically from a previous prediction iteration, with the form 1xHxW (H=W=256 for SAM)."
+        ),
+    ] = None,
+    multimask_output: Annotated[
+        bool,
+        Form(
+            description="If true, the model will return three masks for ambiguous input prompts, often producing better masks than a single prediction."
+        ),
+    ] = True,
+    return_logits: Annotated[
+        bool,
+        Form(
+            description="If true, returns un-thresholded mask logits instead of a binary mask."
+        ),
+    ] = True,
+    normalize_coords: Annotated[
+        bool,
+        Form(
+            description="If true, the point coordinates will be normalized to the range [0,1], with point_coords expected to be with respect to image dimensions."
+        ),
+    ] = True,
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
@@ -79,7 +124,7 @@ async def SegmentAnything2(
         )
 
     try:
-        image = Image.open(image.file)
+        image = Image.open(image.file).convert("RGB")
         masks, scores, low_res_mask_logits = pipeline(
             image,
             point_coords=point_coords,
@@ -104,10 +149,10 @@ async def SegmentAnything2(
             content=http_error("Segment Anything 2 error"),
         )
 
-    # Return masks sorted by descending score as JSON.
+    # Return masks sorted by descending score as string.
     sorted_ind = np.argsort(scores)[::-1]
     return {
-        "masks":  str(masks[sorted_ind].tolist()),
-        "scores":  str(scores[sorted_ind].tolist()),
-        "logits":  str(low_res_mask_logits[sorted_ind].tolist()),
+        "masks": str(masks[sorted_ind].tolist()),
+        "scores": str(scores[sorted_ind].tolist()),
+        "logits": str(low_res_mask_logits[sorted_ind].tolist()),
     }

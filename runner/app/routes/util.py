@@ -33,9 +33,15 @@ class VideoResponse(BaseModel):
 
 
 class MasksResponse(BaseModel):
-    masks: str
-    scores: str
-    logits: str
+    """Response model for object segmentation."""
+
+    masks: str = Field(..., description="The generated masks.")
+    scores: str = Field(
+        ..., description="The model's confidence scores for each generated mask."
+    )
+    logits: str = Field(
+        ..., description="The raw, unnormalized predictions (logits) for the masks."
+    )
 
 
 class chunk(BaseModel):
