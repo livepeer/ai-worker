@@ -44,7 +44,7 @@ RESPONSES = {
     responses=RESPONSES,
     include_in_schema=False,
 )
-async def SegmentAnything2(
+async def segment_anything_2(
     image: Annotated[UploadFile, File(description="Image to segment.")],
     model_id: Annotated[
         str, Form(description="Hugging Face model ID used for image generation.")
@@ -52,43 +52,62 @@ async def SegmentAnything2(
     point_coords: Annotated[
         str,
         Form(
-            description="Nx2 array of point prompts to the model, where each point is in (X,Y) in pixels."
+            description=(
+                "Nx2 array of point prompts to the model, where each point is in (X,Y) "
+                "in pixels."
+            )
         ),
     ] = None,
     point_labels: Annotated[
         str,
         Form(
-            description="Labels for the point prompts, where 1 indicates a foreground point and 0 indicates a background point."
+            description=(
+                "Labels for the point prompts, where 1 indicates a foreground point "
+                "and 0 indicates a background point."
+            )
         ),
     ] = None,
     box: Annotated[
         str,
         Form(
-            description="A length 4 array given as a box prompt to the model, in XYXY format."
+            description=(
+                "A length 4 array given as a box prompt to the model, in XYXY format."
+            )
         ),
     ] = None,
     mask_input: Annotated[
         str,
         Form(
-            description="A low-resolution mask input to the model, typically from a previous prediction iteration, with the form 1xHxW (H=W=256 for SAM)."
+            description=(
+                "A low-resolution mask input to the model, typically from a previous "
+                "prediction iteration, with the form 1xHxW (H=W=256 for SAM)."
+            )
         ),
     ] = None,
     multimask_output: Annotated[
         bool,
         Form(
-            description="If true, the model will return three masks for ambiguous input prompts, often producing better masks than a single prediction."
+            description=(
+                "If true, the model will return three masks for ambiguous input "
+                "prompts, often producing better masks than a single prediction."
+            )
         ),
     ] = True,
     return_logits: Annotated[
         bool,
         Form(
-            description="If true, returns un-thresholded mask logits instead of a binary mask."
+            description=(
+                "If true, returns un-thresholded mask logits instead of a binary mask."
+            )
         ),
     ] = True,
     normalize_coords: Annotated[
         bool,
         Form(
-            description="If true, the point coordinates will be normalized to the range [0,1], with point_coords expected to be with respect to image dimensions."
+            description=(
+                "If true, the point coordinates will be normalized to the range [0,1], "
+                "with point_coords expected to be with respect to image dimensions."
+            )
         ),
     ] = True,
     pipeline: Pipeline = Depends(get_pipeline),
