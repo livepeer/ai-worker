@@ -46,7 +46,8 @@ def handle_pipeline_error(e: Exception) -> JSONResponse:
         content=http_error(error_message),
     )
 
-
+# TODO: Make model_id and other None properties optional once Go codegen tool supports
+# OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373.
 @router.post(
     "/audio-to-text",
     response_model=TextResponse,
@@ -61,7 +62,10 @@ def handle_pipeline_error(e: Exception) -> JSONResponse:
 )
 async def audio_to_text(
     audio: Annotated[
-        UploadFile, File(description="Uploaded audio file to be transcribed.")
+        UploadFile,
+        File(
+            description="Uploaded audio file to be transcribed.", media_type="audio/*"
+        ),
     ],
     model_id: Annotated[
         str,

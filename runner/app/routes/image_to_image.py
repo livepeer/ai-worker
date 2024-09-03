@@ -26,7 +26,7 @@ RESPONSES = {
 
 
 # TODO: Make model_id and other None properties optional once Go codegen tool supports
-# OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
+# OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373.
 @router.post(
     "/image-to-image",
     response_model=ImageResponse,
@@ -46,7 +46,10 @@ async def image_to_image(
     ],
     image: Annotated[
         UploadFile,
-        File(description="Uploaded image to modify with the pipeline."),
+        File(
+            description="Uploaded image to modify with the pipeline.",
+            media_type="image/*",
+        ),
     ],
     model_id: Annotated[
         str,
