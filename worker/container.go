@@ -17,7 +17,7 @@ const (
 
 type RunnerContainer struct {
 	RunnerContainerConfig
-
+	Name   string
 	Client *ClientWithResponses
 }
 
@@ -27,10 +27,11 @@ type RunnerEndpoint struct {
 }
 
 type RunnerContainerConfig struct {
-	Type     RunnerContainerType
-	Pipeline string
-	ModelID  string
-	Endpoint RunnerEndpoint
+	Type             RunnerContainerType
+	Pipeline         string
+	ModelID          string
+	Endpoint         RunnerEndpoint
+	ContainerImageID string
 
 	// For managed containers only
 	ID               string
@@ -39,7 +40,7 @@ type RunnerContainerConfig struct {
 	containerTimeout time.Duration
 }
 
-func NewRunnerContainer(ctx context.Context, cfg RunnerContainerConfig) (*RunnerContainer, error) {
+func NewRunnerContainer(ctx context.Context, cfg RunnerContainerConfig, name string) (*RunnerContainer, error) {
 	// Ensure that timeout is set to a non-zero value.
 	timeout := cfg.containerTimeout
 	if timeout == 0 {
@@ -70,6 +71,7 @@ func NewRunnerContainer(ctx context.Context, cfg RunnerContainerConfig) (*Runner
 
 	return &RunnerContainer{
 		RunnerContainerConfig: cfg,
+		Name:                  name,
 		Client:                client,
 	}, nil
 }

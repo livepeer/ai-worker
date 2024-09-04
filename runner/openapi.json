@@ -3,7 +3,7 @@
     "info": {
         "title": "Livepeer AI Runner",
         "description": "An application to run AI pipelines",
-        "version": "v0.1.2"
+        "version": "0.1.0"
     },
     "servers": [
         {
@@ -404,6 +404,79 @@
                     }
                 ]
             }
+        },
+        "/segment-anything-2": {
+            "post": {
+                "summary": "Segmentanything2",
+                "operationId": "SegmentAnything2",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Body_SegmentAnything2_segment_anything_2_post"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MasksResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPError"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPError"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPError"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    }
+                ]
+            }
         }
     },
     "components": {
@@ -420,6 +493,56 @@
                     "msg"
                 ],
                 "title": "APIError"
+            },
+            "Body_SegmentAnything2_segment_anything_2_post": {
+                "properties": {
+                    "image": {
+                        "type": "string",
+                        "format": "binary",
+                        "title": "Image"
+                    },
+                    "model_id": {
+                        "type": "string",
+                        "title": "Model Id",
+                        "default": ""
+                    },
+                    "point_coords": {
+                        "type": "string",
+                        "title": "Point Coords"
+                    },
+                    "point_labels": {
+                        "type": "string",
+                        "title": "Point Labels"
+                    },
+                    "box": {
+                        "type": "string",
+                        "title": "Box"
+                    },
+                    "mask_input": {
+                        "type": "string",
+                        "title": "Mask Input"
+                    },
+                    "multimask_output": {
+                        "type": "boolean",
+                        "title": "Multimask Output",
+                        "default": true
+                    },
+                    "return_logits": {
+                        "type": "boolean",
+                        "title": "Return Logits",
+                        "default": true
+                    },
+                    "normalize_coords": {
+                        "type": "boolean",
+                        "title": "Normalize Coords",
+                        "default": true
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "image"
+                ],
+                "title": "Body_SegmentAnything2_segment_anything_2_post"
             },
             "Body_audio_to_text_audio_to_text_post": {
                 "properties": {
@@ -679,6 +802,29 @@
                     "images"
                 ],
                 "title": "ImageResponse"
+            },
+            "MasksResponse": {
+                "properties": {
+                    "masks": {
+                        "type": "string",
+                        "title": "Masks"
+                    },
+                    "scores": {
+                        "type": "string",
+                        "title": "Scores"
+                    },
+                    "logits": {
+                        "type": "string",
+                        "title": "Logits"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "masks",
+                    "scores",
+                    "logits"
+                ],
+                "title": "MasksResponse"
             },
             "Media": {
                 "properties": {

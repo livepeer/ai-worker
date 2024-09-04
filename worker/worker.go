@@ -40,14 +40,13 @@ func (sb EnvValue) String() string {
 type OptimizationFlags map[string]EnvValue
 
 type Worker struct {
-	manager *DockerManager
-
+	manager            *DockerManager
 	externalContainers map[string]*RunnerContainer
 	mu                 *sync.Mutex
 }
 
-func NewWorker(containerImageID string, gpus []string, modelDir string) (*Worker, error) {
-	manager, err := NewDockerManager(containerImageID, gpus, modelDir)
+func NewWorker(defaultImage string, gpus []string, modelDir string) (*Worker, error) {
+	manager, err := NewDockerManager(defaultImage, gpus, modelDir)
 	if err != nil {
 		return nil, err
 	}
@@ -304,6 +303,54 @@ func (w *Worker) AudioToText(ctx context.Context, req AudioToTextMultipartReques
 	return resp.JSON200, nil
 }
 
+func (w *Worker) SegmentAnything2(ctx context.Context, req SegmentAnything2MultipartRequestBody) (*MasksResponse, error) {
+	c, err := w.borrowContainer(ctx, "segment-anything-2", *req.ModelId)
+	if err != nil {
+		return nil, err
+	}
+	defer w.returnContainer(c)
+
+	var buf bytes.Buffer
+	mw, err := NewSegmentAnything2MultipartWriter(&buf, req)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.Client.SegmentAnything2WithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("segment anything 2 container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("segment anything 2 container returned 422")
+	}
+
+	if resp.JSON400 != nil {
+		val, err := json.Marshal(resp.JSON400)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("segment anything 2 container returned 400", slog.String("err", string(val)))
+		return nil, errors.New("segment anything 2 container returned 400")
+	}
+
+	if resp.JSON500 != nil {
+		val, err := json.Marshal(resp.JSON500)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("segment anything 2 container returned 500", slog.String("err", string(val)))
+		return nil, errors.New("segment anything 2 container returned 500")
+	}
+
+	return resp.JSON200, nil
+}
+
 func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endpoint RunnerEndpoint, optimizationFlags OptimizationFlags) error {
 	if endpoint.URL == "" {
 		return w.manager.Warm(ctx, pipeline, modelID, optimizationFlags)
@@ -319,12 +366,12 @@ func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endp
 		Endpoint:         endpoint,
 		containerTimeout: externalContainerTimeout,
 	}
-	rc, err := NewRunnerContainer(ctx, cfg)
+	rc, err := NewRunnerContainer(ctx, cfg, endpoint.URL)
 	if err != nil {
 		return err
 	}
 
-	name := dockerContainerName(pipeline, modelID)
+	name := dockerContainerName(pipeline, modelID, endpoint.URL)
 	slog.Info("Starting external container", slog.String("name", name), slog.String("modelID", modelID))
 	w.externalContainers[name] = rc
 
@@ -348,30 +395,29 @@ func (w *Worker) Stop(ctx context.Context) error {
 
 // HasCapacity returns true if the worker has capacity for the given pipeline and model ID.
 func (w *Worker) HasCapacity(pipeline, modelID string) bool {
-	managedCapacity := w.manager.HasCapacity(context.Background(), pipeline, modelID)
-	if managedCapacity {
-		return true
-	}
-
-	// Check if we have capacity for external containers.
-	name := dockerContainerName(pipeline, modelID)
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	_, ok := w.externalContainers[name]
 
-	return ok
+	// Check if we have capacity for external containers.
+	for _, rc := range w.externalContainers {
+		if rc.Pipeline == pipeline && rc.ModelID == modelID {
+			return true
+		}
+	}
+
+	// Check if we have capacity for managed containers.
+	return w.manager.HasCapacity(context.Background(), pipeline, modelID)
 }
 
 func (w *Worker) borrowContainer(ctx context.Context, pipeline, modelID string) (*RunnerContainer, error) {
 	w.mu.Lock()
 
-	name := dockerContainerName(pipeline, modelID)
-	rc, ok := w.externalContainers[name]
-	if ok {
-		w.mu.Unlock()
-		// We allow concurrent in-flight requests for external containers and assume that it knows
-		// how to handle them
-		return rc, nil
+	for _, rc := range w.externalContainers {
+		if rc.Pipeline == pipeline && rc.ModelID == modelID {
+			w.mu.Unlock()
+			// Assume external containers can handle concurrent in-flight requests.
+			return rc, nil
+		}
 	}
 
 	w.mu.Unlock()
