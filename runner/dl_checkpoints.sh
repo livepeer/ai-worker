@@ -14,6 +14,7 @@ function display_help() {
     echo "Usage: $0 [--alpha]"
     echo "Options:"
     echo "  --alpha  Download alpha models."
+    echo "  --restricted  Download models with a restrictive license."
     echo "  --help   Display this help message."
 }
 
@@ -57,12 +58,21 @@ function download_all_models() {
     huggingface-cli download SG161222/RealVisXL_V4.0 --include "*.fp16.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
     huggingface-cli download stabilityai/stable-diffusion-3-medium-diffusers --include "*.fp16*.safetensors" "*.model" "*.json" "*.txt" --cache-dir models ${TOKEN_FLAG:+"$TOKEN_FLAG"}
     huggingface-cli download SG161222/Realistic_Vision_V6.0_B1_noVAE --include "*.fp16.safetensors" "*.json" "*.txt" "*.bin" --exclude ".onnx" ".onnx_data" --cache-dir models
+    huggingface-cli download black-forest-labs/FLUX.1-schnell --include "*.safetensors" "*.json" "*.txt" "*.model" --exclude ".onnx" ".onnx_data" --cache-dir models
 
     # Download image-to-video models.
     huggingface-cli download stabilityai/stable-video-diffusion-img2vid-xt --include "*.fp16.safetensors" "*.json" --cache-dir models
 
     # Custom pipeline models.
     huggingface-cli download facebook/sam2-hiera-large --include "*.pt" "*.yaml" --cache-dir models
+}
+
+# Download models with a restrictive license.
+function download_restricted_models() {
+    printf "\nDownloading restricted models...\n"
+
+    # Download text-to-image and image-to-image models.
+    huggingface-cli download black-forest-labs/FLUX.1-dev --include "*.safetensors" "*.json" "*.txt" "*.model" --exclude ".onnx" ".onnx_data" --cache-dir models ${TOKEN_FLAG:+"$TOKEN_FLAG"}
 }
 
 # Enable HF transfer acceleration.
@@ -81,6 +91,10 @@ do
             MODE="alpha"
             shift
         ;;
+        --restricted)
+            MODE="restricted"
+            shift
+        ;;  
         --help)
             display_help
             exit 0
@@ -104,6 +118,8 @@ fi
 
 if [ "$MODE" = "alpha" ]; then
     download_alpha_models
+elif [ "$MODE" = "restricted" ]; then
+    download_restricted_models
 else
     download_all_models
 fi

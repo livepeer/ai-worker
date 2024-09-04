@@ -39,6 +39,7 @@ class ModelName(Enum):
     SD3_MEDIUM = "stabilityai/stable-diffusion-3-medium-diffusers"
     REALISTIC_VISION_V6 = "SG161222/Realistic_Vision_V6.0_B1_noVAE"
     FLUX_1_SCHNELL = "black-forest-labs/FLUX.1-schnell"
+    FLUX_1_DEV = "black-forest-labs/FLUX.1-dev"
 
     @classmethod
     def list(cls):
@@ -129,7 +130,10 @@ class TextToImagePipeline(Pipeline):
             self.ldm = StableDiffusion3Pipeline.from_pretrained(model_id, **kwargs).to(
                 torch_device
             )
-        elif ModelName.FLUX_1_SCHNELL.value in model_id:
+        elif (
+            ModelName.FLUX_1_SCHNELL.value in model_id
+            or ModelName.FLUX_1_DEV.value in model_id
+        ):
             # Decrease precision to preven OOM errors.
             kwargs["torch_dtype"] = torch.bfloat16
             self.ldm = FluxPipeline.from_pretrained(model_id, **kwargs).to(torch_device)
@@ -259,6 +263,14 @@ class TextToImagePipeline(Pipeline):
             else:
                 # Default to 8step
                 kwargs["num_inference_steps"] = 8
+        elif (
+            ModelName.FLUX_1_SCHNELL.value in self.model_id
+            or ModelName.FLUX_1_DEV.value in self.model_id
+        ):
+            # FluxPipeline does not support negative prompt per diffusers documentation
+            # https://github.com/huggingface/diffusers/blob/750bd7920622b3fe538d20035d3f03855c5d6621/src/diffusers/pipelines/flux/pipeline_flux.py#L537
+            if "negative_prompt" in kwargs:
+                kwargs.pop("negative_prompt")
 
         # Allow users to specify multiple (negative) prompts using the '|' separator.
         prompts = split_prompt(prompt, max_splits=3)
