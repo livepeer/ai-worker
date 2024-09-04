@@ -156,7 +156,7 @@ async def text_to_video(
 
     try:
         kwargs = {k: v for k, v in params.model_dump().items() if k != "model_id"}
-        batch_frames = pipeline(**kwargs)
+        batch_frames, has_nsfw_concept = pipeline(**kwargs)
     except Exception as e:
         logger.error(f"TextToVideoPipeline error: {e}")
         logger.exception(e)
@@ -172,7 +172,7 @@ async def text_to_video(
                 {
                     "url": image_to_data_url(frame),
                     "seed": params.seed,
-                    "nsfw": False,
+                    "nsfw": has_nsfw_concept[0],
                 }
                 for frame in frames
             ]
