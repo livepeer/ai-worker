@@ -127,10 +127,16 @@ class TextToImagePipeline(Pipeline):
             self.ldm = StableDiffusion3Pipeline.from_pretrained(model_id, **kwargs).to(
                 torch_device
             )
-        elif ModelName.FLUX_1_SCHNELL.value in model_id or ModelName.FLUX_1_DEV.value in model_id:
+        elif (
+            ModelName.FLUX_1_SCHNELL.value in model_id
+            or ModelName.FLUX_1_DEV.value in model_id
+        ):
             # Decrease precision to preven OOM errors.
             kwargs["torch_dtype"] = torch.bfloat16
-            self.ldm = FluxPipeline.from_pretrained(model_id, **kwargs).to(torch_device)
+            self.ldm = FluxPipeline.from_pretrained(model_id, **kwargs)
+            # self.ldm.enable_model_cpu_offload()
+            self.ldm.enable_sequential_cpu_offload()
+            # self.ldm.to(torch_device)
         else:
             self.ldm = AutoPipelineForText2Image.from_pretrained(model_id, **kwargs).to(
                 torch_device
@@ -240,12 +246,15 @@ class TextToImagePipeline(Pipeline):
             else:
                 # Default to 8step
                 kwargs["num_inference_steps"] = 8
-        elif ModelName.FLUX_1_SCHNELL.value in self.model_id or ModelName.FLUX_1_DEV.value in self.model_id:
-            #FluxPipeline does not support negative prompt per diffusers documentation
-            #https://github.com/huggingface/diffusers/blob/750bd7920622b3fe538d20035d3f03855c5d6621/src/diffusers/pipelines/flux/pipeline_flux.py#L537
+        elif (
+            ModelName.FLUX_1_SCHNELL.value in self.model_id
+            or ModelName.FLUX_1_DEV.value in self.model_id
+        ):
+            # FluxPipeline does not support negative prompt per diffusers documentation
+            # https://github.com/huggingface/diffusers/blob/750bd7920622b3fe538d20035d3f03855c5d6621/src/diffusers/pipelines/flux/pipeline_flux.py#L537
             if "negative_prompt" in kwargs:
                 kwargs.pop("negative_prompt")
-        
+
         # Allow users to specify multiple (negative) prompts using the '|' separator.
         prompts = split_prompt(prompt, max_splits=3)
         prompt = prompts.pop("prompt")
