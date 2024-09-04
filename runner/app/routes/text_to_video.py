@@ -168,7 +168,14 @@ async def text_to_video(
     output_frames = []
     for frames in batch_frames:
         output_frames.append(
-            [{"url": image_to_data_url(frame), "seed": params.seed} for frame in frames]
+            [
+                {
+                    "url": image_to_data_url(frame),
+                    "seed": params.seed,
+                    "nsfw": False,
+                }
+                for frame in frames
+            ]
         )
 
     return {"frames": output_frames}
