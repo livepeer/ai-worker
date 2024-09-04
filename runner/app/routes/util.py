@@ -7,7 +7,6 @@ from fastapi import UploadFile
 from PIL import Image
 from pydantic import BaseModel, Field
 
-import numpy as np
 
 class Media(BaseModel):
     """A media object containing information about the generated media."""
@@ -94,8 +93,6 @@ def image_to_data_url(img: Image, format: str = "png") -> str:
     Returns:
         The data URL for the image.
     """
-    if isinstance(img, np.ndarray):
-        img = Image.fromarray((img * 255).astype(np.uint8))
     return "data:image/png;base64," + image_to_base64(img, format=format)
 
 
