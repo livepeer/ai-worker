@@ -133,10 +133,7 @@ class TextToImagePipeline(Pipeline):
         ):
             # Decrease precision to preven OOM errors.
             kwargs["torch_dtype"] = torch.bfloat16
-            self.ldm = FluxPipeline.from_pretrained(model_id, **kwargs)
-            # self.ldm.enable_model_cpu_offload()
-            self.ldm.enable_sequential_cpu_offload()
-            # self.ldm.to(torch_device)
+            self.ldm = FluxPipeline.from_pretrained(model_id, **kwargs).to(torch_device)
         else:
             self.ldm = AutoPipelineForText2Image.from_pretrained(model_id, **kwargs).to(
                 torch_device
