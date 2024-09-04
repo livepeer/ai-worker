@@ -5,13 +5,8 @@ from typing import Annotated
 import numpy as np
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
-from app.routes.util import (
-    HTTPError,
-    InferenceError,
-    MasksResponse,
-    http_error,
-    json_str_to_np_array,
-)
+from app.routes.utils import HTTPError, MasksResponse, http_error, json_str_to_np_array
+from app.utils.errors import InferenceError
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer

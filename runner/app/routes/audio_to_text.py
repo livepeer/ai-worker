@@ -5,7 +5,8 @@ from typing import Annotated
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.pipelines.utils.audio import AudioConversionError
-from app.routes.util import HTTPError, TextResponse, file_exceeds_max_size, http_error
+from app.routes.utils import HTTPError, TextResponse, file_exceeds_max_size, http_error
+from app.utils.errors import InferenceError
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -37,6 +38,9 @@ def handle_pipeline_error(e: Exception) -> JSONResponse:
     ) or isinstance(e, AudioConversionError):
         status_code = status.HTTP_415_UNSUPPORTED_MEDIA_TYPE
         error_message = "Unsupported audio format or malformed file."
+    elif isinstance(e, InferenceError):
+        status_code = status.HTTP_400_BAD_REQUEST
+        error_message = str(e)
     else:
         status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         error_message = "Internal server error during audio processing."

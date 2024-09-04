@@ -1,6 +1,8 @@
 import argparse
 import copy
 import json
+import logging
+import subprocess
 
 import yaml
 from app.main import app, use_route_names_as_operation_ids
@@ -14,8 +16,6 @@ from app.routes import (
     upscale,
 )
 from fastapi.openapi.utils import get_openapi
-import subprocess
-import logging
 
 logging.basicConfig(
     level=logging.INFO,
