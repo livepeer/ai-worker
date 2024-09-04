@@ -1,12 +1,8 @@
 from app.pipelines.base import Pipeline
 
 from app.pipelines.utils import (
-    SafetyChecker,
     get_model_dir,
     get_torch_device,
-    is_lightning_model,
-    is_turbo_model,
-    split_prompt,
 )
 
 from diffusers import CogVideoXPipeline, DiffusionPipeline
@@ -44,7 +40,6 @@ class TextToVideoPipeline(Pipeline):
             kwargs["torch_dtype"] = torch.float16
             kwargs["variant"] = "fp16"
 
-        # Note: we are forcing a download of recommended model weights here. Probably not what we want.
         if model_id == "THUDM/CogVideoX-2b":
             if "variant" in kwargs:
                 del kwargs["variant"]
