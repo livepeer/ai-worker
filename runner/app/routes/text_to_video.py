@@ -41,26 +41,23 @@ class TextToVideoParams(BaseModel):
         Field(default=1024, description="The width in pixels of the generated video."),
     ]
     fps: Annotated[
-        int, Form(description="The frames per second of the generated video.")
-    ] = 8,
+        int,
+        Field(default=8, description="The frames per second of the generated video."),
+    ]
     motion_bucket_id: Annotated[
         int,
-        Form(
-            description=(
-                "Used for conditioning the amount of motion for the generation. The "
-                "higher the number the more motion will be in the video."
-            )
-        ),
-    ] = 127,
+        Field(default=127, description=(
+            "Used for conditioning the amount of motion for the generation. The "
+            "higher the number the more motion will be in the video."
+        )),
+    ]
     noise_aug_strength: Annotated[
         float,
-        Form(
-            description=(
-                "Amount of noise added to the conditioning image. Higher values reduce "
-                "resemblance to the conditioning image and increase motion."
-            )
-        ),
-    ] = 0.02,
+        Field(default=0.02, description=(
+            "Amount of noise added to the conditioning image. Higher values reduce "
+            "resemblance to the conditioning image and increase motion."
+        )),
+    ]
     guidance_scale: Annotated[
         float,
         Field(
@@ -92,7 +89,7 @@ class TextToVideoParams(BaseModel):
         ),
     ]
     seed: Annotated[
-        int, Field(default=None, description="Seed for random number generation.")
+        int, Field(default=None, description="Seed for random number generation."),
     ]
     num_inference_steps: Annotated[
         int,
@@ -103,10 +100,6 @@ class TextToVideoParams(BaseModel):
                 "images but slower inference. Modulated by strength."
             ),
         ),
-    ]
-    num_images_per_prompt: Annotated[
-        int,
-        Field(default=1, description="Number of videos to generate per prompt."),
     ]
 
 RESPONSES = {
@@ -162,7 +155,6 @@ async def text_to_video(
         params.seed = random.randint(0, 2**32 - 1)
 
     try:
-        params.seed = seed
         kwargs = {k: v for k, v in params.model_dump().items() if k != "model_id"}
         batch_frames = pipeline(**kwargs)
     except Exception as e:

@@ -1,7 +1,15 @@
 from app.pipelines.base import Pipeline
-from app.pipelines.util import get_torch_device, get_model_dir
 
-from diffusers import DiffusionPipeline
+from app.pipelines.utils import (
+    SafetyChecker,
+    get_model_dir,
+    get_torch_device,
+    is_lightning_model,
+    is_turbo_model,
+    split_prompt,
+)
+
+from diffusers import CogVideoXPipeline, DiffusionPipeline
 from huggingface_hub import file_download
 import torch
 import PIL
@@ -36,8 +44,25 @@ class TextToVideoPipeline(Pipeline):
             kwargs["torch_dtype"] = torch.float16
             kwargs["variant"] = "fp16"
 
+        # Note: we are forcing a download of recommended model weights here. Probably not what we want.
+        if model_id == "THUDM/CogVideoX-2b":
+            if "variant" in kwargs:
+                del kwargs["variant"]
+            logger.info("TextToVideoPipeline loading fp16 variant for %s", model_id)
+            kwargs["torch_dtype"] = torch.float16
+        if model_id == "THUDM/CogVideoX-5b":
+            if "variant" in kwargs:
+                del kwargs["variant"]
+            logger.info("TextToVideoPipeline loading bf16 variant for %s", model_id)
+            kwargs["torch_dtype"] = torch.bfloat16
+
         self.model_id = model_id
-        self.ldm = DiffusionPipeline.from_pretrained(model_id, **kwargs)
+        if model_id == "THUDM/CogVideoX-2b" or model_id == "THUDM/CogVideoX-5b":
+            self.ldm = CogVideoXPipeline.from_pretrained(model_id, **kwargs)
+        else:
+            self.ldm = DiffusionPipeline.from_pretrained(model_id, **kwargs)
+        self.ldm.vae.enable_slicing()
+        self.ldm.vae.enable_tiling()
         self.ldm.to(get_torch_device())
 
         if os.environ.get("SFAST"):
@@ -50,16 +75,21 @@ class TextToVideoPipeline(Pipeline):
             self.ldm = compile_model(self.ldm)
 
     def __call__(self, prompt: str, **kwargs) -> List[List[PIL.Image]]:
-        # ali-vilab/text-to-video-ms-1.7b has a limited parameter set
-        if (
-            self.model_id == "ali-vilab/text-to-video-ms-1.7b"
-        ):
-            if "fps" in kwargs:
-                del kwargs["fps"]
+        if self.model_id == "THUDM/CogVideoX-2b" or self.model_id == "THUDM/CogVideoX-5b":
             if "motion_bucket_id" in kwargs:
                 del kwargs["motion_bucket_id"]
+            if "fps" in kwargs:
+                del kwargs["fps"]
             if "noise_aug_strength" in kwargs:
                 del kwargs["noise_aug_strength"]
+            if "safety_check" in kwargs:
+                del kwargs["safety_check"]
+            if "width" in kwargs:
+                del kwargs["width"]
+            if "height" in kwargs:
+                del kwargs["height"]
+            kwargs["num_frames"] = 49
+            kwargs["num_videos_per_prompt"] = 1
 
         seed = kwargs.pop("seed", None)
         if seed is not None:
