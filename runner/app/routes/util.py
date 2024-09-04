@@ -1,8 +1,10 @@
 import base64
 import io
+import json
 import os
-from typing import List
+from typing import List, Optional
 
+import numpy as np
 from fastapi import UploadFile
 from PIL import Image
 from pydantic import BaseModel, Field
@@ -30,6 +32,18 @@ class VideoResponse(BaseModel):
     frames: List[List[Media]] = Field(..., description="The generated video frames.")
 
 
+class MasksResponse(BaseModel):
+    """Response model for object segmentation."""
+
+    masks: str = Field(..., description="The generated masks.")
+    scores: str = Field(
+        ..., description="The model's confidence scores for each generated mask."
+    )
+    logits: str = Field(
+        ..., description="The raw, unnormalized predictions (logits) for the masks."
+    )
+
+
 class chunk(BaseModel):
     """A chunk of text with a timestamp."""
 
@@ -54,6 +68,22 @@ class HTTPError(BaseModel):
     """HTTP error response model."""
 
     detail: APIError = Field(..., description="Detailed error information.")
+
+
+class InferenceError(Exception):
+    """Exception raised for errors during model inference."""
+
+    def __init__(self, message="Error during model execution", original_exception=None):
+        """Initialize the exception.
+
+        Args:
+            message: The error message.
+            original_exception: The original exception that caused the error.
+        """
+        if original_exception:
+            message = f"{message}: {original_exception}"
+        super().__init__(message)
+        self.original_exception = original_exception
 
 
 def http_error(msg: str) -> HTTPError:
@@ -118,3 +148,31 @@ def file_exceeds_max_size(
     except Exception as e:
         print(f"Error checking file size: {e}")
     return False
+
+
+def json_str_to_np_array(
+    data: Optional[str], var_name: Optional[str] = None
+) -> Optional[np.ndarray]:
+    """Converts a JSON string to a NumPy array.
+
+    Args:
+        data: The JSON string to convert.
+        var_name: The name of the variable being converted. Used in error messages.
+
+    Returns:
+        The NumPy array if the conversion is successful, None otherwise.
+
+    Raises:
+        ValueError: If an error occurs during JSON parsing.
+    """
+    if data:
+        try:
+            array = np.array(json.loads(data))
+            return array
+        except json.JSONDecodeError as e:
+            error_message = "Error parsing JSON"
+            if var_name:
+                error_message += f" for {var_name}"
+            error_message += f": {e}"
+            raise ValueError(error_message)
+    return None

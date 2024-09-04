@@ -9,6 +9,7 @@ from app.routes import (
     health,
     image_to_image,
     image_to_video,
+    segment_anything_2,
     text_to_image,
     upscale,
 )
@@ -121,7 +122,7 @@ def write_openapi(fname: str, entrypoint: str = "runner", version: str = "0.0.0"
     app.include_router(image_to_video.router)
     app.include_router(audio_to_text.router)
     app.include_router(upscale.router)
-
+    app.include_router(segment_anything_2.router)
 
     use_route_names_as_operation_ids(app)
 
