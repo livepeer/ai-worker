@@ -3,6 +3,7 @@ import os
 import random
 from typing import Annotated
 
+from app.utils.errors import InferenceError
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.routes.utils import HTTPError, ImageResponse, http_error, image_to_data_url
@@ -107,6 +108,12 @@ async def upscale(
     except Exception as e:
         logger.error(f"UpscalePipeline error: {e}")
         logger.exception(e)
+        if isinstance(e, InferenceError):
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content=http_error(str(e)),
+            )
+
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=http_error("UpscalePipeline error"),

@@ -4,6 +4,7 @@ from typing import List, Optional, Tuple
 
 import PIL
 import torch
+from app.utils.errors import InferenceError
 from app.pipelines.base import Pipeline
 from app.pipelines.utils import (
     SafetyChecker,
@@ -113,14 +114,17 @@ class UpscalePipeline(Pipeline):
         if num_inference_steps is None or num_inference_steps < 1:
             del kwargs["num_inference_steps"]
 
-        output = self.ldm(prompt, image=image, **kwargs)
+        try:
+            outputs = self.ldm(prompt, image=image, **kwargs)
+        except Exception as e:
+            raise InferenceError(original_exception=e)
 
         if safety_check:
-            _, has_nsfw_concept = self._safety_checker.check_nsfw_images(output.images)
+            _, has_nsfw_concept = self._safety_checker.check_nsfw_images(outputs.images)
         else:
-            has_nsfw_concept = [None] * len(output.images)
+            has_nsfw_concept = [None] * len(outputs.images)
 
-        return output.images, has_nsfw_concept
+        return outputs.images, has_nsfw_concept
 
     def __str__(self) -> str:
         return f"UpscalePipeline model_id={self.model_id}"
