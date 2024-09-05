@@ -70,15 +70,6 @@ func (w *Worker) TextToImage(ctx context.Context, req TextToImageJSONRequestBody
 		return nil, err
 	}
 
-	if resp.JSON422 != nil {
-		val, err := json.Marshal(resp.JSON422)
-		if err != nil {
-			return nil, err
-		}
-		slog.Error("text-to-image container returned 422", slog.String("err", string(val)))
-		return nil, errors.New("text-to-image container returned 422")
-	}
-
 	if resp.JSON400 != nil {
 		val, err := json.Marshal(resp.JSON400)
 		if err != nil {
@@ -86,6 +77,24 @@ func (w *Worker) TextToImage(ctx context.Context, req TextToImageJSONRequestBody
 		}
 		slog.Error("text-to-image container returned 400", slog.String("err", string(val)))
 		return nil, errors.New("text-to-image container returned 400")
+	}
+
+	if resp.JSON401 != nil {
+		val, err := json.Marshal(resp.JSON401)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("text-to-image container returned 401", slog.String("err", string(val)))
+		return nil, errors.New("text-to-image container returned 401")
+	}
+
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("text-to-image container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("text-to-image container returned 422")
 	}
 
 	if resp.JSON500 != nil {
@@ -118,15 +127,6 @@ func (w *Worker) ImageToImage(ctx context.Context, req ImageToImageMultipartRequ
 		return nil, err
 	}
 
-	if resp.JSON422 != nil {
-		val, err := json.Marshal(resp.JSON422)
-		if err != nil {
-			return nil, err
-		}
-		slog.Error("image-to-image container returned 422", slog.String("err", string(val)))
-		return nil, errors.New("image-to-image container returned 422")
-	}
-
 	if resp.JSON400 != nil {
 		val, err := json.Marshal(resp.JSON400)
 		if err != nil {
@@ -134,6 +134,24 @@ func (w *Worker) ImageToImage(ctx context.Context, req ImageToImageMultipartRequ
 		}
 		slog.Error("image-to-image container returned 400", slog.String("err", string(val)))
 		return nil, errors.New("image-to-image container returned 400")
+	}
+
+	if resp.JSON401 != nil {
+		val, err := json.Marshal(resp.JSON401)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("image-to-image container returned 401", slog.String("err", string(val)))
+		return nil, errors.New("image-to-image container returned 401")
+	}
+
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("image-to-image container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("image-to-image container returned 422")
 	}
 
 	if resp.JSON500 != nil {
@@ -166,15 +184,6 @@ func (w *Worker) ImageToVideo(ctx context.Context, req ImageToVideoMultipartRequ
 		return nil, err
 	}
 
-	if resp.JSON422 != nil {
-		val, err := json.Marshal(resp.JSON422)
-		if err != nil {
-			return nil, err
-		}
-		slog.Error("image-to-video container returned 422", slog.String("err", string(val)))
-		return nil, errors.New("image-to-video container returned 422")
-	}
-
 	if resp.JSON400 != nil {
 		val, err := json.Marshal(resp.JSON400)
 		if err != nil {
@@ -182,6 +191,24 @@ func (w *Worker) ImageToVideo(ctx context.Context, req ImageToVideoMultipartRequ
 		}
 		slog.Error("image-to-video container returned 400", slog.String("err", string(val)))
 		return nil, errors.New("image-to-video container returned 400")
+	}
+
+	if resp.JSON401 != nil {
+		val, err := json.Marshal(resp.JSON401)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("image-to-video container returned 401", slog.String("err", string(val)))
+		return nil, errors.New("image-to-video container returned 401")
+	}
+
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("image-to-video container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("image-to-video container returned 422")
 	}
 
 	if resp.JSON500 != nil {
@@ -219,15 +246,6 @@ func (w *Worker) Upscale(ctx context.Context, req UpscaleMultipartRequestBody) (
 		return nil, err
 	}
 
-	if resp.JSON422 != nil {
-		val, err := json.Marshal(resp.JSON422)
-		if err != nil {
-			return nil, err
-		}
-		slog.Error("upscale container returned 422", slog.String("err", string(val)))
-		return nil, errors.New("upscale container returned 422")
-	}
-
 	if resp.JSON400 != nil {
 		val, err := json.Marshal(resp.JSON400)
 		if err != nil {
@@ -235,6 +253,24 @@ func (w *Worker) Upscale(ctx context.Context, req UpscaleMultipartRequestBody) (
 		}
 		slog.Error("upscale container returned 400", slog.String("err", string(val)))
 		return nil, errors.New("upscale container returned 400")
+	}
+
+	if resp.JSON401 != nil {
+		val, err := json.Marshal(resp.JSON401)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("upscale container returned 401", slog.String("err", string(val)))
+		return nil, errors.New("upscale container returned 401")
+	}
+
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("upscale container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("upscale container returned 422")
 	}
 
 	if resp.JSON500 != nil {
@@ -267,15 +303,6 @@ func (w *Worker) AudioToText(ctx context.Context, req AudioToTextMultipartReques
 		return nil, err
 	}
 
-	if resp.JSON422 != nil {
-		val, err := json.Marshal(resp.JSON422)
-		if err != nil {
-			return nil, err
-		}
-		slog.Error("audio-to-text container returned 422", slog.String("err", string(val)))
-		return nil, errors.New("audio-to-text container returned 422")
-	}
-
 	if resp.JSON400 != nil {
 		val, err := json.Marshal(resp.JSON400)
 		if err != nil {
@@ -285,10 +312,37 @@ func (w *Worker) AudioToText(ctx context.Context, req AudioToTextMultipartReques
 		return nil, errors.New("audio-to-text container returned 400")
 	}
 
+	if resp.JSON401 != nil {
+		val, err := json.Marshal(resp.JSON401)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("audio-to-text container returned 401", slog.String("err", string(val)))
+		return nil, errors.New("audio-to-text container returned 401")
+	}
+
 	if resp.JSON413 != nil {
 		msg := "audio-to-text container returned 413 file too large; max file size is 50MB"
 		slog.Error("audio-to-text container returned 413", slog.String("err", string(msg)))
 		return nil, errors.New(msg)
+	}
+
+	if resp.JSON415 != nil {
+		val, err := json.Marshal(resp.JSON415)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("audio-to-text container returned 415", slog.String("err", string(val)))
+		return nil, errors.New("audio-to-text container returned 415")
+	}
+
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("audio-to-text container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("audio-to-text container returned 422")
 	}
 
 	if resp.JSON500 != nil {
@@ -321,15 +375,6 @@ func (w *Worker) SegmentAnything2(ctx context.Context, req SegmentAnything2Multi
 		return nil, err
 	}
 
-	if resp.JSON422 != nil {
-		val, err := json.Marshal(resp.JSON422)
-		if err != nil {
-			return nil, err
-		}
-		slog.Error("segment anything 2 container returned 422", slog.String("err", string(val)))
-		return nil, errors.New("segment anything 2 container returned 422")
-	}
-
 	if resp.JSON400 != nil {
 		val, err := json.Marshal(resp.JSON400)
 		if err != nil {
@@ -337,6 +382,24 @@ func (w *Worker) SegmentAnything2(ctx context.Context, req SegmentAnything2Multi
 		}
 		slog.Error("segment anything 2 container returned 400", slog.String("err", string(val)))
 		return nil, errors.New("segment anything 2 container returned 400")
+	}
+
+	if resp.JSON401 != nil {
+		val, err := json.Marshal(resp.JSON401)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("segment anything 2 container returned 401", slog.String("err", string(val)))
+		return nil, errors.New("segment anything 2 container returned 401")
+	}
+
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("segment anything 2 container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("segment anything 2 container returned 422")
 	}
 
 	if resp.JSON500 != nil {
