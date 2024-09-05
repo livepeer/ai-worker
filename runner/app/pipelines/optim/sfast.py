@@ -31,7 +31,7 @@ def compile_model(pipe):
     except ImportError:
         logger.info("xformers not installed, skip")
     try:
-        import triton   # noqa: F401
+        import triton  # noqa: F401
 
         config.enable_triton = True
     except ImportError:

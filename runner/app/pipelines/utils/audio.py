@@ -11,7 +11,7 @@ from fastapi import UploadFile
 class AudioConversionError(Exception):
     """Raised when an audio file cannot be converted."""
 
-    def __init__(self, message="Audio conversion failed."):
+    def __init__(self, message="Audio conversion failed"):
         self.message = message
         super().__init__(self.message)
 

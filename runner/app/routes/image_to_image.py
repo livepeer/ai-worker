@@ -5,7 +5,8 @@ from typing import Annotated
 
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
-from app.routes.util import HTTPError, ImageResponse, http_error, image_to_data_url
+from app.routes.utils import HTTPError, ImageResponse, http_error, image_to_data_url
+from app.utils.errors import InferenceError, OutOfMemoryError
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -16,6 +17,34 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
+
+
+def handle_pipeline_error(e: Exception) -> JSONResponse:
+    """Handles exceptions raised during image-to-image pipeline processing.
+
+    Args:
+        e: The exception raised during image-to-image processing.
+
+    Returns:
+        A JSONResponse with the appropriate error message and status code.
+    """
+    logger.error(
+        f"ImageToImagePipeline pipeline error: {str(e)}"
+    )  # Log the detailed error
+    if "CUDA out of memory" in str(e) or isinstance(e, OutOfMemoryError):
+        status_code = status.HTTP_400_BAD_REQUEST
+        error_message = "Out of memory error. Try reducing input image resolution."
+    elif isinstance(e, InferenceError):
+        status_code = status.HTTP_400_BAD_REQUEST
+        error_message = str(e)
+    else:
+        status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        error_message = "Image-to-image pipeline error."
+
+    return JSONResponse(
+        status_code=status_code,
+        content=http_error(error_message),
+    )
 
 
 RESPONSES = {
@@ -119,7 +148,7 @@ async def image_to_image(
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 headers={"WWW-Authenticate": "Bearer"},
-                content=http_error("Invalid bearer token"),
+                content=http_error("Invalid bearer token."),
             )
 
     if model_id != "" and model_id != pipeline.model_id:
@@ -127,7 +156,7 @@ async def image_to_image(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=http_error(
                 f"pipeline configured with {pipeline.model_id} but called with "
-                f"{model_id}"
+                f"{model_id}."
             ),
         )
 
@@ -154,15 +183,10 @@ async def image_to_image(
                 num_images_per_prompt=1,
                 num_inference_steps=num_inference_steps,
             )
-            images.extend(imgs)
-            has_nsfw_concept.extend(nsfw_checks)
         except Exception as e:
-            logger.error(f"ImageToImagePipeline error: {e}")
-            logger.exception(e)
-            return JSONResponse(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content=http_error("ImageToImagePipeline error"),
-            )
+            return handle_pipeline_error(e)
+        images.extend(imgs)
+        has_nsfw_concept.extend(nsfw_checks)
 
     # TODO: Return None once Go codegen tool supports optional properties
     # OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
