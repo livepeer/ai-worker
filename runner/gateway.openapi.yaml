@@ -11,9 +11,11 @@ servers:
 paths:
   /text-to-image:
     post:
+      tags:
+      - generate
       summary: Text To Image
       description: Generate images from text prompts.
-      operationId: text_to_image
+      operationId: genTextToImage
       requestBody:
         content:
           application/json:
@@ -27,6 +29,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ImageResponse'
+              x-speakeasy-name-override: data
         '400':
           description: Bad Request
           content:
@@ -53,11 +56,12 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
       security:
       - HTTPBearer: []
+      x-speakeasy-name-override: imageToText
   /image-to-image:
     post:
       summary: Image To Image
       description: Apply image transformations to a provided image.
-      operationId: image_to_image
+      operationId: image_to_image_image_to_image_post
       requestBody:
         content:
           multipart/form-data:
@@ -101,7 +105,7 @@ paths:
     post:
       summary: Image To Video
       description: Generate a video from a provided image.
-      operationId: image_to_video
+      operationId: image_to_video_image_to_video_post
       requestBody:
         content:
           multipart/form-data:
@@ -145,7 +149,7 @@ paths:
     post:
       summary: Upscale
       description: Upscale an image by increasing its resolution.
-      operationId: upscale
+      operationId: upscale_upscale_post
       requestBody:
         content:
           multipart/form-data:
@@ -189,7 +193,7 @@ paths:
     post:
       summary: Audio To Text
       description: Transcribe audio files to text.
-      operationId: audio_to_text
+      operationId: audio_to_text_audio_to_text_post
       requestBody:
         content:
           multipart/form-data:
@@ -239,7 +243,7 @@ paths:
     post:
       summary: Segment Anything 2
       description: Segment objects in an image.
-      operationId: segment_anything_2
+      operationId: segment_anything_2_segment_anything_2_post
       requestBody:
         content:
           multipart/form-data:

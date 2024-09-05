@@ -92,6 +92,13 @@ class TextToImageParams(BaseModel):
 
 
 RESPONSES = {
+    status.HTTP_200_OK: {
+        "content": {
+            "application/json": {
+                "x-speakeasy-name-override": "data",
+            }
+        },
+    },
     status.HTTP_400_BAD_REQUEST: {"model": HTTPError},
     status.HTTP_401_UNAUTHORIZED: {"model": HTTPError},
     status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPError},
@@ -103,6 +110,12 @@ RESPONSES = {
     response_model=ImageResponse,
     responses=RESPONSES,
     description="Generate images from text prompts.",
+    operation_id="genTextToImage",
+    summary="Text To Image",
+    tags=["generate"],
+    openapi_extra={
+        "x-speakeasy-name-override": "imageToText"
+    }
 )
 @router.post(
     "/text-to-image/",
