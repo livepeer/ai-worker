@@ -95,7 +95,9 @@ RESPONSES = {
     status.HTTP_200_OK: {
         "content": {
             "application/json": {
-                "x-speakeasy-name-override": "data",
+                "schema": {
+                    "x-speakeasy-name-override": "data",
+                }
             }
         },
     },
