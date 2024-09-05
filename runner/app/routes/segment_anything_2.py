@@ -18,12 +18,6 @@ router = APIRouter()
 
 logger = logging.getLogger(__name__)
 
-RESPONSES = {
-    status.HTTP_400_BAD_REQUEST: {"model": HTTPError},
-    status.HTTP_401_UNAUTHORIZED: {"model": HTTPError},
-    status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPError},
-}
-
 
 def handle_pipeline_error(e: Exception) -> JSONResponse:
     """Handles exceptions raised during segment-anything-2 pipeline processing.
@@ -49,6 +43,13 @@ def handle_pipeline_error(e: Exception) -> JSONResponse:
         status_code=status_code,
         content=http_error(error_message),
     )
+
+
+RESPONSES = {
+    status.HTTP_400_BAD_REQUEST: {"model": HTTPError},
+    status.HTTP_401_UNAUTHORIZED: {"model": HTTPError},
+    status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPError},
+}
 
 
 # TODO: Make model_id and other None properties optional once Go codegen tool supports
