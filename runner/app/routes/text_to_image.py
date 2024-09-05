@@ -6,7 +6,7 @@ from typing import Annotated
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.routes.utils import HTTPError, ImageResponse, http_error, image_to_data_url
-from app.utils.errors import InferenceError
+from app.utils.errors import InferenceError, OutOfMemoryError
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -15,6 +15,32 @@ from pydantic import BaseModel, Field
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
+
+
+def handle_pipeline_error(e: Exception) -> JSONResponse:
+    """Handles exceptions raised during text-to-image pipeline processing.
+
+    Args:
+        e: The exception raised during text-to-image processing.
+
+    Returns:
+        A JSONResponse with the appropriate error message and status code.
+    """
+    logger.error(f"TextToImage pipeline error: {str(e)}")  # Log the detailed error
+    if "CUDA out of memory" in str(e) or isinstance(e, OutOfMemoryError):
+        status_code = status.HTTP_400_BAD_REQUEST
+        error_message = "Out of memory error. Try reducing output image resolution."
+    elif isinstance(e, InferenceError):
+        status_code = status.HTTP_400_BAD_REQUEST
+        error_message = str(e)
+    else:
+        status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        error_message = "Text-to-image pipeline error."
+
+    return JSONResponse(
+        status_code=status_code,
+        content=http_error(error_message),
+    )
 
 
 class TextToImageParams(BaseModel):
@@ -122,7 +148,7 @@ async def text_to_image(
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 headers={"WWW-Authenticate": "Bearer"},
-                content=http_error("Invalid bearer token"),
+                content=http_error("Invalid bearer token."),
             )
 
     if params.model_id != "" and params.model_id != pipeline.model_id:
@@ -130,7 +156,7 @@ async def text_to_image(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=http_error(
                 f"pipeline configured with {pipeline.model_id} but called with "
-                f"{params.model_id}"
+                f"{params.model_id}."
             ),
         )
 
@@ -148,18 +174,7 @@ async def text_to_image(
         try:
             imgs, nsfw_check = pipeline(**kwargs)
         except Exception as e:
-            logger.error(f"TextToImagePipeline error: {e}")
-            logger.exception(e)
-            if isinstance(e, InferenceError):
-                return JSONResponse(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    content=http_error(str(e)),
-                )
-
-            return JSONResponse(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content=http_error("TextToImagePipeline error"),
-            )
+            return handle_pipeline_error(e)
         images.extend(imgs)
         has_nsfw_concept.extend(nsfw_check)
 

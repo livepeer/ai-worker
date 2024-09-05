@@ -6,7 +6,7 @@ from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.pipelines.utils.audio import AudioConversionError
 from app.routes.utils import HTTPError, TextResponse, file_exceeds_max_size, http_error
-from app.utils.errors import InferenceError
+from app.utils.errors import InferenceError, OutOfMemoryError
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -24,7 +24,7 @@ RESPONSES = {
 
 
 def handle_pipeline_error(e: Exception) -> JSONResponse:
-    """Handles exceptions raised during audio processing.
+    """Handles exceptions raised during audio pipeline processing.
 
     Args:
         e: The exception raised during audio processing.
@@ -32,18 +32,21 @@ def handle_pipeline_error(e: Exception) -> JSONResponse:
     Returns:
         A JSONResponse with the appropriate error message and status code.
     """
-    logger.error(f"Audio processing error: {str(e)}")  # Log the detailed error
+    logger.error(f"AudioToText pipeline error: {str(e)}")  # Log the detailed error
     if "Soundfile is either not in the correct format or is malformed" in str(
         e
     ) or isinstance(e, AudioConversionError):
         status_code = status.HTTP_415_UNSUPPORTED_MEDIA_TYPE
         error_message = "Unsupported audio format or malformed file."
+    elif "CUDA out of memory" in str(e) or isinstance(e, OutOfMemoryError):
+        status_code = status.HTTP_400_BAD_REQUEST
+        error_message = "Out of memory error."
     elif isinstance(e, InferenceError):
         status_code = status.HTTP_400_BAD_REQUEST
         error_message = str(e)
     else:
         status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-        error_message = "Internal server error during audio processing."
+        error_message = "Audio-to-text pipeline error."
 
     return JSONResponse(
         status_code=status_code,
@@ -80,7 +83,7 @@ async def audio_to_text(
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 headers={"WWW-Authenticate": "Bearer"},
-                content=http_error("Invalid bearer token"),
+                content=http_error("Invalid bearer token."),
             )
 
     if model_id != "" and model_id != pipeline.model_id:
@@ -88,14 +91,14 @@ async def audio_to_text(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=http_error(
                 f"pipeline configured with {pipeline.model_id} but called with "
-                f"{model_id}"
+                f"{model_id}."
             ),
         )
 
     if file_exceeds_max_size(audio, 50 * 1024 * 1024):
         return JSONResponse(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            content=http_error("File size exceeds limit"),
+            content=http_error("File size exceeds limit."),
         )
 
     try:
