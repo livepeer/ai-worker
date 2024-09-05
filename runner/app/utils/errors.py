@@ -16,6 +16,7 @@ class InferenceError(Exception):
         super().__init__(message)
         self.original_exception = original_exception
 
+
 class OutOfMemoryError(Exception):
     """Raised when the system runs out of memory."""
 
