@@ -37,6 +37,19 @@ func (sb EnvValue) String() string {
 	return string(sb)
 }
 
+// handleJSONError is a global function that handles JSON errors and logs them.
+func handleJSONError(pipeline string, statusCode int, jsonErr interface{}) error {
+	if jsonErr != nil {
+		val, err := json.Marshal(jsonErr)
+		if err != nil {
+			return err
+		}
+		slog.Error(fmt.Sprintf("%s container returned %d", pipeline, statusCode), slog.String("err", string(val)))
+		return fmt.Errorf("%s container returned %d", pipeline, statusCode)
+	}
+	return nil
+}
+
 // OptimizationFlags is a map of optimization flags to be passed to the pipeline.
 type OptimizationFlags map[string]EnvValue
 
@@ -75,28 +88,16 @@ func (w *Worker) TextToImage(ctx context.Context, req TextToImageJSONRequestBody
 		return resp.JSON200, nil
 	}
 
-	handleJSONError := func(statusCode int, jsonErr interface{}) error {
-		if jsonErr != nil {
-			val, err := json.Marshal(jsonErr)
-			if err != nil {
-				return err
-			}
-			slog.Error(fmt.Sprintf("text-to-image container returned %d", statusCode), slog.String("err", string(val)))
-			return fmt.Errorf("text-to-image container returned %d", statusCode)
-		}
-		return nil
-	}
-
-	if err := handleJSONError(400, resp.JSON400); err != nil {
+	if err := handleJSONError("text-to-image", 400, resp.JSON400); err != nil {
 		return nil, err
 	}
-	if err := handleJSONError(401, resp.JSON401); err != nil {
+	if err := handleJSONError("text-to-image", 401, resp.JSON401); err != nil {
 		return nil, err
 	}
-	if err := handleJSONError(422, resp.JSON422); err != nil {
+	if err := handleJSONError("text-to-image", 422, resp.JSON422); err != nil {
 		return nil, err
 	}
-	if err := handleJSONError(500, resp.JSON500); err != nil {
+	if err := handleJSONError("text-to-image", 500, resp.JSON500); err != nil {
 		return nil, err
 	}
 
@@ -126,31 +127,19 @@ func (w *Worker) ImageToImage(ctx context.Context, req ImageToImageMultipartRequ
 		return resp.JSON200, nil
 	}
 
-	handleJSONError := func(statusCode int, jsonErr interface{}) error {
-		if jsonErr != nil {
-			val, err := json.Marshal(jsonErr)
-			if err != nil {
-				return err
-			}
-			slog.Error(fmt.Sprintf("image-to-image container returned %d", statusCode), slog.String("err", string(val)))
-			return fmt.Errorf("image-to-image container returned %d", statusCode)
-		}
-		return nil
-	}
-
-	if err := handleJSONError(400, resp.JSON400); err != nil {
+	if err := handleJSONError("image-to-image", 400, resp.JSON400); err != nil {
 		return nil, err
 	}
 
-	if err := handleJSONError(401, resp.JSON401); err != nil {
+	if err := handleJSONError("image-to-image", 401, resp.JSON401); err != nil {
 		return nil, err
 	}
 
-	if err := handleJSONError(422, resp.JSON422); err != nil {
+	if err := handleJSONError("image-to-image", 422, resp.JSON422); err != nil {
 		return nil, err
 	}
 
-	if err := handleJSONError(500, resp.JSON500); err != nil {
+	if err := handleJSONError("image-to-image", 500, resp.JSON500); err != nil {
 		return nil, err
 	}
 
@@ -182,28 +171,16 @@ func (w *Worker) ImageToVideo(ctx context.Context, req ImageToVideoMultipartRequ
 		return resp.JSON200, nil
 	}
 
-	handleJSONError := func(statusCode int, jsonErr interface{}) error {
-		if jsonErr != nil {
-			val, err := json.Marshal(jsonErr)
-			if err != nil {
-				return err
-			}
-			slog.Error(fmt.Sprintf("image-to-video container returned %d", statusCode), slog.String("err", string(val)))
-			return fmt.Errorf("image-to-video container returned %d", statusCode)
-		}
-		return nil
-	}
-
-	if err := handleJSONError(400, resp.JSON400); err != nil {
+	if err := handleJSONError("image-to-video", 400, resp.JSON400); err != nil {
 		return nil, err
 	}
-	if err := handleJSONError(401, resp.JSON401); err != nil {
+	if err := handleJSONError("image-to-video", 401, resp.JSON401); err != nil {
 		return nil, err
 	}
-	if err := handleJSONError(422, resp.JSON422); err != nil {
+	if err := handleJSONError("image-to-video", 422, resp.JSON422); err != nil {
 		return nil, err
 	}
-	if err := handleJSONError(500, resp.JSON500); err != nil {
+	if err := handleJSONError("image-to-video", 500, resp.JSON500); err != nil {
 		return nil, err
 	}
 
@@ -233,28 +210,16 @@ func (w *Worker) Upscale(ctx context.Context, req UpscaleMultipartRequestBody) (
 		return resp.JSON200, nil
 	}
 
-	handleJSONError := func(statusCode int, jsonErr interface{}) error {
-		if jsonErr != nil {
-			val, err := json.Marshal(jsonErr)
-			if err != nil {
-				return err
-			}
-			slog.Error(fmt.Sprintf("upscale container returned %d", statusCode), slog.String("err", string(val)))
-			return fmt.Errorf("upscale container returned %d", statusCode)
-		}
-		return nil
-	}
-
-	if err := handleJSONError(400, resp.JSON400); err != nil {
+	if err := handleJSONError("upscale", 400, resp.JSON400); err != nil {
 		return nil, err
 	}
-	if err := handleJSONError(401, resp.JSON401); err != nil {
+	if err := handleJSONError("upscale", 401, resp.JSON401); err != nil {
 		return nil, err
 	}
-	if err := handleJSONError(422, resp.JSON422); err != nil {
+	if err := handleJSONError("upscale", 422, resp.JSON422); err != nil {
 		return nil, err
 	}
-	if err := handleJSONError(500, resp.JSON500); err != nil {
+	if err := handleJSONError("upscale", 500, resp.JSON500); err != nil {
 		return nil, err
 	}
 
@@ -284,34 +249,22 @@ func (w *Worker) AudioToText(ctx context.Context, req AudioToTextMultipartReques
 		return resp.JSON200, nil
 	}
 
-	handleJSONError := func(statusCode int, jsonErr interface{}) error {
-		if jsonErr != nil {
-			val, err := json.Marshal(jsonErr)
-			if err != nil {
-				return err
-			}
-			slog.Error(fmt.Sprintf("audio-to-text container returned %d", statusCode), slog.String("err", string(val)))
-			return fmt.Errorf("audio-to-text container returned %d", statusCode)
-		}
-		return nil
-	}
-
-	if err := handleJSONError(400, resp.JSON400); err != nil {
+	if err := handleJSONError("audio-to-text", 400, resp.JSON400); err != nil {
 		return nil, err
 	}
-	if err := handleJSONError(401, resp.JSON401); err != nil {
+	if err := handleJSONError("audio-to-text", 401, resp.JSON401); err != nil {
 		return nil, err
 	}
-	if err := handleJSONError(413, resp.JSON413); err != nil {
+	if err := handleJSONError("audio-to-text", 413, resp.JSON413); err != nil {
 		return nil, fmt.Errorf("%s: file too large; max file size is 50MB", err.Error())
 	}
-	if err := handleJSONError(415, resp.JSON415); err != nil {
+	if err := handleJSONError("audio-to-text", 415, resp.JSON415); err != nil {
 		return nil, err
 	}
-	if err := handleJSONError(422, resp.JSON422); err != nil {
+	if err := handleJSONError("audio-to-text", 422, resp.JSON422); err != nil {
 		return nil, err
 	}
-	if err := handleJSONError(500, resp.JSON500); err != nil {
+	if err := handleJSONError("audio-to-text", 500, resp.JSON500); err != nil {
 		return nil, err
 	}
 
@@ -341,28 +294,16 @@ func (w *Worker) SegmentAnything2(ctx context.Context, req SegmentAnything2Multi
 		return resp.JSON200, nil
 	}
 
-	handleJSONError := func(statusCode int, jsonErr interface{}) error {
-		if jsonErr != nil {
-			val, err := json.Marshal(jsonErr)
-			if err != nil {
-				return err
-			}
-			slog.Error(fmt.Sprintf("segment-anything-2 container returned %d", statusCode), slog.String("err", string(val)))
-			return fmt.Errorf("segment-anything-2 container returned %d", statusCode)
-		}
-		return nil
-	}
-
-	if err := handleJSONError(400, resp.JSON400); err != nil {
+	if err := handleJSONError("segment-anything-2", 400, resp.JSON400); err != nil {
 		return nil, err
 	}
-	if err := handleJSONError(401, resp.JSON401); err != nil {
+	if err := handleJSONError("segment-anything-2", 401, resp.JSON401); err != nil {
 		return nil, err
 	}
-	if err := handleJSONError(422, resp.JSON422); err != nil {
+	if err := handleJSONError("segment-anything-2", 422, resp.JSON422); err != nil {
 		return nil, err
 	}
-	if err := handleJSONError(500, resp.JSON500); err != nil {
+	if err := handleJSONError("segment-anything-2", 500, resp.JSON500); err != nil {
 		return nil, err
 	}
 
