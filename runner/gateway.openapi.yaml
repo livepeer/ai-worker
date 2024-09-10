@@ -438,10 +438,10 @@ components:
       title: Body_image_to_video_image_to_video_post
     Body_segment_anything_2_segment_anything_2_post:
       properties:
-        image:
+        media_file:
           type: string
           format: binary
-          title: Image
+          title: Media File
           description: Image to segment.
         model_id:
           type: string
@@ -486,9 +486,14 @@ components:
           description: If true, the point coordinates will be normalized to the range
             [0,1], with point_coords expected to be with respect to image dimensions.
           default: true
+        frame_idx:
+          type: integer
+          title: Frame Idx
+          description: Frame index reference for (required video file input only)
+          default: -1
       type: object
       required:
-      - image
+      - media_file
       - model_id
       title: Body_segment_anything_2_segment_anything_2_post
     Body_upscale_upscale_post:
