@@ -60,6 +60,8 @@ jobs:
           images: |
             livepeer/ai-runner
           tags: |
+            type=raw,value=sam2
+            type=raw,value=segment-anything-2
             type=sha,prefix=sam2-
             type=ref,event=pr,prefix=sam2-
             type=ref,event=tag,prefix=sam2-
@@ -70,7 +72,7 @@ jobs:
             type=semver,pattern={{version}},prefix=sam2-v
             type=semver,pattern={{major}}.{{minor}},prefix=sam2-v
             type=raw,value=latest,enable={{is_default_branch}},prefix=sam2-
-            type=raw,value=${{ github.event.pull_request.head.ref }},prefix=sam2-
+            type=raw,value=${{ github.event.pull_request.head.ref }},enable=${{ github.event_name == 'pull_request' }},prefix=sam2-
             type=raw,value=stable,enable=${{ startsWith(github.event.ref, 'refs/tags/v') }},prefix=sam2-
 
       - name: Build and push runner docker image
