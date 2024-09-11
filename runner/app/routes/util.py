@@ -39,7 +39,7 @@ class VideoSegmentResponse(BaseModel):
         ..., description="list of ids of segmented objects in this frame"
     )
     mask_logits: List[List[float]] = Field(
-        ..., description="The generated masks."
+         ..., description="The generated masks."
     )
 
 class MasksResponse(BaseModel):
@@ -52,7 +52,7 @@ class MasksResponse(BaseModel):
     logits: str = Field(
         ..., description="The raw, unnormalized predictions (logits) for the masks."
     )
-    video_segments: VideoSegmentResponse = Field(
+    video_segments: List[VideoSegmentResponse] = Field(
         ..., description="Response from video segmentation"
     )
 

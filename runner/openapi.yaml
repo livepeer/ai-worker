@@ -596,8 +596,10 @@ components:
           title: Logits
           description: The raw, unnormalized predictions (logits) for the masks.
         video_segments:
-          allOf:
-          - $ref: '#/components/schemas/VideoSegmentResponse'
+          items:
+            $ref: '#/components/schemas/VideoSegmentResponse'
+          type: array
+          title: Video Segments
           description: Response from video segmentation
       type: object
       required:
