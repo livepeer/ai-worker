@@ -61,6 +61,7 @@ jobs:
             type=semver,pattern={{version}},prefix=v
             type=semver,pattern={{major}}.{{minor}},prefix=v
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=base,enable={{is_default_branch}}
             type=raw,value=${{ github.event.pull_request.head.ref }}
             type=raw,value=stable,enable=${{ startsWith(github.event.ref, 'refs/tags/v') }}
 
@@ -72,6 +73,18 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           file: "Dockerfile"
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=livepeerci/build:cache
+          cache-to: type=registry,ref=livepeerci/build:cache,mode=max
+      
+      - name: Build and push segment-anything-2 docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: "{{defaultContext}}:runner"
+          platforms: linux/amd64
+          push: true
+          tags: livepeer/ai-runner:segment-anything-2
+          file: "docker/Dockerfile.segment_anything_2"
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=registry,ref=livepeerci/build:cache
           cache-to: type=registry,ref=livepeerci/build:cache,mode=max
