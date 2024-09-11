@@ -1,5 +1,22 @@
 FROM livepeer/ai-runner:base
 
-RUN pip install --no-cache-dir torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 xformers==0.0.27 git+https://github.com/facebookresearch/segment-anything-2.git@main#egg=sam-2
+RUN pip install --no-cache-dir torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 xformers==0.0.27
+
+# Clone the segment-anything-2 repo to a temporary directory
+RUN git clone https://github.com/facebookresearch/segment-anything-2.git /tmp/segment-anything-2
+
+# Set working directory to the cloned repo
+WORKDIR /tmp/segment-anything-2
+
+# Run the build command
+RUN python setup.py build_ext --inplace && \
+    pip install . && \
+    rm -rf /tmp/segment-anything-2  # Clean up after installation
+
+# Return to the default working directory
+WORKDIR /app
+
+# Copy your application code
+COPY app/ /app/app
 
 CMD ["uvicorn", "app.main:app", "--log-config", "app/cfg/uvicorn_logging_config.json", "--host", "0.0.0.0", "--port", "8000"]

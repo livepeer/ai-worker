@@ -46,7 +46,8 @@ RESPONSES = {
 )
 async def segment_anything_2(
     media_file: Annotated[
-        UploadFile, File(description="Image to segment.", media_type="image/*")
+        # UploadFile, File(description="Image to segment.", media_type="image/*")
+        UploadFile, File(description="Media file to segment.", media_type="image/*,video/mp4")
     ],
     model_id: Annotated[
         str, Form(description="Hugging Face model ID used for image generation.")
@@ -150,48 +151,70 @@ async def segment_anything_2(
 
     supported_video_types = ["video/mp4"]
     supported_image_types = ["image/jpeg", "image/png", "image/jpg"]
+    supported_media_types = supported_image_types + supported_video_types
 
     try:
-        if media_file.content_type in supported_image_types:
-            masks, scores, low_res_mask_logits = pipeline(
-                media_file,
-                media_type="image",
-                point_coords=point_coords,
-                point_labels=point_labels,
-                box=box,
-                mask_input=mask_input,
-                multimask_output=multimask_output,
-                return_logits=return_logits,
-                normalize_coords=normalize_coords,
-            )
+        # if media_file.content_type in supported_image_types:
+        #     masks, scores, low_res_mask_logits = pipeline(
+        #         media_file,
+        #         media_type="image",
+        #         point_coords=point_coords,
+        #         point_labels=point_labels,
+        #         box=box,
+        #         mask_input=mask_input,
+        #         multimask_output=multimask_output,
+        #         return_logits=return_logits,
+        #         normalize_coords=normalize_coords,
+        #     )
 
-            # Return masks sorted by descending score as string.
-            sorted_ind = np.argsort(scores)[::-1]
-            return {
-                "masks": str(masks[sorted_ind].tolist()),
-                "scores": str(scores[sorted_ind].tolist()),
-                "logits": str(low_res_mask_logits[sorted_ind].tolist()),
-            }
+        #     # Return masks sorted by descending score as string.
+        #     sorted_ind = np.argsort(scores)[::-1]
+        #     return {
+        #         "masks": str(masks[sorted_ind].tolist()),
+        #         "scores": str(scores[sorted_ind].tolist()),
+        #         "logits": str(low_res_mask_logits[sorted_ind].tolist()),
+        #     }
+        # elif media_file.content_type == "application/octet-stream":
+            # Try to infer the type from the file extension
+            # filename = media_file.filename.lower()
+            # if filename.endswith(".mp4"):
+                # media_file.content_type = "video/mp4"
+                # out_frame_idx, out_obj_ids, out_mask_logits = pipeline(
+                #             media_file,
+                #             media_type="video",
+                #             frame_idx=frame_idx,
+                #             points=point_coords,
+                #             labels=point_labels,
+                #         )
 
-        elif media_file.content_type in supported_video_types:
-            low_res_mask_logits = pipeline(
-                media_file,
-                media_type="video",
-                frame_idx=frame_idx,
-                points=point_coords,
-                labels=point_labels,
-            )
-            
-            sadf = low_res_mask_logits
-            
-            
-            return {
-                "masks": str(""),
-                "logits": str(np.array(low_res_mask_logits)),
-                "scores": str(""),
-            }
-        else:
-            raise InferenceError(f"Unsupported media type: {media_file.content_type}")
+                video_segments = []
+
+                for out_frame_idx, out_obj_ids, out_mask_logits in pipeline(
+                    media_file,
+                    media_type="video",
+                    frame_idx=frame_idx,
+                    points=point_coords,
+                    labels=point_labels
+                ):
+                    # Collect the data for each frame
+                    segment_data = {
+                        "frame_idx": out_frame_idx, #type int
+                        "obj_ids": out_obj_ids, #type list
+                        "mask_logits": [mask.cpu().numpy().tolist() for mask in out_mask_logits]
+                    }
+                    video_segments.append(segment_data)
+
+                # Return the collected video segments as JSON
+                # return JSONResponse(content={"video_segments": video_segments})
+                print(f"***************************updated123******")
+                return {
+                    "masks": "",
+                    "scores": "",
+                    "logits": "",
+                    "video_segments": video_segments,
+                }
+        # else:
+        #     raise InferenceError(f"Unsupported media type: {media_file.content_type}")
 
     except Exception as e:
         logger.error(f"Segment Anything 2 error: {e}")
@@ -204,7 +227,7 @@ async def segment_anything_2(
 
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=http_error("Segment Anything 2 error"),
+            content=http_error(f"Segment Anything 2 error: {e}"),
         )
 
     # # Return masks sorted by descending score as string.

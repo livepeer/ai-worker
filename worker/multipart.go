@@ -243,22 +243,48 @@ func NewAudioToTextMultipartWriter(w io.Writer, req AudioToTextMultipartRequestB
 
 func NewSegmentAnything2MultipartWriter(w io.Writer, req SegmentAnything2MultipartRequestBody) (*multipart.Writer, error) {
 	mw := multipart.NewWriter(w)
-	writer, err := mw.CreateFormFile("image", req.Image.Filename())
+
+	// Create form file for video (instead of image)
+	writer, err := mw.CreateFormFile("media_file", req.MediaFile.Filename()) // Use 'media_file' instead of 'image'
 	if err != nil {
 		return nil, err
 	}
-	imageSize := req.Image.FileSize()
-	imageRdr, err := req.Image.Reader()
+
+	// Get video file size
+	videoSize := req.MediaFile.FileSize()
+
+	// Get video file reader
+	videoRdr, err := req.MediaFile.Reader()
 	if err != nil {
 		return nil, err
 	}
-	copied, err := io.Copy(writer, imageRdr)
+
+	// Copy video content to the multipart writer
+	copied, err := io.Copy(writer, videoRdr)
 	if err != nil {
 		return nil, err
 	}
-	if copied != imageSize {
-		return nil, fmt.Errorf("failed to copy image to multipart request imageBytes=%v copiedBytes=%v", imageSize, copied)
+
+	// Ensure the entire video file was copied
+	if copied != videoSize {
+		return nil, fmt.Errorf("failed to copy video to multipart request videoBytes=%v copiedBytes=%v", videoSize, copied)
 	}
+	// writer, err := mw.CreateFormFile("image", req.Image.Filename())
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// imageSize := req.Image.FileSize()
+	// imageRdr, err := req.Image.Reader()
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// copied, err := io.Copy(writer, imageRdr)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// if copied != imageSize {
+	// 	return nil, fmt.Errorf("failed to copy image to multipart request imageBytes=%v copiedBytes=%v", imageSize, copied)
+	// }
 
 	// Handle input fields.
 	if req.ModelId != nil {

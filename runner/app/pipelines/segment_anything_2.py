@@ -62,16 +62,29 @@ class SegmentAnything2Pipeline(Pipeline):
                 raise InferenceError(original_exception=e)
         elif media_type == "video":
             try:
+                media_file.file.seek(0)
+
+                # Verify that the file isn't empty before proceeding
+                file_size = os.fstat(media_file.file.fileno()).st_size
+                if file_size == 0:
+                    raise InferenceError("Uploaded video file is empty")
+                else:
+                    print(f"Video file size: {file_size} bytes")
+
                 temp_dir = tempfile.mkdtemp()
                 # TODO: Fix the file type dependency, try passing to ffmpeg without saving to file
                 video_path = f"{temp_dir}/input.mp4"
                 with open(video_path, "wb") as video_file:
                     video_file.write(media_file.file.read())
-                
+
+                # Check if the file was saved properly
+                if not os.path.exists(video_path):
+                    raise FileNotFoundError(f"Video file not found at {video_path}")
+                print(f"Video file saved to {video_path}, size: {os.path.getsize(video_path)} bytes")
+
                 # Run ffmpeg command to extract frames from video
                 frame_dir = tempfile.mkdtemp()
-                output_pattern = f"{frame_dir}/%05d.jpg"
-                ffmpeg_command = f"ffmpeg -i {video_path} -q:v 2 -start_number 0 {output_pattern}"
+                ffmpeg_command = f"ffmpeg -i {video_path} -q:v 2 -start_number 0 {frame_dir}/'%05d.jpg'"
                 subprocess.run(ffmpeg_command, shell=True, check=True)
                 shutil.rmtree(temp_dir) 
 
@@ -93,12 +106,7 @@ class SegmentAnything2Pipeline(Pipeline):
                     labels=kwargs.get('labels', None),
                     )
                 
-                for out_frame_idx, out_obj_ids, out_mask_logits in self.tm_vid.propagate_in_video(inference_state):
-                   return {
-                        out_obj_id: (out_mask_logits[i] > 0.0).cpu().numpy()
-                        for i, out_obj_id in enumerate(out_obj_ids)
-                    }
-                
+                return self.tm_vid.propagate_in_video(inference_state)
             except Exception as e:
                 raise InferenceError(original_exception=e)
 
