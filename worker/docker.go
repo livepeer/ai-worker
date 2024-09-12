@@ -36,6 +36,7 @@ var containerHostPorts = map[string]string{
 	"image-to-video": "8200",
 	"upscale":        "8300",
 	"audio-to-text":  "8400",
+	"live-portrait":  "8900",
 }
 
 type DockerManager struct {
@@ -182,6 +183,7 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 		},
 		ExposedPorts: nat.PortSet{
 			containerPort: struct{}{},
+			"5678/tcp":    struct{}{},
 		},
 		Labels: map[string]string{
 			containerCreatorLabel: containerCreator,
@@ -207,6 +209,12 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 				{
 					HostIP:   "0.0.0.0",
 					HostPort: containerHostPort,
+				},
+			},
+			"5678/tcp": []nat.PortBinding{
+				{
+					HostIP:   "0.0.0.0",
+					HostPort: "5678",
 				},
 			},
 		},

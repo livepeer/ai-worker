@@ -52,6 +52,10 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
             from app.pipelines.upscale import UpscalePipeline
 
             return UpscalePipeline(model_id)
+        case "live-portrait":
+            from liveportrait import Inference
+
+            return 
         case _:
             raise EnvironmentError(
                 f"{pipeline} is not a valid pipeline for model {model_id}"
@@ -82,6 +86,10 @@ def load_route(pipeline: str) -> any:
             from app.routes import upscale
 
             return upscale.router
+        case "live-portrait":
+            from app.routes import live_portrait
+
+            return live_portrait.router
         case _:
             raise EnvironmentError(f"{pipeline} is not a valid pipeline")
 

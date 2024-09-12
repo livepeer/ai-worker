@@ -246,6 +246,50 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
       security:
       - HTTPBearer: []
+  /live-portrait:
+    post:
+      summary: Live Portrait
+      description: Generate a video from a provided source image and driving video.
+      operationId: live_portrait
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_live_portrait_live_portrait_post'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
 components:
   schemas:
     APIError:
@@ -400,6 +444,28 @@ components:
       required:
       - image
       title: Body_image_to_video_image_to_video_post
+    Body_live_portrait_live_portrait_post:
+      properties:
+        source_image:
+          type: string
+          format: binary
+          title: Source Image
+          description: Uploaded source image to animate.
+        driving_video:
+          type: string
+          format: binary
+          title: Driving Video
+          description: Uploaded driving video to guide the animation.
+        model_id:
+          type: string
+          title: Model Id
+          description: Hugging Face model ID used for video generation.
+          default: ''
+      type: object
+      required:
+      - source_image
+      - driving_video
+      title: Body_live_portrait_live_portrait_post
     Body_upscale_upscale_post:
       properties:
         prompt:
