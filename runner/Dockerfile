@@ -38,7 +38,6 @@ COPY ./requirements.txt /app
 RUN pip install --no-cache-dir -r requirements.txt
 
 RUN pip install https://github.com/chengzeyi/stable-fast/releases/download/v1.0.3/stable_fast-1.0.3+torch211cu121-cp311-cp311-manylinux2014_x86_64.whl
-RUN pip install https://github.com/JJassonn69/liveportrait/releases/download/liveportrait/liveportrait-0.1.0-py3-none-any.whl
 # Most DL models are quite large in terms of memory, using workers is a HUGE
 # slowdown because of the fork and GIL with python.
 # Using multiple pods seems like a better default strategy.
