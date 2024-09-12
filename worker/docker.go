@@ -2,8 +2,10 @@ package worker
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"strings"
 	"sync"
@@ -15,6 +17,7 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	docker "github.com/docker/docker/client"
 	"github.com/docker/docker/errdefs"
+	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/go-connections/nat"
 )
 
@@ -173,6 +176,32 @@ func (m *DockerManager) HasCapacity(ctx context.Context, pipeline, modelID strin
 	return err == nil
 }
 
+// pullImage pulls the specified image from the registry.
+func (m *DockerManager) pullImage(ctx context.Context, imageName string) error {
+	reader, err := m.dockerClient.ImagePull(ctx, imageName, types.ImagePullOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to pull image: %w", err)
+	}
+	defer reader.Close()
+
+	// Show progress.
+	decoder := json.NewDecoder(reader)
+	for {
+		var progress jsonmessage.JSONMessage
+		if err := decoder.Decode(&progress); err == io.EOF {
+			break
+		} else if err != nil {
+			return fmt.Errorf("error decoding progress message: %w", err)
+		}
+		if progress.Status != "" && progress.Progress != nil {
+			fmt.Printf("\r%s: %s", progress.Status, progress.Progress.String())
+		}
+	}
+	fmt.Println()
+
+	return nil
+}
+
 func (m *DockerManager) createContainer(ctx context.Context, pipeline string, modelID string, keepWarm bool, optimizationFlags OptimizationFlags) (*RunnerContainer, error) {
 	gpu, err := m.allocGPU(ctx)
 	if err != nil {
@@ -243,9 +272,23 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 		AutoRemove: true,
 	}
 
+	// Create container and pull image if not found locally.
 	resp, err := m.dockerClient.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, containerName)
 	if err != nil {
-		return nil, err
+		if errdefs.IsNotFound(err) {
+			slog.Info("Image not found locally, pulling image", slog.String("image", containerImage))
+			if err := m.pullImage(ctx, containerImage); err != nil {
+				return nil, err
+			}
+
+			// Retry container creation after pulling the image.
+			resp, err = m.dockerClient.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, containerName)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create container after pulling image: %w", err)
+			}
+		} else {
+			return nil, err
+		}
 	}
 
 	cctx, cancel := context.WithTimeout(ctx, containerTimeout)
