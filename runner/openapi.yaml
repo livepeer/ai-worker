@@ -40,7 +40,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ImageResponse'
-              x-speakeasy-name-override: data
+                x-speakeasy-name-override: data
         '400':
           description: Bad Request
           content:
@@ -67,17 +67,19 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
       security:
       - HTTPBearer: []
-      x-speakeasy-name-override: imageToText
+      x-speakeasy-name-override: textToImage
   /image-to-image:
     post:
+      tags:
+      - generate
       summary: Image To Image
       description: Apply image transformations to a provided image.
-      operationId: image_to_image_image_to_image_post
+      operationId: genImageToImage
       requestBody:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Body_image_to_image_image_to_image_post'
+              $ref: '#/components/schemas/Body_genImageToImage'
         required: true
       responses:
         '200':
@@ -86,6 +88,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ImageResponse'
+                x-speakeasy-name-override: data
         '400':
           description: Bad Request
           content:
@@ -112,16 +115,19 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
       security:
       - HTTPBearer: []
+      x-speakeasy-name-override: imageToImage
   /image-to-video:
     post:
+      tags:
+      - generate
       summary: Image To Video
       description: Generate a video from a provided image.
-      operationId: image_to_video_image_to_video_post
+      operationId: genImageToVideo
       requestBody:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Body_image_to_video_image_to_video_post'
+              $ref: '#/components/schemas/Body_genImageToVideo'
         required: true
       responses:
         '200':
@@ -130,6 +136,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VideoResponse'
+                x-speakeasy-name-override: data
         '400':
           description: Bad Request
           content:
@@ -156,16 +163,19 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
       security:
       - HTTPBearer: []
+      x-speakeasy-name-override: imageToVideo
   /upscale:
     post:
+      tags:
+      - generate
       summary: Upscale
       description: Upscale an image by increasing its resolution.
-      operationId: upscale_upscale_post
+      operationId: genUpscale
       requestBody:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Body_upscale_upscale_post'
+              $ref: '#/components/schemas/Body_genUpscale'
         required: true
       responses:
         '200':
@@ -174,6 +184,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ImageResponse'
+                x-speakeasy-name-override: data
         '400':
           description: Bad Request
           content:
@@ -200,16 +211,19 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
       security:
       - HTTPBearer: []
+      x-speakeasy-name-override: upscale
   /audio-to-text:
     post:
+      tags:
+      - generate
       summary: Audio To Text
       description: Transcribe audio files to text.
-      operationId: audio_to_text_audio_to_text_post
+      operationId: genAudioToText
       requestBody:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Body_audio_to_text_audio_to_text_post'
+              $ref: '#/components/schemas/Body_genAudioToText'
         required: true
       responses:
         '200':
@@ -218,6 +232,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TextResponse'
+                x-speakeasy-name-override: data
         '400':
           description: Bad Request
           content:
@@ -250,16 +265,19 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
       security:
       - HTTPBearer: []
+      x-speakeasy-name-override: audioToText
   /segment-anything-2:
     post:
+      tags:
+      - generate
       summary: Segment Anything 2
       description: Segment objects in an image.
-      operationId: segment_anything_2_segment_anything_2_post
+      operationId: genSegmentAnything2
       requestBody:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Body_segment_anything_2_segment_anything_2_post'
+              $ref: '#/components/schemas/Body_genSegmentAnything2'
         required: true
       responses:
         '200':
@@ -268,6 +286,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MasksResponse'
+                x-speakeasy-name-override: data
         '400':
           description: Bad Request
           content:
@@ -294,6 +313,7 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
       security:
       - HTTPBearer: []
+      x-speakeasy-name-override: segmentAnything2
 components:
   schemas:
     APIError:
@@ -307,7 +327,7 @@ components:
       - msg
       title: APIError
       description: API error response model.
-    Body_audio_to_text_audio_to_text_post:
+    Body_genAudioToText:
       properties:
         audio:
           type: string
@@ -322,8 +342,8 @@ components:
       type: object
       required:
       - audio
-      title: Body_audio_to_text_audio_to_text_post
-    Body_image_to_image_image_to_image_post:
+      title: Body_genAudioToText
+    Body_genImageToImage:
       properties:
         prompt:
           type: string
@@ -388,8 +408,8 @@ components:
       required:
       - prompt
       - image
-      title: Body_image_to_image_image_to_image_post
-    Body_image_to_video_image_to_video_post:
+      title: Body_genImageToImage
+    Body_genImageToVideo:
       properties:
         image:
           type: string
@@ -447,8 +467,8 @@ components:
       type: object
       required:
       - image
-      title: Body_image_to_video_image_to_video_post
-    Body_segment_anything_2_segment_anything_2_post:
+      title: Body_genImageToVideo
+    Body_genSegmentAnything2:
       properties:
         image:
           type: string
@@ -501,8 +521,8 @@ components:
       type: object
       required:
       - image
-      title: Body_segment_anything_2_segment_anything_2_post
-    Body_upscale_upscale_post:
+      title: Body_genSegmentAnything2
+    Body_genUpscale:
       properties:
         prompt:
           type: string
@@ -538,7 +558,7 @@ components:
       required:
       - prompt
       - image
-      title: Body_upscale_upscale_post
+      title: Body_genUpscale
     HTTPError:
       properties:
         detail:
