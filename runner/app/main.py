@@ -23,8 +23,6 @@ async def lifespan(app: FastAPI):
     app.pipeline = load_pipeline(pipeline, model_id)
     app.include_router(load_route(pipeline))
 
-    use_route_names_as_operation_ids(app)
-
     logger.info(f"Started up with pipeline {app.pipeline}")
     yield
     logger.info("Shutting down")

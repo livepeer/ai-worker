@@ -13,7 +13,7 @@ import (
 	"strconv"
 )
 
-func NewImageToImageMultipartWriter(w io.Writer, req ImageToImageMultipartRequestBody) (*multipart.Writer, error) {
+func NewImageToImageMultipartWriter(w io.Writer, req GenImageToImageMultipartRequestBody) (*multipart.Writer, error) {
 	mw := multipart.NewWriter(w)
 	writer, err := mw.CreateFormFile("image", req.Image.Filename())
 	if err != nil {
@@ -88,7 +88,7 @@ func NewImageToImageMultipartWriter(w io.Writer, req ImageToImageMultipartReques
 	return mw, nil
 }
 
-func NewImageToVideoMultipartWriter(w io.Writer, req ImageToVideoMultipartRequestBody) (*multipart.Writer, error) {
+func NewImageToVideoMultipartWriter(w io.Writer, req GenImageToVideoMultipartRequestBody) (*multipart.Writer, error) {
 	mw := multipart.NewWriter(w)
 	writer, err := mw.CreateFormFile("image", req.Image.Filename())
 	if err != nil {
@@ -160,7 +160,7 @@ func NewImageToVideoMultipartWriter(w io.Writer, req ImageToVideoMultipartReques
 	return mw, nil
 }
 
-func NewUpscaleMultipartWriter(w io.Writer, req UpscaleMultipartRequestBody) (*multipart.Writer, error) {
+func NewUpscaleMultipartWriter(w io.Writer, req GenUpscaleMultipartRequestBody) (*multipart.Writer, error) {
 	mw := multipart.NewWriter(w)
 	writer, err := mw.CreateFormFile("image", req.Image.Filename())
 	if err != nil {
@@ -209,7 +209,7 @@ func NewUpscaleMultipartWriter(w io.Writer, req UpscaleMultipartRequestBody) (*m
 
 	return mw, nil
 }
-func NewAudioToTextMultipartWriter(w io.Writer, req AudioToTextMultipartRequestBody) (*multipart.Writer, error) {
+func NewAudioToTextMultipartWriter(w io.Writer, req GenAudioToTextMultipartRequestBody) (*multipart.Writer, error) {
 	mw := multipart.NewWriter(w)
 	writer, err := mw.CreateFormFile("audio", req.Audio.Filename())
 	if err != nil {
@@ -241,7 +241,7 @@ func NewAudioToTextMultipartWriter(w io.Writer, req AudioToTextMultipartRequestB
 	return mw, nil
 }
 
-func NewSegmentAnything2MultipartWriter(w io.Writer, req SegmentAnything2MultipartRequestBody) (*multipart.Writer, error) {
+func NewSegmentAnything2MultipartWriter(w io.Writer, req GenSegmentAnything2MultipartRequestBody) (*multipart.Writer, error) {
 	mw := multipart.NewWriter(w)
 	writer, err := mw.CreateFormFile("image", req.Image.Filename())
 	if err != nil {

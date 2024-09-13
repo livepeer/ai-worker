@@ -59,7 +59,7 @@ func main() {
 
 	prompt := args[1]
 
-	req := worker.TextToImageJSONRequestBody{
+	req := worker.GenTextToImageJSONRequestBody{
 		ModelId: &modelID,
 		Prompt:  prompt,
 	}

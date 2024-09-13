@@ -3,7 +3,7 @@ import copy
 import json
 
 import yaml
-from app.main import app, use_route_names_as_operation_ids
+from app.main import app
 from app.routes import (
     audio_to_text,
     health,
@@ -123,8 +123,6 @@ def write_openapi(fname: str, entrypoint: str = "runner", version: str = "0.0.0"
     app.include_router(audio_to_text.router)
     app.include_router(upscale.router)
     app.include_router(segment_anything_2.router)
-
-    use_route_names_as_operation_ids(app)
 
     logger.info(f"Generating OpenAPI schema for '{entrypoint}' entrypoint...")
     openapi = get_openapi(
