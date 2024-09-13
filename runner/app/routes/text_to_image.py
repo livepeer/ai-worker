@@ -115,7 +115,13 @@ RESPONSES = {
     operation_id="genTextToImage",
     summary="Text To Image",
     tags=["generate"],
-    openapi_extra={"x-speakeasy-name-override": "textToImage"},
+    openapi_extra={
+        "x-speakeasy-name-override": "textToImage",
+        "x-speakeasy-retries": {
+            "strategy": "backoff",
+            "statusCodes": ["503"],
+        }
+    }
 )
 @router.post(
     "/text-to-image/",

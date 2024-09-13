@@ -49,7 +49,13 @@ RESPONSES = {
     operation_id="genSegmentAnything2",
     summary="Segment Anything 2",
     tags=["generate"],
-    openapi_extra={"x-speakeasy-name-override": "segmentAnything2"},
+    openapi_extra={
+        "x-speakeasy-name-override": "segmentAnything2",
+        "x-speakeasy-retries": {
+            "strategy": "backoff",
+            "statusCodes": ["503"],
+        },
+    },
 )
 @router.post(
     "/segment-anything-2/",

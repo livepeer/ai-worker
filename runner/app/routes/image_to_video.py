@@ -43,7 +43,13 @@ RESPONSES = {
     operation_id="genImageToVideo",
     summary="Image To Video",
     tags=["generate"],
-    openapi_extra={"x-speakeasy-name-override": "imageToVideo"},
+    openapi_extra={
+        "x-speakeasy-name-override": "imageToVideo",
+        "x-speakeasy-retries": {
+            "strategy": "backoff",
+            "statusCodes": ["503"],
+        },
+    },
 )
 @router.post(
     "/image-to-video/",
