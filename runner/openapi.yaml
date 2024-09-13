@@ -12,7 +12,7 @@ paths:
   /health:
     get:
       summary: Health
-      operationId: health_health_get
+      operationId: health
       responses:
         '200':
           description: Successful Response
