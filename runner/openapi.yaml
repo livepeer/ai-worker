@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Livepeer AI Runner
   description: An application to run AI pipelines
-  version: v0.2.0
+  version: v0.3.0
 servers:
 - url: https://dream-gateway.livepeer.cloud
   description: Livepeer Cloud Community Gateway
@@ -68,6 +68,10 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: textToImage
+      x-speakeasy-retries:
+        strategy: backoff
+        statusCodes:
+        - '503'
   /image-to-image:
     post:
       tags:
@@ -116,6 +120,10 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: imageToImage
+      x-speakeasy-retries:
+        strategy: backoff
+        statusCodes:
+        - '503'
   /image-to-video:
     post:
       tags:
@@ -164,6 +172,10 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: imageToVideo
+      x-speakeasy-retries:
+        strategy: backoff
+        statusCodes:
+        - '503'
   /upscale:
     post:
       tags:
@@ -212,6 +224,10 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: upscale
+      x-speakeasy-retries:
+        strategy: backoff
+        statusCodes:
+        - '503'
   /audio-to-text:
     post:
       tags:
@@ -266,6 +282,10 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: audioToText
+      x-speakeasy-retries:
+        strategy: backoff
+        statusCodes:
+        - '503'
   /segment-anything-2:
     post:
       tags:
@@ -314,6 +334,10 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: segmentAnything2
+      x-speakeasy-retries:
+        strategy: backoff
+        statusCodes:
+        - '503'
 components:
   schemas:
     APIError:
