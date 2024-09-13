@@ -44,13 +44,7 @@ RESPONSES = {
     operation_id="genUpscale",
     summary="Upscale",
     tags=["generate"],
-    openapi_extra={
-        "x-speakeasy-name-override": "upscale",
-        "x-speakeasy-retries": {
-            "strategy": "backoff",
-            "statusCodes": ["503"],
-        },
-    },
+    openapi_extra={"x-speakeasy-name-override": "upscale"},
 )
 @router.post(
     "/upscale/",

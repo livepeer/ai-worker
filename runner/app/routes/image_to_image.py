@@ -44,13 +44,7 @@ RESPONSES = {
     operation_id="genImageToImage",
     summary="Image To Image",
     tags=["generate"],
-    openapi_extra={
-        "x-speakeasy-name-override": "imageToImage",
-        "x-speakeasy-retries": {
-            "strategy": "backoff",
-            "statusCodes": ["503"],
-        },
-    },
+    openapi_extra={"x-speakeasy-name-override": "imageToImage"},
 )
 @router.post(
     "/image-to-image/",
