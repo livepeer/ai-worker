@@ -64,7 +64,13 @@ def handle_pipeline_error(e: Exception) -> JSONResponse:
     operation_id="genAudioToText",
     summary="Audio To Text",
     tags=["generate"],
-    openapi_extra={"x-speakeasy-name-override": "audioToText"},
+    openapi_extra={
+        "x-speakeasy-name-override": "audioToText",
+        "x-speakeasy-retries": {
+            "strategy": "backoff",
+            "statusCodes": ["503"],
+        },
+    },
 )
 @router.post(
     "/audio-to-text/",
