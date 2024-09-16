@@ -6,9 +6,10 @@ from typing import List, Optional
 
 import numpy as np
 from fastapi import UploadFile
-from PIL import Image
 from pydantic import BaseModel, Field
-
+import PIL
+from PIL import Image
+import cv2
 
 class Media(BaseModel):
     """A media object containing information about the generated media."""
@@ -176,3 +177,14 @@ def json_str_to_np_array(
             error_message += f": {e}"
             raise ValueError(error_message)
     return None
+
+def extract_frames(video_path) -> List[PIL.Image]:
+    frames = []
+    vidcap = cv2.VideoCapture(video_path)
+    success, image = vidcap.read()
+    while success:
+        pil_image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        frames.append(pil_image)
+        success, image = vidcap.read()
+    vidcap.release()
+    return frames

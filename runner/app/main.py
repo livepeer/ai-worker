@@ -5,6 +5,11 @@ from contextlib import asynccontextmanager
 from app.routes import health
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
+from contextlib import asynccontextmanager
+import os
+import logging
+from app.routes import health
+
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +59,9 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
             from app.pipelines.segment_anything_2 import SegmentAnything2Pipeline
 
             return SegmentAnything2Pipeline(model_id)
+        case "lipsync":
+            from app.pipelines.lipsync import LipsyncPipeline
+            return LipsyncPipeline()
         case _:
             raise EnvironmentError(
                 f"{pipeline} is not a valid pipeline for model {model_id}"
@@ -88,6 +96,10 @@ def load_route(pipeline: str) -> any:
             from app.routes import segment_anything_2
 
             return segment_anything_2.router
+        case "lipsync":
+            from app.routes import lipsync
+
+            return lipsync.router
         case _:
             raise EnvironmentError(f"{pipeline} is not a valid pipeline")
 

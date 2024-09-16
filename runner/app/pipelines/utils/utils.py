@@ -12,6 +12,7 @@ from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
 from PIL import Image
 from torch import dtype as TorchDtype
 from transformers import CLIPImageProcessor
+import tempfile
 
 logger = logging.getLogger(__name__)
 
@@ -175,3 +176,13 @@ class SafetyChecker:
             clip_input=safety_checker_input.pixel_values.to(self._dtype),
         )
         return images, has_nsfw_concept
+
+def save_image_to_temp_file(image_file):
+    try:
+        image = Image.open(image_file)
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
+        image.save(temp_file, format="JPEG")
+        temp_file.close()
+        return temp_file.name
+    except Exception as e:
+        raise RuntimeError(f"Failed to save image to temp file: {str(e)}")
