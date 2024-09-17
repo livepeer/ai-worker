@@ -11,16 +11,16 @@ check_hf_auth() {
 # Displays help message.
 function display_help() {
     echo "Description: This script is used to download models available on the Livepeer AI Subnet."
-    echo "Usage: $0 [--alpha]"
+    echo "Usage: $0 [--beta]"
     echo "Options:"
-    echo "  --alpha  Download alpha models."
+    echo "  --beta  Download beta models."
     echo "  --restricted  Download models with a restrictive license."
     echo "  --help   Display this help message."
 }
 
-# Download recommended models during alpha phase.
-function download_alpha_models() {
-    printf "\nDownloading recommended alpha phase models...\n"
+# Download recommended models during beta phase.
+function download_beta_models() {
+    printf "\nDownloading recommended beta phase models...\n"
 
     printf "\nDownloading unrestricted models...\n"
 
@@ -44,7 +44,7 @@ function download_alpha_models() {
 
 # Download all models.
 function download_all_models() {
-    download_alpha_models
+    download_beta_models
 
     printf "\nDownloading other available models...\n"
 
@@ -87,8 +87,8 @@ MODE="all"
 for arg in "$@"
 do
     case $arg in
-        --alpha)
-            MODE="alpha"
+        --beta)
+            MODE="beta"
             shift
         ;;
         --restricted)
@@ -116,8 +116,8 @@ if ! command -v huggingface-cli > /dev/null 2>&1; then
     exit 1
 fi
 
-if [ "$MODE" = "alpha" ]; then
-    download_alpha_models
+if [ "$MODE" = "beta" ]; then
+    download_beta_models
 elif [ "$MODE" = "restricted" ]; then
     download_restricted_models
 else
