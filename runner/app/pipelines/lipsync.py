@@ -24,15 +24,14 @@ class LipsyncPipeline(Pipeline):
         self.device = get_torch_device()
         self.model_id = model_id
         kwargs = {"cache_dir": get_model_dir()}
-
+        print(f"ModelID : {model_id}, cache_dir: {get_model_dir}")
         self.TTS_model = ParlerTTSForConditionalGeneration.from_pretrained(
-            model_id=model_id,
-            device=self.device,
+            model_id,
             **kwargs,
-        )
+        ).to(self.device)
 
         self.TTS_tokenizer = AutoTokenizer.from_pretrained(
-            model_id=model_id,
+            model_id,
             torch_dtype=torch.bfloat16,
             attn_implementation="flash_attention_2",
             **kwargs,
