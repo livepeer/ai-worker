@@ -35,19 +35,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '500':
           description: Internal Server Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '422':
           description: Validation Error
           content:
@@ -83,19 +83,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '500':
           description: Internal Server Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '422':
           description: Validation Error
           content:
@@ -131,19 +131,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '500':
           description: Internal Server Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '422':
           description: Validation Error
           content:
@@ -179,19 +179,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '500':
           description: Internal Server Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '422':
           description: Validation Error
           content:
@@ -227,25 +227,25 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '413':
           description: Request Entity Too Large
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '500':
           description: Internal Server Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '422':
           description: Validation Error
           content:
@@ -281,19 +281,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '500':
           description: Internal Server Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '422':
           description: Validation Error
           content:
@@ -303,6 +303,53 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: segmentAnything2
+  /lipsync:
+    post:
+      tags:
+      - generate
+      summary: Lipsync
+      description: Generate Lip Sync'ed video given an image and uploaded audio file
+        or text.
+      operationId: genLipsync
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_genLipsync'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoResponse'
+                x-speakeasy-name-override: data
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/app__routes__lipsync__HTTPError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/app__routes__lipsync__HTTPError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/app__routes__lipsync__HTTPError'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-speakeasy-name-override: lipsync
 components:
   schemas:
     APIError:
@@ -460,6 +507,43 @@ components:
       - image
       - model_id
       title: Body_genImageToVideo
+    Body_genLipsync:
+      properties:
+        model_id:
+          type: string
+          title: Model Id
+          description: Hugging Face model ID used for Text-to-speech.
+        text_input:
+          type: string
+          title: Text Input
+          description: Text input for lip-syncing.
+          default: ''
+        tts_steering:
+          type: string
+          title: Tts Steering
+          description: Prompt to steer generated voice characteristics.
+          default: A male speaker delivers a slightly expressive and animated speech
+            with a moderate speed and pitch. The recording is of very high quality,
+            with the speaker's voice sounding clear and very close up.
+        audio:
+          type: string
+          format: binary
+          title: Audio
+        image:
+          type: string
+          format: binary
+          title: Image
+        return_frames:
+          type: boolean
+          title: Return Frames
+          description: Set to True to return frames instead of mp4.
+          default: false
+      type: object
+      required:
+      - model_id
+      - image
+      - model_id
+      title: Body_genLipsync
     Body_genSegmentAnything2:
       properties:
         image:
@@ -553,17 +637,6 @@ components:
       - image
       - model_id
       title: Body_genUpscale
-    HTTPError:
-      properties:
-        detail:
-          allOf:
-          - $ref: '#/components/schemas/APIError'
-          description: Detailed error information.
-      type: object
-      required:
-      - detail
-      title: HTTPError
-      description: HTTP error response model.
     HTTPValidationError:
       properties:
         detail:
@@ -740,6 +813,26 @@ components:
       - images
       title: VideoResponse
       description: Response model for image generation.
+    app__routes__lipsync__HTTPError:
+      properties:
+        detail:
+          type: string
+          title: Detail
+      type: object
+      required:
+      - detail
+      title: HTTPError
+    app__routes__util__HTTPError:
+      properties:
+        detail:
+          allOf:
+          - $ref: '#/components/schemas/APIError'
+          description: Detailed error information.
+      type: object
+      required:
+      - detail
+      title: HTTPError
+      description: HTTP error response model.
     chunk:
       properties:
         timestamp:

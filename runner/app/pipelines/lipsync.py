@@ -20,18 +20,25 @@ from tqdm import tqdm
 logger = logging.getLogger(__name__)
 
 class LipsyncPipeline(Pipeline):
-    def __init__(self):
+    def __init__(self, model_id: str):
         self.device = get_torch_device()
-        # Load FastSpeech 2 and HiFi-GAN models
-        self.TTS_model = ParlerTTSForConditionalGeneration.from_pretrained("parler-tts/parler-tts-large-v1").to(self.device)
+        self.model_id = model_id
+        kwargs = {"cache_dir": get_model_dir()}
 
-        self.TTS_tokenizer = AutoTokenizer.from_pretrained(
-            "parler-tts/parler-tts-large-v1",
-            torch_dtype=torch.bfloat16,
-            attn_implementation="flash_attention_2",
+        self.TTS_model = ParlerTTSForConditionalGeneration.from_pretrained(
+            model_id=model_id,
+            device=self.device,
+            **kwargs,
         )
 
-    def __call__(self, text, audio_file, image_file):
+        self.TTS_tokenizer = AutoTokenizer.from_pretrained(
+            model_id=model_id,
+            torch_dtype=torch.bfloat16,
+            attn_implementation="flash_attention_2",
+            **kwargs,
+        )
+
+    def __call__(self, text, tts_steering, audio_file, image_file):
         # Save Source Image to Disk
         temp_image_file_path = save_image_to_temp_file(image_file)
 
@@ -40,7 +47,7 @@ class LipsyncPipeline(Pipeline):
         audio_path = os.path.join("/tmp/", unique_audio_filename)
 
         if audio_file is None:
-            self.generate_speech(text, audio_path)
+            self.generate_speech(text, tts_steering, audio_path)
         else: 
             with open(audio_path, 'wb') as f:
                 f.write(audio_file.read())
@@ -87,7 +94,8 @@ class LipsyncPipeline(Pipeline):
                 "--drv_aud", audio_path,
                 "--out_name", output_video_path,
                 "--drv_pose", pose_drv,
-                "--out_mode", "final"
+                "--out_mode", "final",
+                "--low_memory_usage",
             ]
 
             # Change to the appropriate directory
@@ -117,11 +125,10 @@ class LipsyncPipeline(Pipeline):
 
         return output_video_path
 
-    def generate_speech(self, text, output_file_name):
+    def generate_speech(self, text, tts_steering, output_file_name):
         try:
             with torch.no_grad():
-                description = "A male speaker delivers a slightly expressive and animated speech..."
-                input_ids = self.TTS_tokenizer(description, return_tensors="pt").input_ids.to(self.device)
+                input_ids = self.TTS_tokenizer(tts_steering, return_tensors="pt").input_ids.to(self.device)
                 prompt_input_ids = self.TTS_tokenizer(text, return_tensors="pt").input_ids.to(self.device)
 
                 generation = self.TTS_model.generate(input_ids=input_ids, prompt_input_ids=prompt_input_ids)
@@ -154,3 +161,6 @@ class LipsyncPipeline(Pipeline):
         torch.cuda.empty_cache()
         gc.collect()
         time.sleep(20)
+
+    def __str__(self) -> str:
+        return f"Lipsync (TTS) model_id={self.model_id}"

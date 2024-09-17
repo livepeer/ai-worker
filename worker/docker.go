@@ -37,11 +37,13 @@ var containerHostPorts = map[string]string{
 	"upscale":            "8300",
 	"audio-to-text":      "8400",
 	"segment-anything-2": "8500",
+	"lipsync":            "8600",
 }
 
 // Mapping for per pipeline container images.
 var pipelineToImage = map[string]string{
 	"segment-anything-2": "livepeer/ai-runner:segment-anything-2",
+	"lipsync":            "livepeer/ai-runner:lipsync",
 }
 
 type DockerManager struct {

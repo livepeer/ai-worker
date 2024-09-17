@@ -61,7 +61,7 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
             return SegmentAnything2Pipeline(model_id)
         case "lipsync":
             from app.pipelines.lipsync import LipsyncPipeline
-            return LipsyncPipeline()
+            return LipsyncPipeline(model_id)
         case _:
             raise EnvironmentError(
                 f"{pipeline} is not a valid pipeline for model {model_id}"

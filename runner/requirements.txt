@@ -18,3 +18,5 @@ av==12.1.0
 sentencepiece== 0.2.0
 protobuf==5.27.2
 
+# only needed to satisfy "cv2" requirement of gen_openapi.py for building lipsync, is installed in Dockerfile.lipsync
+# opencv-python

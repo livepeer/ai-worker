@@ -110,6 +110,24 @@ type BodyGenImageToVideo struct {
 	Width *int `json:"width,omitempty"`
 }
 
+// BodyGenLipsync defines model for Body_genLipsync.
+type BodyGenLipsync struct {
+	Audio *openapi_types.File `json:"audio,omitempty"`
+	Image openapi_types.File  `json:"image"`
+
+	// ModelId Hugging Face model ID used for Text-to-speech.
+	ModelId string `json:"model_id"`
+
+	// ReturnFrames Set to True to return frames instead of mp4.
+	ReturnFrames *bool `json:"return_frames,omitempty"`
+
+	// TextInput Text input for lip-syncing.
+	TextInput *string `json:"text_input,omitempty"`
+
+	// TtsSteering Prompt to steer generated voice characteristics.
+	TtsSteering *string `json:"tts_steering,omitempty"`
+}
+
 // BodyGenSegmentAnything2 defines model for Body_genSegmentAnything2.
 type BodyGenSegmentAnything2 struct {
 	// Box A length 4 array given as a box prompt to the model, in XYXY format.
@@ -159,12 +177,6 @@ type BodyGenUpscale struct {
 
 	// Seed Seed for random number generation.
 	Seed *int `json:"seed,omitempty"`
-}
-
-// HTTPError HTTP error response model.
-type HTTPError struct {
-	// Detail Detailed error information.
-	Detail APIError `json:"detail"`
 }
 
 // HTTPValidationError defines model for HTTPValidationError.
@@ -273,6 +285,17 @@ type VideoResponse struct {
 	Frames [][]Media `json:"frames"`
 }
 
+// AppRoutesLipsyncHTTPError defines model for app__routes__lipsync__HTTPError.
+type AppRoutesLipsyncHTTPError struct {
+	Detail string `json:"detail"`
+}
+
+// AppRoutesUtilHTTPError HTTP error response model.
+type AppRoutesUtilHTTPError struct {
+	// Detail Detailed error information.
+	Detail APIError `json:"detail"`
+}
+
 // Chunk A chunk of text with a timestamp.
 type Chunk struct {
 	// Text The text of the chunk.
@@ -290,6 +313,9 @@ type GenImageToImageMultipartRequestBody = BodyGenImageToImage
 
 // GenImageToVideoMultipartRequestBody defines body for GenImageToVideo for multipart/form-data ContentType.
 type GenImageToVideoMultipartRequestBody = BodyGenImageToVideo
+
+// GenLipsyncMultipartRequestBody defines body for GenLipsync for multipart/form-data ContentType.
+type GenLipsyncMultipartRequestBody = BodyGenLipsync
 
 // GenSegmentAnything2MultipartRequestBody defines body for GenSegmentAnything2 for multipart/form-data ContentType.
 type GenSegmentAnything2MultipartRequestBody = BodyGenSegmentAnything2
@@ -447,6 +473,9 @@ type ClientInterface interface {
 	// GenImageToVideoWithBody request with any body
 	GenImageToVideoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GenLipsyncWithBody request with any body
+	GenLipsyncWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GenSegmentAnything2WithBody request with any body
 	GenSegmentAnything2WithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -497,6 +526,18 @@ func (c *Client) GenImageToImageWithBody(ctx context.Context, contentType string
 
 func (c *Client) GenImageToVideoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGenImageToVideoRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GenLipsyncWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGenLipsyncRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -669,6 +710,35 @@ func NewGenImageToVideoRequestWithBody(server string, contentType string, body i
 	return req, nil
 }
 
+// NewGenLipsyncRequestWithBody generates requests for GenLipsync with any type of body
+func NewGenLipsyncRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/lipsync")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGenSegmentAnything2RequestWithBody generates requests for GenSegmentAnything2 with any type of body
 func NewGenSegmentAnything2RequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
@@ -822,6 +892,9 @@ type ClientWithResponsesInterface interface {
 	// GenImageToVideoWithBodyWithResponse request with any body
 	GenImageToVideoWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenImageToVideoResponse, error)
 
+	// GenLipsyncWithBodyWithResponse request with any body
+	GenLipsyncWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenLipsyncResponse, error)
+
 	// GenSegmentAnything2WithBodyWithResponse request with any body
 	GenSegmentAnything2WithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenSegmentAnything2Response, error)
 
@@ -838,11 +911,11 @@ type GenAudioToTextResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *TextResponse
-	JSON400      *HTTPError
-	JSON401      *HTTPError
-	JSON413      *HTTPError
+	JSON400      *AppRoutesUtilHTTPError
+	JSON401      *AppRoutesUtilHTTPError
+	JSON413      *AppRoutesUtilHTTPError
 	JSON422      *HTTPValidationError
-	JSON500      *HTTPError
+	JSON500      *AppRoutesUtilHTTPError
 }
 
 // Status returns HTTPResponse.Status
@@ -887,10 +960,10 @@ type GenImageToImageResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ImageResponse
-	JSON400      *HTTPError
-	JSON401      *HTTPError
+	JSON400      *AppRoutesUtilHTTPError
+	JSON401      *AppRoutesUtilHTTPError
 	JSON422      *HTTPValidationError
-	JSON500      *HTTPError
+	JSON500      *AppRoutesUtilHTTPError
 }
 
 // Status returns HTTPResponse.Status
@@ -913,10 +986,10 @@ type GenImageToVideoResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *VideoResponse
-	JSON400      *HTTPError
-	JSON401      *HTTPError
+	JSON400      *AppRoutesUtilHTTPError
+	JSON401      *AppRoutesUtilHTTPError
 	JSON422      *HTTPValidationError
-	JSON500      *HTTPError
+	JSON500      *AppRoutesUtilHTTPError
 }
 
 // Status returns HTTPResponse.Status
@@ -935,14 +1008,40 @@ func (r GenImageToVideoResponse) StatusCode() int {
 	return 0
 }
 
+type GenLipsyncResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *VideoResponse
+	JSON400      *AppRoutesLipsyncHTTPError
+	JSON401      *AppRoutesLipsyncHTTPError
+	JSON422      *HTTPValidationError
+	JSON500      *AppRoutesLipsyncHTTPError
+}
+
+// Status returns HTTPResponse.Status
+func (r GenLipsyncResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GenLipsyncResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GenSegmentAnything2Response struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *MasksResponse
-	JSON400      *HTTPError
-	JSON401      *HTTPError
+	JSON400      *AppRoutesUtilHTTPError
+	JSON401      *AppRoutesUtilHTTPError
 	JSON422      *HTTPValidationError
-	JSON500      *HTTPError
+	JSON500      *AppRoutesUtilHTTPError
 }
 
 // Status returns HTTPResponse.Status
@@ -965,10 +1064,10 @@ type GenTextToImageResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ImageResponse
-	JSON400      *HTTPError
-	JSON401      *HTTPError
+	JSON400      *AppRoutesUtilHTTPError
+	JSON401      *AppRoutesUtilHTTPError
 	JSON422      *HTTPValidationError
-	JSON500      *HTTPError
+	JSON500      *AppRoutesUtilHTTPError
 }
 
 // Status returns HTTPResponse.Status
@@ -991,10 +1090,10 @@ type GenUpscaleResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ImageResponse
-	JSON400      *HTTPError
-	JSON401      *HTTPError
+	JSON400      *AppRoutesUtilHTTPError
+	JSON401      *AppRoutesUtilHTTPError
 	JSON422      *HTTPValidationError
-	JSON500      *HTTPError
+	JSON500      *AppRoutesUtilHTTPError
 }
 
 // Status returns HTTPResponse.Status
@@ -1047,6 +1146,15 @@ func (c *ClientWithResponses) GenImageToVideoWithBodyWithResponse(ctx context.Co
 		return nil, err
 	}
 	return ParseGenImageToVideoResponse(rsp)
+}
+
+// GenLipsyncWithBodyWithResponse request with arbitrary body returning *GenLipsyncResponse
+func (c *ClientWithResponses) GenLipsyncWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenLipsyncResponse, error) {
+	rsp, err := c.GenLipsyncWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGenLipsyncResponse(rsp)
 }
 
 // GenSegmentAnything2WithBodyWithResponse request with arbitrary body returning *GenSegmentAnything2Response
@@ -1106,21 +1214,21 @@ func ParseGenAudioToTextResponse(rsp *http.Response) (*GenAudioToTextResponse, e
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest HTTPError
+		var dest AppRoutesUtilHTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest HTTPError
+		var dest AppRoutesUtilHTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
-		var dest HTTPError
+		var dest AppRoutesUtilHTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1134,7 +1242,7 @@ func ParseGenAudioToTextResponse(rsp *http.Response) (*GenAudioToTextResponse, e
 		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest HTTPError
+		var dest AppRoutesUtilHTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1193,14 +1301,14 @@ func ParseGenImageToImageResponse(rsp *http.Response) (*GenImageToImageResponse,
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest HTTPError
+		var dest AppRoutesUtilHTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest HTTPError
+		var dest AppRoutesUtilHTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1214,7 +1322,7 @@ func ParseGenImageToImageResponse(rsp *http.Response) (*GenImageToImageResponse,
 		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest HTTPError
+		var dest AppRoutesUtilHTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1247,14 +1355,14 @@ func ParseGenImageToVideoResponse(rsp *http.Response) (*GenImageToVideoResponse,
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest HTTPError
+		var dest AppRoutesUtilHTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest HTTPError
+		var dest AppRoutesUtilHTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1268,7 +1376,61 @@ func ParseGenImageToVideoResponse(rsp *http.Response) (*GenImageToVideoResponse,
 		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest HTTPError
+		var dest AppRoutesUtilHTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGenLipsyncResponse parses an HTTP response from a GenLipsyncWithResponse call
+func ParseGenLipsyncResponse(rsp *http.Response) (*GenLipsyncResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GenLipsyncResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest VideoResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest AppRoutesLipsyncHTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest AppRoutesLipsyncHTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest HTTPValidationError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest AppRoutesLipsyncHTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1301,14 +1463,14 @@ func ParseGenSegmentAnything2Response(rsp *http.Response) (*GenSegmentAnything2R
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest HTTPError
+		var dest AppRoutesUtilHTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest HTTPError
+		var dest AppRoutesUtilHTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1322,7 +1484,7 @@ func ParseGenSegmentAnything2Response(rsp *http.Response) (*GenSegmentAnything2R
 		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest HTTPError
+		var dest AppRoutesUtilHTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1355,14 +1517,14 @@ func ParseGenTextToImageResponse(rsp *http.Response) (*GenTextToImageResponse, e
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest HTTPError
+		var dest AppRoutesUtilHTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest HTTPError
+		var dest AppRoutesUtilHTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1376,7 +1538,7 @@ func ParseGenTextToImageResponse(rsp *http.Response) (*GenTextToImageResponse, e
 		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest HTTPError
+		var dest AppRoutesUtilHTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1409,14 +1571,14 @@ func ParseGenUpscaleResponse(rsp *http.Response) (*GenUpscaleResponse, error) {
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest HTTPError
+		var dest AppRoutesUtilHTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest HTTPError
+		var dest AppRoutesUtilHTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1430,7 +1592,7 @@ func ParseGenUpscaleResponse(rsp *http.Response) (*GenUpscaleResponse, error) {
 		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest HTTPError
+		var dest AppRoutesUtilHTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1455,6 +1617,9 @@ type ServerInterface interface {
 	// Image To Video
 	// (POST /image-to-video)
 	GenImageToVideo(w http.ResponseWriter, r *http.Request)
+	// Lipsync
+	// (POST /lipsync)
+	GenLipsync(w http.ResponseWriter, r *http.Request)
 	// Segment Anything 2
 	// (POST /segment-anything-2)
 	GenSegmentAnything2(w http.ResponseWriter, r *http.Request)
@@ -1491,6 +1656,12 @@ func (_ Unimplemented) GenImageToImage(w http.ResponseWriter, r *http.Request) {
 // Image To Video
 // (POST /image-to-video)
 func (_ Unimplemented) GenImageToVideo(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Lipsync
+// (POST /lipsync)
+func (_ Unimplemented) GenLipsync(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1578,6 +1749,21 @@ func (siw *ServerInterfaceWrapper) GenImageToVideo(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GenImageToVideo(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// GenLipsync operation middleware
+func (siw *ServerInterfaceWrapper) GenLipsync(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GenLipsync(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1764,6 +1950,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/image-to-video", wrapper.GenImageToVideo)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/lipsync", wrapper.GenLipsync)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/segment-anything-2", wrapper.GenSegmentAnything2)
 	})
 	r.Group(func(r chi.Router) {
@@ -1779,58 +1968,64 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"eSnGc7B8XMt7fX79rwAAAP//RlJ/l39QAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
