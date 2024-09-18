@@ -10,6 +10,7 @@ from app.routes import (
     image_to_image,
     image_to_video,
     segment_anything_2,
+    text_sentiment_analysis,
     text_to_image,
     upscale,
 )
@@ -123,7 +124,8 @@ def write_openapi(fname: str, entrypoint: str = "runner", version: str = "0.0.0"
     app.include_router(upscale.router)
     app.include_router(audio_to_text.router)
     app.include_router(segment_anything_2.router)
-
+    app.include_router(text_sentiment_analysis.router)
+    
     logger.info(f"Generating OpenAPI schema for '{entrypoint}' entrypoint...")
     openapi = get_openapi(
         title="Livepeer AI Runner",

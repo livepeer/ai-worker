@@ -6,7 +6,7 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer, pipe
 logger = logging.getLogger(__name__)
 
 
-class SentimentAnalysisPipeline(Pipeline):
+class TextSentimentAnalysisPipeline(Pipeline):
     def __init__(self, model_id: str):
         self.model_id = model_id
         kwargs = {}
@@ -31,4 +31,4 @@ class SentimentAnalysisPipeline(Pipeline):
         return self.ldm(text, **kwargs)
 
     def __str__(self) -> str:
-        return f"SentimentAnalysisPipeline model_id={self.model_id}"
+        return f"TextSentimentAnalysisPipeline model_id={self.model_id}"
