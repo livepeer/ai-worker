@@ -197,7 +197,6 @@ class ImageToImagePipeline(Pipeline):
         self, prompt: str, image: PIL.Image, **kwargs
     ) -> Tuple[List[PIL.Image], List[Optional[bool]]]:
         seed = kwargs.pop("seed", None)
-        num_inference_steps = kwargs.get("num_inference_steps", None)
         safety_check = kwargs.pop("safety_check", True)
 
         if seed is not None:
@@ -206,7 +205,9 @@ class ImageToImagePipeline(Pipeline):
             elif isinstance(seed, list):
                 kwargs["generator"] = [torch.Generator(get_torch_device()).manual_seed(s) for s in seed]
 
-        if num_inference_steps is None or num_inference_steps < 1:
+        if "num_inference_steps" in kwargs and (
+            kwargs["num_inference_steps"] is None or kwargs["num_inference_steps"] < 1
+        ):
             del kwargs["num_inference_steps"]
 
         if self.model_id in ["stabilityai/sdxl-turbo", "stabilityai/sd-turbo"]:
