@@ -353,7 +353,7 @@ func (w *Worker) SegmentAnything2(ctx context.Context, req GenSegmentAnything2Mu
 
 func (w *Worker) Lipsync(ctx context.Context, req GenLipsyncMultipartRequestBody) (*VideoResponse, error) {
 	// Borrow the container for the lipsync process, using appropriate model if needed
-	c, err := w.borrowContainer(ctx, "lipsync", "")
+	c, err := w.borrowContainer(ctx, "lipsync", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}

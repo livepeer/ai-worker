@@ -1,4 +1,4 @@
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Annotated
 from fastapi import Depends, APIRouter, UploadFile, File, Form, HTTPException, status
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
@@ -55,7 +55,10 @@ RESPONSES = {
 async def lipsync(
     text_input: str = Form("", description="Text input for lip-syncing."),
     tts_steering: str = Form("A male speaker delivers a slightly expressive and animated speech with a moderate speed and pitch. The recording is of very high quality, with the speaker's voice sounding clear and very close up.", description="Prompt to steer generated voice characteristics."),
-    model_id: str = Form("", description="Hugging Face model ID used for Text-to-speech."),
+    model_id: Annotated[
+        str,
+        Form(description="Hugging Face model ID used for Text-to-speech."),
+    ] = "",
     audio: UploadFile = File(None),
     image: UploadFile = File(...),
     return_frames: bool = Form(False, description="Set to True to return frames instead of mp4."),
@@ -63,7 +66,6 @@ async def lipsync(
 ):
     if not (text_input or audio):
         raise HTTPException(status_code=400, detail="Either text_input or audio must be provided")
-
 
     if model_id != "" and model_id != pipeline.model_id:
         return JSONResponse(
