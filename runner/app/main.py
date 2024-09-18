@@ -58,10 +58,10 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
             from app.pipelines.upscale import UpscalePipeline
 
             return UpscalePipeline(model_id)
-        case "sentiment-analysis":
-            from app.pipelines.sentiment_analysis import SentimentAnalysisPipeline
+        case "text-sentiment-analysis":
+            from app.pipelines.text_sentiment_analysis import TextSentimentAnalysisPipeline
 
-            return SentimentAnalysisPipeline(model_id)
+            return TextSentimentAnalysisPipeline(model_id)
         case "segment-anything-2":
             from app.pipelines.segment_anything_2 import SegmentAnything2Pipeline
 
@@ -112,10 +112,10 @@ def load_route(pipeline: str) -> any:
             from app.routes import upscale
 
             return upscale.router
-        case "sentiment-analysis":
-            from app.routes import sentiment_analysis
+        case "text-sentiment-analysis":
+            from app.routes import text_sentiment_analysis
 
-            return sentiment_analysis.router
+            return text_sentiment_analysis.router
         case "segment-anything-2":
             from app.routes import segment_anything_2
 

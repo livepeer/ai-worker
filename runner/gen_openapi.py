@@ -17,6 +17,7 @@ from app.routes import (
     live_video_to_video,
     llm,
     segment_anything_2,
+    text_sentiment_analysis,
     text_to_image,
     text_to_speech,
     upscale,
@@ -114,6 +115,7 @@ def write_openapi(fname: str, entrypoint: str = "runner"):
     app.include_router(image_to_text.router)
     app.include_router(live_video_to_video.router)
     app.include_router(text_to_speech.router)
+    app.include_router(text_sentiment_analysis.router)
 
     logger.info(f"Generating OpenAPI schema for '{entrypoint}' entrypoint...")
     openapi = get_openapi(

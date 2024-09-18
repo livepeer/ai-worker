@@ -509,6 +509,64 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: textToSpeech
+  /text-sentiment-analysis:
+    post:
+      tags:
+      - analysis
+      summary: Text Sentiment Analysis
+      description: Analyze the sentiment of a given text inputs.
+      operationId: analyzeSentiment
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: model_id
+        in: query
+        required: true
+        schema:
+          type: string
+          description: Hugging Face model ID used for text classsification.
+          title: Model Id
+      - name: text_input
+        in: query
+        required: true
+        schema:
+          type: string
+          description: Text to analyze. For multiple sentences, separate them with
+            commas.
+          title: Text Input
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TextSentimentAnalysisResponse'
+                x-speakeasy-name-override: data
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+          description: Unauthorized
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+          description: Internal Server Error
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-speakeasy-name-override: textSentimentAnalysis
 components:
   schemas:
     APIError:
@@ -915,6 +973,23 @@ components:
       - response
       - tokens_used
       title: LLMResponse
+    LabelScore:
+      properties:
+        label:
+          type: string
+          enum:
+          - negative
+          - neutral
+          - positive
+          title: Label
+        score:
+          type: number
+          title: Score
+      type: object
+      required:
+      - label
+      - score
+      title: LabelScore
     LiveVideoToVideoParams:
       properties:
         subscribe_url:
@@ -1054,6 +1129,17 @@ components:
       - chunks
       title: TextResponse
       description: Response model for text generation.
+    TextSentimentAnalysisResponse:
+      properties:
+        results:
+          items:
+            $ref: '#/components/schemas/LabelScore'
+          type: array
+          title: Results
+      type: object
+      required:
+      - results
+      title: TextSentimentAnalysisResponse
     TextToImageParams:
       properties:
         model_id:

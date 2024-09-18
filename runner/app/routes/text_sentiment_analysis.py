@@ -4,7 +4,7 @@ from typing import Annotated
 
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
-from app.routes.util import HTTPError, SentimentAnalysisResponse, http_error
+from app.routes.util import HTTPError, TextSentimentAnalysisResponse, http_error
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -15,6 +15,15 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 RESPONSES = {
+    status.HTTP_200_OK: {
+        "content": {
+            "application/json": {
+                "schema": {
+                    "x-speakeasy-name-override": "data",
+                }
+            }
+        },
+    },
     status.HTTP_400_BAD_REQUEST: {"model": HTTPError},
     status.HTTP_401_UNAUTHORIZED: {"model": HTTPError},
     status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPError},
@@ -41,18 +50,22 @@ def handle_pipeline_error(e: Exception) -> JSONResponse:
 
 
 @router.post(
-    "/sentiment-analysis",
-    response_model=SentimentAnalysisResponse,
+    "/text-sentiment-analysis",
+    response_model=TextSentimentAnalysisResponse,
     responses=RESPONSES,
-    description="Analyze the sentiment of the provided text."
+    description="Analyze the sentiment of a given text inputs.",
+    operation_id="analyzeSentiment",
+    summary="Text Sentiment Analysis",
+    tags=["analysis"],
+    openapi_extra={"x-speakeasy-name-override": "textSentimentAnalysis"},
 )
 @router.post(
-    "/sentiment-analysis/",
-    response_model=SentimentAnalysisResponse,
+    "/text-sentiment-analysis/",
+    response_model=TextSentimentAnalysisResponse,
     responses=RESPONSES,
     include_in_schema=False,
 )
-async def sentiment_analysis(
+async def text_sentiment_analysis(
     model_id: Annotated[
         str,
         Field(
@@ -62,7 +75,7 @@ async def sentiment_analysis(
     ],
     text_input: Annotated[
         str,
-        Field(description="Text to classify. Separate multiple sentences by commas.")
+        Field(description="Text to analyze. For multiple sentences, separate them with commas.")
     ],
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),

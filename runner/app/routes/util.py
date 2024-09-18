@@ -63,7 +63,7 @@ class LabelScore(BaseModel):
     score: float
 
 
-class SentimentAnalysisResponse(BaseModel):
+class TextSentimentAnalysisResponse(BaseModel):
     results: list[LabelScore]
 
 
