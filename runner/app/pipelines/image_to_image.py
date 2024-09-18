@@ -6,6 +6,14 @@ from typing import List, Optional, Tuple
 
 import PIL
 import torch
+from app.pipelines.base import Pipeline
+from app.pipelines.utils import (
+    SafetyChecker,
+    get_model_dir,
+    get_torch_device,
+    is_lightning_model,
+    is_turbo_model,
+)
 from diffusers import (
     AutoPipelineForImage2Image,
     EulerAncestralDiscreteScheduler,
@@ -17,15 +25,6 @@ from diffusers import (
 from huggingface_hub import file_download, hf_hub_download
 from PIL import ImageFile
 from safetensors.torch import load_file
-
-from app.pipelines.base import Pipeline
-from app.pipelines.utils import (
-    SafetyChecker,
-    get_model_dir,
-    get_torch_device,
-    is_lightning_model,
-    is_turbo_model,
-)
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -86,12 +85,17 @@ class ImageToImagePipeline(Pipeline):
             elif "8step" in model_id:
                 unet_id = "sdxl_lightning_8step_unet"
             else:
-                # Default to 2step
-                unet_id = "sdxl_lightning_2step_unet"
+                # Default to 8step
+                unet_id = "sdxl_lightning_8step_unet"
 
-            unet = UNet2DConditionModel.from_config(
-                base, subfolder="unet", cache_dir=kwargs["cache_dir"]
-            ).to(torch_device, kwargs["torch_dtype"])
+            unet_config = UNet2DConditionModel.load_config(
+                pretrained_model_name_or_path=base,
+                subfolder="unet",
+                cache_dir=kwargs["cache_dir"],
+            )
+            unet = UNet2DConditionModel.from_config(unet_config).to(
+                torch_device, kwargs["torch_dtype"]
+            )
             unet.load_state_dict(
                 load_file(
                     hf_hub_download(
@@ -192,7 +196,6 @@ class ImageToImagePipeline(Pipeline):
         self, prompt: str, image: PIL.Image, **kwargs
     ) -> Tuple[List[PIL.Image], List[Optional[bool]]]:
         seed = kwargs.pop("seed", None)
-        num_inference_steps = kwargs.get("num_inference_steps", None)
         safety_check = kwargs.pop("safety_check", True)
 
         if seed is not None:
@@ -205,7 +208,9 @@ class ImageToImagePipeline(Pipeline):
                     torch.Generator(get_torch_device()).manual_seed(s) for s in seed
                 ]
 
-        if num_inference_steps is None or num_inference_steps < 1:
+        if "num_inference_steps" in kwargs and (
+            kwargs["num_inference_steps"] is None or kwargs["num_inference_steps"] < 1
+        ):
             del kwargs["num_inference_steps"]
 
         if (
@@ -235,8 +240,8 @@ class ImageToImagePipeline(Pipeline):
             elif "8step" in self.model_id:
                 kwargs["num_inference_steps"] = 8
             else:
-                # Default to 2step
-                kwargs["num_inference_steps"] = 2
+                # Default to 8step
+                kwargs["num_inference_steps"] = 8
 
         output = self.ldm(prompt, image=image, **kwargs)
 

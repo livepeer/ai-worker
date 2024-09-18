@@ -18,10 +18,12 @@ from app.pipelines.utils import (
 from diffusers import (
     AutoPipelineForText2Image,
     EulerDiscreteScheduler,
+    FluxPipeline,
     StableDiffusion3Pipeline,
     StableDiffusionXLPipeline,
     UNet2DConditionModel,
 )
+from diffusers.models import AutoencoderKL
 from huggingface_hub import file_download, hf_hub_download
 from safetensors.torch import load_file
 
@@ -34,6 +36,9 @@ class ModelName(Enum):
 
     SDXL_LIGHTNING = "ByteDance/SDXL-Lightning"
     SD3_MEDIUM = "stabilityai/stable-diffusion-3-medium-diffusers"
+    REALISTIC_VISION_V6 = "SG161222/Realistic_Vision_V6.0_B1_noVAE"
+    FLUX_1_SCHNELL = "black-forest-labs/FLUX.1-schnell"
+    FLUX_1_DEV = "black-forest-labs/FLUX.1-dev"
 
     @classmethod
     def list(cls):
@@ -72,6 +77,11 @@ class TextToImagePipeline(Pipeline):
             logger.info("TextToImagePipeline using bfloat16 precision for %s", model_id)
             kwargs["torch_dtype"] = torch.bfloat16
 
+        # Load VAE for specific models.
+        if ModelName.REALISTIC_VISION_V6.value in model_id:
+            vae = AutoencoderKL.from_pretrained("stabilityai/sd-vae-ft-ema")
+            kwargs["vae"] = vae
+
         # Special case SDXL-Lightning because the unet for SDXL needs to be swapped
         if ModelName.SDXL_LIGHTNING.value in model_id:
             base = "stabilityai/stable-diffusion-xl-base-1.0"
@@ -86,12 +96,17 @@ class TextToImagePipeline(Pipeline):
             elif "8step" in model_id:
                 unet_id = "sdxl_lightning_8step_unet"
             else:
-                # Default to 2step
-                unet_id = "sdxl_lightning_2step_unet"
+                # Default to 8step
+                unet_id = "sdxl_lightning_8step_unet"
 
-            unet = UNet2DConditionModel.from_config(
-                base, subfolder="unet", cache_dir=kwargs["cache_dir"]
-            ).to(torch_device, kwargs["torch_dtype"])
+            unet_config = UNet2DConditionModel.load_config(
+                pretrained_model_name_or_path=base,
+                subfolder="unet",
+                cache_dir=kwargs["cache_dir"],
+            )
+            unet = UNet2DConditionModel.from_config(unet_config).to(
+                torch_device, kwargs["torch_dtype"]
+            )
             unet.load_state_dict(
                 load_file(
                     hf_hub_download(
@@ -114,6 +129,13 @@ class TextToImagePipeline(Pipeline):
             self.ldm = StableDiffusion3Pipeline.from_pretrained(model_id, **kwargs).to(
                 torch_device
             )
+        elif (
+            ModelName.FLUX_1_SCHNELL.value in model_id
+            or ModelName.FLUX_1_DEV.value in model_id
+        ):
+            # Decrease precision to preven OOM errors.
+            kwargs["torch_dtype"] = torch.bfloat16
+            self.ldm = FluxPipeline.from_pretrained(model_id, **kwargs).to(torch_device)
         else:
             self.ldm = AutoPipelineForText2Image.from_pretrained(model_id, **kwargs).to(
                 torch_device
@@ -203,7 +225,6 @@ class TextToImagePipeline(Pipeline):
         self, prompt: str, **kwargs
     ) -> Tuple[List[PIL.Image], List[Optional[bool]]]:
         seed = kwargs.pop("seed", None)
-        num_inference_steps = kwargs.get("num_inference_steps", None)
         safety_check = kwargs.pop("safety_check", True)
 
         if seed is not None:
@@ -216,7 +237,9 @@ class TextToImagePipeline(Pipeline):
                     torch.Generator(get_torch_device()).manual_seed(s) for s in seed
                 ]
 
-        if num_inference_steps is None or num_inference_steps < 1:
+        if "num_inference_steps" in kwargs and (
+            kwargs["num_inference_steps"] is None or kwargs["num_inference_steps"] < 1
+        ):
             del kwargs["num_inference_steps"]
 
         if (
@@ -240,6 +263,14 @@ class TextToImagePipeline(Pipeline):
             else:
                 # Default to 8step
                 kwargs["num_inference_steps"] = 8
+        elif (
+            ModelName.FLUX_1_SCHNELL.value in self.model_id
+            or ModelName.FLUX_1_DEV.value in self.model_id
+        ):
+            # FluxPipeline does not support negative prompt per diffusers documentation
+            # https://github.com/huggingface/diffusers/blob/750bd7920622b3fe538d20035d3f03855c5d6621/src/diffusers/pipelines/flux/pipeline_flux.py#L537
+            if "negative_prompt" in kwargs:
+                kwargs.pop("negative_prompt")
 
         # Allow users to specify multiple (negative) prompts using the '|' separator.
         prompts = split_prompt(prompt, max_splits=3)

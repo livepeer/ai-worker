@@ -1,7 +1,10 @@
 name: Check OpenAPI spec and Golang bindings
 
 on:
-  check_run:
+  push:
+    branches:
+      - main
+  pull_request:
 
 jobs:
   check-openapi-and-bindings:
@@ -9,6 +12,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5

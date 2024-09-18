@@ -5,5 +5,5 @@ codegen:
 	go run github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@v2.2.0 \
 		-package worker \
 		-generate types,client,chi-server,spec \
-		runner/openapi.json \
+		runner/openapi.yaml \
 		| awk '!/WARNING/' > worker/runner.gen.go

@@ -4,11 +4,7 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import Optional
-import glob
-import tempfile
-from io import BytesIO
-from typing import List, Union
+from typing import Dict, Optional
 
 import numpy as np
 import torch
@@ -18,7 +14,7 @@ from torchvision.transforms import v2
 import cv2
 from torchaudio.io import StreamWriter
 from torch import dtype as TorchDtype
-from transformers import CLIPFeatureExtractor
+from transformers import CLIPImageProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +87,7 @@ def split_prompt(
     separator: str = "|",
     key_prefix: str = "prompt",
     max_splits: int = -1,
-) -> dict[str, str]:
+) -> Dict[str, str]:
     """Splits an input prompt into prompts, including the main prompt, with customizable
     key naming.
 
@@ -100,18 +96,26 @@ def split_prompt(
         separator (str): The character used to split the input prompt. Defaults to '|'.
         key_prefix (str): Prefix for keys in the returned dictionary for all prompts,
             including the main prompt. Defaults to 'prompt'.
-        max_splits (int): Maximum number of splits to perform. Defaults to -1 (no limit).
+        max_splits (int): Maximum number of splits to perform. Defaults to -1 (no
+            limit).
 
     Returns:
         Dict[str, str]: A dictionary of all prompts, including the main prompt.
     """
-    prompts = input_prompt.split(separator, max_splits - 1)
-    start_index = 1 if max_splits < 0 else max(1, len(prompts) - max_splits)
+    prompts = [
+        prompt.strip()
+        for prompt in input_prompt.split(separator, max_splits)
+        if prompt.strip()
+    ]
+    if not prompts:
+        return {}
 
-    prompt_dict = {f"{key_prefix}": prompts[0].strip()}
+    start_index = max(1, len(prompts) - max_splits) if max_splits >= 0 else 1
+
+    prompt_dict = {f"{key_prefix}": prompts[0]}
     prompt_dict.update(
         {
-            f"{key_prefix}_{i+1}": prompt.strip()
+            f"{key_prefix}_{i+1}": prompt
             for i, prompt in enumerate(prompts[1:], start=start_index)
         }
     )
@@ -252,7 +256,7 @@ class SafetyChecker:
         self._safety_checker = StableDiffusionSafetyChecker.from_pretrained(
             "CompVis/stable-diffusion-safety-checker"
         ).to(self.device)
-        self._feature_extractor = CLIPFeatureExtractor.from_pretrained(
+        self._feature_extractor = CLIPImageProcessor.from_pretrained(
             "openai/clip-vit-base-patch32"
         )
 
