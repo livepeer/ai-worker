@@ -303,6 +303,49 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: segmentAnything2
+  /llm-generate:
+    post:
+      summary: Llm Generate
+      operationId: llm_generate_llm_generate_post
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Body_llm_generate_llm_generate_post'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LlmResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
 components:
   schemas:
     APIError:
@@ -553,6 +596,40 @@ components:
       - image
       - model_id
       title: Body_genUpscale
+    Body_llm_generate_llm_generate_post:
+      properties:
+        prompt:
+          type: string
+          title: Prompt
+        model_id:
+          type: string
+          title: Model Id
+          default: ''
+        system_msg:
+          type: string
+          title: System Msg
+          default: ''
+        temperature:
+          type: number
+          title: Temperature
+          default: 0.7
+        max_tokens:
+          type: integer
+          title: Max Tokens
+          default: 256
+        history:
+          type: string
+          title: History
+          default: '[]'
+        stream:
+          type: boolean
+          title: Stream
+          default: false
+      type: object
+      required:
+      - prompt
+      - model_id
+      title: Body_llm_generate_llm_generate_post
     HTTPError:
       properties:
         detail:
@@ -586,6 +663,19 @@ components:
       - images
       title: ImageResponse
       description: Response model for image generation.
+    LlmResponse:
+      properties:
+        response:
+          type: string
+          title: Response
+        tokens_used:
+          type: integer
+          title: Tokens Used
+      type: object
+      required:
+      - response
+      - tokens_used
+      title: LlmResponse
     MasksResponse:
       properties:
         masks:
