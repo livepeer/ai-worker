@@ -1,0 +1,18 @@
+# A Dockerfile for attaching a debugger to the app using debugpy. For more information, see
+# https://code.visualstudio.com/docs/python/debugging#_command-line-debugging.
+FROM livepeer/ai-runner:lipsync
+
+RUN pip install debugpy
+
+EXPOSE 5678
+# Set the entrypoint to activate the base venv, as well as start the debugger and the application with Uvicorn.
+# This version attaches the debugger and starts the app in one command.
+ENTRYPOINT ["bash", "-c", "\
+    source /opt/venv/bin/activate && \
+    python -m debugpy --listen 0.0.0.0:5678 \
+    # Uncomment the line below to wait for the debugger to attach \
+    # --wait-for-client && \
+    exec uvicorn app.main:app \
+    --log-config app/cfg/uvicorn_logging_config.json \
+    --host 0.0.0.0 \
+    --port 8000"]

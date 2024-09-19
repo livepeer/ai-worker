@@ -9,6 +9,17 @@ servers:
 - url: https://livepeer.studio/api/beta/generate
   description: Livepeer Studio Gateway
 paths:
+  /health:
+    get:
+      summary: Health
+      operationId: health
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheck'
   /text-to-image:
     post:
       tags:
@@ -378,7 +389,6 @@ components:
       type: object
       required:
       - audio
-      - model_id
       title: Body_genAudioToText
     Body_genImageToImage:
       properties:
@@ -445,7 +455,6 @@ components:
       required:
       - prompt
       - image
-      - model_id
       title: Body_genImageToImage
     Body_genImageToVideo:
       properties:
@@ -505,7 +514,6 @@ components:
       type: object
       required:
       - image
-      - model_id
       title: Body_genImageToVideo
     Body_genLipsync:
       properties:
@@ -542,7 +550,6 @@ components:
       type: object
       required:
       - image
-      - model_id
       title: Body_genLipsync
     Body_genSegmentAnything2:
       properties:
@@ -597,7 +604,6 @@ components:
       type: object
       required:
       - image
-      - model_id
       title: Body_genSegmentAnything2
     Body_genUpscale:
       properties:
@@ -635,7 +641,6 @@ components:
       required:
       - prompt
       - image
-      - model_id
       title: Body_genUpscale
     HTTPValidationError:
       properties:
@@ -646,6 +651,14 @@ components:
           title: Detail
       type: object
       title: HTTPValidationError
+    HealthCheck:
+      properties:
+        status:
+          type: string
+          title: Status
+          default: OK
+      type: object
+      title: HealthCheck
     ImageResponse:
       properties:
         images:
@@ -777,7 +790,6 @@ components:
       type: object
       required:
       - prompt
-      - model_id
       title: TextToImageParams
     ValidationError:
       properties:
@@ -815,20 +827,21 @@ components:
       - base64_video
       - file_size
       title: VideoBinaryResponse
-      description: Response model for video generation.
     VideoResponse:
       properties:
-        images:
+        frames:
           items:
-            $ref: '#/components/schemas/Media'
+            items:
+              $ref: '#/components/schemas/Media'
+            type: array
           type: array
-          title: Images
-          description: The generated images.
+          title: Frames
+          description: The generated video frames.
       type: object
       required:
-      - images
+      - frames
       title: VideoResponse
-      description: Response model for image generation.
+      description: Response model for video generation.
     app__routes__lipsync__HTTPError:
       properties:
         detail:

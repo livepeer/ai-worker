@@ -31,6 +31,11 @@ function download_beta_models() {
 
     # Download upscale models
     huggingface-cli download stabilityai/stable-diffusion-x4-upscaler --include "*.fp16.safetensors" --cache-dir models
+    
+
+    # Download FastSpeech 2 and HiFi-GAN models
+    huggingface-cli download facebook/fastspeech2-en-ljspeech --include "*.bin" "*.json" --cache-dir models/fastspeech2
+    huggingface-cli download facebook/hifigan --include "*.bin" "*.json" --cache-dir models/hifigan
 
     # Download audio-to-text models.
     huggingface-cli download openai/whisper-large-v3 --include "*.safetensors" "*.json" --cache-dir models
@@ -40,6 +45,8 @@ function download_beta_models() {
     # Download image-to-video models (token-gated).
     check_hf_auth
     huggingface-cli download stabilityai/stable-video-diffusion-img2vid-xt-1-1 --include "*.fp16.safetensors" "*.json" --cache-dir models ${TOKEN_FLAG:+"$TOKEN_FLAG"}
+    
+
 }
 
 # Download all models.

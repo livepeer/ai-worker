@@ -815,7 +815,6 @@ components:
       - base64_video
       - file_size
       title: VideoBinaryResponse
-      description: Response model for video generation.
     VideoResponse:
       properties:
         images:

@@ -351,6 +351,61 @@ func (w *Worker) SegmentAnything2(ctx context.Context, req GenSegmentAnything2Mu
 	return resp.JSON200, nil
 }
 
+func (w *Worker) Lipsync(ctx context.Context, req GenLipsyncMultipartRequestBody) (*VideoBinaryResponse, error) {
+	// Borrow the container for the lipsync process, using appropriate model if needed
+	c, err := w.borrowContainer(ctx, "lipsync", *req.ModelId)
+	if err != nil {
+		return nil, err
+	}
+	defer w.returnContainer(c)
+
+	// Create the multipart request body using NewLipsyncMultipartWriter
+	var buf bytes.Buffer
+	mw, err := NewLipsyncMultipartWriter(&buf, req)
+	if err != nil {
+		return nil, err
+	}
+
+	// Send the multipart request to the container's client
+	resp, err := c.Client.GenLipsyncWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	if err != nil {
+		return nil, err
+	}
+
+	// Handle 422 Unprocessable Entity error
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("lipsync container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("lipsync container returned 422")
+	}
+
+	// Handle 400 Bad Request error
+	if resp.JSON400 != nil {
+		val, err := json.Marshal(resp.JSON400)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("lipsync container returned 400", slog.String("err", string(val)))
+		return nil, errors.New("lipsync container returned 400")
+	}
+
+	// Handle 500 Internal Server Error
+	if resp.JSON500 != nil {
+		val, err := json.Marshal(resp.JSON500)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("lipsync container returned 500", slog.String("err", string(val)))
+		return nil, errors.New("lipsync container returned 500")
+	}
+
+	// Return the successful response
+	return resp.JSON200, nil
+}
+
 func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endpoint RunnerEndpoint, optimizationFlags OptimizationFlags) error {
 	if endpoint.URL == "" {
 		return w.manager.Warm(ctx, pipeline, modelID, optimizationFlags)
