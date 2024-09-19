@@ -93,8 +93,7 @@ class LipsyncPipeline(Pipeline):
                 "--drv_aud", audio_path,
                 "--out_name", output_video_path,
                 "--drv_pose", pose_drv,
-                "--out_mode", "final",
-                "--low_memory_usage",
+                "--out_mode", "final"
             ]
 
             # Change to the appropriate directory

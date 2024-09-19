@@ -5,7 +5,7 @@
 
 	// Image to use for the dev container. More info: https://containers.dev/guide/dockerfile.
 	"build": {
-		"dockerfile": "../Dockerfile"
+		"dockerfile": "../../cmd/lipsync/Dockerfile.debug"
 	},
 	"runArgs": [
 		"--gpus=all"
@@ -26,7 +26,8 @@
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	"forwardPorts": [
-		8000
+		8000,
+		8700
 	],
 
 	// Use 'mounts' to make a list of local folders available inside the container.

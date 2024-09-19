@@ -4,12 +4,13 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from app.pipelines.base import Pipeline
 from app.dependencies import get_pipeline
-from app.routes.util import image_to_data_url, extract_frames, VideoResponse, http_error
+from app.routes.util import image_to_data_url, extract_frames, http_error, VideoBinaryResponse
 from PIL import Image
 import logging
 import random
 import json
 import os
+import base64
 
 class HTTPError(BaseModel):
     detail: str
@@ -37,7 +38,7 @@ RESPONSES = {
 # OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
 @router.post(
     "/lipsync",
-    response_model=VideoResponse,
+    response_model=VideoBinaryResponse,
     responses=RESPONSES,
     description="Generate Lip Sync'ed video given an image and uploaded audio file or text.",
     operation_id="genLipsync",
@@ -47,7 +48,7 @@ RESPONSES = {
 )
 @router.post(
     "/lipsync/",
-    response_model=VideoResponse,
+    response_model=VideoBinaryResponse,
     responses=RESPONSES,
     include_in_schema=False,
 )
@@ -86,7 +87,7 @@ async def lipsync(
 
 
     try:
-        result = pipeline(
+        video_file_path = pipeline(
             text_input,
             tts_steering,
             audio_file,
@@ -101,27 +102,37 @@ async def lipsync(
             },
         )
     
-    if return_frames:
-        frames = extract_frames(result)
-        seed = random.randint(0, 1000000)
-        has_nsfw_concept = [False]  # TODO: Replace with actual NSFW detection logic
-        
-        output_frames = [
-            {
-                "url": image_to_data_url(frame),
-                "seed": seed,
-                "nsfw": has_nsfw_concept[0],
-            }
-            for frame in frames
-        ]
-        return {"frames": [output_frames]}
-    
-    if os.path.exists(result):
-            return FileResponse(path=result, media_type='video/mp4', filename="lipsync_video.mp4")
+    if os.path.exists(video_file_path):
+        return get_video(video_file_path)
     else:
         return JSONResponse(
             status_code=400,
             content={
-                "detail": f"no output found for {result}"
+                "detail": f"no output found for {video_file_path}"
             },
         )
+
+def get_video(video_file_path: str):
+    try:
+        # Check if the file exists
+        if not os.path.exists(video_file_path):
+            raise HTTPException(status_code=404, detail="Video file not found")
+
+        # Read the binary MP4 file and encode it as base64
+        with open(video_file_path, "rb") as video_file:
+            binary_data = video_file.read()
+            base64_video = base64.b64encode(binary_data).decode('utf-8')
+
+        # Get the file size
+        file_size = os.path.getsize(video_file_path)
+
+        # Return the response model with the base64-encoded video
+        return VideoBinaryResponse(
+            base64_video=base64_video,
+            file_size=file_size
+        )
+
+    except Exception as e:
+        # Log or print the error for debugging purposes
+        print(f"An error occurred while processing the video: {e}")
+        raise HTTPException(status_code=500, detail="An error occurred while processing the video")

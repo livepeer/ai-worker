@@ -32,6 +32,10 @@ class VideoResponse(BaseModel):
 
     frames: List[List[Media]] = Field(..., description="The generated video frames.")
 
+class VideoBinaryResponse(BaseModel):
+    """Response model for video generation."""
+    base64_video: str = Field(..., description="The base64-encoded video content.")
+    file_size: int = Field(..., description="Size of the video file in bytes.")
 
 class MasksResponse(BaseModel):
     """Response model for object segmentation."""

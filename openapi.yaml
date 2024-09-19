@@ -334,7 +334,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/VideoResponse'
+                $ref: '#/components/schemas/VideoBinaryResponse'
                 x-speakeasy-name-override: data
         '400':
           description: Bad Request
@@ -812,6 +812,21 @@ components:
       - msg
       - type
       title: ValidationError
+    VideoBinaryResponse:
+      properties:
+        base64_video:
+          type: string
+          title: Base64 Video
+          description: The base64-encoded video content.
+        file_size:
+          type: integer
+          title: File Size
+          description: Size of the video file in bytes.
+      type: object
+      required:
+      - base64_video
+      - file_size
+      title: VideoBinaryResponse
     VideoResponse:
       properties:
         frames:
