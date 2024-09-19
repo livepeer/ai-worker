@@ -355,55 +355,7 @@ func (w *Worker) SegmentAnything2(ctx context.Context, req GenSegmentAnything2Mu
 	return resp.JSON200, nil
 }
 
-func (w *Worker) SegmentAnything2(ctx context.Context, req GenSegmentAnything2MultipartRequestBody) (*MasksResponse, error) {
-	c, err := w.borrowContainer(ctx, "segment-anything-2", *req.ModelId)
-	if err != nil {
-		return nil, err
-	}
-	defer w.returnContainer(c)
-
-	var buf bytes.Buffer
-	mw, err := NewSegmentAnything2MultipartWriter(&buf, req)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := c.Client.GenSegmentAnything2WithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.JSON422 != nil {
-		val, err := json.Marshal(resp.JSON422)
-		if err != nil {
-			return nil, err
-		}
-		slog.Error("segment anything 2 container returned 422", slog.String("err", string(val)))
-		return nil, errors.New("segment anything 2 container returned 422")
-	}
-
-	if resp.JSON400 != nil {
-		val, err := json.Marshal(resp.JSON400)
-		if err != nil {
-			return nil, err
-		}
-		slog.Error("segment anything 2 container returned 400", slog.String("err", string(val)))
-		return nil, errors.New("segment anything 2 container returned 400")
-	}
-
-	if resp.JSON500 != nil {
-		val, err := json.Marshal(resp.JSON500)
-		if err != nil {
-			return nil, err
-		}
-		slog.Error("segment anything 2 container returned 500", slog.String("err", string(val)))
-		return nil, errors.New("segment anything 2 container returned 500")
-	}
-
-	return resp.JSON200, nil
-}
-
-func (w *Worker) LlmGenerate(ctx context.Context, req LlmGenerateFormdataRequestBody) (interface{}, error) {
+func (w *Worker) LlmGenerate(ctx context.Context, req LlmGenerateLlmGeneratePostFormdataRequestBody) (interface{}, error) {
 	c, err := w.borrowContainer(ctx, "llm-generate", *req.ModelId)
 	if err != nil {
 		return nil, err
@@ -426,14 +378,14 @@ func (w *Worker) LlmGenerate(ctx context.Context, req LlmGenerateFormdataRequest
 	}
 
 	if req.Stream != nil && *req.Stream {
-		resp, err := c.Client.LlmGenerateWithBody(ctx, mw.FormDataContentType(), &buf)
+		resp, err := c.Client.LlmGenerateLlmGeneratePostWithBody(ctx, mw.FormDataContentType(), &buf)
 		if err != nil {
 			return nil, err
 		}
 		return w.handleStreamingResponse(ctx, resp)
 	}
 
-	resp, err := c.Client.LlmGenerateWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	resp, err := c.Client.LlmGenerateLlmGeneratePostWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
 	if err != nil {
 		return nil, err
 	}
@@ -523,7 +475,7 @@ func (w *Worker) returnContainer(rc *RunnerContainer) {
 	}
 }
 
-func (w *Worker) handleNonStreamingResponse(resp *LlmGenerateResponse) (*LlmResponse, error) {
+func (w *Worker) handleNonStreamingResponse(resp *LlmGenerateLlmGeneratePostResponse) (*LlmResponse, error) {
 	if resp.JSON400 != nil {
 		val, err := json.Marshal(resp.JSON400)
 		if err != nil {
