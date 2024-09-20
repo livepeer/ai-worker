@@ -4,7 +4,6 @@ import logging
 import os
 import torch
 import glob
-import cv2
 from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse

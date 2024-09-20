@@ -1,7 +1,10 @@
 # ai-worker
 
+> [!NOTE]
+> This branch will explore adding AI inference to realtime video streams. Majority of the commits here will likely change significantly and not intended for production purposes.
+
 > [!WARNING]
-> This is a prototype repository undergoing rapid changes. It's not intended for production use yet.
+> The AI network is in it's **Beta** phase and although it is ready for production it is still under development. Please report any issues you encounter to the [Livepeer Discord](https://discord.gg/7nbPbTK).
 
 This repository hosts the AI worker and runner for processing inference requests on the Livepeer AI subnet.
 

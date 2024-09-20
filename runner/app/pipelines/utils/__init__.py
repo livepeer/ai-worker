@@ -1,4 +1,6 @@
-"""This module contains several utility functions that are used across the pipelines module."""
+"""This module contains several utility functions that are used across the pipelines
+module.
+"""
 
 from app.pipelines.utils.utils import (
     SafetyChecker,

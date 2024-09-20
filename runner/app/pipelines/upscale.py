@@ -1,15 +1,10 @@
 import logging
 import os
 import time
-from compel import Compel, ReturnedEmbeddingsType 
 from typing import List, Optional, Tuple
 
 import PIL
 import torch
-from diffusers import StableDiffusionUpscalePipeline
-from huggingface_hub import file_download
-from PIL import ImageFile
-
 from app.pipelines.base import Pipeline
 from app.pipelines.utils import (
     SafetyChecker,
@@ -18,11 +13,15 @@ from app.pipelines.utils import (
     is_lightning_model,
     is_turbo_model,
 )
+from diffusers import StableDiffusionUpscalePipeline
+from huggingface_hub import file_download
+from PIL import ImageFile
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 logger = logging.getLogger(__name__)
 
+SFAST_WARMUP_ITERATIONS = 2  # Model warm-up iterations when SFAST is enabled.
 
 class UpscalePipeline(Pipeline):
     def __init__(self, model_id: str):
@@ -70,11 +69,29 @@ class UpscalePipeline(Pipeline):
             # Warm-up the pipeline.
             # TODO: Not yet supported for UpscalePipeline.
             if os.getenv("SFAST_WARMUP", "true").lower() == "true":
-                logger.warning(
-                    "The 'SFAST_WARMUP' flag is not yet supported for the "
-                    "UpscalePipeline and will be ignored. As a result the first "
-                    "call may be slow if 'SFAST' is enabled."
-                )
+                # Retrieve default model params.
+                # TODO: Retrieve defaults from Pydantic class in route.
+                warmup_kwargs = {
+                    "prompt": "Upscaling the pipeline with sfast enabled",
+                    "image": PIL.Image.new("RGB", (576, 1024)),
+                }
+
+                logger.info("Warming up ImageToVideoPipeline pipeline...")
+                total_time = 0
+                for ii in range(SFAST_WARMUP_ITERATIONS):
+                    t = time.time()
+                    try:
+                        self.ldm(**warmup_kwargs).images
+                    except Exception as e:
+                        # FIXME: When out of memory, pipeline is corrupted.
+                        logger.error(f"ImageToVideoPipeline warmup error: {e}")
+                        raise e
+                    iteration_time = time.time() - t
+                    total_time += iteration_time
+                    logger.info(
+                        "Warmup iteration %s took %s seconds", ii + 1, iteration_time
+                    )
+                logger.info("Total warmup time: %s seconds", total_time)
 
         if deepcache_enabled and not (
             is_lightning_model(model_id) or is_turbo_model(model_id)
@@ -100,7 +117,6 @@ class UpscalePipeline(Pipeline):
         self, prompt: str, image: PIL.Image, **kwargs
     ) -> Tuple[List[PIL.Image], List[Optional[bool]]]:
         seed = kwargs.pop("seed", None)
-        num_inference_steps = kwargs.get("num_inference_steps", None)
         safety_check = kwargs.pop("safety_check", True)
 
         if seed is not None:
@@ -113,8 +129,10 @@ class UpscalePipeline(Pipeline):
                     torch.Generator(get_torch_device()).manual_seed(s) for s in seed
                 ]
 
-        if num_inference_steps is None or num_inference_steps < 1:
-            kwargs.pop("num_inference_steps", None)
+        if "num_inference_steps" in kwargs and (
+            kwargs["num_inference_steps"] is None or kwargs["num_inference_steps"] < 1
+        ):
+            del kwargs["num_inference_steps"]
 
         # trying differnt configs of promp_embed for different models
         try:

@@ -18,7 +18,7 @@ from torchvision.transforms import v2
 import cv2
 from torchaudio.io import StreamWriter
 from torch import dtype as TorchDtype
-from transformers import CLIPFeatureExtractor
+from transformers import CLIPImageProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +91,7 @@ def split_prompt(
     separator: str = "|",
     key_prefix: str = "prompt",
     max_splits: int = -1,
-) -> dict[str, str]:
+) -> Dict[str, str]:
     """Splits an input prompt into prompts, including the main prompt, with customizable
     key naming.
 
@@ -100,18 +100,26 @@ def split_prompt(
         separator (str): The character used to split the input prompt. Defaults to '|'.
         key_prefix (str): Prefix for keys in the returned dictionary for all prompts,
             including the main prompt. Defaults to 'prompt'.
-        max_splits (int): Maximum number of splits to perform. Defaults to -1 (no limit).
+        max_splits (int): Maximum number of splits to perform. Defaults to -1 (no
+            limit).
 
     Returns:
         Dict[str, str]: A dictionary of all prompts, including the main prompt.
     """
-    prompts = input_prompt.split(separator, max_splits - 1)
-    start_index = 1 if max_splits < 0 else max(1, len(prompts) - max_splits)
+    prompts = [
+        prompt.strip()
+        for prompt in input_prompt.split(separator, max_splits)
+        if prompt.strip()
+    ]
+    if not prompts:
+        return {}
 
-    prompt_dict = {f"{key_prefix}": prompts[0].strip()}
+    start_index = max(1, len(prompts) - max_splits) if max_splits >= 0 else 1
+
+    prompt_dict = {f"{key_prefix}": prompts[0]}
     prompt_dict.update(
         {
-            f"{key_prefix}_{i+1}": prompt.strip()
+            f"{key_prefix}_{i+1}": prompt
             for i, prompt in enumerate(prompts[1:], start=start_index)
         }
     )
@@ -119,9 +127,9 @@ def split_prompt(
     return prompt_dict
 
 def frames_compactor(
-    frames: Union[List[np.ndarray], List[torch.Tensor]], 
-    output_path: str, 
-    fps: float, 
+    frames: Union[List[np.ndarray], List[torch.Tensor]],
+    output_path: str,
+    fps: float,
     codec: str = "MJPEG",
     is_directory: bool = False,
     width: int = None,
@@ -129,7 +137,7 @@ def frames_compactor(
 ) -> None:
     """
     Generate a video from a list of frames. Frames can be from a directory or in-memory.
-    
+
     Args:
         frames (List[np.ndarray] | List[torch.Tensor]): List of frames as NumPy arrays or PyTorch tensors.
         output_path (str): Path to save the output video file.
@@ -138,7 +146,7 @@ def frames_compactor(
         is_directory (bool): If True, treat `frames` as a directory path containing image files.
         width (int): Width of the video. Must be provided if `frames` are in-memory.
         height (int): Height of the video. Must be provided if `frames` are in-memory.
-    
+
     Returns:
         None
     """
@@ -149,40 +157,42 @@ def frames_compactor(
         # Convert torch tensors to numpy arrays if necessary
         if isinstance(frames[0], torch.Tensor):
             frames = [frame.permute(1, 2, 0).cpu().numpy() for frame in frames]
-        
+
         # Ensure frames are numpy arrays and are uint8 type
         frames = [frame.astype(np.uint8) for frame in frames]
-    
+
     # Check if frames are consistent
     if not frames:
         raise ValueError("No frames to process.")
-    
+
     if width is None or height is None:
         # Use dimensions of the first frame if not provided
         height, width = frames[0].shape[:2]
-    
+
     # Define the codec and create VideoWriter object
     fourcc = cv2.VideoWriter_fourcc(*codec)
     video_writer = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
-    
+
     # Write frames to the video file
     for frame in frames:
         # Ensure each frame has the correct size
         if frame.shape[1] != width or frame.shape[0] != height:
             frame = cv2.resize(frame, (width, height))
         video_writer.write(frame)
-    
+
     # Release the video writer
     video_writer.release()
 
 def video_shredder(video_data, is_file_path=True) -> np.ndarray:
     """
     Extract frames from a video file or in-memory video data and return them as a NumPy array.
+
     Args:
-    video_data (str or BytesIO): Path to the input video file or in-memory video data.
-    is_file_path (bool): Indicates if video_data is a file path (True) or in-memory data (False).
+        video_data (str or BytesIO): Path to the input video file or in-memory video data.
+        is_file_path (bool): Indicates if video_data is a file path (True) or in-memory data (False).
+
     Returns:
-    np.ndarray: Array of frames with shape (num_frames, height, width, channels).
+        np.ndarray: Array of frames with shape (num_frames, height, width, channels).
     """
     if is_file_path:
         # Handle file-based video input
@@ -191,51 +201,33 @@ def video_shredder(video_data, is_file_path=True) -> np.ndarray:
         # Handle in-memory video input
         # Create a temporary file to store in-memory video data
         with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_file:
-            temp_file.write(video_data)
+            temp_file.write(video_data.getvalue())
             temp_file_path = temp_file.name
-            # Open the temporary video file
-            video_capture = cv2.VideoCapture(temp_file_path)
+
+        # Open the temporary video file
+        video_capture = cv2.VideoCapture(temp_file_path)
 
     if not video_capture.isOpened():
         raise ValueError("Error opening video data")
 
-    # Get the video frame rate
-    fps = video_capture.get(cv2.CAP_PROP_FPS)
-    
-    # Get the video frame count
-    frame_count = video_capture.get(cv2.CAP_PROP_FRAME_COUNT)
-    
-    # Create a list to store the extracted frames
     frames = []
-    
-    # Extract frames based on the video frame rate and timing
-    for i in range(int(frame_count)):
-        # Get the current video frame timestamp
-        timestamp = i / fps
-        
-        # Set the current position of the video capture
-        video_capture.set(cv2.CAP_PROP_POS_MSEC, timestamp * 1000)
-        
-        # Extract the frame at the current timestamp
-        success, frame = video_capture.read()
-        
-        # Add the extracted frame to the list of frames
+    success, frame = video_capture.read()
+
+    while success:
         frames.append(frame)
-    
-    # Release the video capture
+        success, frame = video_capture.read()
+
     video_capture.release()
-    
+
     # Delete the temporary file if it was created
     if not is_file_path:
         os.remove(temp_file_path)
-    
-    # Convert the list of frames to a NumPy array
-    frames_array = np.array(frames)
-    
-    print(f"Extracted {frames_array.shape[0]} frames from video in shape of {frames_array.shape}")
-    
-    return frames_array
 
+    # Convert list of frames to a NumPy array
+    frames_array = np.array(frames)
+    print(f"Extracted {frames_array.shape[0]} frames from video in shape of {frames_array.shape}")
+
+    return frames_array
 
 class SafetyChecker:
     """Checks images for unsafe or inappropriate content using a pretrained model.
@@ -268,7 +260,7 @@ class SafetyChecker:
         self._safety_checker = StableDiffusionSafetyChecker.from_pretrained(
             "CompVis/stable-diffusion-safety-checker"
         ).to(self.device)
-        self._feature_extractor = CLIPFeatureExtractor.from_pretrained(
+        self._feature_extractor = CLIPImageProcessor.from_pretrained(
             "openai/clip-vit-base-patch32"
         )
 
@@ -293,15 +285,28 @@ class SafetyChecker:
         )
         return images, has_nsfw_concept
 
+
+def natural_sort_key(s):
+    """
+    Sort in a natural order, separating strings into a list of strings and integers.
+    This handles leading zeros and case insensitivity.
+    """
+    return [
+        int(text) if text.isdigit() else text.lower()
+        for text in re.split(r'([0-9]+)', os.path.basename(s))
+    ]
+
 class DirectoryReader:
     def __init__(self, dir: str):
         self.paths = sorted(
             glob.glob(os.path.join(dir, "*")),
-            key=lambda x: (int(os.path.basename(x).split(".")[0]), x)
+            key=natural_sort_key
         )
         self.nb_frames = len(self.paths)
         self.idx = 0
+
         assert self.nb_frames > 0, "no frames found in directory"
+
         first_img = Image.open(self.paths[0])
         self.height = first_img.height
         self.width = first_img.width

@@ -14,7 +14,7 @@ class FILMPipeline:
         model_id = os.environ.get("MODEL_ID", "")
         model_dir = get_model_dir()  # Get the directory where models are stored
         model_path = f"{model_dir}/{model_id}"  # Construct the full path to the model file
-        
+
         self.model = torch.jit.load(model_path, map_location="cpu")
         self.model.eval()
 

@@ -1,7 +1,7 @@
-name: Build Docker image for ai-runner
+name: Build ai-runner base Docker image
 
 on:
-  pull_request:
+  check_run:
     paths:
       - "runner/**"
       - "!runner/.devcontainer/**"
@@ -13,6 +13,7 @@ on:
     paths:
       - "runner/**"
       - "!runner/.devcontainer/**"
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -21,7 +22,7 @@ concurrency:
 jobs:
   docker:
     name: Docker image generation
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'workflow_dispatch'
     permissions:
       packages: write
       contents: read
@@ -49,7 +50,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            livepeer/ai-runner
+            jjassonn69/ai-runner
           tags: |
             type=sha
             type=ref,event=pr
@@ -61,6 +62,7 @@ jobs:
             type=semver,pattern={{version}},prefix=v
             type=semver,pattern={{major}}.{{minor}},prefix=v
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=base,enable={{is_default_branch}}
             type=raw,value=${{ github.event.pull_request.head.ref }}
             type=raw,value=stable,enable=${{ startsWith(github.event.ref, 'refs/tags/v') }}
 
@@ -73,5 +75,5 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           file: "Dockerfile"
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=livepeerci/build:cache
-          cache-to: type=registry,ref=livepeerci/build:cache,mode=max
+          cache-from: type=registry,ref=jjassonn69/build:cache
+          cache-to: type=registry,ref=jjassonn69/build:cache,mode=max

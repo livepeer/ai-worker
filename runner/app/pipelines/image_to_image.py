@@ -1,10 +1,19 @@
 import logging
 import os
 from enum import Enum
+import time
 from typing import List, Optional, Tuple
 
 import PIL
 import torch
+from app.pipelines.base import Pipeline
+from app.pipelines.utils import (
+    SafetyChecker,
+    get_model_dir,
+    get_torch_device,
+    is_lightning_model,
+    is_turbo_model,
+)
 from diffusers import (
     AutoPipelineForImage2Image,
     EulerAncestralDiscreteScheduler,
@@ -17,19 +26,11 @@ from huggingface_hub import file_download, hf_hub_download
 from PIL import ImageFile
 from safetensors.torch import load_file
 
-from app.pipelines.base import Pipeline
-from app.pipelines.utils import (
-    SafetyChecker,
-    get_model_dir,
-    get_torch_device,
-    is_lightning_model,
-    is_turbo_model,
-)
-
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 logger = logging.getLogger(__name__)
 
+SFAST_WARMUP_ITERATIONS = 2  # Model warm-up iterations when SFAST is enabled.
 
 class ModelName(Enum):
     """Enumeration mapping model names to their corresponding IDs."""
@@ -84,12 +85,17 @@ class ImageToImagePipeline(Pipeline):
             elif "8step" in model_id:
                 unet_id = "sdxl_lightning_8step_unet"
             else:
-                # Default to 2step
-                unet_id = "sdxl_lightning_2step_unet"
+                # Default to 8step
+                unet_id = "sdxl_lightning_8step_unet"
 
-            unet = UNet2DConditionModel.from_config(
-                base, subfolder="unet", cache_dir=kwargs["cache_dir"]
-            ).to(torch_device, kwargs["torch_dtype"])
+            unet_config = UNet2DConditionModel.load_config(
+                pretrained_model_name_or_path=base,
+                subfolder="unet",
+                cache_dir=kwargs["cache_dir"],
+            )
+            unet = UNet2DConditionModel.from_config(unet_config).to(
+                torch_device, kwargs["torch_dtype"]
+            )
             unet.load_state_dict(
                 load_file(
                     hf_hub_download(
@@ -142,11 +148,29 @@ class ImageToImagePipeline(Pipeline):
             # Warm-up the pipeline.
             # TODO: Not yet supported for ImageToImagePipeline.
             if os.getenv("SFAST_WARMUP", "true").lower() == "true":
-                logger.warning(
-                    "The 'SFAST_WARMUP' flag is not yet supported for the "
-                    "ImageToImagePipeline and will be ignored. As a result the first "
-                    "call may be slow if 'SFAST' is enabled."
-                )
+                warmup_kwargs = {
+                    "prompt":"A warmed up pipeline is a happy pipeline a short poem by ricksta",
+                    "image": PIL.Image.new("RGB", (576, 1024)),
+                    "strength": 0.8,
+                    "negative_prompt": "No blurry or weird artifacts",
+                    "num_images_per_prompt":4,
+                }
+
+                logger.info("Warming up ImageToImagePipeline pipeline...")
+                total_time = 0
+                for ii in range(SFAST_WARMUP_ITERATIONS):
+                    t = time.time()
+                    try:
+                        self.ldm(**warmup_kwargs).images
+                    except Exception as e:
+                        logger.error(f"ImageToImagePipeline warmup error: {e}")
+                        raise e
+                    iteration_time = time.time() - t
+                    total_time += iteration_time
+                    logger.info(
+                        "Warmup iteration %s took %s seconds", ii + 1, iteration_time
+                    )
+                logger.info("Total warmup time: %s seconds", total_time)
 
         if deepcache_enabled and not (
             is_lightning_model(model_id) or is_turbo_model(model_id)
@@ -172,7 +196,6 @@ class ImageToImagePipeline(Pipeline):
         self, prompt: str, image: PIL.Image, **kwargs
     ) -> Tuple[List[PIL.Image], List[Optional[bool]]]:
         seed = kwargs.pop("seed", None)
-        num_inference_steps = kwargs.get("num_inference_steps", None)
         safety_check = kwargs.pop("safety_check", True)
 
         if seed is not None:
@@ -185,7 +208,9 @@ class ImageToImagePipeline(Pipeline):
                     torch.Generator(get_torch_device()).manual_seed(s) for s in seed
                 ]
 
-        if num_inference_steps is None or num_inference_steps < 1:
+        if "num_inference_steps" in kwargs and (
+            kwargs["num_inference_steps"] is None or kwargs["num_inference_steps"] < 1
+        ):
             del kwargs["num_inference_steps"]
 
         if (
@@ -215,8 +240,8 @@ class ImageToImagePipeline(Pipeline):
             elif "8step" in self.model_id:
                 kwargs["num_inference_steps"] = 8
             else:
-                # Default to 2step
-                kwargs["num_inference_steps"] = 2
+                # Default to 8step
+                kwargs["num_inference_steps"] = 8
 
         output = self.ldm(prompt, image=image, **kwargs)
 

@@ -69,7 +69,7 @@ func main() {
 	imageFile := types.File{}
 	imageFile.InitFromBytes(imageBytes, imagePath)
 
-	req := worker.ImageToImageMultipartRequestBody{
+	req := worker.GenImageToImageMultipartRequestBody{
 		Image:   imageFile,
 		ModelId: &modelID,
 		Prompt:  prompt,
