@@ -35,6 +35,9 @@ function download_beta_models() {
     # Download audio-to-text models.
     huggingface-cli download openai/whisper-large-v3 --include "*.safetensors" "*.json" --cache-dir models
 
+    # Download sentiment-analysis models.
+    huggingface-cli download cardiffnlp/twitter-roberta-base-sentiment-latest --include "*.json" "*.txt" "*.bin" --cache-dir models
+
     printf "\nDownloading token-gated models...\n"
 
     # Download image-to-video models (token-gated).

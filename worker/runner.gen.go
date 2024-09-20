@@ -26,6 +26,13 @@ const (
 	HTTPBearerScopes = "HTTPBearer.Scopes"
 )
 
+// Defines values for LabelScoreLabel.
+const (
+	Negative LabelScoreLabel = "negative"
+	Neutral  LabelScoreLabel = "neutral"
+	Positive LabelScoreLabel = "positive"
+)
+
 // APIError API error response model.
 type APIError struct {
 	// Msg The error message.
@@ -183,6 +190,15 @@ type ImageResponse struct {
 	Images []Media `json:"images"`
 }
 
+// LabelScore defines model for LabelScore.
+type LabelScore struct {
+	Label LabelScoreLabel `json:"label"`
+	Score float32         `json:"score"`
+}
+
+// LabelScoreLabel defines model for LabelScore.Label.
+type LabelScoreLabel string
+
 // MasksResponse Response model for object segmentation.
 type MasksResponse struct {
 	// Logits The raw, unnormalized predictions (logits) for the masks.
@@ -214,6 +230,11 @@ type TextResponse struct {
 
 	// Text The generated text.
 	Text string `json:"text"`
+}
+
+// TextSentimentAnalysisResponse defines model for TextSentimentAnalysisResponse.
+type TextSentimentAnalysisResponse struct {
+	Results []LabelScore `json:"results"`
 }
 
 // TextToImageParams defines model for TextToImageParams.
@@ -280,6 +301,12 @@ type Chunk struct {
 
 	// Timestamp The timestamp of the chunk.
 	Timestamp []interface{} `json:"timestamp"`
+}
+
+// AnalyzeSentimentParams defines parameters for AnalyzeSentiment.
+type AnalyzeSentimentParams struct {
+	ModelId   string `form:"model_id" json:"model_id"`
+	TextInput string `form:"text_input" json:"text_input"`
 }
 
 // GenAudioToTextMultipartRequestBody defines body for GenAudioToText for multipart/form-data ContentType.
@@ -450,6 +477,9 @@ type ClientInterface interface {
 	// GenSegmentAnything2WithBody request with any body
 	GenSegmentAnything2WithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// AnalyzeSentiment request
+	AnalyzeSentiment(ctx context.Context, params *AnalyzeSentimentParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GenTextToImageWithBody request with any body
 	GenTextToImageWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -509,6 +539,18 @@ func (c *Client) GenImageToVideoWithBody(ctx context.Context, contentType string
 
 func (c *Client) GenSegmentAnything2WithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGenSegmentAnything2RequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) AnalyzeSentiment(ctx context.Context, params *AnalyzeSentimentParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAnalyzeSentimentRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -698,6 +740,63 @@ func NewGenSegmentAnything2RequestWithBody(server string, contentType string, bo
 	return req, nil
 }
 
+// NewAnalyzeSentimentRequest generates requests for AnalyzeSentiment
+func NewAnalyzeSentimentRequest(server string, params *AnalyzeSentimentParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/text-sentiment-analysis")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "model_id", runtime.ParamLocationQuery, params.ModelId); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "text_input", runtime.ParamLocationQuery, params.TextInput); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGenTextToImageRequest calls the generic GenTextToImage builder with application/json body
 func NewGenTextToImageRequest(server string, body GenTextToImageJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -824,6 +923,9 @@ type ClientWithResponsesInterface interface {
 
 	// GenSegmentAnything2WithBodyWithResponse request with any body
 	GenSegmentAnything2WithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenSegmentAnything2Response, error)
+
+	// AnalyzeSentimentWithResponse request
+	AnalyzeSentimentWithResponse(ctx context.Context, params *AnalyzeSentimentParams, reqEditors ...RequestEditorFn) (*AnalyzeSentimentResponse, error)
 
 	// GenTextToImageWithBodyWithResponse request with any body
 	GenTextToImageWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenTextToImageResponse, error)
@@ -961,6 +1063,32 @@ func (r GenSegmentAnything2Response) StatusCode() int {
 	return 0
 }
 
+type AnalyzeSentimentResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *TextSentimentAnalysisResponse
+	JSON400      *HTTPError
+	JSON401      *HTTPError
+	JSON422      *HTTPValidationError
+	JSON500      *HTTPError
+}
+
+// Status returns HTTPResponse.Status
+func (r AnalyzeSentimentResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r AnalyzeSentimentResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GenTextToImageResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -1056,6 +1184,15 @@ func (c *ClientWithResponses) GenSegmentAnything2WithBodyWithResponse(ctx contex
 		return nil, err
 	}
 	return ParseGenSegmentAnything2Response(rsp)
+}
+
+// AnalyzeSentimentWithResponse request returning *AnalyzeSentimentResponse
+func (c *ClientWithResponses) AnalyzeSentimentWithResponse(ctx context.Context, params *AnalyzeSentimentParams, reqEditors ...RequestEditorFn) (*AnalyzeSentimentResponse, error) {
+	rsp, err := c.AnalyzeSentiment(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseAnalyzeSentimentResponse(rsp)
 }
 
 // GenTextToImageWithBodyWithResponse request with arbitrary body returning *GenTextToImageResponse
@@ -1333,6 +1470,60 @@ func ParseGenSegmentAnything2Response(rsp *http.Response) (*GenSegmentAnything2R
 	return response, nil
 }
 
+// ParseAnalyzeSentimentResponse parses an HTTP response from a AnalyzeSentimentWithResponse call
+func ParseAnalyzeSentimentResponse(rsp *http.Response) (*AnalyzeSentimentResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &AnalyzeSentimentResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest TextSentimentAnalysisResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest HTTPValidationError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGenTextToImageResponse parses an HTTP response from a GenTextToImageWithResponse call
 func ParseGenTextToImageResponse(rsp *http.Response) (*GenTextToImageResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -1458,6 +1649,9 @@ type ServerInterface interface {
 	// Segment Anything 2
 	// (POST /segment-anything-2)
 	GenSegmentAnything2(w http.ResponseWriter, r *http.Request)
+	// Text Sentiment Analysis
+	// (POST /text-sentiment-analysis)
+	AnalyzeSentiment(w http.ResponseWriter, r *http.Request, params AnalyzeSentimentParams)
 	// Text To Image
 	// (POST /text-to-image)
 	GenTextToImage(w http.ResponseWriter, r *http.Request)
@@ -1497,6 +1691,12 @@ func (_ Unimplemented) GenImageToVideo(w http.ResponseWriter, r *http.Request) {
 // Segment Anything 2
 // (POST /segment-anything-2)
 func (_ Unimplemented) GenSegmentAnything2(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Text Sentiment Analysis
+// (POST /text-sentiment-analysis)
+func (_ Unimplemented) AnalyzeSentiment(w http.ResponseWriter, r *http.Request, params AnalyzeSentimentParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1595,6 +1795,58 @@ func (siw *ServerInterfaceWrapper) GenSegmentAnything2(w http.ResponseWriter, r 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GenSegmentAnything2(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// AnalyzeSentiment operation middleware
+func (siw *ServerInterfaceWrapper) AnalyzeSentiment(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var err error
+
+	ctx = context.WithValue(ctx, HTTPBearerScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params AnalyzeSentimentParams
+
+	// ------------- Required query parameter "model_id" -------------
+
+	if paramValue := r.URL.Query().Get("model_id"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "model_id"})
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "model_id", r.URL.Query(), &params.ModelId)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "model_id", Err: err})
+		return
+	}
+
+	// ------------- Required query parameter "text_input" -------------
+
+	if paramValue := r.URL.Query().Get("text_input"); paramValue != "" {
+
+	} else {
+		siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "text_input"})
+		return
+	}
+
+	err = runtime.BindQueryParameter("form", true, true, "text_input", r.URL.Query(), &params.TextInput)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "text_input", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AnalyzeSentiment(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1767,6 +2019,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/segment-anything-2", wrapper.GenSegmentAnything2)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/text-sentiment-analysis", wrapper.AnalyzeSentiment)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/text-to-image", wrapper.GenTextToImage)
 	})
 	r.Group(func(r chi.Router) {
@@ -1779,58 +2034,62 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
