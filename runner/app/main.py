@@ -21,8 +21,6 @@ async def lifespan(app: FastAPI):
     app.pipeline = load_pipeline(pipeline, model_id)
     app.include_router(load_route(pipeline))
 
-    use_route_names_as_operation_ids(app)
-
     logger.info(f"Started up with pipeline {app.pipeline}")
     yield
     logger.info("Shutting down")
@@ -56,6 +54,10 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
             from liveportrait import Inference
 
             return 
+        case "segment-anything-2":
+            from app.pipelines.segment_anything_2 import SegmentAnything2Pipeline
+
+            return SegmentAnything2Pipeline(model_id)
         case _:
             raise EnvironmentError(
                 f"{pipeline} is not a valid pipeline for model {model_id}"
@@ -90,6 +92,10 @@ def load_route(pipeline: str) -> any:
             from app.routes import live_portrait
 
             return live_portrait.router
+        case "segment-anything-2":
+            from app.routes import segment_anything_2
+
+            return segment_anything_2.router
         case _:
             raise EnvironmentError(f"{pipeline} is not a valid pipeline")
 

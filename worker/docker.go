@@ -36,13 +36,19 @@ var containerHostPorts = map[string]string{
 	"image-to-video": "8200",
 	"upscale":        "8300",
 	"audio-to-text":  "8400",
+  "segment-anything-2": "8500",
 	"live-portrait":  "8900",
 }
 
+// Mapping for per pipeline container images.
+var pipelineToImage = map[string]string{
+	"segment-anything-2": "livepeer/ai-runner:segment-anything-2",
+}
+
 type DockerManager struct {
-	containerImageID string
-	gpus             []string
-	modelDir         string
+	defaultImage string
+	gpus         []string
+	modelDir     string
 
 	dockerClient *client.Client
 	// gpu ID => container name
@@ -52,7 +58,7 @@ type DockerManager struct {
 	mu         *sync.Mutex
 }
 
-func NewDockerManager(containerImageID string, gpus []string, modelDir string) (*DockerManager, error) {
+func NewDockerManager(defaultImage string, gpus []string, modelDir string) (*DockerManager, error) {
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, err
@@ -66,13 +72,13 @@ func NewDockerManager(containerImageID string, gpus []string, modelDir string) (
 	cancel()
 
 	return &DockerManager{
-		containerImageID: containerImageID,
-		gpus:             gpus,
-		modelDir:         modelDir,
-		dockerClient:     dockerClient,
-		gpuContainers:    make(map[string]string),
-		containers:       make(map[string]*RunnerContainer),
-		mu:               &sync.Mutex{},
+		defaultImage:  defaultImage,
+		gpus:          gpus,
+		modelDir:      modelDir,
+		dockerClient:  dockerClient,
+		gpuContainers: make(map[string]string),
+		containers:    make(map[string]*RunnerContainer),
+		mu:            &sync.Mutex{},
 	}, nil
 }
 
@@ -163,8 +169,12 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	// NOTE: We currently allow only one container per GPU for each pipeline.
 	containerHostPort := containerHostPorts[pipeline][:3] + gpu
 	containerName := dockerContainerName(pipeline, modelID, containerHostPort)
+	containerImage := m.defaultImage
+	if pipelineSpecificImage, ok := pipelineToImage[pipeline]; ok {
+		containerImage = pipelineSpecificImage
+	}
 
-	slog.Info("Starting managed container", slog.String("gpu", gpu), slog.String("name", containerName), slog.String("modelID", modelID))
+	slog.Info("Starting managed container", slog.String("gpu", gpu), slog.String("name", containerName), slog.String("modelID", modelID), slog.String("containerImage", containerImage))
 
 	// Add optimization flags as environment variables.
 	envVars := []string{
@@ -176,7 +186,7 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	}
 
 	containerConfig := &container.Config{
-		Image: m.containerImageID,
+		Image: containerImage,
 		Env:   envVars,
 		Volumes: map[string]struct{}{
 			containerModelDir: {},

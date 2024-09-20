@@ -40,14 +40,13 @@ func (sb EnvValue) String() string {
 type OptimizationFlags map[string]EnvValue
 
 type Worker struct {
-	manager *DockerManager
-
+	manager            *DockerManager
 	externalContainers map[string]*RunnerContainer
 	mu                 *sync.Mutex
 }
 
-func NewWorker(containerImageID string, gpus []string, modelDir string) (*Worker, error) {
-	manager, err := NewDockerManager(containerImageID, gpus, modelDir)
+func NewWorker(defaultImage string, gpus []string, modelDir string) (*Worker, error) {
+	manager, err := NewDockerManager(defaultImage, gpus, modelDir)
 	if err != nil {
 		return nil, err
 	}
@@ -59,14 +58,14 @@ func NewWorker(containerImageID string, gpus []string, modelDir string) (*Worker
 	}, nil
 }
 
-func (w *Worker) TextToImage(ctx context.Context, req TextToImageJSONRequestBody) (*ImageResponse, error) {
+func (w *Worker) TextToImage(ctx context.Context, req GenTextToImageJSONRequestBody) (*ImageResponse, error) {
 	c, err := w.borrowContainer(ctx, "text-to-image", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
 	defer w.returnContainer(c)
 
-	resp, err := c.Client.TextToImageWithResponse(ctx, req)
+	resp, err := c.Client.GenTextToImageWithResponse(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +100,7 @@ func (w *Worker) TextToImage(ctx context.Context, req TextToImageJSONRequestBody
 	return resp.JSON200, nil
 }
 
-func (w *Worker) ImageToImage(ctx context.Context, req ImageToImageMultipartRequestBody) (*ImageResponse, error) {
+func (w *Worker) ImageToImage(ctx context.Context, req GenImageToImageMultipartRequestBody) (*ImageResponse, error) {
 	c, err := w.borrowContainer(ctx, "image-to-image", *req.ModelId)
 	if err != nil {
 		return nil, err
@@ -114,7 +113,7 @@ func (w *Worker) ImageToImage(ctx context.Context, req ImageToImageMultipartRequ
 		return nil, err
 	}
 
-	resp, err := c.Client.ImageToImageWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	resp, err := c.Client.GenImageToImageWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +148,7 @@ func (w *Worker) ImageToImage(ctx context.Context, req ImageToImageMultipartRequ
 	return resp.JSON200, nil
 }
 
-func (w *Worker) ImageToVideo(ctx context.Context, req ImageToVideoMultipartRequestBody) (*VideoResponse, error) {
+func (w *Worker) ImageToVideo(ctx context.Context, req GenImageToVideoMultipartRequestBody) (*VideoResponse, error) {
 	c, err := w.borrowContainer(ctx, "image-to-video", *req.ModelId)
 	if err != nil {
 		return nil, err
@@ -162,7 +161,7 @@ func (w *Worker) ImageToVideo(ctx context.Context, req ImageToVideoMultipartRequ
 		return nil, err
 	}
 
-	resp, err := c.Client.ImageToVideoWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	resp, err := c.Client.GenImageToVideoWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +201,7 @@ func (w *Worker) ImageToVideo(ctx context.Context, req ImageToVideoMultipartRequ
 	return resp.JSON200, nil
 }
 
-func (w *Worker) Upscale(ctx context.Context, req UpscaleMultipartRequestBody) (*ImageResponse, error) {
+func (w *Worker) Upscale(ctx context.Context, req GenUpscaleMultipartRequestBody) (*ImageResponse, error) {
 	c, err := w.borrowContainer(ctx, "upscale", *req.ModelId)
 	if err != nil {
 		return nil, err
@@ -215,7 +214,7 @@ func (w *Worker) Upscale(ctx context.Context, req UpscaleMultipartRequestBody) (
 		return nil, err
 	}
 
-	resp, err := c.Client.UpscaleWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	resp, err := c.Client.GenUpscaleWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
 	if err != nil {
 		return nil, err
 	}
@@ -250,7 +249,7 @@ func (w *Worker) Upscale(ctx context.Context, req UpscaleMultipartRequestBody) (
 	return resp.JSON200, nil
 }
 
-func (w *Worker) AudioToText(ctx context.Context, req AudioToTextMultipartRequestBody) (*TextResponse, error) {
+func (w *Worker) AudioToText(ctx context.Context, req GenAudioToTextMultipartRequestBody) (*TextResponse, error) {
 	c, err := w.borrowContainer(ctx, "audio-to-text", *req.ModelId)
 	if err != nil {
 		return nil, err
@@ -263,7 +262,7 @@ func (w *Worker) AudioToText(ctx context.Context, req AudioToTextMultipartReques
 		return nil, err
 	}
 
-	resp, err := c.Client.AudioToTextWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	resp, err := c.Client.GenAudioToTextWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
 	if err != nil {
 		return nil, err
 	}
@@ -299,6 +298,54 @@ func (w *Worker) AudioToText(ctx context.Context, req AudioToTextMultipartReques
 		}
 		slog.Error("audio-to-text container returned 500", slog.String("err", string(val)))
 		return nil, errors.New("audio-to-text container returned 500")
+	}
+
+	return resp.JSON200, nil
+}
+
+func (w *Worker) SegmentAnything2(ctx context.Context, req GenSegmentAnything2MultipartRequestBody) (*MasksResponse, error) {
+	c, err := w.borrowContainer(ctx, "segment-anything-2", *req.ModelId)
+	if err != nil {
+		return nil, err
+	}
+	defer w.returnContainer(c)
+
+	var buf bytes.Buffer
+	mw, err := NewSegmentAnything2MultipartWriter(&buf, req)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.Client.GenSegmentAnything2WithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("segment anything 2 container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("segment anything 2 container returned 422")
+	}
+
+	if resp.JSON400 != nil {
+		val, err := json.Marshal(resp.JSON400)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("segment anything 2 container returned 400", slog.String("err", string(val)))
+		return nil, errors.New("segment anything 2 container returned 400")
+	}
+
+	if resp.JSON500 != nil {
+		val, err := json.Marshal(resp.JSON500)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("segment anything 2 container returned 500", slog.String("err", string(val)))
+		return nil, errors.New("segment anything 2 container returned 500")
 	}
 
 	return resp.JSON200, nil
