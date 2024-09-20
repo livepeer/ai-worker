@@ -1,6 +1,7 @@
 import logging
 import os
 import random
+from typing import Annotated
 
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
@@ -8,7 +9,7 @@ from app.routes.util import HTTPError, ImageResponse, http_error, image_to_data_
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 router = APIRouter()
 
@@ -18,26 +19,104 @@ logger = logging.getLogger(__name__)
 class TextToImageParams(BaseModel):
     # TODO: Make model_id and other None properties optional once Go codegen tool
     # supports OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
-    model_id: str = ""
-    prompt: str
-    height: int = None
-    width: int = None
-    guidance_scale: float = 7.5
-    negative_prompt: str = ""
-    safety_check: bool = True
-    seed: int = None
-    num_inference_steps: int = 50  # NOTE: Hardcoded due to varying pipeline values.
-    num_images_per_prompt: int = 1
+    model_id: Annotated[
+        str,
+        Field(
+            default="", description="Hugging Face model ID used for image generation."
+        ),
+    ]
+    prompt: Annotated[
+        str,
+        Field(
+            description=(
+                "Text prompt(s) to guide image generation. Separate multiple prompts "
+                "with '|' if supported by the model."
+            )
+        ),
+    ]
+    height: Annotated[
+        int,
+        Field(default=576, description="The height in pixels of the generated image."),
+    ]
+    width: Annotated[
+        int,
+        Field(default=1024, description="The width in pixels of the generated image."),
+    ]
+    guidance_scale: Annotated[
+        float,
+        Field(
+            default=7.5,
+            description=(
+                "Encourages model to generate images closely linked to the text prompt "
+                "(higher values may reduce image quality)."
+            ),
+        ),
+    ]
+    negative_prompt: Annotated[
+        str,
+        Field(
+            default="",
+            description=(
+                "Text prompt(s) to guide what to exclude from image generation. "
+                "Ignored if guidance_scale < 1."
+            ),
+        ),
+    ]
+    safety_check: Annotated[
+        bool,
+        Field(
+            default=True,
+            description=(
+                "Perform a safety check to estimate if generated images could be "
+                "offensive or harmful."
+            ),
+        ),
+    ]
+    seed: Annotated[
+        int, Field(default=None, description="Seed for random number generation.")
+    ]
+    num_inference_steps: Annotated[
+        int,
+        Field(
+            default=50,
+            description=(
+                "Number of denoising steps. More steps usually lead to higher quality "
+                "images but slower inference. Modulated by strength."
+            ),
+        ),
+    ]
+    num_images_per_prompt: Annotated[
+        int,
+        Field(default=1, description="Number of images to generate per prompt."),
+    ]
 
 
 RESPONSES = {
+    status.HTTP_200_OK: {
+        "content": {
+            "application/json": {
+                "schema": {
+                    "x-speakeasy-name-override": "data",
+                }
+            }
+        },
+    },
     status.HTTP_400_BAD_REQUEST: {"model": HTTPError},
     status.HTTP_401_UNAUTHORIZED: {"model": HTTPError},
     status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPError},
 }
 
 
-@router.post("/text-to-image", response_model=ImageResponse, responses=RESPONSES)
+@router.post(
+    "/text-to-image",
+    response_model=ImageResponse,
+    responses=RESPONSES,
+    description="Generate images from text prompts.",
+    operation_id="genTextToImage",
+    summary="Text To Image",
+    tags=["generate"],
+    openapi_extra={"x-speakeasy-name-override": "textToImage"},
+)
 @router.post(
     "/text-to-image/",
     response_model=ImageResponse,

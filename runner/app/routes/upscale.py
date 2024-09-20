@@ -3,14 +3,13 @@ import os
 import random
 from typing import Annotated
 
+from app.dependencies import get_pipeline
+from app.pipelines.base import Pipeline
+from app.routes.util import HTTPError, ImageResponse, http_error, image_to_data_url
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from PIL import Image, ImageFile
-
-from app.dependencies import get_pipeline
-from app.pipelines.base import Pipeline
-from app.routes.util import HTTPError, ImageResponse, http_error, image_to_data_url
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -20,6 +19,15 @@ logger = logging.getLogger(__name__)
 
 
 RESPONSES = {
+    status.HTTP_200_OK: {
+        "content": {
+            "application/json": {
+                "schema": {
+                    "x-speakeasy-name-override": "data",
+                }
+            }
+        },
+    },
     status.HTTP_400_BAD_REQUEST: {"model": HTTPError},
     status.HTTP_401_UNAUTHORIZED: {"model": HTTPError},
     status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPError},
@@ -28,7 +36,16 @@ RESPONSES = {
 
 # TODO: Make model_id and other None properties optional once Go codegen tool supports
 # OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
-@router.post("/upscale", response_model=ImageResponse, responses=RESPONSES)
+@router.post(
+    "/upscale",
+    response_model=ImageResponse,
+    responses=RESPONSES,
+    description="Upscale an image by increasing its resolution.",
+    operation_id="genUpscale",
+    summary="Upscale",
+    tags=["generate"],
+    openapi_extra={"x-speakeasy-name-override": "upscale"},
+)
 @router.post(
     "/upscale/",
     response_model=ImageResponse,
@@ -36,13 +53,36 @@ RESPONSES = {
     include_in_schema=False,
 )
 async def upscale(
-    prompt: Annotated[str, Form()],
-    image: Annotated[UploadFile, File()],
-    model_id: Annotated[str, Form()] = "",
-    safety_check: Annotated[bool, Form()] = True,
-    seed: Annotated[int, Form()] = None,
+    prompt: Annotated[
+        str,
+        Form(description="Text prompt(s) to guide upscaled image generation."),
+    ],
+    image: Annotated[
+        UploadFile,
+        File(description="Uploaded image to modify with the pipeline."),
+    ],
+    model_id: Annotated[
+        str,
+        Form(description="Hugging Face model ID used for upscaled image generation."),
+    ] = "",
+    safety_check: Annotated[
+        bool,
+        Form(
+            description=(
+                "Perform a safety check to estimate if generated images could be "
+                "offensive or harmful."
+            )
+        ),
+    ] = True,
+    seed: Annotated[int, Form(description="Seed for random number generation.")] = None,
     num_inference_steps: Annotated[
-        int, Form()
+        int,
+        Form(
+            description=(
+                "Number of denoising steps. More steps usually lead to higher quality "
+                "images but slower inference. Modulated by strength."
+            )
+        ),
     ] = 75,  # NOTE: Hardcoded due to varying pipeline values.
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),

@@ -13,7 +13,7 @@ import (
 	"strconv"
 )
 
-func NewImageToImageMultipartWriter(w io.Writer, req ImageToImageMultipartRequestBody) (*multipart.Writer, error) {
+func NewImageToImageMultipartWriter(w io.Writer, req GenImageToImageMultipartRequestBody) (*multipart.Writer, error) {
 	mw := multipart.NewWriter(w)
 	writer, err := mw.CreateFormFile("image", req.Image.Filename())
 	if err != nil {
@@ -88,7 +88,7 @@ func NewImageToImageMultipartWriter(w io.Writer, req ImageToImageMultipartReques
 	return mw, nil
 }
 
-func NewImageToVideoMultipartWriter(w io.Writer, req ImageToVideoMultipartRequestBody) (*multipart.Writer, error) {
+func NewImageToVideoMultipartWriter(w io.Writer, req GenImageToVideoMultipartRequestBody) (*multipart.Writer, error) {
 	mw := multipart.NewWriter(w)
 	writer, err := mw.CreateFormFile("image", req.Image.Filename())
 	if err != nil {
@@ -160,7 +160,7 @@ func NewImageToVideoMultipartWriter(w io.Writer, req ImageToVideoMultipartReques
 	return mw, nil
 }
 
-func NewUpscaleMultipartWriter(w io.Writer, req UpscaleMultipartRequestBody) (*multipart.Writer, error) {
+func NewUpscaleMultipartWriter(w io.Writer, req GenUpscaleMultipartRequestBody) (*multipart.Writer, error) {
 	mw := multipart.NewWriter(w)
 	writer, err := mw.CreateFormFile("image", req.Image.Filename())
 	if err != nil {
@@ -209,7 +209,7 @@ func NewUpscaleMultipartWriter(w io.Writer, req UpscaleMultipartRequestBody) (*m
 
 	return mw, nil
 }
-func NewAudioToTextMultipartWriter(w io.Writer, req AudioToTextMultipartRequestBody) (*multipart.Writer, error) {
+func NewAudioToTextMultipartWriter(w io.Writer, req GenAudioToTextMultipartRequestBody) (*multipart.Writer, error) {
 	mw := multipart.NewWriter(w)
 	writer, err := mw.CreateFormFile("audio", req.Audio.Filename())
 	if err != nil {
@@ -230,6 +230,74 @@ func NewAudioToTextMultipartWriter(w io.Writer, req AudioToTextMultipartRequestB
 
 	if req.ModelId != nil {
 		if err := mw.WriteField("model_id", *req.ModelId); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := mw.Close(); err != nil {
+		return nil, err
+	}
+
+	return mw, nil
+}
+
+func NewSegmentAnything2MultipartWriter(w io.Writer, req GenSegmentAnything2MultipartRequestBody) (*multipart.Writer, error) {
+	mw := multipart.NewWriter(w)
+	writer, err := mw.CreateFormFile("image", req.Image.Filename())
+	if err != nil {
+		return nil, err
+	}
+	imageSize := req.Image.FileSize()
+	imageRdr, err := req.Image.Reader()
+	if err != nil {
+		return nil, err
+	}
+	copied, err := io.Copy(writer, imageRdr)
+	if err != nil {
+		return nil, err
+	}
+	if copied != imageSize {
+		return nil, fmt.Errorf("failed to copy image to multipart request imageBytes=%v copiedBytes=%v", imageSize, copied)
+	}
+
+	// Handle input fields.
+	if req.ModelId != nil {
+		if err := mw.WriteField("model_id", *req.ModelId); err != nil {
+			return nil, err
+		}
+	}
+	if req.PointCoords != nil {
+		if err := mw.WriteField("point_coords", *req.PointCoords); err != nil {
+			return nil, err
+		}
+	}
+	if req.PointLabels != nil {
+		if err := mw.WriteField("point_labels", *req.PointLabels); err != nil {
+			return nil, err
+		}
+	}
+	if req.Box != nil {
+		if err := mw.WriteField("box", *req.Box); err != nil {
+			return nil, err
+		}
+	}
+	if req.MaskInput != nil {
+		if err := mw.WriteField("mask_input", *req.MaskInput); err != nil {
+			return nil, err
+		}
+	}
+	if req.MultimaskOutput != nil {
+		if err := mw.WriteField("multimask_output", strconv.FormatBool(*req.MultimaskOutput)); err != nil {
+			return nil, err
+		}
+	}
+	if req.ReturnLogits != nil {
+		if err := mw.WriteField("return_logits", strconv.FormatBool(*req.ReturnLogits)); err != nil {
+			return nil, err
+		}
+	}
+	if req.NormalizeCoords != nil {
+		if err := mw.WriteField("normalize_coords", strconv.FormatBool(*req.NormalizeCoords)); err != nil {
 			return nil, err
 		}
 	}

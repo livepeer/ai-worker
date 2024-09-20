@@ -1,4 +1,6 @@
-"""This module provides functionality for converting audio files between different formats."""
+"""This module provides functionality for converting audio files between different
+formats.
+"""
 
 from io import BytesIO
 
