@@ -352,7 +352,8 @@ components:
         loras:
           type: string
           title: Loras
-          description: A lora and weight to use for image generation.
+          description: 'A LoRA (Low-Rank Adaptation) model and its corresponding weight
+            for image generation. Example: { "nerijs/pixel-art-xl": 1.2 }.'
           default: ''
         strength:
           type: number
@@ -661,8 +662,8 @@ components:
         loras:
           type: string
           title: Loras
-          description: 'A lora and weight to use for image generation. example: {
-            "nerijs/pixel-art-xl" : 1.2 } '
+          description: 'A LoRA (Low-Rank Adaptation) model and its corresponding weight
+            for image generation. Example: { "nerijs/pixel-art-xl": 1.2 }.'
           default: ''
         prompt:
           type: string

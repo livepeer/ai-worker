@@ -67,9 +67,13 @@ async def image_to_image(
         Form(description="Hugging Face model ID used for image generation."),
     ] = "",
     loras: Annotated[
-        str, 
+        str,
         Form(
-            description="A lora and weight to use for image generation."),
+            description=(
+                "A LoRA (Low-Rank Adaptation) model and its corresponding weight for "
+                "image generation. Example: { \"nerijs/pixel-art-xl\": 1.2 }."
+            )
+        ),
     ] = "",
     strength: Annotated[
         float,
@@ -181,7 +185,7 @@ async def image_to_image(
             logger.exception(e)
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                content=http_error("Error loading LoRas: " + str(e)),
+                content=http_error(str(e)),
             )
         except Exception as e:
             logger.error(f"ImageToImagePipeline error: {e}")

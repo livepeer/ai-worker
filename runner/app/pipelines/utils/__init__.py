@@ -3,6 +3,7 @@ module.
 """
 
 from app.pipelines.utils.utils import (
+    LoraLoader,
     SafetyChecker,
     get_model_dir,
     get_model_path,
@@ -11,4 +12,4 @@ from app.pipelines.utils.utils import (
     is_turbo_model,
     split_prompt,
     validate_torch_device,
-    load_loras)
+)

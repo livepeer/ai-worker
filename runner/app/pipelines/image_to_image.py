@@ -7,12 +7,14 @@ import PIL
 import torch
 from app.pipelines.base import Pipeline
 from app.pipelines.utils import (
+    LoraLoader,
     SafetyChecker,
     get_model_dir,
     get_torch_device,
     is_lightning_model,
     is_turbo_model,
-    load_loras)
+)
+from app.pipelines.utils.utils import LoraLoadingError
 from diffusers import (
     AutoPipelineForImage2Image,
     EulerAncestralDiscreteScheduler,
@@ -24,8 +26,6 @@ from diffusers import (
 from huggingface_hub import file_download, hf_hub_download
 from PIL import ImageFile
 from safetensors.torch import load_file
-
-from app.pipelines.utils.utils import LoraLoadingError
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -175,11 +175,14 @@ class ImageToImagePipeline(Pipeline):
         safety_checker_device = os.getenv("SAFETY_CHECKER_DEVICE", "cuda").lower()
         self._safety_checker = SafetyChecker(device=safety_checker_device)
 
+        self._lora_loader = LoraLoader(self.ldm)
+
     def __call__(
         self, prompt: str, image: PIL.Image, **kwargs
     ) -> Tuple[List[PIL.Image], List[Optional[bool]]]:
         seed = kwargs.pop("seed", None)
         safety_check = kwargs.pop("safety_check", True)
+        loras_json = kwargs.pop("loras", "")
 
         if seed is not None:
             if isinstance(seed, int):
@@ -191,21 +194,18 @@ class ImageToImagePipeline(Pipeline):
                     torch.Generator(get_torch_device()).manual_seed(s) for s in seed
                 ]
 
-        # Dynamically (un)load LoRas. Defaults to "" when not passed, so should always be present in kwargs
-        if kwargs["loras"] == "":
-            # Unload previously loaded LoRas
+        # Dynamically (un)load LoRas.
+        if loras_json == "":
+            # Unload previously loaded LoRas.
             # NOTE: we might want to keep LoRas loaded and only reset their weights
-            # TODO: run tests with VRAM usage. We should be able to keep the last x LoRas loaded without issues
+            # TODO: run tests with VRAM usage. We should be able to keep the last x
+            # LoRas loaded without issues
             self.ldm.unload_lora_weights()
         else:
-            # Remember requested LoRas and their weights
             try:
-                self.loaded_loras = load_loras(self.ldm, kwargs["loras"], self.loaded_loras)
+                self._lora_loader.load_loras(loras_json)
             except Exception as e:
-                raise LoraLoadingError(f"Error loading LoRas: {e}")
-            
-        # Do not pass the lora param to the model when running inference
-        del kwargs["loras"]
+                raise LoraLoadingError(original_exception=e)
 
         if "num_inference_steps" in kwargs and (
             kwargs["num_inference_steps"] is None or kwargs["num_inference_steps"] < 1

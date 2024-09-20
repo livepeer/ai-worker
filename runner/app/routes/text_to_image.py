@@ -27,13 +27,13 @@ class TextToImageParams(BaseModel):
         ),
     ]
     loras: Annotated[
-        str, 
+        str,
         Field(
             default="",
             description=(
-                "A lora and weight to use for image generation. "
-                "example: { \"nerijs/pixel-art-xl\" : 1.2 } "
-            )
+                "A LoRA (Low-Rank Adaptation) model and its corresponding weight for "
+                'image generation. Example: { "nerijs/pixel-art-xl": 1.2 }.'
+            ),
         ),
     ]
     prompt: Annotated[
@@ -177,7 +177,7 @@ async def text_to_image(
             logger.exception(e)
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                content=http_error("Error loading LoRas: " + str(e)),
+                content=http_error(str(e)),
             )
         except Exception as e:
             logger.error(f"TextToImagePipeline error: {e}")

@@ -1,10 +1,8 @@
 """This module contains several utility functions."""
 
+import json
 import logging
 import os
-import json
-import numpy as np
-from torch import dtype as TorchDtype
 import re
 from pathlib import Path
 from typing import Dict, Optional
@@ -12,14 +10,28 @@ from typing import Dict, Optional
 import numpy as np
 import torch
 from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
+from diffusers.pipelines.pipeline_utils import DiffusionPipeline
 from PIL import Image
 from torch import dtype as TorchDtype
 from transformers import CLIPImageProcessor
 
 logger = logging.getLogger(__name__)
 
+
 class LoraLoadingError(Exception):
-    pass
+    """Exception raised for errors during LoRa loading."""
+
+    def __init__(self, message="Error loading LoRas", original_exception=None):
+        """Initialize the exception.
+        Args:
+            message: The error message.
+            original_exception: The original exception that caused the error.
+        """
+        if original_exception:
+            message = f"{message}: {original_exception}"
+        super().__init__(message)
+        self.original_exception = original_exception
+
 
 def get_model_dir() -> Path:
     return Path(os.environ["MODEL_DIR"])
@@ -181,55 +193,73 @@ class SafetyChecker:
         )
         return images, has_nsfw_concept
 
-def load_loras(pipeline: any, requested_lora: str, loaded_loras: list) -> list:
-    """Loads LoRas and sets their weights into the given pipeline.
 
-    Args:
-        pipeline: Diffusion pipeline, usually available under self.ldm.
-        loras: JSON string with key-value pairs, where the key is the repository to load LoRas from and the value is the strength (float with a minimum value of 0.0) to assign to the LoRa.
+class LoraLoader:
+    """Utility class to load LoRas and set their weights into a given pipeline.
+
+    Attributes:
+        pipeline: Diffusion pipeline on which the LoRas are loaded.
     """
-    # Parse LoRas param as JSON to extract key-value pairs
-    # Build a list of adapter names and their requested strength
-    adapters = []
-    strengths = []
-    if len(loaded_loras) > 0: 
-        pipeline.unload_lora_weights()
-        
-    lora = {}
-    try:
-        lora = json.loads(requested_lora)
-    except Exception as e:
-        error_message = f"Unable to parse '{requested_lora}' as JSON."
-        logger.warning(error_message)
-        raise LoraLoadingError(error_message)
 
-    for adapter, val in lora.items():
-        if adapter in loaded_loras:
-            pipeline.unload_lora_weights()
+    def __init__(self, pipeline: DiffusionPipeline):
+        """Initializes the LoraLoader.
 
-        # Sanity check: strength should be a number with a minimum value of 0.0
+        Args:
+            pipeline: Diffusion pipeline to load LoRas into.
+        """
+        self.pipeline = pipeline
+        self._loaded_loras = set()
+
+    def load_loras(self, loras_json: str) -> None:
+        """Loads LoRas and sets their weights into the pipeline managed by this
+        LoraLoader.
+
+        Args:
+            loras_json: A JSON string containing key-value pairs, where the key is the
+                repository to load LoRas from and the value is the strength (a float
+                with a minimum value of 0.0) to assign to the LoRa.
+        """
         try:
-            strength = float(val)
-        except ValueError:
-            logger.warning(f"Skipping requested LoRa {adapter}, as it's requested strength ({val}) is not a number")
-            raise LoraLoadingError(error_message)
-
-        if strength < 0.0: 
-            error_message = f"Clipping strength of LoRa " + adapter + " to 0.0, as it's requested strength (" + val + ") is negative"
-            logger.warning(error_message)
-            strength = 0.0
-        try:
-            # TODO: If we decide to keep LoRas loaded (and only set their weight to 0), make sure that reloading them causes no performance hit or other issues
-            pipeline.load_lora_weights(adapter, adapter_name=adapter)
-        except Exception as e:
-            error_message = "Unable to load LoRas for adapter '" + adapter + "' (" + type(e).__name__ + ")"
+            lora_dict = json.loads(loras_json)
+        except json.JSONDecodeError:
+            error_message = f"Unable to parse '{loras_json}' as JSON."
             logger.warning(error_message)
             raise LoraLoadingError(error_message)
 
-        # Remember adapter name and their associated strength
-        adapters.append(adapter)
-        strengths.append(strength)
-    # Set weights for all loaded adapters
-    if len(adapters) > 0:
-        pipeline.set_adapters(adapters, strengths)
-    return adapters
+        invalid_loras = {
+            adapter: val
+            for adapter, val in lora_dict.items()
+            if not isinstance(val, (int, float)) or val < 0.0
+        }
+        if invalid_loras:
+            error_message = (
+                "All strengths must be numbers greater than or equal to 0.0."
+            )
+            logger.warning(error_message)
+            raise LoraLoadingError(error_message)
+
+        # Unload LoRas that are no longer needed
+        new_loras = set(lora_dict.keys())
+        loaded_loras = set(self.pipeline.get_active_adapters())
+        loras_to_unload = loaded_loras - new_loras
+        for lora in loras_to_unload:
+            self.pipeline.unload_lora_weights()
+            # self.pipeline.delete_adapters(lora)
+
+        # Load and set weights for each LoRa.
+        for adapter in lora_dict.keys():
+            # Load the LoRa weights only if not already loaded.
+            if adapter not in self._loaded_loras:
+                try:
+                    self.pipeline.load_lora_weights(adapter, adapter_name=adapter)
+                    self._loaded_loras.add(adapter)
+                except Exception:
+                    error_message = (
+                        f"Unable to load LoRas for adapter '{adapter}'"
+                    )
+                    logger.warning(error_message)
+                    raise LoraLoadingError(error_message)
+
+        # Set the adapters and their strengths.
+        adapters, strengths = zip(*lora_dict.items())
+        self.pipeline.set_adapters(list(adapters), list(strengths))
