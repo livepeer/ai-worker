@@ -151,7 +151,7 @@ apiTrustedProxies: []
 # Global settings -> Metrics
 
 # Enable Prometheus-compatible metrics.
-metrics: no
+metrics: yes
 # Address of the metrics HTTP listener.
 metricsAddress: :9998
 # Enable TLS/HTTPS on the Metrics server.
@@ -376,8 +376,8 @@ webrtcAdditionalHosts: []
 # ICE servers. Needed only when local listeners can't be reached by clients.
 # STUN servers allows to obtain and share the public IP of the server.
 # TURN/TURNS servers forces all traffic through them.
-webrtcICEServers2: []
-  # - url: stun:stun.l.google.com:19302
+webrtcICEServers2:
+  - url: stun:stun.l.google.com:19302
   # if user is "AUTH_SECRET", then authentication is secret based.
   # the secret must be inserted into the password field.
   # username: ''
@@ -643,7 +643,7 @@ pathDefaults:
   #   a regular expression.
   # * MTX_SOURCE_TYPE: source type
   # * MTX_SOURCE_ID: source ID
-  runOnReady:
+  runOnReady: curl http://realtime-ai-worker:3080/ready -F path=$MTX_PATH -F query=$MTX_QUERY -F source_type=$MTX_SOURCE_TYPE -F source_id=$MTX_SOURCE_ID
   # Restart the command if it exits.
   runOnReadyRestart: no
   # Command to run when the stream is not available anymore.
