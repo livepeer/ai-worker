@@ -1,7 +1,7 @@
 name: Build ai-runner base Docker image
 
 on:
-  check_run:
+  pull_request:
     paths:
       - "runner/**"
       - "!runner/.devcontainer/**"
@@ -50,7 +50,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            jjassonn69/ai-runner
+            livepeer/ai-runner
           tags: |
             type=sha
             type=ref,event=pr
@@ -75,5 +75,5 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           file: "Dockerfile"
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=jjassonn69/build:cache
-          cache-to: type=registry,ref=jjassonn69/build:cache,mode=max
+          cache-from: type=registry,ref=livepeerci/build:cache
+          cache-to: type=registry,ref=livepeerci/build:cache,mode=max
