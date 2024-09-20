@@ -18,3 +18,4 @@ av==12.1.0
 sentencepiece== 0.2.0
 protobuf==5.27.2
 opencv-python
+https://github.com/JJassonn69/liveportrait/releases/download/liveportrait/liveportrait-0.1.0-py3-none-any.whl
