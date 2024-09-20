@@ -1,6 +1,8 @@
 import logging
 import os
 from enum import Enum
+import time
+from compel import Compel, ReturnedEmbeddingsType
 from typing import List, Optional, Tuple
 
 import PIL
@@ -29,6 +31,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 logger = logging.getLogger(__name__)
 
+SFAST_WARMUP_ITERATIONS = 2  # Model warm-up iterations when SFAST is enabled.
 
 class ModelName(Enum):
     """Enumeration mapping model names to their corresponding IDs."""
@@ -146,11 +149,29 @@ class ImageToImagePipeline(Pipeline):
             # Warm-up the pipeline.
             # TODO: Not yet supported for ImageToImagePipeline.
             if os.getenv("SFAST_WARMUP", "true").lower() == "true":
-                logger.warning(
-                    "The 'SFAST_WARMUP' flag is not yet supported for the "
-                    "ImageToImagePipeline and will be ignored. As a result the first "
-                    "call may be slow if 'SFAST' is enabled."
-                )
+                warmup_kwargs = {
+                    "prompt":"A warmed up pipeline is a happy pipeline a short poem by ricksta",
+                    "image": PIL.Image.new("RGB", (576, 1024)),
+                    "strength": 0.8,
+                    "negative_prompt": "No blurry or weird artifacts",
+                    "num_images_per_prompt":4,
+                }
+
+                logger.info("Warming up ImageToImagePipeline pipeline...")
+                total_time = 0
+                for ii in range(SFAST_WARMUP_ITERATIONS):
+                    t = time.time()
+                    try:
+                        self.ldm(**warmup_kwargs).images
+                    except Exception as e:
+                        logger.error(f"ImageToImagePipeline warmup error: {e}")
+                        raise e
+                    iteration_time = time.time() - t
+                    total_time += iteration_time
+                    logger.info(
+                        "Warmup iteration %s took %s seconds", ii + 1, iteration_time
+                    )
+                logger.info("Total warmup time: %s seconds", total_time)
 
         if deepcache_enabled and not (
             is_lightning_model(model_id) or is_turbo_model(model_id)
@@ -180,39 +201,24 @@ class ImageToImagePipeline(Pipeline):
 
         if seed is not None:
             if isinstance(seed, int):
-                kwargs["generator"] = torch.Generator(get_torch_device()).manual_seed(
-                    seed
-                )
+                kwargs["generator"] = torch.Generator(get_torch_device()).manual_seed(seed)
             elif isinstance(seed, list):
-                kwargs["generator"] = [
-                    torch.Generator(get_torch_device()).manual_seed(s) for s in seed
-                ]
+                kwargs["generator"] = [torch.Generator(get_torch_device()).manual_seed(s) for s in seed]
 
         if "num_inference_steps" in kwargs and (
             kwargs["num_inference_steps"] is None or kwargs["num_inference_steps"] < 1
         ):
             del kwargs["num_inference_steps"]
 
-        if (
-            self.model_id == "stabilityai/sdxl-turbo"
-            or self.model_id == "stabilityai/sd-turbo"
-        ):
-            # SD turbo models were trained without guidance_scale so
-            # it should be set to 0
+        if self.model_id in ["stabilityai/sdxl-turbo", "stabilityai/sd-turbo"]:
             kwargs["guidance_scale"] = 0.0
-
-            # Ensure num_inference_steps * strength >= 1 for minimum pipeline
-            # execution steps.
             if "num_inference_steps" in kwargs:
                 kwargs["strength"] = max(
                     1.0 / kwargs.get("num_inference_steps", 1),
                     kwargs.get("strength", 0.5),
                 )
         elif ModelName.SDXL_LIGHTNING.value in self.model_id:
-            # SDXL-Lightning models should have guidance_scale = 0 and use
-            # the correct number of inference steps for the unet checkpoint loaded
             kwargs["guidance_scale"] = 0.0
-
             if "2step" in self.model_id:
                 kwargs["num_inference_steps"] = 2
             elif "4step" in self.model_id:
@@ -223,7 +229,30 @@ class ImageToImagePipeline(Pipeline):
                 # Default to 8step
                 kwargs["num_inference_steps"] = 8
 
-        output = self.ldm(prompt, image=image, **kwargs)
+        # trying different cases for prompt_embed because some models dont support without pooled_prompt_embeds.
+        try:
+            compel_proc = Compel(tokenizer=self.ldm.tokenizer, text_encoder=self.ldm.text_encoder)
+            prompt_embeds = compel_proc(prompt)
+            output = self.ldm(prompt_embeds=prompt_embeds, image=image, **kwargs)
+        except Exception as e:
+            logging.info(f"Failed to generate prompt embeddings: {e}. Using prompt and pooled embeddings.")
+
+            try:
+                compel_proc = Compel(tokenizer=[self.ldm.tokenizer, self.ldm.tokenizer_2],
+                                text_encoder=[self.ldm.text_encoder, self.ldm.text_encoder_2],
+                                returned_embeddings_type=ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
+                                requires_pooled=[False, True])
+                prompt_embeds, pooled_prompt_embeds = compel_proc(prompt)
+                output = self.ldm(
+                    prompt_embeds=prompt_embeds,
+                    pooled_prompt_embeds=pooled_prompt_embeds,
+                    image=image,
+                    **kwargs
+                )
+            except Exception as e:
+                logging.info(f"Failed to generate prompt and pooled embeddings: {e}. Trying normal prompt.")
+                output = self.ldm(prompt=prompt, image=image, **kwargs)
+
 
         if safety_check:
             _, has_nsfw_concept = self._safety_checker.check_nsfw_images(output.images)
