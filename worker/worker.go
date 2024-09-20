@@ -467,6 +467,7 @@ func (w *Worker) borrowContainer(ctx context.Context, pipeline, modelID string) 
 }
 
 func (w *Worker) returnContainer(rc *RunnerContainer) {
+	slog.Info("Returning container", "type", rc.Type, "pipeline", rc.Pipeline, "modelID", rc.ModelID)
 	switch rc.Type {
 	case Managed:
 		w.manager.Return(rc)
