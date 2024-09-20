@@ -21,9 +21,22 @@ RESPONSES = {
 }
 
 
-@router.post("/llm-generate",
-             response_model=LlmResponse, responses=RESPONSES)
-@router.post("/llm-generate/", response_model=LlmResponse, responses=RESPONSES, include_in_schema=False)
+@router.post(
+    "/llm-generate",
+    response_model=LlmResponse,
+    responses=RESPONSES,
+    description="Generate text responses from input prompts using a large language model.",
+    operation_id="genLlm",
+    summary="LLM Generate",
+    tags=["generate"],
+    openapi_extra={"x-speakeasy-name-override": "llm"},
+)
+@router.post(
+    "/llm-generate/", 
+    response_model=LlmResponse, 
+    responses=RESPONSES, 
+    include_in_schema=False,
+)
 async def llm_generate(
     prompt: Annotated[str, Form()],
     model_id: Annotated[str, Form()] = "",
