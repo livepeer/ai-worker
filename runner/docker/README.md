@@ -34,3 +34,24 @@ To build a pipeline-specific container, you need to build the base container fir
    ```
 
    This command builds the `segment-anything-2` pipeline-specific container using the Dockerfile located at [docker/Dockerfile.segment_anything_2](docker/Dockerfile.segment_anything_2) and tags it as `livepeer/ai-runner:segment-anything-2`.
+
+4. **Set Up the `mediamtx` Container for Ingest**:
+
+```bash
+docker build -f docker/Dockerfile.mediamtx -t livepeer/ai-runner:mediamtx .
+```
+
+This command builds and configures [MediaMTX](https://github.com/bluenviron/mediamtx) for ingest. Until we have docker-compose or similar orchestrator, it will need to be run manually in order to listen for incoming connections
+
+```bash
+docker run --rm -it -p 8189:8189/udp -p 8889:8889 -p 1935:1935 -p 9998:9998 livepeer/ai-runner:mediamtx
+```
+
+This will forward the following ports from the host container:
+
+Port | Purpose
+---|---
+8189 | WebRTC UDP
+8889 | WHIP HTTP
+1935 | RTMP
+9998 | Prometheus /metrics
