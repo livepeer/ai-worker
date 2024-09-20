@@ -355,7 +355,7 @@ func (w *Worker) SegmentAnything2(ctx context.Context, req GenSegmentAnything2Mu
 	return resp.JSON200, nil
 }
 
-func (w *Worker) LlmGenerate(ctx context.Context, req LlmGenerateLlmGeneratePostFormdataRequestBody) (interface{}, error) {
+func (w *Worker) LlmGenerate(ctx context.Context, req GenLlmFormdataRequestBody) (interface{}, error) {
 	c, err := w.borrowContainer(ctx, "llm-generate", *req.ModelId)
 	if err != nil {
 		return nil, err
@@ -378,14 +378,14 @@ func (w *Worker) LlmGenerate(ctx context.Context, req LlmGenerateLlmGeneratePost
 	}
 
 	if req.Stream != nil && *req.Stream {
-		resp, err := c.Client.LlmGenerateLlmGeneratePostWithBody(ctx, mw.FormDataContentType(), &buf)
+		resp, err := c.Client.GenLlmWithBody(ctx, mw.FormDataContentType(), &buf)
 		if err != nil {
 			return nil, err
 		}
 		return w.handleStreamingResponse(ctx, resp)
 	}
 
-	resp, err := c.Client.LlmGenerateLlmGeneratePostWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	resp, err := c.Client.GenLlmWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
 	if err != nil {
 		return nil, err
 	}
@@ -475,7 +475,7 @@ func (w *Worker) returnContainer(rc *RunnerContainer) {
 	}
 }
 
-func (w *Worker) handleNonStreamingResponse(resp *LlmGenerateLlmGeneratePostResponse) (*LlmResponse, error) {
+func (w *Worker) handleNonStreamingResponse(resp *GenLlmResponse) (*LlmResponse, error) {
 	if resp.JSON400 != nil {
 		val, err := json.Marshal(resp.JSON400)
 		if err != nil {

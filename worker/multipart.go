@@ -309,7 +309,7 @@ func NewSegmentAnything2MultipartWriter(w io.Writer, req GenSegmentAnything2Mult
 	return mw, nil
 }
 
-func NewLlmGenerateMultipartWriter(w io.Writer, req BodyLlmGenerateLlmGeneratePost) (*multipart.Writer, error) {
+func NewLlmGenerateMultipartWriter(w io.Writer, req GenLlmFormdataRequestBody) (*multipart.Writer, error) {
 	mw := multipart.NewWriter(w)
 
 	if err := mw.WriteField("prompt", req.Prompt); err != nil {

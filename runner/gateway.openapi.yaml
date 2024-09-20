@@ -305,13 +305,17 @@ paths:
       x-speakeasy-name-override: segmentAnything2
   /llm-generate:
     post:
-      summary: Llm Generate
-      operationId: llm_generate_llm_generate_post
+      tags:
+      - generate
+      summary: LLM Generate
+      description: Generate text responses from input prompts using a large language
+        model.
+      operationId: genLlm
       requestBody:
         content:
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Body_llm_generate_llm_generate_post'
+              $ref: '#/components/schemas/Body_genLlm'
         required: true
       responses:
         '200':
@@ -346,6 +350,7 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
       security:
       - HTTPBearer: []
+      x-speakeasy-name-override: llm
 components:
   schemas:
     APIError:
@@ -503,6 +508,40 @@ components:
       - image
       - model_id
       title: Body_genImageToVideo
+    Body_genLlm:
+      properties:
+        prompt:
+          type: string
+          title: Prompt
+        model_id:
+          type: string
+          title: Model Id
+          default: ''
+        system_msg:
+          type: string
+          title: System Msg
+          default: ''
+        temperature:
+          type: number
+          title: Temperature
+          default: 0.7
+        max_tokens:
+          type: integer
+          title: Max Tokens
+          default: 256
+        history:
+          type: string
+          title: History
+          default: '[]'
+        stream:
+          type: boolean
+          title: Stream
+          default: false
+      type: object
+      required:
+      - prompt
+      - model_id
+      title: Body_genLlm
     Body_genSegmentAnything2:
       properties:
         image:
@@ -596,40 +635,6 @@ components:
       - image
       - model_id
       title: Body_genUpscale
-    Body_llm_generate_llm_generate_post:
-      properties:
-        prompt:
-          type: string
-          title: Prompt
-        model_id:
-          type: string
-          title: Model Id
-          default: ''
-        system_msg:
-          type: string
-          title: System Msg
-          default: ''
-        temperature:
-          type: number
-          title: Temperature
-          default: 0.7
-        max_tokens:
-          type: integer
-          title: Max Tokens
-          default: 256
-        history:
-          type: string
-          title: History
-          default: '[]'
-        stream:
-          type: boolean
-          title: Stream
-          default: false
-      type: object
-      required:
-      - prompt
-      - model_id
-      title: Body_llm_generate_llm_generate_post
     HTTPError:
       properties:
         detail:
