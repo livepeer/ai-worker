@@ -38,7 +38,7 @@ To build a pipeline-specific container, you need to build the base container fir
 4. **Set Up the `mediamtx` Container for Ingest**:
 
 ```bash
-docker build -f docker/Dockerfile.mediamtx -t livepeer/ai-runner:mediamtx .
+docker build -f Dockerfile.mediamtx -t livepeer/ai-runner:mediamtx .
 ```
 
 This command builds and configures [MediaMTX](https://github.com/bluenviron/mediamtx) for ingest. Until we have docker-compose or similar orchestrator, it will need to be run manually in order to listen for incoming connections
