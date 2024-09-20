@@ -17,7 +17,7 @@ async def lifespan(app: FastAPI):
 
     app.include_router(health.router)
 
-    pipeline = os.environ.get("PIPELINE", "")  # Default to
+    pipeline = os.environ.get("PIPELINE", "")  
     model_id = os.environ.get("MODEL_ID", "")  # Provide a default if necessary
 
     app.pipeline = load_pipeline(pipeline, model_id)
