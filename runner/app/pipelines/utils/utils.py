@@ -8,7 +8,7 @@ from typing import Optional
 import glob
 import tempfile
 from io import BytesIO
-from typing import List, Union
+from typing import List, Union, Dict
 
 import numpy as np
 import torch
