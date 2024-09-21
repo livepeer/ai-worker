@@ -367,10 +367,6 @@ func (w *Worker) LlmGenerate(ctx context.Context, req GenLlmFormdataRequestBody)
 		return nil, errors.New("container client is nil")
 	}
 
-	defer w.returnContainer(c)
-
-	slog.Info("Container borrowed successfully", "model_id", *req.ModelId)
-
 	var buf bytes.Buffer
 	mw, err := NewLlmGenerateMultipartWriter(&buf, req)
 	if err != nil {
@@ -382,7 +378,7 @@ func (w *Worker) LlmGenerate(ctx context.Context, req GenLlmFormdataRequestBody)
 		if err != nil {
 			return nil, err
 		}
-		return w.handleStreamingResponse(ctx, resp)
+		return w.handleStreamingResponse(ctx, c, resp)
 	}
 
 	resp, err := c.Client.GenLlmWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
@@ -457,6 +453,7 @@ func (w *Worker) borrowContainer(ctx context.Context, pipeline, modelID string) 
 		if rc.Pipeline == pipeline && rc.ModelID == modelID {
 			w.mu.Unlock()
 			// Assume external containers can handle concurrent in-flight requests.
+			slog.Info("Borrowing container", "type", rc.Type, "pipeline", rc.Pipeline, "modelID", rc.ModelID)
 			return rc, nil
 		}
 	}
@@ -513,7 +510,7 @@ type LlmStreamChunk struct {
 	Done       bool   `json:"done,omitempty"`
 }
 
-func (w *Worker) handleStreamingResponse(ctx context.Context, resp *http.Response) (<-chan LlmStreamChunk, error) {
+func (w *Worker) handleStreamingResponse(ctx context.Context, rc *RunnerContainer, resp *http.Response) (<-chan LlmStreamChunk, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
@@ -522,6 +519,7 @@ func (w *Worker) handleStreamingResponse(ctx context.Context, resp *http.Respons
 
 	go func() {
 		defer close(outputChan)
+		defer w.returnContainer(rc)
 
 		scanner := bufio.NewScanner(resp.Body)
 		totalTokens := 0
