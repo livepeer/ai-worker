@@ -385,7 +385,7 @@ func (w *Worker) LlmGenerate(ctx context.Context, req GenLlmFormdataRequestBody)
 	if err != nil {
 		return nil, err
 	}
-	return w.handleNonStreamingResponse(resp)
+	return w.handleNonStreamingResponse(c, resp)
 }
 
 func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endpoint RunnerEndpoint, optimizationFlags OptimizationFlags) error {
@@ -473,7 +473,10 @@ func (w *Worker) returnContainer(rc *RunnerContainer) {
 	}
 }
 
-func (w *Worker) handleNonStreamingResponse(resp *GenLlmResponse) (*LlmResponse, error) {
+func (w *Worker) handleNonStreamingResponse(rc *RunnerContainer, resp *GenLlmResponse) (*LlmResponse, error) {
+	//inference is done with a non streamed response, return the container and send back response
+	w.returnContainer(rc)
+
 	if resp.JSON400 != nil {
 		val, err := json.Marshal(resp.JSON400)
 		if err != nil {
