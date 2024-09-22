@@ -5,7 +5,7 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Any, List
 
 import numpy as np
 import torch
@@ -16,6 +16,8 @@ from torch import dtype as TorchDtype
 from transformers import CLIPImageProcessor
 
 logger = logging.getLogger(__name__)
+
+LORA_LIMIT = 3
 
 
 class LoraLoadingError(Exception):
@@ -194,11 +196,28 @@ class SafetyChecker:
         return images, has_nsfw_concept
 
 
+def is_numeric(val: Any) -> bool:
+    """Check if the given value is numeric.
+
+    Args:
+        s: Value to check.
+
+    Returns:
+        True if the value is numeric, False otherwise.
+    """
+    try:
+        float(val)
+        return True
+    except (ValueError, TypeError):
+        return False
+
+
 class LoraLoader:
     """Utility class to load LoRas and set their weights into a given pipeline.
 
     Attributes:
         pipeline: Diffusion pipeline on which the LoRas are loaded.
+        loras_enabled: Flag to enable or disable LoRas.
     """
 
     def __init__(self, pipeline: DiffusionPipeline):
@@ -208,7 +227,17 @@ class LoraLoader:
             pipeline: Diffusion pipeline to load LoRas into.
         """
         self.pipeline = pipeline
-        self._loaded_loras = set()
+        self.loras_enabled = False
+
+    def _get_loaded_loras(self) -> List[str]:
+        """Returns the names of the loaded LoRas.
+
+        Returns:
+            List of loaded LoRa names.
+        """
+        loaded_loras_dict = self.pipeline.get_list_adapters()
+        unique_loras = {lora for loras in loaded_loras_dict.values() for lora in loras}
+        return list(unique_loras)
 
     def load_loras(self, loras_json: str) -> None:
         """Loads LoRas and sets their weights into the pipeline managed by this
@@ -218,6 +247,9 @@ class LoraLoader:
             loras_json: A JSON string containing key-value pairs, where the key is the
                 repository to load LoRas from and the value is the strength (a float
                 with a minimum value of 0.0) to assign to the LoRa.
+
+        Raises:
+            LoraLoadingError: If an error occurs during LoRa loading.
         """
         try:
             lora_dict = json.loads(loras_json)
@@ -226,10 +258,11 @@ class LoraLoader:
             logger.warning(error_message)
             raise LoraLoadingError(error_message)
 
+        # Parse Lora strengths and check for invalid values.
         invalid_loras = {
             adapter: val
             for adapter, val in lora_dict.items()
-            if not isinstance(val, (int, float)) or val < 0.0
+            if not is_numeric(val) or float(val) < 0.0
         }
         if invalid_loras:
             error_message = (
@@ -237,29 +270,59 @@ class LoraLoader:
             )
             logger.warning(error_message)
             raise LoraLoadingError(error_message)
+        lora_dict = {adapter: float(val) for adapter, val in lora_dict.items()}
 
-        # Unload LoRas that are no longer needed
+        # Disable LoRas if none are provided.
+        if not lora_dict:
+            self.disable_loras()
+            return
+
+        # Limit the number of loras to prevent pipeline slowdown.
+        if len(lora_dict) > LORA_LIMIT:
+            raise LoraLoadingError(f"Too many LoRas provided. Maximum is {LORA_LIMIT}.")
+
+        # Re-enable LoRas if they were disabled.
+        self.enable_loras()
+
+        # Unload LoRas that are no longer needed.
         new_loras = set(lora_dict.keys())
-        loaded_loras = set(self.pipeline.get_active_adapters())
-        loras_to_unload = loaded_loras - new_loras
-        for lora in loras_to_unload:
-            self.pipeline.unload_lora_weights()
-            # self.pipeline.delete_adapters(lora)
+        loras_to_unload = set(self._get_loaded_loras()) - new_loras
+        if loras_to_unload:
+            for lora in loras_to_unload:
+                self.pipeline.delete_adapters(lora)
+            torch.cuda.empty_cache()
 
-        # Load and set weights for each LoRa.
-        for adapter in lora_dict.keys():
-            # Load the LoRa weights only if not already loaded.
-            if adapter not in self._loaded_loras:
-                try:
+        # Load new LoRa adapters.
+        loaded_loras = self._get_loaded_loras()
+        try:
+            for adapter in lora_dict.keys():
+                # Load the LoRa weights only if not already loaded.
+                if adapter not in loaded_loras:
                     self.pipeline.load_lora_weights(adapter, adapter_name=adapter)
-                    self._loaded_loras.add(adapter)
-                except Exception:
-                    error_message = (
-                        f"Unable to load LoRas for adapter '{adapter}'"
-                    )
-                    logger.warning(error_message)
-                    raise LoraLoadingError(error_message)
+        except Exception as e:
+            # Delete failed adapter and log the error.
+            self.pipeline.delete_adapters(adapter)
+            if "not found in the base model" in str(e):
+                error_message = (
+                    "LoRa incompatible with base model: "
+                    f"'{self.pipeline.name_or_path}'"
+                )
+            else:
+                error_message = f"Unable to load LoRas for adapter '{adapter}'"
+                logger.exception(e)
+            raise LoraLoadingError(error_message)
 
-        # Set the adapters and their strengths.
-        adapters, strengths = zip(*lora_dict.items())
-        self.pipeline.set_adapters(list(adapters), list(strengths))
+        # Set the lora adapter strengths.
+        self.pipeline.set_adapters(*map(list, zip(*lora_dict.items())))
+
+    def disable_loras(self) -> None:
+        """Disables all LoRas in the pipeline."""
+        if self.loras_enabled:
+            self.pipeline.disable_lora()
+            self.loras_enabled = False
+
+    def enable_loras(self) -> None:
+        """Enables all LoRas in the pipeline."""
+        if not self.loras_enabled:
+            self.pipeline.enable_lora()
+            self.loras_enabled = True

@@ -363,7 +363,8 @@ components:
           type: string
           title: Loras
           description: 'A LoRA (Low-Rank Adaptation) model and its corresponding weight
-            for image generation. Example: { "nerijs/pixel-art-xl": 1.2 }.'
+            for image generation. Example: { "latent-consistency/lcm-lora-sdxl": 1.0,
+            "nerijs/pixel-art-xl": 1.2}.'
           default: ''
         strength:
           type: number
@@ -677,7 +678,8 @@ components:
           type: string
           title: Loras
           description: 'A LoRA (Low-Rank Adaptation) model and its corresponding weight
-            for image generation. Example: { "nerijs/pixel-art-xl": 1.2 }.'
+            for image generation. Example: { "latent-consistency/lcm-lora-sdxl": 1.0,
+            "nerijs/pixel-art-xl": 1.2}.'
           default: ''
         prompt:
           type: string

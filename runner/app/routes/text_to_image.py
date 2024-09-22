@@ -32,7 +32,8 @@ class TextToImageParams(BaseModel):
             default="",
             description=(
                 "A LoRA (Low-Rank Adaptation) model and its corresponding weight for "
-                'image generation. Example: { "nerijs/pixel-art-xl": 1.2 }.'
+                'image generation. Example: { "latent-consistency/lcm-lora-sdxl": '
+                '1.0, "nerijs/pixel-art-xl": 1.2}.'
             ),
         ),
     ]
@@ -174,7 +175,6 @@ async def text_to_image(
             has_nsfw_concept.extend(nsfw_check)
         except LoraLoadingError as e:
             logger.error(f"TextToImagePipeline error: {e}")
-            logger.exception(e)
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content=http_error(str(e)),

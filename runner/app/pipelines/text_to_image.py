@@ -226,17 +226,10 @@ class TextToImagePipeline(Pipeline):
                 ]
 
         # Dynamically (un)load LoRas.
-        if loras_json == "":
-            # Unload previously loaded LoRas.
-            # NOTE: we might want to keep LoRas loaded and only reset their weights
-            # TODO: run tests with VRAM usage. We should be able to keep the last x
-            # LoRas loaded without issues
-            self.ldm.unload_lora_weights()
+        if not loras_json:
+            self._lora_loader.disable_loras()
         else:
-            try:
-                self._lora_loader.load_loras(loras_json)
-            except Exception as e:
-                raise LoraLoadingError(original_exception=e)
+            self._lora_loader.load_loras(loras_json)
 
         if "num_inference_steps" in kwargs and (
             kwargs["num_inference_steps"] is None or kwargs["num_inference_steps"] < 1
