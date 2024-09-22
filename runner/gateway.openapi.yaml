@@ -349,6 +349,13 @@ components:
           title: Model Id
           description: Hugging Face model ID used for image generation.
           default: ''
+        loras:
+          type: string
+          title: Loras
+          description: 'A LoRA (Low-Rank Adaptation) model and its corresponding weight
+            for image generation. Example: { "latent-consistency/lcm-lora-sdxl": 1.0,
+            "nerijs/pixel-art-xl": 1.2}.'
+          default: ''
         strength:
           type: number
           title: Strength
@@ -652,6 +659,13 @@ components:
           type: string
           title: Model Id
           description: Hugging Face model ID used for image generation.
+          default: ''
+        loras:
+          type: string
+          title: Loras
+          description: 'A LoRA (Low-Rank Adaptation) model and its corresponding weight
+            for image generation. Example: { "latent-consistency/lcm-lora-sdxl": 1.0,
+            "nerijs/pixel-art-xl": 1.2}.'
           default: ''
         prompt:
           type: string

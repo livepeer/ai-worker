@@ -3,8 +3,10 @@ import os
 import random
 from typing import Annotated
 
+import torch
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
+from app.pipelines.utils.utils import LoraLoadingError
 from app.routes.util import HTTPError, ImageResponse, http_error, image_to_data_url
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
@@ -23,6 +25,17 @@ class TextToImageParams(BaseModel):
         str,
         Field(
             default="", description="Hugging Face model ID used for image generation."
+        ),
+    ]
+    loras: Annotated[
+        str,
+        Field(
+            default="",
+            description=(
+                "A LoRA (Low-Rank Adaptation) model and its corresponding weight for "
+                'image generation. Example: { "latent-consistency/lcm-lora-sdxl": '
+                '1.0, "nerijs/pixel-art-xl": 1.2}.'
+            ),
         ),
     ]
     prompt: Annotated[
@@ -161,7 +174,15 @@ async def text_to_image(
             imgs, nsfw_check = pipeline(**kwargs)
             images.extend(imgs)
             has_nsfw_concept.extend(nsfw_check)
+        except LoraLoadingError as e:
+            logger.error(f"TextToImagePipeline error: {e}")
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content=http_error(str(e)),
+            )
         except Exception as e:
+            if isinstance(e, torch.cuda.OutOfMemoryError):
+                torch.cuda.empty_cache()
             logger.error(f"TextToImagePipeline error: {e}")
             logger.exception(e)
             return JSONResponse(
