@@ -85,7 +85,7 @@ func (w *Worker) TextToImage(ctx context.Context, req GenTextToImageJSONRequestB
 			return nil, err
 		}
 		slog.Error("text-to-image container returned 400", slog.String("err", string(val)))
-		return nil, errors.New("text-to-image container returned 400")
+		return nil, errors.New("text-to-image container returned 400: " + resp.JSON400.Detail.Msg)
 	}
 
 	if resp.JSON500 != nil {
@@ -133,7 +133,7 @@ func (w *Worker) ImageToImage(ctx context.Context, req GenImageToImageMultipartR
 			return nil, err
 		}
 		slog.Error("image-to-image container returned 400", slog.String("err", string(val)))
-		return nil, errors.New("image-to-image container returned 400")
+		return nil, errors.New("image-to-image container returned 400: " + resp.JSON400.Detail.Msg)
 	}
 
 	if resp.JSON500 != nil {
