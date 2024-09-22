@@ -3,6 +3,7 @@ import os
 import random
 from typing import Annotated
 
+import torch
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.pipelines.utils.utils import LoraLoadingError
@@ -11,7 +12,6 @@ from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
-import torch
 
 router = APIRouter()
 

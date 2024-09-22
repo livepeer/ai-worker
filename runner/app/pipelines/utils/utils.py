@@ -5,12 +5,12 @@ import logging
 import os
 import re
 from pathlib import Path
-from typing import Dict, Optional, Any, List
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import torch
-from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline
+from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
 from PIL import Image
 from torch import dtype as TorchDtype
 from transformers import CLIPImageProcessor

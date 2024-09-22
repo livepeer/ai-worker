@@ -5,18 +5,6 @@ from typing import List, Optional, Tuple
 
 import PIL
 import torch
-from diffusers import (
-    AutoPipelineForText2Image,
-    EulerDiscreteScheduler,
-    FluxPipeline,
-    StableDiffusion3Pipeline,
-    StableDiffusionXLPipeline,
-    UNet2DConditionModel,
-)
-from diffusers.models import AutoencoderKL
-from huggingface_hub import file_download, hf_hub_download
-from safetensors.torch import load_file
-
 from app.pipelines.base import Pipeline
 from app.pipelines.utils import (
     LoraLoader,
@@ -28,6 +16,17 @@ from app.pipelines.utils import (
     split_prompt,
 )
 from app.pipelines.utils.utils import LoraLoadingError
+from diffusers import (
+    AutoPipelineForText2Image,
+    EulerDiscreteScheduler,
+    FluxPipeline,
+    StableDiffusion3Pipeline,
+    StableDiffusionXLPipeline,
+    UNet2DConditionModel,
+)
+from diffusers.models import AutoencoderKL
+from huggingface_hub import file_download, hf_hub_download
+from safetensors.torch import load_file
 
 logger = logging.getLogger(__name__)
 
