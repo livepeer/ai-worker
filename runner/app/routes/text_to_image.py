@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
+import torch
 
 router = APIRouter()
 
@@ -180,6 +181,8 @@ async def text_to_image(
                 content=http_error(str(e)),
             )
         except Exception as e:
+            if isinstance(e, torch.cuda.OutOfMemoryError):
+                torch.cuda.empty_cache()
             logger.error(f"TextToImagePipeline error: {e}")
             logger.exception(e)
             return JSONResponse(

@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from PIL import Image, ImageFile
+import torch
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -188,6 +189,8 @@ async def image_to_image(
                 content=http_error(str(e)),
             )
         except Exception as e:
+            if isinstance(e, torch.cuda.OutOfMemoryError):
+                torch.cuda.empty_cache()
             logger.error(f"ImageToImagePipeline error: {e}")
             logger.exception(e)
             return JSONResponse(

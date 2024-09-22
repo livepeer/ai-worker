@@ -17,8 +17,9 @@ from transformers import CLIPImageProcessor
 
 logger = logging.getLogger(__name__)
 
-LORA_LIMIT = 4
-LORA_BUFFER = 8
+LORA_LIMIT = 4  # Max number of LoRas that can be requested at once.
+LORA_MAX_LOADED = 12  # Number of LoRas to keep in memory.
+LORA_FREE_VRAM_THRESHOLD = 2.0  # VRAM threshold (GB) to start evicting LoRas.
 
 
 class LoraLoadingError(Exception):
@@ -245,16 +246,35 @@ class LoraLoader:
             if lora not in seen and not seen.add(lora)
         ]
 
-    def _evict_oldest_unused_lora(self, lora_dict: dict) -> None:
-        """Evicts the oldest unused LoRa from the buffer.
+    def _evict_loras_if_needed(self, request_loras: dict) -> None:
+        """Evict the oldest unused LoRa until free memory is above the threshold or the
+        number of loaded LoRas is below the maximum allowed.
 
         Args:
-            lora_dict: Dictionary of current LoRas to be loaded.
+            request_loras: list of requested LoRas.
         """
-        for lora in self._lora_buffer:
-            if lora not in lora_dict:
-                self.pipeline.delete_adapters(lora)
+        while True:
+            free_memory_gb = (
+                torch.cuda.mem_get_info(device=self.pipeline.device)[0] / 1024**3
+            )
+            loaded_loras = self._get_loaded_loras()
+            memory_limit_reached = free_memory_gb < LORA_FREE_VRAM_THRESHOLD
+
+            # Break if memory is sufficient, LoRas within limit, or no LoRas to evict.
+            if (
+                not memory_limit_reached
+                and len(loaded_loras) < LORA_MAX_LOADED
+                or not any(lora not in request_loras for lora in loaded_loras)
+            ):
                 break
+
+            # Evict the oldest unused LoRa.
+            for lora in loaded_loras:
+                if lora not in request_loras:
+                    self.pipeline.delete_adapters(lora)
+                    break
+        if memory_limit_reached:
+            torch.cuda.empty_cache()
 
     def load_loras(self, loras_json: str) -> None:
         """Loads LoRas and sets their weights into the pipeline managed by this
@@ -308,14 +328,11 @@ class LoraLoader:
                 # Load new Lora weights and evict the oldest unused Lora if necessary.
                 if adapter not in loaded_loras:
                     self.pipeline.load_lora_weights(adapter, adapter_name=adapter)
-                    if len(loaded_loras) >= LORA_BUFFER:
-                        for lora in loaded_loras:
-                            if lora not in lora_dict:
-                                self.pipeline.delete_adapters(lora)
-                                break
+                    self._evict_loras_if_needed(list(lora_dict.keys()))
         except Exception as e:
             # Delete failed adapter and log the error.
             self.pipeline.delete_adapters(adapter)
+            torch.cuda.empty_cache()
             if "not found in the base model" in str(e):
                 error_message = (
                     "LoRa incompatible with base model: "
