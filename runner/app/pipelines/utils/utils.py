@@ -22,21 +22,6 @@ LORA_MAX_LOADED = 12  # Number of LoRas to keep in memory.
 LORA_FREE_VRAM_THRESHOLD = 2.0  # VRAM threshold (GB) to start evicting LoRas.
 
 
-class LoraLoadingError(Exception):
-    """Exception raised for errors during LoRa loading."""
-
-    def __init__(self, message="Error loading LoRas", original_exception=None):
-        """Initialize the exception.
-        Args:
-            message: The error message.
-            original_exception: The original exception that caused the error.
-        """
-        if original_exception:
-            message = f"{message}: {original_exception}"
-        super().__init__(message)
-        self.original_exception = original_exception
-
-
 def get_model_dir() -> Path:
     return Path(os.environ["MODEL_DIR"])
 
@@ -212,6 +197,21 @@ def is_numeric(val: Any) -> bool:
         return True
     except (ValueError, TypeError):
         return False
+
+
+class LoraLoadingError(Exception):
+    """Exception raised for errors during LoRa loading."""
+
+    def __init__(self, message="Error loading LoRas", original_exception=None):
+        """Initialize the exception.
+        Args:
+            message: The error message.
+            original_exception: The original exception that caused the error.
+        """
+        if original_exception:
+            message = f"{message}: {original_exception}"
+        super().__init__(message)
+        self.original_exception = original_exception
 
 
 class LoraLoader:
