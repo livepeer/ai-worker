@@ -17,7 +17,8 @@ from transformers import CLIPImageProcessor
 
 logger = logging.getLogger(__name__)
 
-LORA_LIMIT = 3
+LORA_LIMIT = 4
+LORA_BUFFER = 8
 
 
 class LoraLoadingError(Exception):
@@ -236,8 +237,24 @@ class LoraLoader:
             List of loaded LoRa names.
         """
         loaded_loras_dict = self.pipeline.get_list_adapters()
-        unique_loras = {lora for loras in loaded_loras_dict.values() for lora in loras}
-        return list(unique_loras)
+        seen = set()
+        return [
+            lora
+            for loras in loaded_loras_dict.values()
+            for lora in loras
+            if lora not in seen and not seen.add(lora)
+        ]
+
+    def _evict_oldest_unused_lora(self, lora_dict: dict) -> None:
+        """Evicts the oldest unused LoRa from the buffer.
+
+        Args:
+            lora_dict: Dictionary of current LoRas to be loaded.
+        """
+        for lora in self._lora_buffer:
+            if lora not in lora_dict:
+                self.pipeline.delete_adapters(lora)
+                break
 
     def load_loras(self, loras_json: str) -> None:
         """Loads LoRas and sets their weights into the pipeline managed by this
@@ -277,28 +294,25 @@ class LoraLoader:
             self.disable_loras()
             return
 
-        # Limit the number of loras to prevent pipeline slowdown.
+        # Limit the number of active loras to prevent pipeline slowdown.
         if len(lora_dict) > LORA_LIMIT:
             raise LoraLoadingError(f"Too many LoRas provided. Maximum is {LORA_LIMIT}.")
 
         # Re-enable LoRas if they were disabled.
         self.enable_loras()
 
-        # Unload LoRas that are no longer needed.
-        new_loras = set(lora_dict.keys())
-        loras_to_unload = set(self._get_loaded_loras()) - new_loras
-        if loras_to_unload:
-            for lora in loras_to_unload:
-                self.pipeline.delete_adapters(lora)
-            torch.cuda.empty_cache()
-
         # Load new LoRa adapters.
         loaded_loras = self._get_loaded_loras()
         try:
             for adapter in lora_dict.keys():
-                # Load the LoRa weights only if not already loaded.
+                # Load new Lora weights and evict the oldest unused Lora if necessary.
                 if adapter not in loaded_loras:
                     self.pipeline.load_lora_weights(adapter, adapter_name=adapter)
+                    if len(loaded_loras) >= LORA_BUFFER:
+                        for lora in loaded_loras:
+                            if lora not in lora_dict:
+                                self.pipeline.delete_adapters(lora)
+                                break
         except Exception as e:
             # Delete failed adapter and log the error.
             self.pipeline.delete_adapters(adapter)
@@ -307,10 +321,17 @@ class LoraLoader:
                     "LoRa incompatible with base model: "
                     f"'{self.pipeline.name_or_path}'"
                 )
+            elif getattr(e, "server_message", "") == "Repository not found":
+                error_message = f"LoRa repository '{adapter}' not found"
             else:
                 error_message = f"Unable to load LoRas for adapter '{adapter}'"
                 logger.exception(e)
             raise LoraLoadingError(error_message)
+
+        # Set unused LoRas strengths to 0.0.
+        for lora in loaded_loras:
+            if lora not in lora_dict:
+                lora_dict[lora] = 0.0
 
         # Set the lora adapter strengths.
         self.pipeline.set_adapters(*map(list, zip(*lora_dict.items())))
