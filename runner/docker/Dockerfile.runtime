@@ -1,0 +1,38 @@
+# Stage 2: Prepare the runtime image
+FROM nvidia/cuda:12.5.1-runtime-ubuntu24.04
+
+# this has the exact same problem
+#FROM craiggilchrist/ffmpeg-cuda:12.3
+
+# glibc too old for ffmpeg
+#FROM livepeer/ai-runner:base
+
+# Install the video codec SDK
+# JOSH - this does not seem to do any good
+RUN apt-get update && apt-get install -y wget
+#RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
+#RUN dpkg -i cuda-keyring_1.1-1_all.deb
+RUN apt-get update && apt-get -y install cuda-toolkit-12-5
+
+# Copy already built ffmpeg
+COPY --from=ffmpeg-build /compiled /usr/local
+
+# python stuff and wrapper
+RUN apt-get update && apt-get install -y python-is-python3 python3-venv
+RUN python -m venv my-venv && . my-venv/bin/activate
+ENV PATH="/my-venv/bin:$PATH"
+RUN python -m pip install --upgrade pip setuptools && pip install flask
+COPY frames.py .
+
+# Copy mediamtx and config
+COPY --from=bluenviron/mediamtx:1.9.0 /mediamtx .
+COPY mediamtx.yml .
+
+# program wrapper
+COPY run.sh .
+
+# clean up after ourselves to minimize container size
+# RUN apt-get clean   && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* # buildkit
+
+ENTRYPOINT ["./run.sh"]
+#ENTRYPOINT ["/mediamtx"]
