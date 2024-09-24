@@ -1,7 +1,0 @@
-FROM bluenviron/mediamtx:1.9.0
-
-RUN apk add --no-cache curl
-
-COPY mediamtx.yml .
-
-ENTRYPOINT ["/mediamtx"]

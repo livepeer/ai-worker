@@ -1,18 +1,5 @@
 # Stage 2: Prepare the runtime image
-FROM nvidia/cuda:12.5.1-runtime-ubuntu24.04
-
-# this has the exact same problem
-#FROM craiggilchrist/ffmpeg-cuda:12.3
-
-# glibc too old for ffmpeg
-#FROM livepeer/ai-runner:base
-
-# Install the video codec SDK
-# JOSH - this does not seem to do any good
-RUN apt-get update && apt-get install -y wget
-#RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
-#RUN dpkg -i cuda-keyring_1.1-1_all.deb
-RUN apt-get update && apt-get -y install cuda-toolkit-12-5
+FROM nvidia/cuda:12.6.1-runtime-ubuntu24.04
 
 # Copy already built ffmpeg
 COPY --from=ffmpeg-build /compiled /usr/local
@@ -32,7 +19,7 @@ COPY mediamtx.yml .
 COPY run.sh .
 
 # clean up after ourselves to minimize container size
-# RUN apt-get clean   && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* # buildkit
+RUN apt-get clean   && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* # buildkit
 
 ENTRYPOINT ["./run.sh"]
 #ENTRYPOINT ["/mediamtx"]

@@ -10,10 +10,10 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # In-memory list (acting as a queue) for storing frame filenames
 frame_queue = []
 
-@app.route('/upload_frame/<int:frame_number>.jpg', methods=['POST'])
-def upload_frame(frame_number):
+@app.route('/upload_frame/<stream_name>/<int:frame_number>.jpg', methods=['POST'])
+def upload_frame(stream_name, frame_number):
     # Generate a unique filename for each incoming frame
-    frame_filename = f"frame_{frame_number:04d}.jpg"
+    frame_filename = f"{stream_name}_{frame_number:04d}.jpg"
 
     # Read the raw binary data sent by ffmpeg
     try:

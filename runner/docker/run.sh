@@ -1,16 +1,14 @@
 #!/bin/bash
 
+# NB: terminating the container does NOT
+# terminate mediamtx! need to propagate
+# the signal for a clean shutdown
 
-ls -lha /usr/lib/x86_64-linux-gnu | grep nvcuv || echo "no nvcuvid found"
-echo " ---- JOSH 1 ----"
-ls -lha /usr/lib/x86_64-linux-gnu
-echo " ---- JOSH 2 ----"
-#ls -lha /usr/local/cuda-12.5/targets/x86_64-linux/lib
-
-nvidia-smi
-
+# put python into the background
 python frames.py &
 
+# blocks until exit
 ./mediamtx
 
+# clean python
 kill -SIGINT `pgrep -f frames.py`

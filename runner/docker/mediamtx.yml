@@ -643,7 +643,7 @@ pathDefaults:
   #   a regular expression.
   # * MTX_SOURCE_TYPE: source type
   # * MTX_SOURCE_ID: source ID
-  runOnReady: ffmpeg -hwaccel cuda -hwaccel_output_format cuda -i rtmp://localhost/$MTX_PATH -vf 'scale_cuda=w=512:h=512:force_original_aspect_ratio=decrease,fps=20,hwdownload,format=yuv420p' -c:v mjpeg -q:v 1 -an http://localhost:3080/upload_frame/%d.jpg
+  runOnReady: ffmpeg -hwaccel cuda -hwaccel_output_format cuda -i rtmp://localhost/$MTX_PATH -vf 'scale_cuda=w=512:h=512:force_original_aspect_ratio=decrease,fps=20,hwdownload,format=nv12' -c:v mjpeg -q:v 1 -an http://localhost:3080/upload_frame/$MTX_PATH/%d.jpg
   # Restart the command if it exits.
   runOnReadyRestart: no
   # Command to run when the stream is not available anymore.
