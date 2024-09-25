@@ -25,6 +25,16 @@ RESPONSES = {
     status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPError},
 }
 
+def process_frame(frame):
+    # Convert the frame from BGR (OpenCV format) to RGB and then to a PIL Image
+    rgb_frame = frame[:, :, ::-1]  # Convert BGR to RGB using slicing
+    pil_image = Image.fromarray(rgb_frame, 'RGB')
+    return {
+        "url": image_to_data_url(pil_image),  # Use the PIL Image here
+        "seed": 0,  # LivePortrait doesn't use seeds
+        "nsfw": False,  # LivePortrait doesn't perform NSFW checks
+    }
+
 @router.post(
     "/live-portrait",
     response_model=VideoResponse,
@@ -88,16 +98,6 @@ async def live_portrait(
         output_frames = []
         frames_batch = []  # Create a batch for frames
         cap = cv2.VideoCapture(result_video_path)
-
-        def process_frame(frame):
-            # Convert the frame from BGR (OpenCV format) to RGB and then to a PIL Image
-            rgb_frame = frame[:, :, ::-1]  # Convert BGR to RGB using slicing
-            pil_image = Image.fromarray(rgb_frame, 'RGB')
-            return {
-                "url": image_to_data_url(pil_image),  # Use the PIL Image here
-                "seed": 0,  # LivePortrait doesn't use seeds
-                "nsfw": False,  # LivePortrait doesn't perform NSFW checks
-            }
 
         with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
             futures = []

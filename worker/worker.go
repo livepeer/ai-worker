@@ -201,6 +201,59 @@ func (w *Worker) ImageToVideo(ctx context.Context, req GenImageToVideoMultipartR
 	return resp.JSON200, nil
 }
 
+func (w *Worker) LivePortrait(ctx context.Context, req LivePortraitLivePortraitPostMultipartRequestBody) (*VideoResponse, error) {
+	c, err := w.borrowContainer(ctx, "live-portrait", *req.ModelId)
+	if err != nil {
+		return nil, err
+	}
+	defer w.returnContainer(c)
+
+	var buf bytes.Buffer
+	mw, err := NewLiveportraitMultipartWriter(&buf, req)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.Client.LivePortraitLivePortraitPostWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("live-portrait container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("live-portrait container returned 422")
+	}
+
+	if resp.JSON400 != nil {
+		val, err := json.Marshal(resp.JSON400)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("live-portrait container returned 400", slog.String("err", string(val)))
+		return nil, errors.New("live-portrait container returned 400")
+	}
+
+	if resp.JSON500 != nil {
+		val, err := json.Marshal(resp.JSON500)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("live-portrait container returned 500", slog.String("err", string(val)))
+		return nil, errors.New("live-portrait container returned 500")
+	}
+
+	if resp.JSON200 == nil {
+		slog.Error("live-portrait container returned no content")
+		return nil, errors.New("live-portrait container returned no content")
+	}
+
+	return resp.JSON200, nil
+}
+
 func (w *Worker) Upscale(ctx context.Context, req GenUpscaleMultipartRequestBody) (*ImageResponse, error) {
 	c, err := w.borrowContainer(ctx, "upscale", *req.ModelId)
 	if err != nil {

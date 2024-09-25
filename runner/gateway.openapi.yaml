@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Livepeer AI Runner
   description: An application to run AI pipelines
-  version: v0.5.0
+  version: v1.0.0
 servers:
 - url: https://dream-gateway.livepeer.cloud
   description: Livepeer Cloud Community Gateway
@@ -254,12 +254,51 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
       security:
       - HTTPBearer: []
+      x-speakeasy-name-override: audioToText
   /live-portrait:
     post:
       summary: Live Portrait
       description: Generate a video from a provided source image and driving video.
-      operationId: live_portrait
-      x-speakeasy-name-override: audioToText
+      operationId: live_portrait_live_portrait_post
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_live_portrait_live_portrait_post'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
   /segment-anything-2:
     post:
       tags:
@@ -271,7 +310,6 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Body_live_portrait_live_portrait_post'
               $ref: '#/components/schemas/Body_genSegmentAnything2'
         required: true
       responses:
@@ -280,7 +318,6 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/VideoResponse'
                 $ref: '#/components/schemas/MasksResponse'
                 x-speakeasy-name-override: data
         '400':
@@ -309,7 +346,6 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
       security:
       - HTTPBearer: []
-
       x-speakeasy-name-override: segmentAnything2
 components:
   schemas:
@@ -467,31 +503,6 @@ components:
       required:
       - image
       - model_id
-      title: Body_image_to_video_image_to_video_post
-    Body_live_portrait_live_portrait_post:
-      properties:
-        source_image:
-          type: string
-          format: binary
-          title: Source Image
-          description: Uploaded source image to animate.
-        driving_video:
-          type: string
-          format: binary
-          title: Driving Video
-          description: Uploaded driving video to guide the animation.
-        model_id:
-          type: string
-          title: Model Id
-          description: Hugging Face model ID used for video generation.
-          default: ''
-      type: object
-      required:
-      - source_image
-      - driving_video
-      - model_id
-      title: Body_live_portrait_live_portrait_post
-    Body_upscale_upscale_post:
       title: Body_genImageToVideo
     Body_genSegmentAnything2:
       properties:
@@ -586,6 +597,29 @@ components:
       - image
       - model_id
       title: Body_genUpscale
+    Body_live_portrait_live_portrait_post:
+      properties:
+        source_image:
+          type: string
+          format: binary
+          title: Source Image
+          description: Uploaded source image to animate.
+        driving_video:
+          type: string
+          format: binary
+          title: Driving Video
+          description: Uploaded driving video to guide the animation.
+        model_id:
+          type: string
+          title: Model Id
+          description: Hugging Face model ID used for video generation.
+          default: ''
+      type: object
+      required:
+      - source_image
+      - driving_video
+      - model_id
+      title: Body_live_portrait_live_portrait_post
     HTTPError:
       properties:
         detail:
