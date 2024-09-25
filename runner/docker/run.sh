@@ -5,7 +5,7 @@
 # the signal for a clean shutdown
 
 # put python into the background
-python frames.py &
+python frames2video.py &
 
 # blocks until exit
 ./mediamtx
