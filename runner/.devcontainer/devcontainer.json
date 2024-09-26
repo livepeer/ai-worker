@@ -5,7 +5,7 @@
 
 	// Image to use for the dev container. More info: https://containers.dev/guide/dockerfile.
 	"build": {
-		"dockerfile": "../Dockerfile"
+		"dockerfile": "../Dockerfile.segment_anything_2"
 	},
 	"runArgs": [
 		"--gpus=all"
