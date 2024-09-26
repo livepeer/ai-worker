@@ -56,6 +56,11 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
             from app.pipelines.segment_anything_2 import SegmentAnything2Pipeline
 
             return SegmentAnything2Pipeline(model_id)
+        case "segment-anything-2-video":
+            from app.pipelines.segment_anything_2_video import SegmentAnything2VideoPipeline
+            
+            return SegmentAnything2VideoPipeline(model_id)
+            
         case _:
             raise EnvironmentError(
                 f"{pipeline} is not a valid pipeline for model {model_id}"
@@ -90,6 +95,10 @@ def load_route(pipeline: str) -> any:
             from app.routes import segment_anything_2
 
             return segment_anything_2.router
+        case "segment-anything-2-video":
+            from app.routes import segment_anything_2_video
+
+            return segment_anything_2_video.router
         case _:
             raise EnvironmentError(f"{pipeline} is not a valid pipeline")
 

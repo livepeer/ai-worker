@@ -38,7 +38,7 @@ class VideoSegmentResponse(BaseModel):
     obj_ids: List[int] = Field(
         ..., description="list of ids of segmented objects in this frame"
     )
-    mask_logits: List[List[float]] = Field(
+    mask_logits: List[List[List[List[float]]]] = Field(
          ..., description="The generated masks."
     )
 
