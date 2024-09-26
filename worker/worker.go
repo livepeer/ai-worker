@@ -516,6 +516,54 @@ func (w *Worker) ImageToText(ctx context.Context, req GenImageToTextMultipartReq
 	return resp.JSON200, nil
 }
 
+func (w *Worker) TextToSpeech(ctx context.Context, req GenTextToSpeechJSONRequestBody) (*EncodedFileResponse, error) {
+	// Borrow the container for the TextToSpeech process, using appropriate model if needed
+	c, err := w.borrowContainer(ctx, "text-to-speech", *req.ModelId)
+	if err != nil {
+		return nil, err
+	}
+	defer w.returnContainer(c)
+
+	// Send the JSON request to the container's client
+	resp, err := c.Client.GenTextToSpeechWithResponse(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	// Handle 422 Unprocessable Entity error
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("TextToSpeech container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("TextToSpeech container returned 422")
+	}
+
+	// Handle 400 Bad Request error
+	if resp.JSON400 != nil {
+		val, err := json.Marshal(resp.JSON400)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("TextToSpeech container returned 400", slog.String("err", string(val)))
+		return nil, errors.New("TextToSpeech container returned 400")
+	}
+
+	// Handle 500 Internal Server Error
+	if resp.JSON500 != nil {
+		val, err := json.Marshal(resp.JSON500)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("TextToSpeech container returned 500", slog.String("err", string(val)))
+		return nil, errors.New("TextToSpeech container returned 500")
+	}
+
+	// Return the successful response
+	return resp.JSON200, nil
+}
+
 func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endpoint RunnerEndpoint, optimizationFlags OptimizationFlags) error {
 	if endpoint.URL == "" {
 		return w.manager.Warm(ctx, pipeline, modelID, optimizationFlags)

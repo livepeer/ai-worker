@@ -28,6 +28,11 @@ RUN pyenv install $PYTHON_VERSION && \
   pyenv global $PYTHON_VERSION && \
   pyenv rehash
 
+# Create and activate a Python virtual environment
+RUN python -m venv /opt/venv
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
 # Upgrade pip and install your desired packages
 ARG PIP_VERSION=23.3.2
 RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools==69.5.1 wheel==0.43.0 && \

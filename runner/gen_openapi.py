@@ -17,6 +17,7 @@ from app.routes import (
     llm,
     image_to_text,
     live_video_to_video,
+    text_to_speech,
 )
 from fastapi.openapi.utils import get_openapi
 
@@ -73,6 +74,9 @@ def translate_to_gateway(openapi: dict) -> dict:
                         ref = content_details["schema"]["$ref"]
                         schema_name = ref.split("/")[-1]
                         schema = openapi["components"]["schemas"][schema_name]
+                        # Ensure 'required' key exists in schema
+                        if "required" not in schema:
+                            schema["required"] = []
                         if "model_id" in schema["properties"]:
                             schema["required"].append("model_id")
 
@@ -106,6 +110,7 @@ def write_openapi(fname: str, entrypoint: str = "runner"):
     app.include_router(llm.router)
     app.include_router(image_to_text.router)
     app.include_router(live_video_to_video.router)
+    app.include_router(text_to_speech.router)
 
     logger.info(f"Generating OpenAPI schema for '{entrypoint}' entrypoint...")
     openapi = get_openapi(
