@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Livepeer AI Runner
   description: An application to run AI pipelines
-  version: ''
+  version: v0.6.0
 servers:
 - url: https://dream-gateway.livepeer.cloud
   description: Livepeer Cloud Community Gateway
@@ -46,19 +46,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '500':
           description: Internal Server Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '422':
           description: Validation Error
           content:
@@ -94,19 +94,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '500':
           description: Internal Server Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '422':
           description: Validation Error
           content:
@@ -142,19 +142,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '500':
           description: Internal Server Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '422':
           description: Validation Error
           content:
@@ -190,19 +190,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '500':
           description: Internal Server Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '422':
           description: Validation Error
           content:
@@ -238,25 +238,25 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '413':
           description: Request Entity Too Large
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '500':
           description: Internal Server Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '422':
           description: Validation Error
           content:
@@ -292,19 +292,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '500':
           description: Internal Server Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '422':
           description: Validation Error
           content:
@@ -339,19 +339,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '500':
           description: Internal Server Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HTTPError'
+                $ref: '#/components/schemas/app__routes__util__HTTPError'
         '422':
           description: Validation Error
           content:
@@ -361,6 +361,53 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: llm
+  /text-to-speech:
+    post:
+      tags:
+      - generate
+      summary: text-to-speech
+      description: Generate text-to-speech audio file as determined by text_input
+        and tts_steering description of voice.
+      operationId: genTextToSpeech
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TextToSpeechParams'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EncodedFileResponse'
+                x-speakeasy-name-override: data
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/app__routes__text_to_speech__HTTPError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/app__routes__text_to_speech__HTTPError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/app__routes__text_to_speech__HTTPError'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-speakeasy-name-override: textToSpeech
 components:
   schemas:
     APIError:
@@ -646,17 +693,22 @@ components:
       - prompt
       - image
       title: Body_genUpscale
-    HTTPError:
+    EncodedFileResponse:
       properties:
-        detail:
-          allOf:
-          - $ref: '#/components/schemas/APIError'
-          description: Detailed error information.
+        base64_data:
+          type: string
+          title: Base64 Data
+          description: The base64-encoded File content.
+        file_size:
+          type: integer
+          title: File Size
+          description: Size of the original file in bytes.
       type: object
       required:
-      - detail
-      title: HTTPError
-      description: HTTP error response model.
+      - base64_data
+      - file_size
+      title: EncodedFileResponse
+      description: Response model for Audio generation.
     HTTPValidationError:
       properties:
         detail:
@@ -826,6 +878,26 @@ components:
       required:
       - prompt
       title: TextToImageParams
+    TextToSpeechParams:
+      properties:
+        model_id:
+          type: string
+          title: Model Id
+          description: Hugging Face model ID used for text to speech generation.
+          default: ''
+        text_input:
+          type: string
+          title: Text Input
+          description: Text input for speech generation
+          default: ''
+        description:
+          type: string
+          title: Description
+          description: Description of speaker to steer text to speech generation
+          default: A male speaker delivers a slightly expressive and animated speech
+            with a moderate speed and pitch.
+      type: object
+      title: TextToSpeechParams
     ValidationError:
       properties:
         loc:
@@ -862,6 +934,26 @@ components:
       - frames
       title: VideoResponse
       description: Response model for video generation.
+    app__routes__text_to_speech__HTTPError:
+      properties:
+        detail:
+          type: string
+          title: Detail
+      type: object
+      required:
+      - detail
+      title: HTTPError
+    app__routes__util__HTTPError:
+      properties:
+        detail:
+          allOf:
+          - $ref: '#/components/schemas/APIError'
+          description: Detailed error information.
+      type: object
+      required:
+      - detail
+      title: HTTPError
+      description: HTTP error response model.
     chunk:
       properties:
         timestamp:

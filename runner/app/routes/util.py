@@ -6,9 +6,8 @@ from typing import List, Optional
 
 import numpy as np
 from fastapi import UploadFile
-from PIL import Image
 from pydantic import BaseModel, Field
-
+from PIL import Image
 
 class Media(BaseModel):
     """A media object containing information about the generated media."""
@@ -31,6 +30,10 @@ class VideoResponse(BaseModel):
 
     frames: List[List[Media]] = Field(..., description="The generated video frames.")
 
+class EncodedFileResponse(BaseModel):
+    """Response model for Audio generation."""
+    base64_data: str = Field(..., description="The base64-encoded File content.")
+    file_size: int = Field(..., description="Size of the original file in bytes.")
 
 class MasksResponse(BaseModel):
     """Response model for object segmentation."""
@@ -181,3 +184,4 @@ def json_str_to_np_array(
             error_message += f": {e}"
             raise ValueError(error_message)
     return None
+
