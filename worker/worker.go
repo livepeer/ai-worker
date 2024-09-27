@@ -209,7 +209,7 @@ func (w *Worker) LivePortrait(ctx context.Context, req LivePortraitLivePortraitP
 	defer w.returnContainer(c)
 
 	var buf bytes.Buffer
-	mw, err := NewLiveportraitMultipartWriter(&buf, req)
+	mw, err := NewLivePortraitMultipartWriter(&buf, req)
 	if err != nil {
 		return nil, err
 	}

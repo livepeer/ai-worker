@@ -96,7 +96,6 @@ async def live_portrait(
             driving_video=temp_video_path)
         
         output_frames = []
-        frames_batch = []  # Create a batch for frames
         cap = cv2.VideoCapture(result_video_path)
 
         with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
@@ -108,16 +107,10 @@ async def live_portrait(
                 
                 futures.append(pool.apply_async(process_frame, (frame,)))
 
-            for future in futures:
-                frames_batch.append(future.get())
-                if len(frames_batch) % 10 == 0:  # Process every 10th frame to reduce workload
-                    output_frames.append(frames_batch)
-                    frames_batch = []  # Reset the batch
-
-        # Append any remaining frames
-        if frames_batch:
-            output_frames.append(frames_batch)
+            # Collect all processed frames directly
+            output_frames = [future.get() for future in futures]
         cap.release()
+
     except Exception as e:
         logger.error(f"LivePortraitPipeline error: {e}")
         logger.exception(e)
@@ -131,4 +124,6 @@ async def live_portrait(
             os.remove(temp_video_path)
         if os.path.exists(result_video_path):
             os.remove(result_video_path)
-    return {"frames": output_frames}
+
+    # Return frames wrapped in an outer list, adhering to the required schema
+    return {"frames": [output_frames]}

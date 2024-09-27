@@ -309,9 +309,11 @@ func NewSegmentAnything2MultipartWriter(w io.Writer, req GenSegmentAnything2Mult
 	return mw, nil
 }
 
-func NewLiveportraitMultipartWriter(w io.Writer, req LivePortraitLivePortraitPostMultipartRequestBody) (*multipart.Writer, error) {
+func NewLivePortraitMultipartWriter(w io.Writer, req LivePortraitLivePortraitPostMultipartRequestBody) (*multipart.Writer, error) {
 	mw := multipart.NewWriter(w)
-	writer_vid, err := mw.CreateFormFile("driving_video", req.DrivingVideo.Filename())
+
+	// Write DrivingVideo
+	writer, err := mw.CreateFormFile("driving_video", req.DrivingVideo.Filename())
 	if err != nil {
 		return nil, err
 	}
@@ -320,14 +322,16 @@ func NewLiveportraitMultipartWriter(w io.Writer, req LivePortraitLivePortraitPos
 	if err != nil {
 		return nil, err
 	}
-	copied, err := io.Copy(writer_vid, videoRdr)
+	copied, err := io.Copy(writer, videoRdr)
 	if err != nil {
 		return nil, err
 	}
 	if copied != videoSize {
-		return nil, fmt.Errorf("failed to copy driving_video to multipart request videoBytes=%v copiedBytes=%v", videoSize, copied)
+		return nil, fmt.Errorf("failed to copy driving video to multipart request videoBytes=%v copiedBytes=%v", videoSize, copied)
 	}
-	writer, err := mw.CreateFormFile("source_image", req.SourceImage.Filename())
+
+	// Write SourceImage
+	writer, err = mw.CreateFormFile("source_image", req.SourceImage.Filename())
 	if err != nil {
 		return nil, err
 	}
@@ -336,14 +340,15 @@ func NewLiveportraitMultipartWriter(w io.Writer, req LivePortraitLivePortraitPos
 	if err != nil {
 		return nil, err
 	}
-	copied_img, err := io.Copy(writer, imageRdr)
+	copied, err = io.Copy(writer, imageRdr)
 	if err != nil {
 		return nil, err
 	}
-	if copied_img != imageSize {
-		return nil, fmt.Errorf("failed to copy image to multipart request imageBytes=%v copiedBytes=%v", imageSize, copied)
+	if copied != imageSize {
+		return nil, fmt.Errorf("failed to copy source image to multipart request imageBytes=%v copiedBytes=%v", imageSize, copied)
 	}
-	// Handle input fields.
+
+	// Write ModelId if present
 	if req.ModelId != nil {
 		if err := mw.WriteField("model_id", *req.ModelId); err != nil {
 			return nil, err
