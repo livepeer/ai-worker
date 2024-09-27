@@ -341,7 +341,7 @@ func (w *Worker) LLM(ctx context.Context, req LlmLlmPostFormdataRequestBody) (in
 	if err != nil {
 		return nil, err
 	}
-	return w.handleNonStreamingResponse(resp)
+	return w.handleNonStreamingResponse(c, resp)
 }
 
 func (w *Worker) SegmentAnything2(ctx context.Context, req GenSegmentAnything2MultipartRequestBody) (*MasksResponse, error) {
@@ -475,7 +475,9 @@ func (w *Worker) returnContainer(rc *RunnerContainer) {
 	}
 }
 
-func (w *Worker) handleNonStreamingResponse(resp *LlmLlmPostResponse) (*LlmResponse, error) {
+func (w *Worker) handleNonStreamingResponse(rc *RunnerContainer, resp *LlmLlmPostResponse) (*LlmResponse, error) {
+	defer w.returnContainer(rc)
+
 	if resp.JSON400 != nil {
 		val, err := json.Marshal(resp.JSON400)
 		if err != nil {
