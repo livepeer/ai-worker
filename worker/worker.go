@@ -307,8 +307,8 @@ func (w *Worker) AudioToText(ctx context.Context, req GenAudioToTextMultipartReq
 	return resp.JSON200, nil
 }
 
-func (w *Worker) LlmGenerate(ctx context.Context, req LlmGenerateFormdataRequestBody) (interface{}, error) {
-	c, err := w.borrowContainer(ctx, "llm-generate", *req.ModelId)
+func (w *Worker) LLM(ctx context.Context, req LlmLlmPostFormdataRequestBody) (interface{}, error) {
+	c, err := w.borrowContainer(ctx, "llm", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
@@ -330,14 +330,14 @@ func (w *Worker) LlmGenerate(ctx context.Context, req LlmGenerateFormdataRequest
 	}
 
 	if req.Stream != nil && *req.Stream {
-		resp, err := c.Client.LlmGenerateWithBody(ctx, mw.FormDataContentType(), &buf)
+		resp, err := c.Client.LlmLlmPostWithBody(ctx, mw.FormDataContentType(), &buf)
 		if err != nil {
 			return nil, err
 		}
 		return w.handleStreamingResponse(ctx, resp)
 	}
 
-	resp, err := c.Client.LlmGenerateWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	resp, err := c.Client.LlmLlmPostWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
 	if err != nil {
 		return nil, err
 	}
@@ -475,14 +475,14 @@ func (w *Worker) returnContainer(rc *RunnerContainer) {
 	}
 }
 
-func (w *Worker) handleNonStreamingResponse(resp *LlmGenerateResponse) (*LlmResponse, error) {
+func (w *Worker) handleNonStreamingResponse(resp *LlmLlmPostResponse) (*LlmResponse, error) {
 	if resp.JSON400 != nil {
 		val, err := json.Marshal(resp.JSON400)
 		if err != nil {
 			return nil, err
 		}
-		slog.Error("llm-generate container returned 400", slog.String("err", string(val)))
-		return nil, errors.New("llm-generate container returned 400")
+		slog.Error("LLM container returned 400", slog.String("err", string(val)))
+		return nil, errors.New("LLM container returned 400")
 	}
 
 	if resp.JSON401 != nil {
@@ -490,8 +490,8 @@ func (w *Worker) handleNonStreamingResponse(resp *LlmGenerateResponse) (*LlmResp
 		if err != nil {
 			return nil, err
 		}
-		slog.Error("llm-generate container returned 401", slog.String("err", string(val)))
-		return nil, errors.New("llm-generate container returned 401")
+		slog.Error("LLM container returned 401", slog.String("err", string(val)))
+		return nil, errors.New("LLM container returned 401")
 	}
 
 	if resp.JSON500 != nil {
@@ -499,8 +499,8 @@ func (w *Worker) handleNonStreamingResponse(resp *LlmGenerateResponse) (*LlmResp
 		if err != nil {
 			return nil, err
 		}
-		slog.Error("llm-generate container returned 500", slog.String("err", string(val)))
-		return nil, errors.New("llm-generate container returned 500")
+		slog.Error("LLM container returned 500", slog.String("err", string(val)))
+		return nil, errors.New("LLM container returned 500")
 	}
 
 	return resp.JSON200, nil

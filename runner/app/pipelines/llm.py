@@ -14,14 +14,16 @@ from threading import Thread
 
 logger = logging.getLogger(__name__)
 
+
 def get_max_memory():
     num_gpus = torch.cuda.device_count()
     gpu_memory = {i: f"{torch.cuda.get_device_properties(i).total_memory // 1024**3}GiB" for i in range(num_gpus)}
     cpu_memory = f"{psutil.virtual_memory().available // 1024**3}GiB"
     max_memory = {**gpu_memory, "cpu": cpu_memory}
-    
+
     logger.info(f"Max memory configuration: {max_memory}")
     return max_memory
+
 
 def load_model_8bit(model_id: str, **kwargs):
     max_memory = get_max_memory()
@@ -33,7 +35,7 @@ def load_model_8bit(model_id: str, **kwargs):
     )
 
     tokenizer = AutoTokenizer.from_pretrained(model_id, **kwargs)
-    
+
     model = AutoModelForCausalLM.from_pretrained(
         model_id,
         quantization_config=quantization_config,
@@ -46,14 +48,17 @@ def load_model_8bit(model_id: str, **kwargs):
 
     return tokenizer, model
 
+
 def load_model_fp16(model_id: str, **kwargs):
     device = get_torch_device()
     max_memory = get_max_memory()
-    
+
     # Check for fp16 variant
-    local_model_path = os.path.join(get_model_dir(), file_download.repo_folder_name(repo_id=model_id, repo_type="model"))
-    has_fp16_variant = any(".fp16.safetensors" in fname for _, _, files in os.walk(local_model_path) for fname in files)
-    
+    local_model_path = os.path.join(
+        get_model_dir(), file_download.repo_folder_name(repo_id=model_id, repo_type="model"))
+    has_fp16_variant = any(".fp16.safetensors" in fname for _, _,
+                           files in os.walk(local_model_path) for fname in files)
+
     if device != "cpu" and has_fp16_variant:
         logger.info("Loading fp16 variant for %s", model_id)
         kwargs["torch_dtype"] = torch.float16
@@ -62,20 +67,22 @@ def load_model_fp16(model_id: str, **kwargs):
         kwargs["torch_dtype"] = torch.bfloat16
 
     tokenizer = AutoTokenizer.from_pretrained(model_id, **kwargs)
-    
+
     config = AutoModelForCausalLM.from_pretrained(model_id, **kwargs).config
-    
+
     with init_empty_weights():
         model = AutoModelForCausalLM.from_config(config)
 
-    checkpoint_dir = snapshot_download(model_id, cache_dir=get_model_dir(), local_files_only=True)
-    
+    checkpoint_dir = snapshot_download(
+        model_id, cache_dir=get_model_dir(), local_files_only=True)
+
     model = load_checkpoint_and_dispatch(
         model,
         checkpoint_dir,
         device_map="auto",
         max_memory=max_memory,
-        no_split_module_classes=["LlamaDecoderLayer"],  # Adjust based on your model architecture
+        # Adjust based on your model architecture
+        no_split_module_classes=["LlamaDecoderLayer"],
         dtype=kwargs.get("torch_dtype", torch.float32),
         offload_folder="offload",
         offload_state_dict=True,
@@ -83,7 +90,8 @@ def load_model_fp16(model_id: str, **kwargs):
 
     return tokenizer, model
 
-class LLMGeneratePipeline(Pipeline):
+
+class LLMPipeline(Pipeline):
     def __init__(self, model_id: str):
         self.model_id = model_id
         kwargs = {
@@ -93,15 +101,17 @@ class LLMGeneratePipeline(Pipeline):
         self.device = get_torch_device()
 
         # Generate the correct folder name
-        folder_path = file_download.repo_folder_name(repo_id=model_id, repo_type="model")
+        folder_path = file_download.repo_folder_name(
+            repo_id=model_id, repo_type="model")
         self.local_model_path = os.path.join(get_model_dir(), folder_path)
-        self.checkpoint_dir = snapshot_download(model_id, cache_dir=get_model_dir(), local_files_only=True)
+        self.checkpoint_dir = snapshot_download(
+            model_id, cache_dir=get_model_dir(), local_files_only=True)
 
         logger.info(f"Local model path: {self.local_model_path}")
         logger.info(f"Directory contents: {os.listdir(self.local_model_path)}")
 
         use_8bit = os.getenv("USE_8BIT", "").strip().lower() == "true"
-        
+
         if use_8bit:
             logger.info("Using 8-bit quantization")
             self.tokenizer, self.model = load_model_8bit(model_id, **kwargs)
@@ -109,7 +119,9 @@ class LLMGeneratePipeline(Pipeline):
             logger.info("Using fp16/bf16 precision")
             self.tokenizer, self.model = load_model_fp16(model_id, **kwargs)
 
-        logger.info(f"Model loaded and distributed. Device map: {self.model.hf_device_map}")
+        logger.info(
+            f"Model loaded and distributed. Device map: {self.model.hf_device_map}"
+        )
 
         # Set up generation config
         self.generation_config = self.model.generation_config
@@ -123,26 +135,29 @@ class LLMGeneratePipeline(Pipeline):
         sfast_enabled = os.getenv("SFAST", "").strip().lower() == "true"
         if sfast_enabled:
             logger.info(
-                "LLMGeneratePipeline will be dynamically compiled with stable-fast for %s",
+                "LLMPipeline will be dynamically compiled with stable-fast for %s",
                 model_id,
             )
             from app.pipelines.optim.sfast import compile_model
             self.model = compile_model(self.model)
+
     async def __call__(self, prompt: str, history: Optional[List[tuple]] = None, system_msg: Optional[str] = None, **kwargs) -> AsyncGenerator[Union[str, Dict[str, Any]], None]:
         conversation = []
         if system_msg:
             conversation.append({"role": "system", "content": system_msg})
         if history:
-           conversation.extend(history)
+            conversation.extend(history)
         conversation.append({"role": "user", "content": prompt})
 
-        input_ids = self.tokenizer.apply_chat_template(conversation, return_tensors="pt").to(self.model.device)
+        input_ids = self.tokenizer.apply_chat_template(
+            conversation, return_tensors="pt").to(self.model.device)
         attention_mask = torch.ones_like(input_ids)
 
         max_new_tokens = kwargs.get("max_tokens", 256)
         temperature = kwargs.get("temperature", 0.7)
 
-        streamer = TextIteratorStreamer(self.tokenizer, timeout=10.0, skip_prompt=True, skip_special_tokens=True)
+        streamer = TextIteratorStreamer(
+            self.tokenizer, timeout=10.0, skip_prompt=True, skip_special_tokens=True)
 
         generate_kwargs = self.generation_config.to_dict()
         generate_kwargs.update({
@@ -183,4 +198,4 @@ class LLMGeneratePipeline(Pipeline):
             raise
 
     def __str__(self):
-        return f"LLMGeneratePipeline(model_id={self.model_id})"
+        return f"LLMPipeline(model_id={self.model_id})"

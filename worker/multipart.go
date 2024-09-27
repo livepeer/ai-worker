@@ -246,7 +246,7 @@ func NewAudioToTextMultipartWriter(w io.Writer, req GenAudioToTextMultipartReque
 	return mw, nil
 }
 
-func NewLlmGenerateMultipartWriter(w io.Writer, req BodyLlmGenerateLlmGeneratePost) (*multipart.Writer, error) {
+func NewLlmGenerateMultipartWriter(w io.Writer, req BodyLlmLlmPost) (*multipart.Writer, error) {
 	mw := multipart.NewWriter(w)
 
 	if err := mw.WriteField("prompt", req.Prompt); err != nil {

@@ -1,12 +1,12 @@
 import logging
 import os
-from typing import Annotated, Optional, List
-from fastapi import APIRouter, Depends, Form, status, Request
+from typing import Annotated
+from fastapi import APIRouter, Depends, Form, status
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
-from app.routes.util import HTTPError, LlmResponse, TextResponse, http_error
+from app.routes.util import HTTPError, LlmResponse, http_error
 import json
 
 router = APIRouter()
@@ -21,10 +21,10 @@ RESPONSES = {
 }
 
 
-@router.post("/llm-generate",
+@router.post("/llm",
              response_model=LlmResponse, responses=RESPONSES)
-@router.post("/llm-generate/", response_model=LlmResponse, responses=RESPONSES, include_in_schema=False)
-async def llm_generate(
+@router.post("/llm/", response_model=LlmResponse, responses=RESPONSES, include_in_schema=False)
+async def llm(
     prompt: Annotated[str, Form()],
     model_id: Annotated[str, Form()] = "",
     system_msg: Annotated[str, Form()] = "",
