@@ -22,7 +22,7 @@ RESPONSES = {
 
 
 @router.post("/llm",
-             response_model=LLMResponse, responses=RESPONSES, operation_id="LLM",)
+             response_model=LLMResponse, responses=RESPONSES, operation_id="genLLM",)
 @router.post("/llm/", response_model=LLMResponse, responses=RESPONSES, include_in_schema=False)
 async def llm(
     prompt: Annotated[str, Form()],

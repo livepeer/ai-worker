@@ -307,7 +307,7 @@ func (w *Worker) AudioToText(ctx context.Context, req GenAudioToTextMultipartReq
 	return resp.JSON200, nil
 }
 
-func (w *Worker) LLM(ctx context.Context, req LlmLlmPostFormdataRequestBody) (interface{}, error) {
+func (w *Worker) LLM(ctx context.Context, req GenLLMFormdataRequestBody) (interface{}, error) {
 	c, err := w.borrowContainer(ctx, "llm", *req.ModelId)
 	if err != nil {
 		return nil, err
@@ -328,14 +328,14 @@ func (w *Worker) LLM(ctx context.Context, req LlmLlmPostFormdataRequestBody) (in
 	}
 
 	if req.Stream != nil && *req.Stream {
-		resp, err := c.Client.LlmLlmPostWithBody(ctx, mw.FormDataContentType(), &buf)
+		resp, err := c.Client.GenLLMWithBody(ctx, mw.FormDataContentType(), &buf)
 		if err != nil {
 			return nil, err
 		}
 		return w.handleStreamingResponse(ctx, c, resp)
 	}
 
-	resp, err := c.Client.LlmLlmPostWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	resp, err := c.Client.GenLLMWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
 	if err != nil {
 		return nil, err
 	}
@@ -473,7 +473,7 @@ func (w *Worker) returnContainer(rc *RunnerContainer) {
 	}
 }
 
-func (w *Worker) handleNonStreamingResponse(c *RunnerContainer, resp *LlmLlmPostResponse) (*LlmResponse, error) {
+func (w *Worker) handleNonStreamingResponse(c *RunnerContainer, resp *GenLLMResponse) (*LLMResponse, error) {
 	defer w.returnContainer(c)
 	if resp.JSON400 != nil {
 		val, err := json.Marshal(resp.JSON400)

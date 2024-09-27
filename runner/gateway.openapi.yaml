@@ -306,12 +306,12 @@ paths:
   /llm:
     post:
       summary: Llm
-      operationId: llm_llm_post
+      operationId: genLLM
       requestBody:
         content:
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Body_llm_llm_post'
+              $ref: '#/components/schemas/Body_genLLM'
         required: true
       responses:
         '200':
@@ -319,7 +319,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LlmResponse'
+                $ref: '#/components/schemas/LLMResponse'
         '400':
           description: Bad Request
           content:
@@ -510,6 +510,40 @@ components:
       - image
       - model_id
       title: Body_genImageToVideo
+    Body_genLLM:
+      properties:
+        prompt:
+          type: string
+          title: Prompt
+        model_id:
+          type: string
+          title: Model Id
+          default: ''
+        system_msg:
+          type: string
+          title: System Msg
+          default: ''
+        temperature:
+          type: number
+          title: Temperature
+          default: 0.7
+        max_tokens:
+          type: integer
+          title: Max Tokens
+          default: 256
+        history:
+          type: string
+          title: History
+          default: '[]'
+        stream:
+          type: boolean
+          title: Stream
+          default: false
+      type: object
+      required:
+      - prompt
+      - model_id
+      title: Body_genLLM
     Body_genSegmentAnything2:
       properties:
         image:
@@ -603,40 +637,6 @@ components:
       - image
       - model_id
       title: Body_genUpscale
-    Body_llm_llm_post:
-      properties:
-        prompt:
-          type: string
-          title: Prompt
-        model_id:
-          type: string
-          title: Model Id
-          default: ''
-        system_msg:
-          type: string
-          title: System Msg
-          default: ''
-        temperature:
-          type: number
-          title: Temperature
-          default: 0.7
-        max_tokens:
-          type: integer
-          title: Max Tokens
-          default: 256
-        history:
-          type: string
-          title: History
-          default: '[]'
-        stream:
-          type: boolean
-          title: Stream
-          default: false
-      type: object
-      required:
-      - prompt
-      - model_id
-      title: Body_llm_llm_post
     HTTPError:
       properties:
         detail:
@@ -670,7 +670,7 @@ components:
       - images
       title: ImageResponse
       description: Response model for image generation.
-    LlmResponse:
+    LLMResponse:
       properties:
         response:
           type: string
@@ -682,7 +682,7 @@ components:
       required:
       - response
       - tokens_used
-      title: LlmResponse
+      title: LLMResponse
     MasksResponse:
       properties:
         masks:
