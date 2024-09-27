@@ -319,8 +319,6 @@ func (w *Worker) LLM(ctx context.Context, req LlmLlmPostFormdataRequestBody) (in
 		return nil, errors.New("container client is nil")
 	}
 
-	defer w.returnContainer(c)
-
 	slog.Info("Container borrowed successfully", "model_id", *req.ModelId)
 
 	var buf bytes.Buffer
@@ -334,7 +332,7 @@ func (w *Worker) LLM(ctx context.Context, req LlmLlmPostFormdataRequestBody) (in
 		if err != nil {
 			return nil, err
 		}
-		return w.handleStreamingResponse(ctx, resp)
+		return w.handleStreamingResponse(ctx, c, resp)
 	}
 
 	resp, err := c.Client.LlmLlmPostWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
@@ -475,9 +473,8 @@ func (w *Worker) returnContainer(rc *RunnerContainer) {
 	}
 }
 
-func (w *Worker) handleNonStreamingResponse(rc *RunnerContainer, resp *LlmLlmPostResponse) (*LlmResponse, error) {
-	defer w.returnContainer(rc)
-
+func (w *Worker) handleNonStreamingResponse(c *RunnerContainer, resp *LlmLlmPostResponse) (*LlmResponse, error) {
+	defer w.returnContainer(c)
 	if resp.JSON400 != nil {
 		val, err := json.Marshal(resp.JSON400)
 		if err != nil {
@@ -514,7 +511,7 @@ type LlmStreamChunk struct {
 	Done       bool   `json:"done,omitempty"`
 }
 
-func (w *Worker) handleStreamingResponse(ctx context.Context, resp *http.Response) (<-chan LlmStreamChunk, error) {
+func (w *Worker) handleStreamingResponse(ctx context.Context, c *RunnerContainer, resp *http.Response) (<-chan LlmStreamChunk, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
@@ -523,6 +520,7 @@ func (w *Worker) handleStreamingResponse(ctx context.Context, resp *http.Respons
 
 	go func() {
 		defer close(outputChan)
+		defer w.returnContainer(c)
 
 		scanner := bufio.NewScanner(resp.Body)
 		totalTokens := 0
