@@ -58,7 +58,7 @@ class TextResponse(BaseModel):
     chunks: List[chunk] = Field(..., description="The generated text chunks.")
 
 
-class LlmResponse(BaseModel):
+class LLMResponse(BaseModel):
     response: str
     tokens_used: int
 

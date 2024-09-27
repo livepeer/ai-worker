@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
-from app.routes.util import HTTPError, LlmResponse, http_error
+from app.routes.util import HTTPError, LLMResponse, http_error
 import json
 
 router = APIRouter()
@@ -14,7 +14,7 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 RESPONSES = {
-    status.HTTP_200_OK: {"model": LlmResponse},
+    status.HTTP_200_OK: {"model": LLMResponse},
     status.HTTP_400_BAD_REQUEST: {"model": HTTPError},
     status.HTTP_401_UNAUTHORIZED: {"model": HTTPError},
     status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPError},
@@ -22,8 +22,8 @@ RESPONSES = {
 
 
 @router.post("/llm",
-             response_model=LlmResponse, responses=RESPONSES)
-@router.post("/llm/", response_model=LlmResponse, responses=RESPONSES, include_in_schema=False)
+             response_model=LLMResponse, responses=RESPONSES, operation_id="LLM",)
+@router.post("/llm/", response_model=LLMResponse, responses=RESPONSES, include_in_schema=False)
 async def llm(
     prompt: Annotated[str, Form()],
     model_id: Annotated[str, Form()] = "",
@@ -76,7 +76,7 @@ async def llm(
                     break
                 full_response += chunk
 
-            return LlmResponse(response=full_response, tokens_used=tokens_used)
+            return LLMResponse(response=full_response, tokens_used=tokens_used)
 
     except json.JSONDecodeError:
         return JSONResponse(
