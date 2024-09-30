@@ -21,8 +21,16 @@ RESPONSES = {
 }
 
 
-@router.post("/llm",
-             response_model=LLMResponse, responses=RESPONSES, operation_id="genLLM",)
+@router.post(
+    "/llm",
+    response_model=LLMResponse,
+    responses=RESPONSES,
+    operation_id="genLLM",
+    description="Generate text using a language model.",
+    summary="LLM",
+    tags=["generate"],
+    openapi_extra={"x-speakeasy-name-override": "llm"},
+)
 @router.post("/llm/", response_model=LLMResponse, responses=RESPONSES, include_in_schema=False)
 async def llm(
     prompt: Annotated[str, Form()],
