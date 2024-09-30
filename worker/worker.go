@@ -322,7 +322,7 @@ func (w *Worker) LLM(ctx context.Context, req GenLLMFormdataRequestBody) (interf
 	slog.Info("Container borrowed successfully", "model_id", *req.ModelId)
 
 	var buf bytes.Buffer
-	mw, err := NewLlmGenerateMultipartWriter(&buf, req)
+	mw, err := NewLLMMultipartWriter(&buf, req)
 	if err != nil {
 		return nil, err
 	}
