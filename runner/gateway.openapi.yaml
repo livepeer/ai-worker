@@ -305,7 +305,10 @@ paths:
       x-speakeasy-name-override: segmentAnything2
   /llm:
     post:
-      summary: Llm
+      tags:
+      - generate
+      summary: LLM
+      description: Generate text using a language model.
       operationId: genLLM
       requestBody:
         content:
@@ -346,6 +349,7 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
       security:
       - HTTPBearer: []
+      x-speakeasy-name-override: llm
 components:
   schemas:
     APIError:
