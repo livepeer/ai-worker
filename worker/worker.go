@@ -1,12 +1,16 @@
 package worker
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
+	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -58,14 +62,14 @@ func NewWorker(defaultImage string, gpus []string, modelDir string) (*Worker, er
 	}, nil
 }
 
-func (w *Worker) TextToImage(ctx context.Context, req TextToImageJSONRequestBody) (*ImageResponse, error) {
+func (w *Worker) TextToImage(ctx context.Context, req GenTextToImageJSONRequestBody) (*ImageResponse, error) {
 	c, err := w.borrowContainer(ctx, "text-to-image", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
 	defer w.returnContainer(c)
 
-	resp, err := c.Client.TextToImageWithResponse(ctx, req)
+	resp, err := c.Client.GenTextToImageWithResponse(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +89,7 @@ func (w *Worker) TextToImage(ctx context.Context, req TextToImageJSONRequestBody
 			return nil, err
 		}
 		slog.Error("text-to-image container returned 400", slog.String("err", string(val)))
-		return nil, errors.New("text-to-image container returned 400")
+		return nil, errors.New("text-to-image container returned 400: " + resp.JSON400.Detail.Msg)
 	}
 
 	if resp.JSON500 != nil {
@@ -100,7 +104,7 @@ func (w *Worker) TextToImage(ctx context.Context, req TextToImageJSONRequestBody
 	return resp.JSON200, nil
 }
 
-func (w *Worker) ImageToImage(ctx context.Context, req ImageToImageMultipartRequestBody) (*ImageResponse, error) {
+func (w *Worker) ImageToImage(ctx context.Context, req GenImageToImageMultipartRequestBody) (*ImageResponse, error) {
 	c, err := w.borrowContainer(ctx, "image-to-image", *req.ModelId)
 	if err != nil {
 		return nil, err
@@ -113,7 +117,7 @@ func (w *Worker) ImageToImage(ctx context.Context, req ImageToImageMultipartRequ
 		return nil, err
 	}
 
-	resp, err := c.Client.ImageToImageWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	resp, err := c.Client.GenImageToImageWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +137,7 @@ func (w *Worker) ImageToImage(ctx context.Context, req ImageToImageMultipartRequ
 			return nil, err
 		}
 		slog.Error("image-to-image container returned 400", slog.String("err", string(val)))
-		return nil, errors.New("image-to-image container returned 400")
+		return nil, errors.New("image-to-image container returned 400: " + resp.JSON400.Detail.Msg)
 	}
 
 	if resp.JSON500 != nil {
@@ -148,7 +152,7 @@ func (w *Worker) ImageToImage(ctx context.Context, req ImageToImageMultipartRequ
 	return resp.JSON200, nil
 }
 
-func (w *Worker) ImageToVideo(ctx context.Context, req ImageToVideoMultipartRequestBody) (*VideoResponse, error) {
+func (w *Worker) ImageToVideo(ctx context.Context, req GenImageToVideoMultipartRequestBody) (*VideoResponse, error) {
 	c, err := w.borrowContainer(ctx, "image-to-video", *req.ModelId)
 	if err != nil {
 		return nil, err
@@ -161,7 +165,7 @@ func (w *Worker) ImageToVideo(ctx context.Context, req ImageToVideoMultipartRequ
 		return nil, err
 	}
 
-	resp, err := c.Client.ImageToVideoWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	resp, err := c.Client.GenImageToVideoWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +205,7 @@ func (w *Worker) ImageToVideo(ctx context.Context, req ImageToVideoMultipartRequ
 	return resp.JSON200, nil
 }
 
-func (w *Worker) Upscale(ctx context.Context, req UpscaleMultipartRequestBody) (*ImageResponse, error) {
+func (w *Worker) Upscale(ctx context.Context, req GenUpscaleMultipartRequestBody) (*ImageResponse, error) {
 	c, err := w.borrowContainer(ctx, "upscale", *req.ModelId)
 	if err != nil {
 		return nil, err
@@ -214,7 +218,7 @@ func (w *Worker) Upscale(ctx context.Context, req UpscaleMultipartRequestBody) (
 		return nil, err
 	}
 
-	resp, err := c.Client.UpscaleWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	resp, err := c.Client.GenUpscaleWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
 	if err != nil {
 		return nil, err
 	}
@@ -249,7 +253,7 @@ func (w *Worker) Upscale(ctx context.Context, req UpscaleMultipartRequestBody) (
 	return resp.JSON200, nil
 }
 
-func (w *Worker) AudioToText(ctx context.Context, req AudioToTextMultipartRequestBody) (*TextResponse, error) {
+func (w *Worker) AudioToText(ctx context.Context, req GenAudioToTextMultipartRequestBody) (*TextResponse, error) {
 	c, err := w.borrowContainer(ctx, "audio-to-text", *req.ModelId)
 	if err != nil {
 		return nil, err
@@ -262,7 +266,7 @@ func (w *Worker) AudioToText(ctx context.Context, req AudioToTextMultipartReques
 		return nil, err
 	}
 
-	resp, err := c.Client.AudioToTextWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	resp, err := c.Client.GenAudioToTextWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
 	if err != nil {
 		return nil, err
 	}
@@ -303,7 +307,42 @@ func (w *Worker) AudioToText(ctx context.Context, req AudioToTextMultipartReques
 	return resp.JSON200, nil
 }
 
-func (w *Worker) SegmentAnything2(ctx context.Context, req SegmentAnything2MultipartRequestBody) (*MasksResponse, error) {
+func (w *Worker) LLM(ctx context.Context, req GenLLMFormdataRequestBody) (interface{}, error) {
+	c, err := w.borrowContainer(ctx, "llm", *req.ModelId)
+	if err != nil {
+		return nil, err
+	}
+	if c == nil {
+		return nil, errors.New("borrowed container is nil")
+	}
+	if c.Client == nil {
+		return nil, errors.New("container client is nil")
+	}
+
+	slog.Info("Container borrowed successfully", "model_id", *req.ModelId)
+
+	var buf bytes.Buffer
+	mw, err := NewLLMMultipartWriter(&buf, req)
+	if err != nil {
+		return nil, err
+	}
+
+	if req.Stream != nil && *req.Stream {
+		resp, err := c.Client.GenLLMWithBody(ctx, mw.FormDataContentType(), &buf)
+		if err != nil {
+			return nil, err
+		}
+		return w.handleStreamingResponse(ctx, c, resp)
+	}
+
+	resp, err := c.Client.GenLLMWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	if err != nil {
+		return nil, err
+	}
+	return w.handleNonStreamingResponse(c, resp)
+}
+
+func (w *Worker) SegmentAnything2(ctx context.Context, req GenSegmentAnything2MultipartRequestBody) (*MasksResponse, error) {
 	c, err := w.borrowContainer(ctx, "segment-anything-2", *req.ModelId)
 	if err != nil {
 		return nil, err
@@ -316,7 +355,7 @@ func (w *Worker) SegmentAnything2(ctx context.Context, req SegmentAnything2Multi
 		return nil, err
 	}
 
-	resp, err := c.Client.SegmentAnything2WithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	resp, err := c.Client.GenSegmentAnything2WithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
 	if err != nil {
 		return nil, err
 	}
@@ -432,4 +471,94 @@ func (w *Worker) returnContainer(rc *RunnerContainer) {
 	case External:
 		// Noop because we allow concurrent in-flight requests for external containers
 	}
+}
+
+func (w *Worker) handleNonStreamingResponse(c *RunnerContainer, resp *GenLLMResponse) (*LLMResponse, error) {
+	defer w.returnContainer(c)
+	if resp.JSON400 != nil {
+		val, err := json.Marshal(resp.JSON400)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("LLM container returned 400", slog.String("err", string(val)))
+		return nil, errors.New("LLM container returned 400")
+	}
+
+	if resp.JSON401 != nil {
+		val, err := json.Marshal(resp.JSON401)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("LLM container returned 401", slog.String("err", string(val)))
+		return nil, errors.New("LLM container returned 401")
+	}
+
+	if resp.JSON500 != nil {
+		val, err := json.Marshal(resp.JSON500)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("LLM container returned 500", slog.String("err", string(val)))
+		return nil, errors.New("LLM container returned 500")
+	}
+
+	return resp.JSON200, nil
+}
+
+type LlmStreamChunk struct {
+	Chunk      string `json:"chunk,omitempty"`
+	TokensUsed int    `json:"tokens_used,omitempty"`
+	Done       bool   `json:"done,omitempty"`
+}
+
+func (w *Worker) handleStreamingResponse(ctx context.Context, c *RunnerContainer, resp *http.Response) (<-chan LlmStreamChunk, error) {
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	outputChan := make(chan LlmStreamChunk, 10)
+
+	go func() {
+		defer close(outputChan)
+		defer w.returnContainer(c)
+
+		scanner := bufio.NewScanner(resp.Body)
+		totalTokens := 0
+
+		for scanner.Scan() {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				line := scanner.Text()
+				if strings.HasPrefix(line, "data: ") {
+					data := strings.TrimPrefix(line, "data: ")
+					if data == "[DONE]" {
+						outputChan <- LlmStreamChunk{Chunk: "[DONE]", Done: true, TokensUsed: totalTokens}
+						return
+					}
+
+					var streamData LlmStreamChunk
+					if err := json.Unmarshal([]byte(data), &streamData); err != nil {
+						slog.Error("Error unmarshaling stream data", slog.String("err", err.Error()))
+						continue
+					}
+
+					totalTokens += streamData.TokensUsed
+
+					select {
+					case outputChan <- streamData:
+					case <-ctx.Done():
+						return
+					}
+				}
+			}
+		}
+
+		if err := scanner.Err(); err != nil {
+			slog.Error("Error reading stream", slog.String("err", err.Error()))
+		}
+	}()
+
+	return outputChan, nil
 }

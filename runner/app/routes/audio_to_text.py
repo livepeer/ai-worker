@@ -15,6 +15,15 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 RESPONSES = {
+    status.HTTP_200_OK: {
+        "content": {
+            "application/json": {
+                "schema": {
+                    "x-speakeasy-name-override": "data",
+                }
+            }
+        },
+    },
     status.HTTP_400_BAD_REQUEST: {"model": HTTPError},
     status.HTTP_401_UNAUTHORIZED: {"model": HTTPError},
     status.HTTP_413_REQUEST_ENTITY_TOO_LARGE: {"model": HTTPError},
@@ -52,6 +61,10 @@ def handle_pipeline_error(e: Exception) -> JSONResponse:
     response_model=TextResponse,
     responses=RESPONSES,
     description="Transcribe audio files to text.",
+    operation_id="genAudioToText",
+    summary="Audio To Text",
+    tags=["generate"],
+    openapi_extra={"x-speakeasy-name-override": "audioToText"},
 )
 @router.post(
     "/audio-to-text/",

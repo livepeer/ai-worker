@@ -56,11 +56,11 @@ The AI Runner container's runner app uses [HuggingFace](https://huggingface.co/)
 3. **Download AI Models**: Use the [ld_checkpoints.sh](https://github.com/livepeer/ai-worker/blob/main/runner/dl_checkpoints.sh) script to download models from `aiModels.json` to `~/.lpData/models`. Run the following command in the `.lpData` directory:
 
    ```bash
-   curl -s https://raw.githubusercontent.com/livepeer/ai-worker/main/runner/dl_checkpoints.sh | bash -s -- --alpha
+   curl -s https://raw.githubusercontent.com/livepeer/ai-worker/main/runner/dl_checkpoints.sh | bash -s -- --beta
    ```
 
    > [!NOTE]
-   > The `--alpha` flag downloads only models supported by the Livepeer.inc Gateway node on the _AI Subnet_. Remove this flag to download all models.
+   > The `--beta` flag downloads only models supported by the Livepeer.inc Gateway node on the _AI Subnet_. Remove this flag to download all models.
 
 > [!TIP]
 > If you want to download individual models you can checkout the `dl-checkpoints.sh` script to see how to download model checkpoints to the local `models` directory.
