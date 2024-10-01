@@ -1,6 +1,8 @@
 module github.com/livepeer/ai-worker
 
-go 1.21.5
+go 1.22
+
+toolchain go1.22.0
 
 require (
 	github.com/deepmap/oapi-codegen/v2 v2.2.0
@@ -9,7 +11,9 @@ require (
 	github.com/docker/go-connections v0.4.0
 	github.com/getkin/kin-openapi v0.124.0
 	github.com/go-chi/chi/v5 v5.0.12
+	github.com/go-gst/go-gst v1.3.0
 	github.com/oapi-codegen/runtime v1.1.1
+	github.com/pebbe/zmq4 v1.2.11
 	github.com/vincent-petithory/dataurl v1.0.0
 )
 
@@ -19,6 +23,7 @@ require (
 	github.com/distribution/reference v0.5.0 // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
 	github.com/docker/go-units v0.4.0 // indirect
+	github.com/go-gst/go-glib v1.3.0 // indirect
 	github.com/go-openapi/jsonpointer v0.20.2 // indirect
 	github.com/go-openapi/swag v0.22.8 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -26,6 +31,7 @@ require (
 	github.com/invopop/yaml v0.2.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
+	github.com/mattn/go-pointer v0.0.1 // indirect
 	github.com/moby/term v0.5.0 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
@@ -34,6 +40,7 @@ require (
 	github.com/perimeterx/marshmallow v1.1.5 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
+	golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f // indirect
 	golang.org/x/mod v0.20.0 // indirect
 	golang.org/x/net v0.28.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
