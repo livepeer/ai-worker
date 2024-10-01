@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Livepeer AI Runner
   description: An application to run AI pipelines
-  version: v0.5.0
+  version: ''
 servers:
 - url: https://dream-gateway.livepeer.cloud
   description: Livepeer Cloud Community Gateway
@@ -303,6 +303,53 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: segmentAnything2
+  /llm:
+    post:
+      tags:
+      - generate
+      summary: LLM
+      description: Generate text using a language model.
+      operationId: genLLM
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Body_genLLM'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LLMResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+      x-speakeasy-name-override: llm
 components:
   schemas:
     APIError:
@@ -348,6 +395,13 @@ components:
           type: string
           title: Model Id
           description: Hugging Face model ID used for image generation.
+          default: ''
+        loras:
+          type: string
+          title: Loras
+          description: 'A LoRA (Low-Rank Adaptation) model and its corresponding weight
+            for image generation. Example: { "latent-consistency/lcm-lora-sdxl": 1.0,
+            "nerijs/pixel-art-xl": 1.2}.'
           default: ''
         strength:
           type: number
@@ -460,6 +514,40 @@ components:
       - image
       - model_id
       title: Body_genImageToVideo
+    Body_genLLM:
+      properties:
+        prompt:
+          type: string
+          title: Prompt
+        model_id:
+          type: string
+          title: Model Id
+          default: ''
+        system_msg:
+          type: string
+          title: System Msg
+          default: ''
+        temperature:
+          type: number
+          title: Temperature
+          default: 0.7
+        max_tokens:
+          type: integer
+          title: Max Tokens
+          default: 256
+        history:
+          type: string
+          title: History
+          default: '[]'
+        stream:
+          type: boolean
+          title: Stream
+          default: false
+      type: object
+      required:
+      - prompt
+      - model_id
+      title: Body_genLLM
     Body_genSegmentAnything2:
       properties:
         image:
@@ -586,6 +674,19 @@ components:
       - images
       title: ImageResponse
       description: Response model for image generation.
+    LLMResponse:
+      properties:
+        response:
+          type: string
+          title: Response
+        tokens_used:
+          type: integer
+          title: Tokens Used
+      type: object
+      required:
+      - response
+      - tokens_used
+      title: LLMResponse
     MasksResponse:
       properties:
         masks:
@@ -652,6 +753,13 @@ components:
           type: string
           title: Model Id
           description: Hugging Face model ID used for image generation.
+          default: ''
+        loras:
+          type: string
+          title: Loras
+          description: 'A LoRA (Low-Rank Adaptation) model and its corresponding weight
+            for image generation. Example: { "latent-consistency/lcm-lora-sdxl": 1.0,
+            "nerijs/pixel-art-xl": 1.2}.'
           default: ''
         prompt:
           type: string
