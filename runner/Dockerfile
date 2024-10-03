@@ -1,7 +1,6 @@
 # Based on https://github.com/huggingface/api-inference-community/blob/main/docker_images/diffusers/Dockerfile
 
-FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu20.04
-LABEL maintainer="Yondon Fu <yondon@livepeer.org>"
+FROM nvidia/cuda:12.2.2-cudnn8-devel-ubuntu22.04
 
 # Add any system dependency here
 # RUN apt-get update -y && apt-get install libXXX -y
@@ -12,8 +11,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
   apt-get install -y build-essential libssl-dev zlib1g-dev libbz2-dev \
   libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
-  xz-utils tk-dev libffi-dev liblzma-dev python3-openssl git \
-  ffmpeg
+  xz-utils tk-dev libffi-dev liblzma-dev python3-openssl git
 
 # Install pyenv
 RUN curl https://pyenv.run | bash
@@ -30,8 +28,9 @@ RUN pyenv install $PYTHON_VERSION && \
 
 # Upgrade pip and install your desired packages
 ARG PIP_VERSION=23.3.2
-RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools==69.5.1 wheel==0.43.0 && \
-  pip install --no-cache-dir torch==2.1.1 torchvision==0.16.1 torchaudio==2.1.1
+RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools==69.5.1 wheel==0.43.0 
+#&& \
+#  pip install --no-cache-dir torch==2.1.1 torchvision==0.16.1 torchaudio==2.1.1
 
 WORKDIR /app
 COPY ./requirements.txt /app
