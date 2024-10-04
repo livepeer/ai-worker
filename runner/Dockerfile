@@ -7,7 +7,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
     apt-get install -y build-essential libssl-dev zlib1g-dev libbz2-dev \
     libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
-    xz-utils tk-dev libffi-dev liblzma-dev python3-openssl git runit && \
+    xz-utils tk-dev libffi-dev liblzma-dev python3-openssl git runit golang-go libzmq3-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev && \
     rm -rf /var/lib/apt/lists/*
 
 # Install pyenv
@@ -47,11 +47,24 @@ COPY app/ /app/app
 COPY images/ /app/images
 COPY bench.py /app/bench.py
 
+
+# Set up and compile Go application
+#WORKDIR /app/app/mediain
+#COPY app/mediain/go.mod ./
+#COPY app/mediain/go.sum ./go.sum*
+#RUN go mod download
+#COPY app/mediain/*.go ./
+#RUN go mod tidy
+#RUN go get github.com/go-zeromq/zmq4 github.com/tinyzimmer/go-gst/gst github.com/tinyzimmer/go-gst/gst/app
+#RUN go build -o mediain .
+#RUN mv mediain /usr/local/bin/
+
+
 # Set up runit service directories and copy run scripts
 COPY app/runit /etc/service
 
 # Create log directories for each service
-RUN mkdir -p /var/log/uvicorn /var/log/echo_service
+RUN mkdir -p /var/log/uvicorn /var/log/infer
 
 # Ensure all run scripts are executable
 RUN chmod +x /etc/service/*/run /etc/service/*/log/run
