@@ -42,5 +42,4 @@ ENV PYTHONPATH="${PYTHONPATH}:/app:/app/streamdiffusion"
 ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
 
-# Overwrite the CMD to start a bash shell
-CMD ["/bin/bash"]
+#CMD ["/bin/bash"]
