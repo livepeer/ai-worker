@@ -1,17 +1,14 @@
 # Based on https://github.com/huggingface/api-inference-community/blob/main/docker_images/diffusers/Dockerfile
-
 FROM nvidia/cuda:12.2.2-cudnn8-devel-ubuntu22.04
-
-# Add any system dependency here
-# RUN apt-get update -y && apt-get install libXXX -y
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install prerequisites
+# Install prerequisites and runit
 RUN apt-get update && \
-  apt-get install -y build-essential libssl-dev zlib1g-dev libbz2-dev \
-  libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
-  xz-utils tk-dev libffi-dev liblzma-dev python3-openssl git
+    apt-get install -y build-essential libssl-dev zlib1g-dev libbz2-dev \
+    libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
+    xz-utils tk-dev libffi-dev liblzma-dev python3-openssl git runit && \
+    rm -rf /var/lib/apt/lists/*
 
 # Install pyenv
 RUN curl https://pyenv.run | bash
@@ -23,19 +20,16 @@ ENV PATH $PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH
 # Install your desired Python version
 ARG PYTHON_VERSION=3.11
 RUN pyenv install $PYTHON_VERSION && \
-  pyenv global $PYTHON_VERSION && \
-  pyenv rehash
+    pyenv global $PYTHON_VERSION && \
+    pyenv rehash
 
 # Upgrade pip and install your desired packages
 ARG PIP_VERSION=23.3.2
 RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools==69.5.1 wheel==0.43.0 
-#&& \
-#  pip install --no-cache-dir torch==2.1.1 torchvision==0.16.1 torchaudio==2.1.1
 
 WORKDIR /app
 COPY ./requirements.txt /app
 RUN pip install --no-cache-dir -r requirements.txt
-
 RUN pip install https://github.com/chengzeyi/stable-fast/releases/download/v1.0.3/stable_fast-1.0.3+torch211cu121-cp311-cp311-manylinux2014_x86_64.whl
 
 # Most DL models are quite large in terms of memory, using workers is a HUGE
@@ -48,9 +42,20 @@ ENV HUGGINGFACE_HUB_CACHE=/models
 ENV DIFFUSERS_CACHE=/models
 ENV MODEL_DIR=/models
 
+# Copy application files
 COPY app/ /app/app
 COPY images/ /app/images
 COPY bench.py /app/bench.py
 COPY example_data/ /app/example_data
 
-CMD ["uvicorn", "app.main:app", "--log-config", "app/cfg/uvicorn_logging_config.json", "--host", "0.0.0.0", "--port", "8000"]
+# Set up runit service directories and copy run scripts
+COPY app/runit /etc/service
+
+# Create log directories for each service
+RUN mkdir -p /var/log/uvicorn /var/log/echo_service
+
+# Ensure all run scripts are executable
+RUN chmod +x /etc/service/*/run /etc/service/*/log/run
+
+# Set the init system to runit
+CMD ["runsvdir", "/etc/service"]
