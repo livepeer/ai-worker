@@ -40,6 +40,6 @@ ENV PYTHONPATH="${PYTHONPATH}:/app:/app/streamdiffusion"
 
 # Set environment variables for NVIDIA drivers
 ENV NVIDIA_VISIBLE_DEVICES all
-ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
+ENV NVIDIA_DRIVER_CAPABILITIES compute,utility,video
 
 #CMD ["/bin/bash"]
