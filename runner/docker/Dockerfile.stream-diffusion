@@ -1,10 +1,7 @@
-ARG BASE_IMAGE=livepeer/ai-runner:base
+ARG BASE_IMAGE=livepeer/ai-runner:multimedia
 FROM ${BASE_IMAGE}
 
 ENV PIP_PREFER_BINARY=1
-
-# Copy already built ffmpeg
-COPY --from=livepeer/ai-runner:multimedia /compiled /usr/local
 
 # Install NVIDIA Container Toolkit
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -17,7 +14,6 @@ RUN pip install --no-cache-dir \
     torchvision==0.16.0 \
     xformers \
     --index-url https://download.pytorch.org/whl/cu121
-
 
 # Clone StreamDiffusion repository
 RUN git clone https://github.com/cumulo-autumn/StreamDiffusion.git /streamdiffusion

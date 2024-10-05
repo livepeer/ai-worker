@@ -1,10 +1,10 @@
 #!/bin/sh
 
-cd /app/streamdiffusion/examples/img2img/
+#cd /app/streamdiffusion/examples/img2img/
 echo "Starting single.py"
-exec python single.py 2>&1
+#exec python single.py 2>&1
 echo "Done single.py"
-sv stop /etc/service/infer
+#sv stop /etc/service/infer
 
 # just a sample bash loop to verify runit launches this script:
 #while true; do
