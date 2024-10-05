@@ -453,8 +453,14 @@ func (w *Worker) SegmentAnything2(ctx context.Context, req GenSegmentAnything2Mu
 	return resp.JSON200, nil
 }
 
+<<<<<<< HEAD
 func (w *Worker) ImageToText(ctx context.Context, req GenImageToTextMultipartRequestBody) (*ImageToTextResponse, error) {
 	c, err := w.borrowContainer(ctx, "image-to-text", *req.ModelId)
+=======
+func (w *Worker) TextToSpeech(ctx context.Context, req GenTextToSpeechJSONRequestBody) (*EncodedFileResponse, error) {
+	// Borrow the container for the TextToSpeech process, using appropriate model if needed
+	c, err := w.borrowContainer(ctx, "text-to-speech", *req.ModelId)
+>>>>>>> 117e904 (fix pipeline naming in borrowContainer)
 	if err != nil {
 		return nil, err
 	}
