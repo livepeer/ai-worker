@@ -5,7 +5,7 @@
 
 	// Image to use for the dev container. More info: https://containers.dev/guide/dockerfile.
 	"build": {
-		"dockerfile": "../../cmd/lipsync/Dockerfile.debug"
+		"dockerfile": "../dev/Dockerfile.debug"
 	},
 	"runArgs": [
 		"--gpus=all"

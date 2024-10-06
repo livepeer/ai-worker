@@ -20,14 +20,16 @@ class TextToSpeechPipeline(Pipeline):
         kwargs = {"cache_dir": get_model_dir()}
         print(f"ModelID : {model_id}, cache_dir: {get_model_dir()}")
         self.TTS_model = ParlerTTSForConditionalGeneration.from_pretrained(
-            model_id,
+            "parler-tts/parler-tts-large-v1",
+            # model_id,
             **kwargs,
         ).to(self.device)
 
         self.TTS_tokenizer = AutoTokenizer.from_pretrained(
-            model_id,
+            "parler-tts/parler-tts-large-v1",
+            # model_id,
             torch_dtype=torch.bfloat16,
-            attn_implementation="flash_attention_2",
+            # attn_implementation="flash_attention_2", # TODO: install flash_attn in Dockerfile.tts
             **kwargs,
         )
 
