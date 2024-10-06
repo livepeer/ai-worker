@@ -73,7 +73,7 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
         case "text-to-speech":
             from app.pipelines.text_to_speech import TextToSpeechPipeline
 
-            return  TextToSpeechPipeline(model_id)
+            return TextToSpeechPipeline(model_id)
         case _:
             raise EnvironmentError(
                 f"{pipeline} is not a valid pipeline for model {model_id}"
