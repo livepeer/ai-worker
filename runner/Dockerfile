@@ -3,11 +3,11 @@ FROM nvidia/cuda:12.2.2-cudnn8-devel-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install prerequisites and runit
+# Install prerequisites
 RUN apt-get update && \
     apt-get install -y build-essential libssl-dev zlib1g-dev libbz2-dev \
     libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
-    xz-utils tk-dev libffi-dev liblzma-dev python3-openssl git runit golang-go libzmq3-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev && \
+    xz-utils tk-dev libffi-dev liblzma-dev python3-openssl git runit libzmq3-dev && \
     rm -rf /var/lib/apt/lists/*
 
 # Install pyenv
@@ -27,17 +27,8 @@ RUN pyenv install $PYTHON_VERSION && \
 ARG PIP_VERSION=23.3.2
 RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools==69.5.1 wheel==0.43.0 
 
-WORKDIR /app
-COPY ./requirements.txt /app
-RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install https://github.com/chengzeyi/stable-fast/releases/download/v1.0.3/stable_fast-1.0.3+torch211cu121-cp311-cp311-manylinux2014_x86_64.whl
-
-# Most DL models are quite large in terms of memory, using workers is a HUGE
-# slowdown because of the fork and GIL with python.
-# Using multiple pods seems like a better default strategy.
-# Feel free to override if it does not make sense for your library.
-ARG max_workers=1
-ENV MAX_WORKERS=$max_workers
+# Set environment variables
+ENV MAX_WORKERS=1
 ENV HUGGINGFACE_HUB_CACHE=/models
 ENV DIFFUSERS_CACHE=/models
 ENV MODEL_DIR=/models
@@ -48,19 +39,6 @@ COPY images/ /app/images
 COPY bench.py /app/bench.py
 COPY example_data/ /app/example_data
 
-
-# Set up and compile Go application
-#WORKDIR /app/app/mediain
-#COPY app/mediain/go.mod ./
-#COPY app/mediain/go.sum ./go.sum*
-#RUN go mod download
-#COPY app/mediain/*.go ./
-#RUN go mod tidy
-#RUN go get github.com/go-zeromq/zmq4 github.com/tinyzimmer/go-gst/gst github.com/tinyzimmer/go-gst/gst/app
-#RUN go build -o mediain .
-#RUN mv mediain /usr/local/bin/
-
-
 # Set up runit service directories and copy run scripts
 COPY app/runit /etc/service
 
@@ -70,5 +48,5 @@ RUN mkdir -p /var/log/uvicorn /var/log/infer
 # Ensure all run scripts are executable
 RUN chmod +x /etc/service/*/run /etc/service/*/log/run
 
-# Set the init system to runit
-CMD ["runsvdir", "/etc/service"]
+# We're keeping the WORKDIR /app here as it's a good default
+WORKDIR /app

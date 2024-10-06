@@ -1,0 +1,49 @@
+ARG BASE_IMAGE=livepeer/ai-runner:stream-diffusion
+FROM ${BASE_IMAGE}
+
+# Install Go
+RUN apt-get update && apt-get install -y golang-go
+
+# Set up and compile Go application
+#WORKDIR /app/app/mediain
+#COPY app/mediain/go.mod ./
+#COPY app/mediain/go.sum ./go.sum*
+#RUN go mod download
+#COPY app/mediain/*.go ./
+#RUN go mod tidy
+#RUN go get github.com/go-zeromq/zmq4 github.com/tinyzimmer/go-gst/gst github.com/tinyzimmer/go-gst/gst/app
+#RUN go build -o mediain .
+#RUN mv mediain /usr/local/bin/
+
+# Install any additional Python packages
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
+# Copy StreamDiffusion to /app/streamdiffusion
+RUN cp -r /streamdiffusion /app/streamdiffusion
+
+# Set up PYTHONPATH
+ENV PYTHONPATH="${PYTHONPATH}:/app:/app/streamdiffusion"
+
+# Copy application files
+COPY app/ /app/app
+COPY images/ /app/images
+COPY bench.py /app/bench.py
+
+# Set up runit service directories and copy run scripts
+COPY app/runit /etc/service
+
+# Create log directories for each service
+RUN mkdir -p /var/log/uvicorn /var/log/infer
+
+# Ensure all run scripts are executable
+RUN chmod +x /etc/service/*/run /etc/service/*/log/run
+
+# Set working directory to /app
+WORKDIR /app
+
+# Clean up
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Set the init system to runit
+CMD ["runsvdir", "/etc/service"]
