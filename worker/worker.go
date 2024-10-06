@@ -398,7 +398,7 @@ func (w *Worker) TextToSpeech(ctx context.Context, req GenTextToSpeechJSONReques
 	}
 	defer w.returnContainer(c)
 
-	// Send the multipart request to the container's client
+	// Send the JSON request to the container's client
 	resp, err := c.Client.GenTextToSpeechWithResponse(ctx, req)
 	if err != nil {
 		return nil, err
