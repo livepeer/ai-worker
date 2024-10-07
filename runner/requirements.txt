@@ -21,3 +21,4 @@ bitsandbytes==0.43.3
 psutil==6.0.0
 pyzmq
 opencv-python
+PyGObject
