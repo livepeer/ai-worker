@@ -1,27 +1,73 @@
 ARG BASE_IMAGE=livepeer/ai-runner:stream-diffusion
 FROM ${BASE_IMAGE}
 
-# Install Go
-RUN apt-get update && apt-get install -y golang-go
+# # Install latest stable Go version
+# RUN apt-get update && apt-get install -y wget && \
+#     wget https://go.dev/dl/go1.21.5.linux-amd64.tar.gz && \
+#     tar -C /usr/local -xzf go1.21.5.linux-amd64.tar.gz && \
+#     rm go1.21.5.linux-amd64.tar.gz
+# ENV PATH=$PATH:/usr/local/go/bin
 
-# Set up and compile Go application
-#WORKDIR /app/app/mediain
-#COPY app/mediain/go.mod ./
-#COPY app/mediain/go.sum ./go.sum*
-#RUN go mod download
-#COPY app/mediain/*.go ./
-#RUN go mod tidy
-#RUN go get github.com/go-zeromq/zmq4 github.com/tinyzimmer/go-gst/gst github.com/tinyzimmer/go-gst/gst/app
-#RUN go build -o mediain .
-#RUN mv mediain /usr/local/bin/
+# # Set a default value for APP_DIRS
+# ARG APP_DIRS="ingress"
+# # Set environment variable for the app directories
+# ENV APP_DIRS=${APP_DIRS}
 
+# # Create the app directory
+# WORKDIR /app/go
+
+# # Copy only the specified app directories
+# COPY app/go/. .
+
+# # Print the contents of the current directory for debugging
+# RUN ls -R
+
+# # Check GStreamer version
+# RUN gst-launch-1.0 --version || echo "GStreamer not found"
+# RUN pkg-config --modversion gstreamer-1.0 || echo "GStreamer development files not found"
+
+# # Build all specified apps
+# RUN set -e; for app in ${APP_DIRS}; do \
+#         if [ -d "$app" ]; then \
+#             cd $app && \
+#             if [ ! -f go.mod ]; then \
+#                 go mod init github.com/livepeer/ai-worker/runner/app/go/$app; \
+#             fi && \
+#             go mod tidy && \
+#             if [ -f main.go ]; then \
+#                 CGO_ENABLED=1 go build -o main; \
+#             elif [ -f Makefile ]; then \
+#                 make; \
+#             else \
+#                 echo "No recognized build process for ${app}"; \
+#                 exit 1; \
+#             fi && \
+#             cd ..; \
+#         else \
+#             echo "Directory not found for ${app}"; \
+#             exit 1; \
+#         fi; \
+#     done
+
+# # Move the compiled binaries to /usr/local/bin/
+# RUN set -e; for app in ${APP_DIRS}; do \
+#         if [ -f ${app}/main ]; then \
+#             mv ${app}/main /usr/local/bin/${app}; \
+#         elif [ -f ${app}/${app} ]; then \
+#             mv ${app}/${app} /usr/local/bin/${app}; \
+#         else \
+#             echo "No compiled binary found for ${app}"; \
+#             exit 1; \
+#         fi; \
+#     done
+# Return to the app directory
+WORKDIR /app
 # Install any additional Python packages
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
-# Copy StreamDiffusion to /app/streamdiffusion
-RUN cp -r /streamdiffusion /app/streamdiffusion
-
+# Move StreamDiffusion to /app/streamdiffusion instead of copying
+RUN mv /streamdiffusion /app/streamdiffusion
 # Set up PYTHONPATH
 ENV PYTHONPATH="${PYTHONPATH}:/app:/app/streamdiffusion"
 
@@ -32,16 +78,13 @@ COPY bench.py /app/bench.py
 
 # Set up runit service directories and copy run scripts
 COPY app/runit /etc/service
-
 # Create log directories for each service
 RUN mkdir -p /var/log/uvicorn /var/log/infer
-
 # Ensure all run scripts are executable
 RUN chmod +x /etc/service/*/run /etc/service/*/log/run
 
 # Set working directory to /app
 WORKDIR /app
-
 # Clean up
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
