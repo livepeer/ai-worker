@@ -76,7 +76,7 @@ RUN mv /streamdiffusion /app/streamdiffusion
 ENV PYTHONPATH="${PYTHONPATH}:/app:/app/streamdiffusion"
 
 # Copy application files
-COPY app/ /app/app
+COPY app/ /app/
 COPY images/ /app/images
 COPY bench.py /app/bench.py
 
