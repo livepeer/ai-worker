@@ -1,0 +1,250 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"log/slog"
+	"os"
+	"os/exec"
+	"sync"
+	"syscall"
+	"time"
+
+	//"github.com/livepeer/lpms/ffmpeg"
+	"golang.org/x/sys/unix"
+)
+
+type SegmentReader interface {
+	NewSegment(reader io.Reader)
+}
+
+var waitTimeout = 20 * time.Second
+
+func run(in string, segmentHandler SegmentReader) {
+
+	outFilePattern := "out-%d.ts"
+	completionSignal := make(chan bool)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		processSegments(segmentHandler, outFilePattern, completionSignal)
+	}()
+	/*
+		ffmpeg.FfmpegSetLogLevel(ffmpeg.FFLogWarning)
+		ffmpeg.Transcode3(&ffmpeg.TranscodeOptionsIn{
+			Fname: in,
+		}, []ffmpeg.TranscodeOptions{{
+			Oname:        outFilePattern,
+			AudioEncoder: ffmpeg.ComponentOptions{Name: "copy"},
+			VideoEncoder: ffmpeg.ComponentOptions{Name: "copy"},
+			Muxer:        ffmpeg.ComponentOptions{Name: "segment"},
+		}})
+	*/
+	// Need to add demuxer options to lpms
+	cmd := exec.Command("ffmpeg", "-i", in, "-c", "copy", "-f", "segment", outFilePattern)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		slog.Error("Error running ffmpeg", "err", err)
+	}
+	fmt.Println(string(out))
+	completionSignal <- true
+	fmt.Printf("sent completing signal now waiting")
+	wg.Wait()
+}
+
+func createNamedPipe(pipeName string) {
+	err := syscall.Mkfifo(pipeName, 0666)
+	if err != nil && !os.IsExist(err) {
+		slog.Error("Failed to create named pipe", "pipeName", pipeName, "err", err)
+	}
+}
+
+func cleanUpPipe(pipeName string) {
+	err := os.Remove(pipeName)
+	if err != nil {
+		slog.Error("Failed to remove pipe", "pipeName", pipeName, "err", err)
+	}
+}
+
+func openNonBlockingWithRetry(name string, timeout time.Duration) (*os.File, error) {
+	// Pipes block if there is no writer available
+
+	// Attempt to open the named pipe in non-blocking mode once
+	fd, err := syscall.Open(name, syscall.O_RDONLY|syscall.O_NONBLOCK, 0666)
+	if err != nil {
+		return nil, fmt.Errorf("error opening file in non-blocking mode: %w", err)
+	}
+
+	deadline := time.Now().Add(timeout)
+
+	// setFd sets the given file descriptor in the fdSet
+	setFd := func(fd int, fdSet *syscall.FdSet) {
+		fdSet.Bits[fd/64] |= 1 << (uint(fd) % 64)
+	}
+
+	// isFdSet checks if the given file descriptor is set in the fdSet
+	isFdSet := func(fd int, fdSet *syscall.FdSet) bool {
+		return fdSet.Bits[fd/64]&(1<<(uint(fd)%64)) != 0
+	}
+
+	for {
+		// Calculate the remaining time until the deadline
+		timeLeft := time.Until(deadline)
+		if timeLeft <= 0 {
+			syscall.Close(fd)
+			return nil, fmt.Errorf("timeout waiting for file to be ready: %s", name)
+		}
+
+		// Convert timeLeft to a syscall.Timeval for the select call
+		tv := syscall.NsecToTimeval(timeLeft.Nanoseconds())
+
+		// Set up the read file descriptor set for select
+		readFds := &syscall.FdSet{}
+		setFd(fd, readFds)
+
+		// Wait using select until the pipe is ready for reading
+		n, err := crossPlatformSelect(fd+1, readFds, nil, nil, &tv)
+		if err != nil {
+			if err == syscall.EINTR {
+				continue // Retry if interrupted by a signal
+			}
+			syscall.Close(fd)
+			return nil, fmt.Errorf("select error: %v", err)
+		}
+
+		// Check if the file descriptor is ready
+		if n > 0 && isFdSet(fd, readFds) {
+			// Modify the file descriptor to blocking mode using fcntl
+			flags, err := unix.FcntlInt(uintptr(fd), syscall.F_GETFL, 0)
+			if err != nil {
+				syscall.Close(fd)
+				return nil, fmt.Errorf("error getting file flags: %w", err)
+			}
+
+			// Clear the non-blocking flag
+			flags &^= syscall.O_NONBLOCK
+			if _, err := unix.FcntlInt(uintptr(fd), syscall.F_SETFL, flags); err != nil {
+				syscall.Close(fd)
+				return nil, fmt.Errorf("error setting file to blocking mode: %w", err)
+			}
+
+			// Convert the file descriptor to an *os.File to return
+			return os.NewFile(uintptr(fd), name), nil
+		}
+	}
+}
+
+func processSegments(segmentReader SegmentReader, outFilePattern string, completionSignal <-chan bool) {
+
+	// things protected by the mutex mu
+	mu := &sync.Mutex{}
+	isComplete := false
+	var currentSegment *os.File = nil
+
+	// Start a goroutine to wait for the completion signal
+	go func() {
+		<-completionSignal
+		mu.Lock()
+		defer mu.Unlock()
+		if currentSegment != nil {
+			// Trigger EOF on the current segment by closing the file
+			fmt.Println("Completion signal received. Closing current segment to trigger EOF.")
+			currentSegment.Close()
+		}
+		isComplete = true
+		fmt.Println("Got completion signal", currentSegment)
+	}()
+
+	pipeNum := 0
+	createNamedPipe(fmt.Sprintf(outFilePattern, pipeNum))
+
+	for {
+		pipeName := fmt.Sprintf(outFilePattern, pipeNum)
+		nextPipeName := fmt.Sprintf(outFilePattern, pipeNum+1)
+
+		// Create the next pipe ahead of time
+		createNamedPipe(nextPipeName)
+
+		// Open the current pipe for reading
+		// Blocks if no writer is available so do some tricks to it
+		file, err := openNonBlockingWithRetry(pipeName, waitTimeout)
+		if err != nil {
+			fmt.Printf("Error opening pipe %s: %v\n", pipeName, err)
+			// TODO clean up pipeName if necessary, eg if still exists
+			cleanUpPipe(pipeName)
+			cleanUpPipe(nextPipeName)
+			break
+		}
+
+		mu.Lock()
+		currentSegment = file
+		mu.Unlock()
+
+		// Handle the reading process
+		readSegment(segmentReader, file, pipeName)
+
+		// Increment to the next pipe
+		pipeNum++
+
+		// Clean up the current pipe after reading
+		cleanUpPipe(pipeName)
+
+		mu.Lock()
+		if isComplete {
+			cleanUpPipe(pipeName)
+			cleanUpPipe(nextPipeName)
+			mu.Unlock()
+			break
+		}
+		mu.Unlock()
+
+	}
+}
+
+func readSegment(segmentReader SegmentReader, file *os.File, pipeName string) {
+	defer file.Close()
+
+	reader := bufio.NewReader(file)
+	firstByteRead := false
+	totalBytesRead := int64(0)
+
+	buf := make([]byte, 32*1024)
+
+	// TODO should be explicitly buffered for better management
+	interfaceReader, interfaceWriter := io.Pipe()
+	defer interfaceWriter.Close()
+	segmentReader.NewSegment(interfaceReader)
+
+	for {
+		n, err := reader.Read(buf)
+		if n > 0 {
+			if !firstByteRead {
+				slog.Info("First byte read", "pipeName", pipeName)
+				firstByteRead = true
+
+			}
+			totalBytesRead += int64(n)
+			if _, err := interfaceWriter.Write(buf[:n]); err != nil {
+				if err != io.EOF {
+					slog.Info("Error writing", "pipeName", pipeName, "err", err)
+				}
+			}
+		}
+		if n == len(buf) && n < 1024*1024 {
+			newLen := int(float64(len(buf)) * 1.5)
+			slog.Info("Max buf hit, increasing", "oldSize", humanBytes(int64(len(buf))), "newSize", humanBytes(int64(newLen)))
+			buf = make([]byte, newLen)
+		}
+
+		if err != nil {
+			if err.Error() == "EOF" {
+				slog.Info("Last byte read", "pipeName", pipeName, "totalRead", humanBytes(totalBytesRead))
+			} else {
+				slog.Error("Error reading", "pipeName", pipeName, "err", err)
+			}
+			break
+		}
+	}
+}
