@@ -76,13 +76,14 @@ RUN apt-get install -y --no-install-recommends \
     libnvidia-decode-535-server \
     libnvidia-encode-535-server
 
+# Copy mediamtx and config
+RUN apt-get update && apt-get install -y curl
+COPY --from=bluenviron/mediamtx:1.9.2 /mediamtx /usr/local
+COPY mediamtx.yml .
+
 # Clean up APT cache to reduce image size
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Set environment variables for GStreamer
 ENV GST_PLUGIN_PATH=/usr/lib/x86_64-linux-gnu/gstreamer-1.0
 ENV GST_PLUGIN_SCANNER=/usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-plugin-scanner
-
-# Copy mediamtx and config
-COPY --from=bluenviron/mediamtx:1.9.2 /mediamtx /usr/local
-COPY mediamtx.yml .
