@@ -11,16 +11,16 @@ check_hf_auth() {
 # Displays help message.
 function display_help() {
     echo "Description: This script is used to download models available on the Livepeer AI Subnet."
-    echo "Usage: $0 [--alpha]"
+    echo "Usage: $0 [--beta]"
     echo "Options:"
-    echo "  --alpha  Download alpha models."
+    echo "  --beta  Download beta models."
     echo "  --restricted  Download models with a restrictive license."
     echo "  --help   Display this help message."
 }
 
-# Download recommended models during alpha phase.
-function download_alpha_models() {
-    printf "\nDownloading recommended alpha phase models...\n"
+# Download recommended models during beta phase.
+function download_beta_models() {
+    printf "\nDownloading recommended beta phase models...\n"
 
     printf "\nDownloading unrestricted models...\n"
 
@@ -35,6 +35,9 @@ function download_alpha_models() {
     # Download audio-to-text models.
     huggingface-cli download openai/whisper-large-v3 --include "*.safetensors" "*.json" --cache-dir models
 
+    # Download custom pipeline models.
+    huggingface-cli download facebook/sam2-hiera-large --include "*.pt" "*.yaml" --cache-dir models
+
     printf "\nDownloading token-gated models...\n"
 
     # Download image-to-video models (token-gated).
@@ -44,7 +47,7 @@ function download_alpha_models() {
 
 # Download all models.
 function download_all_models() {
-    download_alpha_models
+    download_beta_models
 
     printf "\nDownloading other available models...\n"
 
@@ -73,6 +76,9 @@ function download_restricted_models() {
 
     # Download text-to-image and image-to-image models.
     huggingface-cli download black-forest-labs/FLUX.1-dev --include "*.safetensors" "*.json" "*.txt" "*.model" --exclude ".onnx" ".onnx_data" --cache-dir models ${TOKEN_FLAG:+"$TOKEN_FLAG"}
+    # Download LLM models (Warning: large model size)
+    huggingface-cli download meta-llama/Meta-Llama-3.1-8B-Instruct --include "*.json" "*.bin" "*.safetensors" "*.txt" --cache-dir models
+
 }
 
 # Enable HF transfer acceleration.
@@ -87,8 +93,8 @@ MODE="all"
 for arg in "$@"
 do
     case $arg in
-        --alpha)
-            MODE="alpha"
+        --beta)
+            MODE="beta"
             shift
         ;;
         --restricted)
@@ -116,8 +122,8 @@ if ! command -v huggingface-cli > /dev/null 2>&1; then
     exit 1
 fi
 
-if [ "$MODE" = "alpha" ]; then
-    download_alpha_models
+if [ "$MODE" = "beta" ]; then
+    download_beta_models
 elif [ "$MODE" = "restricted" ]; then
     download_restricted_models
 else

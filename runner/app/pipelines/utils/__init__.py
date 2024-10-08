@@ -3,6 +3,7 @@ module.
 """
 
 from app.pipelines.utils.utils import (
+    LoraLoader,
     SafetyChecker,
     get_model_dir,
     get_model_path,

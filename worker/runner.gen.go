@@ -32,8 +32,8 @@ type APIError struct {
 	Msg string `json:"msg"`
 }
 
-// BodyAudioToTextAudioToTextPost defines model for Body_audio_to_text_audio_to_text_post.
-type BodyAudioToTextAudioToTextPost struct {
+// BodyGenAudioToText defines model for Body_genAudioToText.
+type BodyGenAudioToText struct {
 	// Audio Uploaded audio file to be transcribed.
 	Audio openapi_types.File `json:"audio"`
 
@@ -41,8 +41,8 @@ type BodyAudioToTextAudioToTextPost struct {
 	ModelId *string `json:"model_id,omitempty"`
 }
 
-// BodyImageToImageImageToImagePost defines model for Body_image_to_image_image_to_image_post.
-type BodyImageToImageImageToImagePost struct {
+// BodyGenImageToImage defines model for Body_genImageToImage.
+type BodyGenImageToImage struct {
 	// GuidanceScale Encourages model to generate images closely linked to the text prompt (higher values may reduce image quality).
 	GuidanceScale *float32 `json:"guidance_scale,omitempty"`
 
@@ -51,6 +51,9 @@ type BodyImageToImageImageToImagePost struct {
 
 	// ImageGuidanceScale Degree to which the generated image is pushed towards the initial image.
 	ImageGuidanceScale *float32 `json:"image_guidance_scale,omitempty"`
+
+	// Loras A LoRA (Low-Rank Adaptation) model and its corresponding weight for image generation. Example: { "latent-consistency/lcm-lora-sdxl": 1.0, "nerijs/pixel-art-xl": 1.2}.
+	Loras *string `json:"loras,omitempty"`
 
 	// ModelId Hugging Face model ID used for image generation.
 	ModelId *string `json:"model_id,omitempty"`
@@ -77,8 +80,8 @@ type BodyImageToImageImageToImagePost struct {
 	Strength *float32 `json:"strength,omitempty"`
 }
 
-// BodyImageToVideoImageToVideoPost defines model for Body_image_to_video_image_to_video_post.
-type BodyImageToVideoImageToVideoPost struct {
+// BodyGenImageToVideo defines model for Body_genImageToVideo.
+type BodyGenImageToVideo struct {
 	// Fps The frames per second of the generated video.
 	Fps *int `json:"fps,omitempty"`
 
@@ -110,8 +113,19 @@ type BodyImageToVideoImageToVideoPost struct {
 	Width *int `json:"width,omitempty"`
 }
 
-// BodySegmentAnything2SegmentAnything2Post defines model for Body_segment_anything_2_segment_anything_2_post.
-type BodySegmentAnything2SegmentAnything2Post struct {
+// BodyGenLLM defines model for Body_genLLM.
+type BodyGenLLM struct {
+	History     *string  `json:"history,omitempty"`
+	MaxTokens   *int     `json:"max_tokens,omitempty"`
+	ModelId     *string  `json:"model_id,omitempty"`
+	Prompt      string   `json:"prompt"`
+	Stream      *bool    `json:"stream,omitempty"`
+	SystemMsg   *string  `json:"system_msg,omitempty"`
+	Temperature *float32 `json:"temperature,omitempty"`
+}
+
+// BodyGenSegmentAnything2 defines model for Body_genSegmentAnything2.
+type BodyGenSegmentAnything2 struct {
 	// Box A length 4 array given as a box prompt to the model, in XYXY format.
 	Box *string `json:"box,omitempty"`
 
@@ -143,8 +157,8 @@ type BodySegmentAnything2SegmentAnything2Post struct {
 	ReturnLogits *bool `json:"return_logits,omitempty"`
 }
 
-// BodyUpscaleUpscalePost defines model for Body_upscale_upscale_post.
-type BodyUpscaleUpscalePost struct {
+// BodyGenUpscale defines model for Body_genUpscale.
+type BodyGenUpscale struct {
 	// Image Uploaded image to modify with the pipeline.
 	Image openapi_types.File `json:"image"`
 
@@ -184,6 +198,12 @@ type HealthCheck struct {
 type ImageResponse struct {
 	// Images The generated images.
 	Images []Media `json:"images"`
+}
+
+// LLMResponse defines model for LLMResponse.
+type LLMResponse struct {
+	Response   string `json:"response"`
+	TokensUsed int    `json:"tokens_used"`
 }
 
 // MasksResponse Response model for object segmentation.
@@ -229,6 +249,9 @@ type TextToImageParams struct {
 
 	// Height The height in pixels of the generated image.
 	Height *int `json:"height,omitempty"`
+
+	// Loras A LoRA (Low-Rank Adaptation) model and its corresponding weight for image generation. Example: { "latent-consistency/lcm-lora-sdxl": 1.0, "nerijs/pixel-art-xl": 1.2}.
+	Loras *string `json:"loras,omitempty"`
 
 	// ModelId Hugging Face model ID used for image generation.
 	ModelId *string `json:"model_id,omitempty"`
@@ -300,23 +323,26 @@ type Chunk struct {
 	Timestamp []interface{} `json:"timestamp"`
 }
 
-// AudioToTextMultipartRequestBody defines body for AudioToText for multipart/form-data ContentType.
-type AudioToTextMultipartRequestBody = BodyAudioToTextAudioToTextPost
+// GenAudioToTextMultipartRequestBody defines body for GenAudioToText for multipart/form-data ContentType.
+type GenAudioToTextMultipartRequestBody = BodyGenAudioToText
 
-// ImageToImageMultipartRequestBody defines body for ImageToImage for multipart/form-data ContentType.
-type ImageToImageMultipartRequestBody = BodyImageToImageImageToImagePost
+// GenImageToImageMultipartRequestBody defines body for GenImageToImage for multipart/form-data ContentType.
+type GenImageToImageMultipartRequestBody = BodyGenImageToImage
 
-// ImageToVideoMultipartRequestBody defines body for ImageToVideo for multipart/form-data ContentType.
-type ImageToVideoMultipartRequestBody = BodyImageToVideoImageToVideoPost
+// GenImageToVideoMultipartRequestBody defines body for GenImageToVideo for multipart/form-data ContentType.
+type GenImageToVideoMultipartRequestBody = BodyGenImageToVideo
 
-// SegmentAnything2MultipartRequestBody defines body for SegmentAnything2 for multipart/form-data ContentType.
-type SegmentAnything2MultipartRequestBody = BodySegmentAnything2SegmentAnything2Post
+// GenLLMFormdataRequestBody defines body for GenLLM for application/x-www-form-urlencoded ContentType.
+type GenLLMFormdataRequestBody = BodyGenLLM
 
-// TextToImageJSONRequestBody defines body for TextToImage for application/json ContentType.
-type TextToImageJSONRequestBody = TextToImageParams
+// GenSegmentAnything2MultipartRequestBody defines body for GenSegmentAnything2 for multipart/form-data ContentType.
+type GenSegmentAnything2MultipartRequestBody = BodyGenSegmentAnything2
 
-// UpscaleMultipartRequestBody defines body for Upscale for multipart/form-data ContentType.
-type UpscaleMultipartRequestBody = BodyUpscaleUpscalePost
+// GenTextToImageJSONRequestBody defines body for GenTextToImage for application/json ContentType.
+type GenTextToImageJSONRequestBody = TextToImageParams
+
+// GenUpscaleMultipartRequestBody defines body for GenUpscale for multipart/form-data ContentType.
+type GenUpscaleMultipartRequestBody = BodyGenUpscale
 
 // AsValidationErrorLoc0 returns the union data inside the ValidationError_Loc_Item as a ValidationErrorLoc0
 func (t ValidationError_Loc_Item) AsValidationErrorLoc0() (ValidationErrorLoc0, error) {
@@ -453,32 +479,37 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
-	// AudioToTextWithBody request with any body
-	AudioToTextWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GenAudioToTextWithBody request with any body
+	GenAudioToTextWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// Health request
 	Health(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// ImageToImageWithBody request with any body
-	ImageToImageWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GenImageToImageWithBody request with any body
+	GenImageToImageWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// ImageToVideoWithBody request with any body
-	ImageToVideoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GenImageToVideoWithBody request with any body
+	GenImageToVideoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// SegmentAnything2WithBody request with any body
-	SegmentAnything2WithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GenLLMWithBody request with any body
+	GenLLMWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// TextToImageWithBody request with any body
-	TextToImageWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GenLLMWithFormdataBody(ctx context.Context, body GenLLMFormdataRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	TextToImage(ctx context.Context, body TextToImageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GenSegmentAnything2WithBody request with any body
+	GenSegmentAnything2WithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// UpscaleWithBody request with any body
-	UpscaleWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GenTextToImageWithBody request with any body
+	GenTextToImageWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	GenTextToImage(ctx context.Context, body GenTextToImageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GenUpscaleWithBody request with any body
+	GenUpscaleWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
-func (c *Client) AudioToTextWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAudioToTextRequestWithBody(c.Server, contentType, body)
+func (c *Client) GenAudioToTextWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGenAudioToTextRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -501,8 +532,8 @@ func (c *Client) Health(ctx context.Context, reqEditors ...RequestEditorFn) (*ht
 	return c.Client.Do(req)
 }
 
-func (c *Client) ImageToImageWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewImageToImageRequestWithBody(c.Server, contentType, body)
+func (c *Client) GenImageToImageWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGenImageToImageRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -513,8 +544,8 @@ func (c *Client) ImageToImageWithBody(ctx context.Context, contentType string, b
 	return c.Client.Do(req)
 }
 
-func (c *Client) ImageToVideoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewImageToVideoRequestWithBody(c.Server, contentType, body)
+func (c *Client) GenImageToVideoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGenImageToVideoRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -525,8 +556,8 @@ func (c *Client) ImageToVideoWithBody(ctx context.Context, contentType string, b
 	return c.Client.Do(req)
 }
 
-func (c *Client) SegmentAnything2WithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSegmentAnything2RequestWithBody(c.Server, contentType, body)
+func (c *Client) GenLLMWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGenLLMRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -537,8 +568,8 @@ func (c *Client) SegmentAnything2WithBody(ctx context.Context, contentType strin
 	return c.Client.Do(req)
 }
 
-func (c *Client) TextToImageWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewTextToImageRequestWithBody(c.Server, contentType, body)
+func (c *Client) GenLLMWithFormdataBody(ctx context.Context, body GenLLMFormdataRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGenLLMRequestWithFormdataBody(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -549,8 +580,8 @@ func (c *Client) TextToImageWithBody(ctx context.Context, contentType string, bo
 	return c.Client.Do(req)
 }
 
-func (c *Client) TextToImage(ctx context.Context, body TextToImageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewTextToImageRequest(c.Server, body)
+func (c *Client) GenSegmentAnything2WithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGenSegmentAnything2RequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -561,8 +592,8 @@ func (c *Client) TextToImage(ctx context.Context, body TextToImageJSONRequestBod
 	return c.Client.Do(req)
 }
 
-func (c *Client) UpscaleWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpscaleRequestWithBody(c.Server, contentType, body)
+func (c *Client) GenTextToImageWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGenTextToImageRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -573,8 +604,32 @@ func (c *Client) UpscaleWithBody(ctx context.Context, contentType string, body i
 	return c.Client.Do(req)
 }
 
-// NewAudioToTextRequestWithBody generates requests for AudioToText with any type of body
-func NewAudioToTextRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+func (c *Client) GenTextToImage(ctx context.Context, body GenTextToImageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGenTextToImageRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GenUpscaleWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGenUpscaleRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// NewGenAudioToTextRequestWithBody generates requests for GenAudioToText with any type of body
+func NewGenAudioToTextRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -629,8 +684,8 @@ func NewHealthRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
-// NewImageToImageRequestWithBody generates requests for ImageToImage with any type of body
-func NewImageToImageRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+// NewGenImageToImageRequestWithBody generates requests for GenImageToImage with any type of body
+func NewGenImageToImageRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -658,8 +713,8 @@ func NewImageToImageRequestWithBody(server string, contentType string, body io.R
 	return req, nil
 }
 
-// NewImageToVideoRequestWithBody generates requests for ImageToVideo with any type of body
-func NewImageToVideoRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+// NewGenImageToVideoRequestWithBody generates requests for GenImageToVideo with any type of body
+func NewGenImageToVideoRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -687,8 +742,48 @@ func NewImageToVideoRequestWithBody(server string, contentType string, body io.R
 	return req, nil
 }
 
-// NewSegmentAnything2RequestWithBody generates requests for SegmentAnything2 with any type of body
-func NewSegmentAnything2RequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+// NewGenLLMRequestWithFormdataBody calls the generic GenLLM builder with application/x-www-form-urlencoded body
+func NewGenLLMRequestWithFormdataBody(server string, body GenLLMFormdataRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	bodyStr, err := runtime.MarshalForm(body, nil)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = strings.NewReader(bodyStr.Encode())
+	return NewGenLLMRequestWithBody(server, "application/x-www-form-urlencoded", bodyReader)
+}
+
+// NewGenLLMRequestWithBody generates requests for GenLLM with any type of body
+func NewGenLLMRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/llm")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGenSegmentAnything2RequestWithBody generates requests for GenSegmentAnything2 with any type of body
+func NewGenSegmentAnything2RequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -716,19 +811,19 @@ func NewSegmentAnything2RequestWithBody(server string, contentType string, body 
 	return req, nil
 }
 
-// NewTextToImageRequest calls the generic TextToImage builder with application/json body
-func NewTextToImageRequest(server string, body TextToImageJSONRequestBody) (*http.Request, error) {
+// NewGenTextToImageRequest calls the generic GenTextToImage builder with application/json body
+func NewGenTextToImageRequest(server string, body GenTextToImageJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewTextToImageRequestWithBody(server, "application/json", bodyReader)
+	return NewGenTextToImageRequestWithBody(server, "application/json", bodyReader)
 }
 
-// NewTextToImageRequestWithBody generates requests for TextToImage with any type of body
-func NewTextToImageRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+// NewGenTextToImageRequestWithBody generates requests for GenTextToImage with any type of body
+func NewGenTextToImageRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -756,8 +851,8 @@ func NewTextToImageRequestWithBody(server string, contentType string, body io.Re
 	return req, nil
 }
 
-// NewUpscaleRequestWithBody generates requests for Upscale with any type of body
-func NewUpscaleRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+// NewGenUpscaleRequestWithBody generates requests for GenUpscale with any type of body
+func NewGenUpscaleRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -828,31 +923,36 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
-	// AudioToTextWithBodyWithResponse request with any body
-	AudioToTextWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AudioToTextResponse, error)
+	// GenAudioToTextWithBodyWithResponse request with any body
+	GenAudioToTextWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenAudioToTextResponse, error)
 
 	// HealthWithResponse request
 	HealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*HealthResponse, error)
 
-	// ImageToImageWithBodyWithResponse request with any body
-	ImageToImageWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ImageToImageResponse, error)
+	// GenImageToImageWithBodyWithResponse request with any body
+	GenImageToImageWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenImageToImageResponse, error)
 
-	// ImageToVideoWithBodyWithResponse request with any body
-	ImageToVideoWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ImageToVideoResponse, error)
+	// GenImageToVideoWithBodyWithResponse request with any body
+	GenImageToVideoWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenImageToVideoResponse, error)
 
-	// SegmentAnything2WithBodyWithResponse request with any body
-	SegmentAnything2WithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SegmentAnything2Response, error)
+	// GenLLMWithBodyWithResponse request with any body
+	GenLLMWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenLLMResponse, error)
 
-	// TextToImageWithBodyWithResponse request with any body
-	TextToImageWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TextToImageResponse, error)
+	GenLLMWithFormdataBodyWithResponse(ctx context.Context, body GenLLMFormdataRequestBody, reqEditors ...RequestEditorFn) (*GenLLMResponse, error)
 
-	TextToImageWithResponse(ctx context.Context, body TextToImageJSONRequestBody, reqEditors ...RequestEditorFn) (*TextToImageResponse, error)
+	// GenSegmentAnything2WithBodyWithResponse request with any body
+	GenSegmentAnything2WithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenSegmentAnything2Response, error)
 
-	// UpscaleWithBodyWithResponse request with any body
-	UpscaleWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpscaleResponse, error)
+	// GenTextToImageWithBodyWithResponse request with any body
+	GenTextToImageWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenTextToImageResponse, error)
+
+	GenTextToImageWithResponse(ctx context.Context, body GenTextToImageJSONRequestBody, reqEditors ...RequestEditorFn) (*GenTextToImageResponse, error)
+
+	// GenUpscaleWithBodyWithResponse request with any body
+	GenUpscaleWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenUpscaleResponse, error)
 }
 
-type AudioToTextResponse struct {
+type GenAudioToTextResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *TextResponse
@@ -864,7 +964,7 @@ type AudioToTextResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r AudioToTextResponse) Status() string {
+func (r GenAudioToTextResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -872,7 +972,7 @@ func (r AudioToTextResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r AudioToTextResponse) StatusCode() int {
+func (r GenAudioToTextResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -901,7 +1001,7 @@ func (r HealthResponse) StatusCode() int {
 	return 0
 }
 
-type ImageToImageResponse struct {
+type GenImageToImageResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ImageResponse
@@ -912,7 +1012,7 @@ type ImageToImageResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r ImageToImageResponse) Status() string {
+func (r GenImageToImageResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -920,14 +1020,14 @@ func (r ImageToImageResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r ImageToImageResponse) StatusCode() int {
+func (r GenImageToImageResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type ImageToVideoResponse struct {
+type GenImageToVideoResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *VideoResponse
@@ -938,7 +1038,7 @@ type ImageToVideoResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r ImageToVideoResponse) Status() string {
+func (r GenImageToVideoResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -946,14 +1046,40 @@ func (r ImageToVideoResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r ImageToVideoResponse) StatusCode() int {
+func (r GenImageToVideoResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type SegmentAnything2Response struct {
+type GenLLMResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *LLMResponse
+	JSON400      *HTTPError
+	JSON401      *HTTPError
+	JSON422      *HTTPValidationError
+	JSON500      *HTTPError
+}
+
+// Status returns HTTPResponse.Status
+func (r GenLLMResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GenLLMResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GenSegmentAnything2Response struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *MasksResponse
@@ -964,7 +1090,7 @@ type SegmentAnything2Response struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r SegmentAnything2Response) Status() string {
+func (r GenSegmentAnything2Response) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -972,14 +1098,14 @@ func (r SegmentAnything2Response) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r SegmentAnything2Response) StatusCode() int {
+func (r GenSegmentAnything2Response) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type TextToImageResponse struct {
+type GenTextToImageResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ImageResponse
@@ -990,7 +1116,7 @@ type TextToImageResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r TextToImageResponse) Status() string {
+func (r GenTextToImageResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -998,14 +1124,14 @@ func (r TextToImageResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r TextToImageResponse) StatusCode() int {
+func (r GenTextToImageResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type UpscaleResponse struct {
+type GenUpscaleResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ImageResponse
@@ -1016,7 +1142,7 @@ type UpscaleResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r UpscaleResponse) Status() string {
+func (r GenUpscaleResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -1024,20 +1150,20 @@ func (r UpscaleResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r UpscaleResponse) StatusCode() int {
+func (r GenUpscaleResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-// AudioToTextWithBodyWithResponse request with arbitrary body returning *AudioToTextResponse
-func (c *ClientWithResponses) AudioToTextWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AudioToTextResponse, error) {
-	rsp, err := c.AudioToTextWithBody(ctx, contentType, body, reqEditors...)
+// GenAudioToTextWithBodyWithResponse request with arbitrary body returning *GenAudioToTextResponse
+func (c *ClientWithResponses) GenAudioToTextWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenAudioToTextResponse, error) {
+	rsp, err := c.GenAudioToTextWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseAudioToTextResponse(rsp)
+	return ParseGenAudioToTextResponse(rsp)
 }
 
 // HealthWithResponse request returning *HealthResponse
@@ -1049,68 +1175,85 @@ func (c *ClientWithResponses) HealthWithResponse(ctx context.Context, reqEditors
 	return ParseHealthResponse(rsp)
 }
 
-// ImageToImageWithBodyWithResponse request with arbitrary body returning *ImageToImageResponse
-func (c *ClientWithResponses) ImageToImageWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ImageToImageResponse, error) {
-	rsp, err := c.ImageToImageWithBody(ctx, contentType, body, reqEditors...)
+// GenImageToImageWithBodyWithResponse request with arbitrary body returning *GenImageToImageResponse
+func (c *ClientWithResponses) GenImageToImageWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenImageToImageResponse, error) {
+	rsp, err := c.GenImageToImageWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseImageToImageResponse(rsp)
+	return ParseGenImageToImageResponse(rsp)
 }
 
-// ImageToVideoWithBodyWithResponse request with arbitrary body returning *ImageToVideoResponse
-func (c *ClientWithResponses) ImageToVideoWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ImageToVideoResponse, error) {
-	rsp, err := c.ImageToVideoWithBody(ctx, contentType, body, reqEditors...)
+// GenImageToVideoWithBodyWithResponse request with arbitrary body returning *GenImageToVideoResponse
+func (c *ClientWithResponses) GenImageToVideoWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenImageToVideoResponse, error) {
+	rsp, err := c.GenImageToVideoWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseImageToVideoResponse(rsp)
+	return ParseGenImageToVideoResponse(rsp)
 }
 
-// SegmentAnything2WithBodyWithResponse request with arbitrary body returning *SegmentAnything2Response
-func (c *ClientWithResponses) SegmentAnything2WithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SegmentAnything2Response, error) {
-	rsp, err := c.SegmentAnything2WithBody(ctx, contentType, body, reqEditors...)
+// GenLLMWithBodyWithResponse request with arbitrary body returning *GenLLMResponse
+func (c *ClientWithResponses) GenLLMWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenLLMResponse, error) {
+	rsp, err := c.GenLLMWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseSegmentAnything2Response(rsp)
+	return ParseGenLLMResponse(rsp)
 }
 
-// TextToImageWithBodyWithResponse request with arbitrary body returning *TextToImageResponse
-func (c *ClientWithResponses) TextToImageWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*TextToImageResponse, error) {
-	rsp, err := c.TextToImageWithBody(ctx, contentType, body, reqEditors...)
+func (c *ClientWithResponses) GenLLMWithFormdataBodyWithResponse(ctx context.Context, body GenLLMFormdataRequestBody, reqEditors ...RequestEditorFn) (*GenLLMResponse, error) {
+	rsp, err := c.GenLLMWithFormdataBody(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseTextToImageResponse(rsp)
+	return ParseGenLLMResponse(rsp)
 }
 
-func (c *ClientWithResponses) TextToImageWithResponse(ctx context.Context, body TextToImageJSONRequestBody, reqEditors ...RequestEditorFn) (*TextToImageResponse, error) {
-	rsp, err := c.TextToImage(ctx, body, reqEditors...)
+// GenSegmentAnything2WithBodyWithResponse request with arbitrary body returning *GenSegmentAnything2Response
+func (c *ClientWithResponses) GenSegmentAnything2WithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenSegmentAnything2Response, error) {
+	rsp, err := c.GenSegmentAnything2WithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseTextToImageResponse(rsp)
+	return ParseGenSegmentAnything2Response(rsp)
 }
 
-// UpscaleWithBodyWithResponse request with arbitrary body returning *UpscaleResponse
-func (c *ClientWithResponses) UpscaleWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpscaleResponse, error) {
-	rsp, err := c.UpscaleWithBody(ctx, contentType, body, reqEditors...)
+// GenTextToImageWithBodyWithResponse request with arbitrary body returning *GenTextToImageResponse
+func (c *ClientWithResponses) GenTextToImageWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenTextToImageResponse, error) {
+	rsp, err := c.GenTextToImageWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUpscaleResponse(rsp)
+	return ParseGenTextToImageResponse(rsp)
 }
 
-// ParseAudioToTextResponse parses an HTTP response from a AudioToTextWithResponse call
-func ParseAudioToTextResponse(rsp *http.Response) (*AudioToTextResponse, error) {
+func (c *ClientWithResponses) GenTextToImageWithResponse(ctx context.Context, body GenTextToImageJSONRequestBody, reqEditors ...RequestEditorFn) (*GenTextToImageResponse, error) {
+	rsp, err := c.GenTextToImage(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGenTextToImageResponse(rsp)
+}
+
+// GenUpscaleWithBodyWithResponse request with arbitrary body returning *GenUpscaleResponse
+func (c *ClientWithResponses) GenUpscaleWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenUpscaleResponse, error) {
+	rsp, err := c.GenUpscaleWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGenUpscaleResponse(rsp)
+}
+
+// ParseGenAudioToTextResponse parses an HTTP response from a GenAudioToTextWithResponse call
+func ParseGenAudioToTextResponse(rsp *http.Response) (*GenAudioToTextResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &AudioToTextResponse{
+	response := &GenAudioToTextResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -1189,15 +1332,15 @@ func ParseHealthResponse(rsp *http.Response) (*HealthResponse, error) {
 	return response, nil
 }
 
-// ParseImageToImageResponse parses an HTTP response from a ImageToImageWithResponse call
-func ParseImageToImageResponse(rsp *http.Response) (*ImageToImageResponse, error) {
+// ParseGenImageToImageResponse parses an HTTP response from a GenImageToImageWithResponse call
+func ParseGenImageToImageResponse(rsp *http.Response) (*GenImageToImageResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &ImageToImageResponse{
+	response := &GenImageToImageResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -1243,15 +1386,15 @@ func ParseImageToImageResponse(rsp *http.Response) (*ImageToImageResponse, error
 	return response, nil
 }
 
-// ParseImageToVideoResponse parses an HTTP response from a ImageToVideoWithResponse call
-func ParseImageToVideoResponse(rsp *http.Response) (*ImageToVideoResponse, error) {
+// ParseGenImageToVideoResponse parses an HTTP response from a GenImageToVideoWithResponse call
+func ParseGenImageToVideoResponse(rsp *http.Response) (*GenImageToVideoResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &ImageToVideoResponse{
+	response := &GenImageToVideoResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -1297,15 +1440,69 @@ func ParseImageToVideoResponse(rsp *http.Response) (*ImageToVideoResponse, error
 	return response, nil
 }
 
-// ParseSegmentAnything2Response parses an HTTP response from a SegmentAnything2WithResponse call
-func ParseSegmentAnything2Response(rsp *http.Response) (*SegmentAnything2Response, error) {
+// ParseGenLLMResponse parses an HTTP response from a GenLLMWithResponse call
+func ParseGenLLMResponse(rsp *http.Response) (*GenLLMResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &SegmentAnything2Response{
+	response := &GenLLMResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LLMResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest HTTPValidationError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGenSegmentAnything2Response parses an HTTP response from a GenSegmentAnything2WithResponse call
+func ParseGenSegmentAnything2Response(rsp *http.Response) (*GenSegmentAnything2Response, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GenSegmentAnything2Response{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -1351,15 +1548,15 @@ func ParseSegmentAnything2Response(rsp *http.Response) (*SegmentAnything2Respons
 	return response, nil
 }
 
-// ParseTextToImageResponse parses an HTTP response from a TextToImageWithResponse call
-func ParseTextToImageResponse(rsp *http.Response) (*TextToImageResponse, error) {
+// ParseGenTextToImageResponse parses an HTTP response from a GenTextToImageWithResponse call
+func ParseGenTextToImageResponse(rsp *http.Response) (*GenTextToImageResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &TextToImageResponse{
+	response := &GenTextToImageResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -1405,15 +1602,15 @@ func ParseTextToImageResponse(rsp *http.Response) (*TextToImageResponse, error) 
 	return response, nil
 }
 
-// ParseUpscaleResponse parses an HTTP response from a UpscaleWithResponse call
-func ParseUpscaleResponse(rsp *http.Response) (*UpscaleResponse, error) {
+// ParseGenUpscaleResponse parses an HTTP response from a GenUpscaleWithResponse call
+func ParseGenUpscaleResponse(rsp *http.Response) (*GenUpscaleResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &UpscaleResponse{
+	response := &GenUpscaleResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -1463,25 +1660,28 @@ func ParseUpscaleResponse(rsp *http.Response) (*UpscaleResponse, error) {
 type ServerInterface interface {
 	// Audio To Text
 	// (POST /audio-to-text)
-	AudioToText(w http.ResponseWriter, r *http.Request)
+	GenAudioToText(w http.ResponseWriter, r *http.Request)
 	// Health
 	// (GET /health)
 	Health(w http.ResponseWriter, r *http.Request)
 	// Image To Image
 	// (POST /image-to-image)
-	ImageToImage(w http.ResponseWriter, r *http.Request)
+	GenImageToImage(w http.ResponseWriter, r *http.Request)
 	// Image To Video
 	// (POST /image-to-video)
-	ImageToVideo(w http.ResponseWriter, r *http.Request)
+	GenImageToVideo(w http.ResponseWriter, r *http.Request)
+	// LLM
+	// (POST /llm)
+	GenLLM(w http.ResponseWriter, r *http.Request)
 	// Segment Anything 2
 	// (POST /segment-anything-2)
-	SegmentAnything2(w http.ResponseWriter, r *http.Request)
+	GenSegmentAnything2(w http.ResponseWriter, r *http.Request)
 	// Text To Image
 	// (POST /text-to-image)
-	TextToImage(w http.ResponseWriter, r *http.Request)
+	GenTextToImage(w http.ResponseWriter, r *http.Request)
 	// Upscale
 	// (POST /upscale)
-	Upscale(w http.ResponseWriter, r *http.Request)
+	GenUpscale(w http.ResponseWriter, r *http.Request)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -1490,7 +1690,7 @@ type Unimplemented struct{}
 
 // Audio To Text
 // (POST /audio-to-text)
-func (_ Unimplemented) AudioToText(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) GenAudioToText(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1502,31 +1702,37 @@ func (_ Unimplemented) Health(w http.ResponseWriter, r *http.Request) {
 
 // Image To Image
 // (POST /image-to-image)
-func (_ Unimplemented) ImageToImage(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) GenImageToImage(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Image To Video
 // (POST /image-to-video)
-func (_ Unimplemented) ImageToVideo(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) GenImageToVideo(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// LLM
+// (POST /llm)
+func (_ Unimplemented) GenLLM(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Segment Anything 2
 // (POST /segment-anything-2)
-func (_ Unimplemented) SegmentAnything2(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) GenSegmentAnything2(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Text To Image
 // (POST /text-to-image)
-func (_ Unimplemented) TextToImage(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) GenTextToImage(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
 // Upscale
 // (POST /upscale)
-func (_ Unimplemented) Upscale(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) GenUpscale(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1539,14 +1745,14 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc func(http.Handler) http.Handler
 
-// AudioToText operation middleware
-func (siw *ServerInterfaceWrapper) AudioToText(w http.ResponseWriter, r *http.Request) {
+// GenAudioToText operation middleware
+func (siw *ServerInterfaceWrapper) GenAudioToText(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, HTTPBearerScopes, []string{})
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.AudioToText(w, r)
+		siw.Handler.GenAudioToText(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1571,14 +1777,14 @@ func (siw *ServerInterfaceWrapper) Health(w http.ResponseWriter, r *http.Request
 	handler.ServeHTTP(w, r.WithContext(ctx))
 }
 
-// ImageToImage operation middleware
-func (siw *ServerInterfaceWrapper) ImageToImage(w http.ResponseWriter, r *http.Request) {
+// GenImageToImage operation middleware
+func (siw *ServerInterfaceWrapper) GenImageToImage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, HTTPBearerScopes, []string{})
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ImageToImage(w, r)
+		siw.Handler.GenImageToImage(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1588,14 +1794,14 @@ func (siw *ServerInterfaceWrapper) ImageToImage(w http.ResponseWriter, r *http.R
 	handler.ServeHTTP(w, r.WithContext(ctx))
 }
 
-// ImageToVideo operation middleware
-func (siw *ServerInterfaceWrapper) ImageToVideo(w http.ResponseWriter, r *http.Request) {
+// GenImageToVideo operation middleware
+func (siw *ServerInterfaceWrapper) GenImageToVideo(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, HTTPBearerScopes, []string{})
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ImageToVideo(w, r)
+		siw.Handler.GenImageToVideo(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1605,14 +1811,14 @@ func (siw *ServerInterfaceWrapper) ImageToVideo(w http.ResponseWriter, r *http.R
 	handler.ServeHTTP(w, r.WithContext(ctx))
 }
 
-// SegmentAnything2 operation middleware
-func (siw *ServerInterfaceWrapper) SegmentAnything2(w http.ResponseWriter, r *http.Request) {
+// GenLLM operation middleware
+func (siw *ServerInterfaceWrapper) GenLLM(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, HTTPBearerScopes, []string{})
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.SegmentAnything2(w, r)
+		siw.Handler.GenLLM(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1622,14 +1828,14 @@ func (siw *ServerInterfaceWrapper) SegmentAnything2(w http.ResponseWriter, r *ht
 	handler.ServeHTTP(w, r.WithContext(ctx))
 }
 
-// TextToImage operation middleware
-func (siw *ServerInterfaceWrapper) TextToImage(w http.ResponseWriter, r *http.Request) {
+// GenSegmentAnything2 operation middleware
+func (siw *ServerInterfaceWrapper) GenSegmentAnything2(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, HTTPBearerScopes, []string{})
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.TextToImage(w, r)
+		siw.Handler.GenSegmentAnything2(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1639,14 +1845,31 @@ func (siw *ServerInterfaceWrapper) TextToImage(w http.ResponseWriter, r *http.Re
 	handler.ServeHTTP(w, r.WithContext(ctx))
 }
 
-// Upscale operation middleware
-func (siw *ServerInterfaceWrapper) Upscale(w http.ResponseWriter, r *http.Request) {
+// GenTextToImage operation middleware
+func (siw *ServerInterfaceWrapper) GenTextToImage(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, HTTPBearerScopes, []string{})
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.Upscale(w, r)
+		siw.Handler.GenTextToImage(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// GenUpscale operation middleware
+func (siw *ServerInterfaceWrapper) GenUpscale(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, HTTPBearerScopes, []string{})
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GenUpscale(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1770,25 +1993,28 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	}
 
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/audio-to-text", wrapper.AudioToText)
+		r.Post(options.BaseURL+"/audio-to-text", wrapper.GenAudioToText)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/health", wrapper.Health)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/image-to-image", wrapper.ImageToImage)
+		r.Post(options.BaseURL+"/image-to-image", wrapper.GenImageToImage)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/image-to-video", wrapper.ImageToVideo)
+		r.Post(options.BaseURL+"/image-to-video", wrapper.GenImageToVideo)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/segment-anything-2", wrapper.SegmentAnything2)
+		r.Post(options.BaseURL+"/llm", wrapper.GenLLM)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/text-to-image", wrapper.TextToImage)
+		r.Post(options.BaseURL+"/segment-anything-2", wrapper.GenSegmentAnything2)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/upscale", wrapper.Upscale)
+		r.Post(options.BaseURL+"/text-to-image", wrapper.GenTextToImage)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/upscale", wrapper.GenUpscale)
 	})
 
 	return r

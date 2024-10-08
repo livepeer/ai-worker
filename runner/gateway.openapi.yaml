@@ -11,9 +11,11 @@ servers:
 paths:
   /text-to-image:
     post:
+      tags:
+      - generate
       summary: Text To Image
       description: Generate images from text prompts.
-      operationId: text_to_image
+      operationId: genTextToImage
       requestBody:
         content:
           application/json:
@@ -27,6 +29,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ImageResponse'
+                x-speakeasy-name-override: data
         '400':
           description: Bad Request
           content:
@@ -53,16 +56,19 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
       security:
       - HTTPBearer: []
+      x-speakeasy-name-override: textToImage
   /image-to-image:
     post:
+      tags:
+      - generate
       summary: Image To Image
       description: Apply image transformations to a provided image.
-      operationId: image_to_image
+      operationId: genImageToImage
       requestBody:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Body_image_to_image_image_to_image_post'
+              $ref: '#/components/schemas/Body_genImageToImage'
         required: true
       responses:
         '200':
@@ -71,6 +77,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ImageResponse'
+                x-speakeasy-name-override: data
         '400':
           description: Bad Request
           content:
@@ -97,16 +104,19 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
       security:
       - HTTPBearer: []
+      x-speakeasy-name-override: imageToImage
   /image-to-video:
     post:
+      tags:
+      - generate
       summary: Image To Video
       description: Generate a video from a provided image.
-      operationId: image_to_video
+      operationId: genImageToVideo
       requestBody:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Body_image_to_video_image_to_video_post'
+              $ref: '#/components/schemas/Body_genImageToVideo'
         required: true
       responses:
         '200':
@@ -115,6 +125,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VideoResponse'
+                x-speakeasy-name-override: data
         '400':
           description: Bad Request
           content:
@@ -141,16 +152,19 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
       security:
       - HTTPBearer: []
+      x-speakeasy-name-override: imageToVideo
   /upscale:
     post:
+      tags:
+      - generate
       summary: Upscale
       description: Upscale an image by increasing its resolution.
-      operationId: upscale
+      operationId: genUpscale
       requestBody:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Body_upscale_upscale_post'
+              $ref: '#/components/schemas/Body_genUpscale'
         required: true
       responses:
         '200':
@@ -159,6 +173,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ImageResponse'
+                x-speakeasy-name-override: data
         '400':
           description: Bad Request
           content:
@@ -185,16 +200,19 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
       security:
       - HTTPBearer: []
+      x-speakeasy-name-override: upscale
   /audio-to-text:
     post:
+      tags:
+      - generate
       summary: Audio To Text
       description: Transcribe audio files to text.
-      operationId: audio_to_text
+      operationId: genAudioToText
       requestBody:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Body_audio_to_text_audio_to_text_post'
+              $ref: '#/components/schemas/Body_genAudioToText'
         required: true
       responses:
         '200':
@@ -203,6 +221,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TextResponse'
+                x-speakeasy-name-override: data
         '400':
           description: Bad Request
           content:
@@ -235,16 +254,19 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
       security:
       - HTTPBearer: []
+      x-speakeasy-name-override: audioToText
   /segment-anything-2:
     post:
+      tags:
+      - generate
       summary: Segment Anything 2
       description: Segment objects in an image.
-      operationId: segment_anything_2
+      operationId: genSegmentAnything2
       requestBody:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Body_segment_anything_2_segment_anything_2_post'
+              $ref: '#/components/schemas/Body_genSegmentAnything2'
         required: true
       responses:
         '200':
@@ -253,6 +275,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MasksResponse'
+                x-speakeasy-name-override: data
         '400':
           description: Bad Request
           content:
@@ -279,6 +302,54 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
       security:
       - HTTPBearer: []
+      x-speakeasy-name-override: segmentAnything2
+  /llm:
+    post:
+      tags:
+      - generate
+      summary: LLM
+      description: Generate text using a language model.
+      operationId: genLLM
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Body_genLLM'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LLMResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+      x-speakeasy-name-override: llm
 components:
   schemas:
     APIError:
@@ -292,7 +363,7 @@ components:
       - msg
       title: APIError
       description: API error response model.
-    Body_audio_to_text_audio_to_text_post:
+    Body_genAudioToText:
       properties:
         audio:
           type: string
@@ -308,8 +379,8 @@ components:
       required:
       - audio
       - model_id
-      title: Body_audio_to_text_audio_to_text_post
-    Body_image_to_image_image_to_image_post:
+      title: Body_genAudioToText
+    Body_genImageToImage:
       properties:
         prompt:
           type: string
@@ -324,6 +395,13 @@ components:
           type: string
           title: Model Id
           description: Hugging Face model ID used for image generation.
+          default: ''
+        loras:
+          type: string
+          title: Loras
+          description: 'A LoRA (Low-Rank Adaptation) model and its corresponding weight
+            for image generation. Example: { "latent-consistency/lcm-lora-sdxl": 1.0,
+            "nerijs/pixel-art-xl": 1.2}.'
           default: ''
         strength:
           type: number
@@ -375,8 +453,8 @@ components:
       - prompt
       - image
       - model_id
-      title: Body_image_to_image_image_to_image_post
-    Body_image_to_video_image_to_video_post:
+      title: Body_genImageToImage
+    Body_genImageToVideo:
       properties:
         image:
           type: string
@@ -435,8 +513,42 @@ components:
       required:
       - image
       - model_id
-      title: Body_image_to_video_image_to_video_post
-    Body_segment_anything_2_segment_anything_2_post:
+      title: Body_genImageToVideo
+    Body_genLLM:
+      properties:
+        prompt:
+          type: string
+          title: Prompt
+        model_id:
+          type: string
+          title: Model Id
+          default: ''
+        system_msg:
+          type: string
+          title: System Msg
+          default: ''
+        temperature:
+          type: number
+          title: Temperature
+          default: 0.7
+        max_tokens:
+          type: integer
+          title: Max Tokens
+          default: 256
+        history:
+          type: string
+          title: History
+          default: '[]'
+        stream:
+          type: boolean
+          title: Stream
+          default: false
+      type: object
+      required:
+      - prompt
+      - model_id
+      title: Body_genLLM
+    Body_genSegmentAnything2:
       properties:
         media_file:
           type: string
@@ -495,8 +607,8 @@ components:
       required:
       - media_file
       - model_id
-      title: Body_segment_anything_2_segment_anything_2_post
-    Body_upscale_upscale_post:
+      title: Body_genSegmentAnything2
+    Body_genUpscale:
       properties:
         prompt:
           type: string
@@ -533,7 +645,7 @@ components:
       - prompt
       - image
       - model_id
-      title: Body_upscale_upscale_post
+      title: Body_genUpscale
     HTTPError:
       properties:
         detail:
@@ -567,6 +679,19 @@ components:
       - images
       title: ImageResponse
       description: Response model for image generation.
+    LLMResponse:
+      properties:
+        response:
+          type: string
+          title: Response
+        tokens_used:
+          type: integer
+          title: Tokens Used
+      type: object
+      required:
+      - response
+      - tokens_used
+      title: LLMResponse
     MasksResponse:
       properties:
         masks:
@@ -640,6 +765,13 @@ components:
           type: string
           title: Model Id
           description: Hugging Face model ID used for image generation.
+          default: ''
+        loras:
+          type: string
+          title: Loras
+          description: 'A LoRA (Low-Rank Adaptation) model and its corresponding weight
+            for image generation. Example: { "latent-consistency/lcm-lora-sdxl": 1.0,
+            "nerijs/pixel-art-xl": 1.2}.'
           default: ''
         prompt:
           type: string
