@@ -1,16 +1,12 @@
 import logging
 import os
-from typing import List
 
 import torch
 from app.pipelines.base import Pipeline
 from app.pipelines.utils import get_model_dir, get_torch_device
-from app.pipelines.utils.audio import AudioConverter
-from fastapi import File, UploadFile
 from huggingface_hub import file_download
 from transformers import BlipProcessor, BlipForConditionalGeneration
 from PIL import Image
-import requests
 
 logger = logging.getLogger(__name__)
 
@@ -53,9 +49,7 @@ class ImageToTextPipeline(Pipeline):
 
     def __call__(self, prompt: str, image: Image, **kwargs) -> str:
         inputs = self.processor(image, prompt, return_tensors="pt").to(self.torch_device)
-
         out = self.model.generate(**inputs)
-        print("generate success")
 
         return self.processor.decode(out[0], skip_special_tokens=True)
 

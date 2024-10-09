@@ -4,7 +4,6 @@ from typing import Annotated
 
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
-# from app.pipelines.utils.image import ImageConversionError
 from app.routes.util import HTTPError, TextResponse, file_exceeds_max_size, http_error
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
@@ -31,32 +30,6 @@ RESPONSES = {
     status.HTTP_413_REQUEST_ENTITY_TOO_LARGE: {"model": HTTPError},
     status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPError},
 }
-
-
-def handle_pipeline_error(e: Exception) -> JSONResponse:
-    """Handles exceptions raised during image processing.
-
-    Args:
-        e: The exception raised during image processing.
-
-    Returns:
-        A JSONResponse with the appropriate error message and status code.
-    """
-    logger.error(f"Image processing error: {str(e)}")  # Log the detailed error
-    if "Soundfile is either not in the correct format or is malformed" in str(
-        e
-    ):
-        # ) or isinstance(e, ImageConversionError):
-        status_code = status.HTTP_415_UNSUPPORTED_MEDIA_TYPE
-        error_message = "Unsupported image format or malformed file."
-    else:
-        status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-        error_message = "Internal server error during image processing."
-
-    return JSONResponse(
-        status_code=status_code,
-        content=http_error(error_message),
-    )
 
 
 @router.post(
@@ -115,6 +88,11 @@ async def image_to_text(
 
     image = Image.open(image.file).convert("RGB")
     try:
-        return TextResponse(text=pipeline(prompt=prompt, image=image), chunks=[])
+        return TextResponse(text=pipeline(prompt=prompt, image=image))
     except Exception as e:
-        return handle_pipeline_error(e)
+        logger.error(f"ImageToTextPipeline error: {e}")
+        logger.exception(e)
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=http_error("ImageToTextPipeline error"),
+        )
