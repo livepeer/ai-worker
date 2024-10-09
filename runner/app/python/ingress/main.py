@@ -2,20 +2,22 @@ import sys
 import gi
 import zmq
 import time
+import argparse
 
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GLib
 
 class VideoIngress:
-    def __init__(self):
+    def __init__(self, fd):
         Gst.init(None)
         
         self.pipeline = Gst.Pipeline.new("video-ingress")
         
         # Create elements
-        self.src = Gst.ElementFactory.make("filesrc", "file-source")
-        self.decodebin = Gst.ElementFactory.make("decodebin", "decode-bin")
+        self.src = Gst.ElementFactory.make("fdsrc", "fd-source")
+        self.tsdemux = Gst.ElementFactory.make("tsdemux", "ts-demux")
         self.queue = Gst.ElementFactory.make("queue", "queue")
+        self.decodebin = Gst.ElementFactory.make("decodebin", "decode-bin")
         self.videoconvert = Gst.ElementFactory.make("videoconvert", "video-convert")
         self.videoscale = Gst.ElementFactory.make("videoscale", "video-scale")
         self.capsfilter = Gst.ElementFactory.make("capsfilter", "caps-filter")
@@ -23,7 +25,7 @@ class VideoIngress:
         self.appsink = Gst.ElementFactory.make("appsink", "app-sink")
         
         # Set properties
-        self.src.set_property("location", "10s.mp4")  # Replace with your MP4 file path
+        self.src.set_property("fd", fd)
         self.queue.set_property("max-size-buffers", 1)
         self.queue.set_property("max-size-time", 0)
         self.queue.set_property("max-size-bytes", 0)
@@ -33,24 +35,22 @@ class VideoIngress:
         self.appsink.set_property("sync", False)
         
         # Add elements to pipeline
-        self.pipeline.add(self.src)
-        self.pipeline.add(self.decodebin)
-        self.pipeline.add(self.queue)
-        self.pipeline.add(self.videoconvert)
-        self.pipeline.add(self.videoscale)
-        self.pipeline.add(self.capsfilter)
-        self.pipeline.add(self.jpegenc)
-        self.pipeline.add(self.appsink)
+        elements = [self.src, self.tsdemux, self.queue, self.decodebin, 
+                    self.videoconvert, self.videoscale, self.capsfilter, 
+                    self.jpegenc, self.appsink]
+        for element in elements:
+            self.pipeline.add(element)
         
         # Link elements
-        self.src.link(self.decodebin)
-        self.queue.link(self.videoconvert)
+        self.src.link(self.tsdemux)
+        self.queue.link(self.decodebin)
         self.videoconvert.link(self.videoscale)
         self.videoscale.link(self.capsfilter)
         self.capsfilter.link(self.jpegenc)
         self.jpegenc.link(self.appsink)
         
-        # Connect pad-added signal for decodebin
+        # Connect pad-added signals
+        self.tsdemux.connect("pad-added", self.on_pad_added)
         self.decodebin.connect("pad-added", self.on_pad_added)
         
         # Set up ZMQ PUB socket
@@ -68,8 +68,11 @@ class VideoIngress:
         self.start_time = time.time()
 
     def on_pad_added(self, element, pad):
-        sink_pad = self.queue.get_static_pad("sink")
-        pad.link(sink_pad)
+        if pad.get_direction() == Gst.PadDirection.SRC:
+            if element == self.tsdemux:
+                pad.link(self.queue.get_static_pad("sink"))
+            elif element == self.decodebin:
+                pad.link(self.videoconvert.get_static_pad("sink"))
 
     def on_new_sample(self, sink):
         sample = sink.emit("pull-sample")
@@ -116,8 +119,13 @@ class VideoIngress:
     def on_message(self, bus, message, loop):
         t = message.type
         if t == Gst.MessageType.EOS:
-            print("End-of-stream")
-            loop.quit()
+            print("End-of-stream reached, looping back to start")
+            # Seek back to the start of the file
+            self.pipeline.seek_simple(
+                Gst.Format.TIME,
+                Gst.SeekFlags.FLUSH | Gst.SeekFlags.KEY_UNIT,
+                0
+            )
         elif t == Gst.MessageType.ERROR:
             err, debug = message.parse_error()
             print(f"Error: {err.message}")
@@ -126,5 +134,9 @@ class VideoIngress:
             loop.quit()
 
 if __name__ == "__main__":
-    ingress = VideoIngress()
+    parser = argparse.ArgumentParser(description="Video Ingress from MPEG-TS stream")
+    parser.add_argument("--stream", type=int, help="File descriptor for the input stream", default=0)
+    args = parser.parse_args()
+
+    ingress = VideoIngress(args.stream)
     ingress.run()
