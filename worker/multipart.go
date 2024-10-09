@@ -364,6 +364,7 @@ func NewSegmentAnything2MultipartWriter(w io.Writer, req GenSegmentAnything2Mult
 	return mw, nil
 }
 
+
 // func NewSegmentAnything2VideoMultipartWriter(w io.Writer, req GenSegmentAnything2MultipartRequestBody) (*multipart.Writer, error) {
 // 	mw := multipart.NewWriter(w)
 // 	writer, err := mw.CreateFormFile("media_file", req.Image.Filename())

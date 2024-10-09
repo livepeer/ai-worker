@@ -10,6 +10,7 @@ from app.routes import (
     image_to_image,
     image_to_video,
     segment_anything_2,
+    segment_anything_2_video,
     text_to_image,
     upscale,
     llm
@@ -124,6 +125,7 @@ def write_openapi(fname: str, entrypoint: str = "runner", version: str = "0.0.0"
     app.include_router(upscale.router)
     app.include_router(audio_to_text.router)
     app.include_router(segment_anything_2.router)
+    app.include_router(segment_anything_2_video.router)
     app.include_router(llm.router)
 
     logger.info(f"Generating OpenAPI schema for '{entrypoint}' entrypoint...")

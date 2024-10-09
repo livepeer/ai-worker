@@ -52,9 +52,6 @@ class MasksResponse(BaseModel):
     logits: str = Field(
         ..., description="The raw, unnormalized predictions (logits) for the masks."
     )
-    video_segments: List[VideoSegmentResponse] = Field(
-        ..., description="Response from video segmentation"
-    )
 
 
 

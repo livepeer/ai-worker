@@ -9,7 +9,6 @@ from app.pipelines.base import Pipeline
 from app.routes.util import (
     HTTPError,
     InferenceError,
-    MasksResponse,
     VideoSegmentResponse,
     http_error,
     json_str_to_np_array,
@@ -37,19 +36,18 @@ RESPONSES = {
 # OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373.
 @router.post(
     "/segment-anything-2-video",
-    response_model=MasksResponse,
+    response_model=VideoSegmentResponse,
     responses=RESPONSES,
     description="Segment objects in an image.",
 )
 @router.post(
     "/segment-anything-2-video/",
-    response_model=MasksResponse,
+    response_model=VideoSegmentResponse,
     responses=RESPONSES,
     include_in_schema=False,
 )
 async def segment_anything_2_video(
     media_file: Annotated[
-        # UploadFile, File(description="Image to segment.", media_type="image/*")
         UploadFile, File(description="Media file to segment.", media_type="image/*,video/mp4")
     ],
     model_id: Annotated[
@@ -203,12 +201,7 @@ async def segment_anything_2_video(
         # print("video_segment_responses:", video_segment_responses)
 
         # TODO: Return response in some usable format
-        return MasksResponse(
-            masks="",
-            scores="",
-            logits="",
-            video_segments=video_segment_responses
-        )
+        return video_segment_responses
 
         # else:
         #     raise InferenceError(f"Unsupported media type: {media_file.content_type}")

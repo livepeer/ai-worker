@@ -314,6 +314,50 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: segmentAnything2
+  /segment-anything-2-video:
+    post:
+      summary: Segment Anything 2 Video
+      description: Segment objects in an image.
+      operationId: segment_anything_2_video_segment_anything_2_video_post
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_segment_anything_2_video_segment_anything_2_video_post'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoSegmentResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
   /llm:
     post:
       tags:
@@ -646,6 +690,65 @@ components:
       - prompt
       - image
       title: Body_genUpscale
+    Body_segment_anything_2_video_segment_anything_2_video_post:
+      properties:
+        media_file:
+          type: string
+          format: binary
+          title: Media File
+          description: Media file to segment.
+        model_id:
+          type: string
+          title: Model Id
+          description: Hugging Face model ID used for image generation.
+          default: ''
+        point_coords:
+          type: string
+          title: Point Coords
+          description: Nx2 array of point prompts to the model, where each point is
+            in (X,Y) in pixels.
+        point_labels:
+          type: string
+          title: Point Labels
+          description: Labels for the point prompts, where 1 indicates a foreground
+            point and 0 indicates a background point.
+        box:
+          type: string
+          title: Box
+          description: A length 4 array given as a box prompt to the model, in XYXY
+            format.
+        mask_input:
+          type: string
+          title: Mask Input
+          description: A low-resolution mask input to the model, typically from a
+            previous prediction iteration, with the form 1xHxW (H=W=256 for SAM).
+        multimask_output:
+          type: boolean
+          title: Multimask Output
+          description: If true, the model will return three masks for ambiguous input
+            prompts, often producing better masks than a single prediction.
+          default: true
+        return_logits:
+          type: boolean
+          title: Return Logits
+          description: If true, returns un-thresholded mask logits instead of a binary
+            mask.
+          default: true
+        normalize_coords:
+          type: boolean
+          title: Normalize Coords
+          description: If true, the point coordinates will be normalized to the range
+            [0,1], with point_coords expected to be with respect to image dimensions.
+          default: true
+        frame_idx:
+          type: integer
+          title: Frame Idx
+          description: Frame index reference for (required video file input only)
+          default: 0
+      type: object
+      required:
+      - media_file
+      title: Body_segment_anything_2_video_segment_anything_2_video_post
     HTTPError:
       properties:
         detail:
@@ -714,18 +817,11 @@ components:
           type: string
           title: Logits
           description: The raw, unnormalized predictions (logits) for the masks.
-        video_segments:
-          items:
-            $ref: '#/components/schemas/VideoSegmentResponse'
-          type: array
-          title: Video Segments
-          description: Response from video segmentation
       type: object
       required:
       - masks
       - scores
       - logits
-      - video_segments
       title: MasksResponse
       description: Response model for object segmentation.
     Media:
