@@ -66,6 +66,8 @@ function download_all_models() {
     # Download image-to-video models.
     huggingface-cli download stabilityai/stable-video-diffusion-img2vid-xt --include "*.fp16.safetensors" "*.json" --cache-dir models
 
+    #Download frame-interpolation model.
+    wget https://github.com/dajes/frame-interpolation-pytorch/releases/download/v1.0.2/film_net_fp16.pt -O /models/film_net_fp16.pt
     # Custom pipeline models.
     huggingface-cli download facebook/sam2-hiera-large --include "*.pt" "*.yaml" --cache-dir models
 }
@@ -100,7 +102,7 @@ do
         --restricted)
             MODE="restricted"
             shift
-        ;;  
+        ;;
         --help)
             display_help
             exit 0

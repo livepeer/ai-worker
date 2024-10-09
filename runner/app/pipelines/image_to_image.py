@@ -30,7 +30,6 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 logger = logging.getLogger(__name__)
 
-
 class ModelName(Enum):
     """Enumeration mapping model names to their corresponding IDs."""
 

@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from typing import List, Optional, Tuple
 
 import PIL
@@ -19,7 +20,6 @@ from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 logger = logging.getLogger(__name__)
-
 
 class UpscalePipeline(Pipeline):
     def __init__(self, model_id: str):
@@ -86,7 +86,7 @@ class UpscalePipeline(Pipeline):
         elif deepcache_enabled:
             logger.warning(
                 "DeepCache is not supported for Lightning or Turbo models. "
-                "TextToImagePipeline will NOT be optimized with DeepCache for %s",
+                "UpscalingPiepline will NOT be optimized with DeepCache for %s",
                 model_id,
             )
 
@@ -113,7 +113,6 @@ class UpscalePipeline(Pipeline):
             kwargs["num_inference_steps"] is None or kwargs["num_inference_steps"] < 1
         ):
             del kwargs["num_inference_steps"]
-
         output = self.ldm(prompt, image=image, **kwargs)
 
         if safety_check:

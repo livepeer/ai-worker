@@ -29,7 +29,6 @@ from safetensors.torch import load_file
 
 logger = logging.getLogger(__name__)
 
-
 class ModelName(Enum):
     """Enumeration mapping model names to their corresponding IDs."""
 
@@ -174,8 +173,6 @@ class TextToImagePipeline(Pipeline):
 
             self.ldm = compile_model(self.ldm)
 
-            # Warm-up the pipeline.
-            # TODO: Not yet supported for TextToImagePipeline.
             if os.getenv("SFAST_WARMUP", "true").lower() == "true":
                 logger.warning(
                     "The 'SFAST_WARMUP' flag is not yet supported for the "
