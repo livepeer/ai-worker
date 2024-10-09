@@ -16,7 +16,6 @@ from app.routes.utils import (
     EncodedFileResponse
 )
 
-
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
