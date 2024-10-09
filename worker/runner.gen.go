@@ -184,6 +184,12 @@ type EncodedFileResponse struct {
 	FileSize int `json:"file_size"`
 }
 
+// HTTPError HTTP error response model.
+type HTTPError struct {
+	// Detail Detailed error information.
+	Detail APIError `json:"detail"`
+}
+
 // HTTPValidationError defines model for HTTPValidationError.
 type HTTPValidationError struct {
 	Detail *[]ValidationError `json:"detail,omitempty"`
@@ -309,17 +315,6 @@ type ValidationError_Loc_Item struct {
 type VideoResponse struct {
 	// Frames The generated video frames.
 	Frames [][]Media `json:"frames"`
-}
-
-// AppRoutesTextToSpeechHTTPError defines model for app__routes__text_to_speech__HTTPError.
-type AppRoutesTextToSpeechHTTPError struct {
-	Detail string `json:"detail"`
-}
-
-// AppRoutesUtilHTTPError HTTP error response model.
-type AppRoutesUtilHTTPError struct {
-	// Detail Detailed error information.
-	Detail APIError `json:"detail"`
 }
 
 // Chunk A chunk of text with a timestamp.
@@ -1041,11 +1036,11 @@ type GenAudioToTextResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *TextResponse
-	JSON400      *AppRoutesUtilHTTPError
-	JSON401      *AppRoutesUtilHTTPError
-	JSON413      *AppRoutesUtilHTTPError
+	JSON400      *HTTPError
+	JSON401      *HTTPError
+	JSON413      *HTTPError
 	JSON422      *HTTPValidationError
-	JSON500      *AppRoutesUtilHTTPError
+	JSON500      *HTTPError
 }
 
 // Status returns HTTPResponse.Status
@@ -1090,10 +1085,10 @@ type GenImageToImageResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ImageResponse
-	JSON400      *AppRoutesUtilHTTPError
-	JSON401      *AppRoutesUtilHTTPError
+	JSON400      *HTTPError
+	JSON401      *HTTPError
 	JSON422      *HTTPValidationError
-	JSON500      *AppRoutesUtilHTTPError
+	JSON500      *HTTPError
 }
 
 // Status returns HTTPResponse.Status
@@ -1116,10 +1111,10 @@ type GenImageToVideoResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *VideoResponse
-	JSON400      *AppRoutesUtilHTTPError
-	JSON401      *AppRoutesUtilHTTPError
+	JSON400      *HTTPError
+	JSON401      *HTTPError
 	JSON422      *HTTPValidationError
-	JSON500      *AppRoutesUtilHTTPError
+	JSON500      *HTTPError
 }
 
 // Status returns HTTPResponse.Status
@@ -1142,10 +1137,10 @@ type GenLLMResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *LLMResponse
-	JSON400      *AppRoutesUtilHTTPError
-	JSON401      *AppRoutesUtilHTTPError
+	JSON400      *HTTPError
+	JSON401      *HTTPError
 	JSON422      *HTTPValidationError
-	JSON500      *AppRoutesUtilHTTPError
+	JSON500      *HTTPError
 }
 
 // Status returns HTTPResponse.Status
@@ -1168,10 +1163,10 @@ type GenSegmentAnything2Response struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *MasksResponse
-	JSON400      *AppRoutesUtilHTTPError
-	JSON401      *AppRoutesUtilHTTPError
+	JSON400      *HTTPError
+	JSON401      *HTTPError
 	JSON422      *HTTPValidationError
-	JSON500      *AppRoutesUtilHTTPError
+	JSON500      *HTTPError
 }
 
 // Status returns HTTPResponse.Status
@@ -1194,10 +1189,10 @@ type GenTextToImageResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ImageResponse
-	JSON400      *AppRoutesUtilHTTPError
-	JSON401      *AppRoutesUtilHTTPError
+	JSON400      *HTTPError
+	JSON401      *HTTPError
 	JSON422      *HTTPValidationError
-	JSON500      *AppRoutesUtilHTTPError
+	JSON500      *HTTPError
 }
 
 // Status returns HTTPResponse.Status
@@ -1220,10 +1215,10 @@ type GenTextToSpeechResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *EncodedFileResponse
-	JSON400      *AppRoutesTextToSpeechHTTPError
-	JSON401      *AppRoutesTextToSpeechHTTPError
+	JSON400      *HTTPError
+	JSON401      *HTTPError
 	JSON422      *HTTPValidationError
-	JSON500      *AppRoutesTextToSpeechHTTPError
+	JSON500      *HTTPError
 }
 
 // Status returns HTTPResponse.Status
@@ -1246,10 +1241,10 @@ type GenUpscaleResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ImageResponse
-	JSON400      *AppRoutesUtilHTTPError
-	JSON401      *AppRoutesUtilHTTPError
+	JSON400      *HTTPError
+	JSON401      *HTTPError
 	JSON422      *HTTPValidationError
-	JSON500      *AppRoutesUtilHTTPError
+	JSON500      *HTTPError
 }
 
 // Status returns HTTPResponse.Status
@@ -1395,21 +1390,21 @@ func ParseGenAudioToTextResponse(rsp *http.Response) (*GenAudioToTextResponse, e
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest AppRoutesUtilHTTPError
+		var dest HTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest AppRoutesUtilHTTPError
+		var dest HTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
-		var dest AppRoutesUtilHTTPError
+		var dest HTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1423,7 +1418,7 @@ func ParseGenAudioToTextResponse(rsp *http.Response) (*GenAudioToTextResponse, e
 		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest AppRoutesUtilHTTPError
+		var dest HTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1482,14 +1477,14 @@ func ParseGenImageToImageResponse(rsp *http.Response) (*GenImageToImageResponse,
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest AppRoutesUtilHTTPError
+		var dest HTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest AppRoutesUtilHTTPError
+		var dest HTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1503,7 +1498,7 @@ func ParseGenImageToImageResponse(rsp *http.Response) (*GenImageToImageResponse,
 		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest AppRoutesUtilHTTPError
+		var dest HTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1536,14 +1531,14 @@ func ParseGenImageToVideoResponse(rsp *http.Response) (*GenImageToVideoResponse,
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest AppRoutesUtilHTTPError
+		var dest HTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest AppRoutesUtilHTTPError
+		var dest HTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1557,7 +1552,7 @@ func ParseGenImageToVideoResponse(rsp *http.Response) (*GenImageToVideoResponse,
 		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest AppRoutesUtilHTTPError
+		var dest HTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1590,14 +1585,14 @@ func ParseGenLLMResponse(rsp *http.Response) (*GenLLMResponse, error) {
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest AppRoutesUtilHTTPError
+		var dest HTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest AppRoutesUtilHTTPError
+		var dest HTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1611,7 +1606,7 @@ func ParseGenLLMResponse(rsp *http.Response) (*GenLLMResponse, error) {
 		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest AppRoutesUtilHTTPError
+		var dest HTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1644,14 +1639,14 @@ func ParseGenSegmentAnything2Response(rsp *http.Response) (*GenSegmentAnything2R
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest AppRoutesUtilHTTPError
+		var dest HTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest AppRoutesUtilHTTPError
+		var dest HTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1665,7 +1660,7 @@ func ParseGenSegmentAnything2Response(rsp *http.Response) (*GenSegmentAnything2R
 		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest AppRoutesUtilHTTPError
+		var dest HTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1698,14 +1693,14 @@ func ParseGenTextToImageResponse(rsp *http.Response) (*GenTextToImageResponse, e
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest AppRoutesUtilHTTPError
+		var dest HTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest AppRoutesUtilHTTPError
+		var dest HTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1719,7 +1714,7 @@ func ParseGenTextToImageResponse(rsp *http.Response) (*GenTextToImageResponse, e
 		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest AppRoutesUtilHTTPError
+		var dest HTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1752,14 +1747,14 @@ func ParseGenTextToSpeechResponse(rsp *http.Response) (*GenTextToSpeechResponse,
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest AppRoutesTextToSpeechHTTPError
+		var dest HTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest AppRoutesTextToSpeechHTTPError
+		var dest HTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1773,7 +1768,7 @@ func ParseGenTextToSpeechResponse(rsp *http.Response) (*GenTextToSpeechResponse,
 		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest AppRoutesTextToSpeechHTTPError
+		var dest HTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1806,14 +1801,14 @@ func ParseGenUpscaleResponse(rsp *http.Response) (*GenUpscaleResponse, error) {
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest AppRoutesUtilHTTPError
+		var dest HTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest AppRoutesUtilHTTPError
+		var dest HTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1827,7 +1822,7 @@ func ParseGenUpscaleResponse(rsp *http.Response) (*GenUpscaleResponse, error) {
 		response.JSON422 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest AppRoutesUtilHTTPError
+		var dest HTTPError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -2232,70 +2227,69 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"F+J4ApYfN/Le39z/fwAAAP//1qJBhcVZAAA=",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
