@@ -1,0 +1,84 @@
+# Stage 1: Build FFmpeg with the necessary libraries
+ARG BASE_IMAGE=livepeer/ai-runner:base
+FROM ${BASE_IMAGE}
+
+# Install necessary packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    autoconf automake build-essential cmake git-core libtool pkg-config wget \
+    nasm yasm zlib1g-dev libpng-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install NVIDIA headers for NVENC/NVDEC
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    nvidia-cuda-dev nvidia-cuda-toolkit nvidia-cuda-toolkit-gcc && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set up environment variables
+ENV NV_CODEC_HEADERS=/usr/local/cuda/include/ffnvcodec/
+RUN git clone -b n12.2.72.0 --depth 1 https://git.videolan.org/git/ffmpeg/nv-codec-headers.git && \
+    cd nv-codec-headers && \
+    make && \
+    make install && \
+    cd .. && rm -rf nv-codec-headers
+
+# Clone the FFmpeg repository and checkout the latest release
+RUN git clone --branch n7.0.2 --depth 1 https://github.com/FFmpeg/FFmpeg.git ffmpeg
+
+# Build FFmpeg with static linking and the desired hardware-accelerated features
+RUN cd ffmpeg && \
+    ./configure --prefix=/compiled \
+                --pkg-config-flags="--static" \
+                --extra-cflags="-I/ffmpeg_build/include -I/usr/local/cuda/include" \
+                --extra-ldflags="-L/ffmpeg_build/lib -L/usr/local/cuda/lib64" \
+                --extra-libs="-lpthread -lm" \
+                --enable-nonfree \
+                --enable-cuda-nvcc \
+                --enable-cuda \
+                --enable-libnpp \
+                --enable-cuvid \
+                --enable-nvenc \
+                --enable-nvdec \
+                --enable-static \
+                --disable-shared \
+                --disable-debug \
+                --disable-doc && \
+    make -j$(nproc) && \
+    make install && \
+    make distclean
+
+# Copy the compiled FFmpeg binaries to /usr/local
+RUN cp -R /compiled/* /usr/local/
+
+# Install necessary dependencies
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    libgstreamer1.0-dev \
+    libgstreamer-plugins-base1.0-dev \
+    libgstreamer-plugins-bad1.0-dev \
+    gstreamer1.0-plugins-base \
+    gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-bad \
+    gstreamer1.0-plugins-ugly \
+    gstreamer1.0-libav \
+    gstreamer1.0-tools \
+    gstreamer1.0-x \
+    gstreamer1.0-alsa \
+    gstreamer1.0-gl \
+    gstreamer1.0-gtk3 \
+    gstreamer1.0-qt5 \
+    gstreamer1.0-pulseaudio \
+    libgstrtspserver-1.0-dev \
+    libgirepository1.0-dev \
+    python3-gst-1.0
+
+# Install NVIDIA codec libraries for hardware acceleration
+# Note: The exact package names might vary depending on your NVIDIA driver version
+RUN apt-get install -y --no-install-recommends \
+    libnvidia-decode-535-server \
+    libnvidia-encode-535-server 
+
+# Clean up APT cache to reduce image size
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Set environment variables for GStreamer
+ENV GST_PLUGIN_PATH=/usr/lib/x86_64-linux-gnu/gstreamer-1.0
+ENV GST_PLUGIN_SCANNER=/usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-plugin-scanner
