@@ -5,7 +5,7 @@
 
 	// Image to use for the dev container. More info: https://containers.dev/guide/dockerfile.
 	"build": {
-		"dockerfile": "../dev/Dockerfile.debug"
+		"dockerfile": "../Dockerfile"
 	},
 	"runArgs": [
 		"--gpus=all"
@@ -26,8 +26,7 @@
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	"forwardPorts": [
-		8000,
-		8700
+		8000
 	],
 
 	// Use 'mounts' to make a list of local folders available inside the container.
