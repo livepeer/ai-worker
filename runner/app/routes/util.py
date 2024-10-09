@@ -51,17 +51,11 @@ class chunk(BaseModel):
     text: str = Field(..., description="The text of the chunk.")
 
 
-class TextChunksResponse(BaseModel):
-    """Response model for text generation."""
-
-    text: str = Field(..., description="The generated text.")
-    chunks: List[chunk] = Field(..., description="The generated text chunks.")
-
-
 class TextResponse(BaseModel):
     """Response model for text generation."""
 
     text: str = Field(..., description="The generated text.")
+    chunks: List[chunk] = Field(..., description="The generated text chunks.")
 
 
 class LLMResponse(BaseModel):

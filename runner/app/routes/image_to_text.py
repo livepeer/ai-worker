@@ -88,7 +88,7 @@ async def image_to_text(
 
     image = Image.open(image.file).convert("RGB")
     try:
-        return TextResponse(text=pipeline(prompt=prompt, image=image))
+        return JSONResponse(content={"text": pipeline(prompt=prompt, image=image)})
     except Exception as e:
         logger.error(f"ImageToTextPipeline error: {e}")
         logger.exception(e)
