@@ -46,19 +46,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/app__routes__util__HTTPError'
+                $ref: '#/components/schemas/HTTPError'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/app__routes__util__HTTPError'
+                $ref: '#/components/schemas/HTTPError'
         '500':
           description: Internal Server Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/app__routes__util__HTTPError'
+                $ref: '#/components/schemas/HTTPError'
         '422':
           description: Validation Error
           content:
@@ -94,19 +94,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/app__routes__util__HTTPError'
+                $ref: '#/components/schemas/HTTPError'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/app__routes__util__HTTPError'
+                $ref: '#/components/schemas/HTTPError'
         '500':
           description: Internal Server Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/app__routes__util__HTTPError'
+                $ref: '#/components/schemas/HTTPError'
         '422':
           description: Validation Error
           content:
@@ -142,19 +142,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/app__routes__util__HTTPError'
+                $ref: '#/components/schemas/HTTPError'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/app__routes__util__HTTPError'
+                $ref: '#/components/schemas/HTTPError'
         '500':
           description: Internal Server Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/app__routes__util__HTTPError'
+                $ref: '#/components/schemas/HTTPError'
         '422':
           description: Validation Error
           content:
@@ -190,19 +190,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/app__routes__util__HTTPError'
+                $ref: '#/components/schemas/HTTPError'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/app__routes__util__HTTPError'
+                $ref: '#/components/schemas/HTTPError'
         '500':
           description: Internal Server Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/app__routes__util__HTTPError'
+                $ref: '#/components/schemas/HTTPError'
         '422':
           description: Validation Error
           content:
@@ -238,25 +238,25 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/app__routes__util__HTTPError'
+                $ref: '#/components/schemas/HTTPError'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/app__routes__util__HTTPError'
+                $ref: '#/components/schemas/HTTPError'
         '413':
           description: Request Entity Too Large
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/app__routes__util__HTTPError'
+                $ref: '#/components/schemas/HTTPError'
         '500':
           description: Internal Server Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/app__routes__util__HTTPError'
+                $ref: '#/components/schemas/HTTPError'
         '422':
           description: Validation Error
           content:
@@ -292,19 +292,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/app__routes__util__HTTPError'
+                $ref: '#/components/schemas/HTTPError'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/app__routes__util__HTTPError'
+                $ref: '#/components/schemas/HTTPError'
         '500':
           description: Internal Server Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/app__routes__util__HTTPError'
+                $ref: '#/components/schemas/HTTPError'
         '422':
           description: Validation Error
           content:
@@ -339,19 +339,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/app__routes__util__HTTPError'
+                $ref: '#/components/schemas/HTTPError'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/app__routes__util__HTTPError'
+                $ref: '#/components/schemas/HTTPError'
         '500':
           description: Internal Server Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/app__routes__util__HTTPError'
+                $ref: '#/components/schemas/HTTPError'
         '422':
           description: Validation Error
           content:
@@ -388,19 +388,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/app__routes__text_to_speech__HTTPError'
+                $ref: '#/components/schemas/HTTPError'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/app__routes__text_to_speech__HTTPError'
+                $ref: '#/components/schemas/HTTPError'
         '500':
           description: Internal Server Error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/app__routes__text_to_speech__HTTPError'
+                $ref: '#/components/schemas/HTTPError'
         '422':
           description: Validation Error
           content:
@@ -709,6 +709,17 @@ components:
       - file_size
       title: EncodedFileResponse
       description: Response model for Audio generation.
+    HTTPError:
+      properties:
+        detail:
+          allOf:
+          - $ref: '#/components/schemas/APIError'
+          description: Detailed error information.
+      type: object
+      required:
+      - detail
+      title: HTTPError
+      description: HTTP error response model.
     HTTPValidationError:
       properties:
         detail:
@@ -934,26 +945,6 @@ components:
       - frames
       title: VideoResponse
       description: Response model for video generation.
-    app__routes__text_to_speech__HTTPError:
-      properties:
-        detail:
-          type: string
-          title: Detail
-      type: object
-      required:
-      - detail
-      title: HTTPError
-    app__routes__util__HTTPError:
-      properties:
-        detail:
-          allOf:
-          - $ref: '#/components/schemas/APIError'
-          description: Detailed error information.
-      type: object
-      required:
-      - detail
-      title: HTTPError
-      description: HTTP error response model.
     chunk:
       properties:
         timestamp:

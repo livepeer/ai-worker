@@ -3,11 +3,10 @@ import io
 import json
 import os
 from typing import List, Optional
-
+from PIL import Image
 import numpy as np
 from fastapi import UploadFile
 from pydantic import BaseModel, Field
-from PIL import Image
 
 class Media(BaseModel):
     """A media object containing information about the generated media."""

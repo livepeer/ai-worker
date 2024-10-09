@@ -4,13 +4,10 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from app.pipelines.base import Pipeline
 from app.dependencies import get_pipeline
-from app.routes.util import http_error, EncodedFileResponse
+from app.routes.util import HTTPError, http_error, EncodedFileResponse
 import logging
 import os
 import base64
-
-class HTTPError(BaseModel):
-    detail: str
 
 router = APIRouter()
 
