@@ -5,6 +5,9 @@ import time
 import argparse
 import os
 import errno
+import logging
+import signal
+import threading
 
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GLib
@@ -70,6 +73,8 @@ class VideoIngress:
         self.frame_count = 0
         self.start_time = time.time()
 
+        self.fd_or_path = fd_or_path  # Store the original fd_or_path
+
     def open_fd(self, fd_or_path):
         if isinstance(fd_or_path, int):
             return fd_or_path
@@ -119,48 +124,96 @@ class VideoIngress:
         self.pipeline.set_state(Gst.State.PLAYING)
         
         # Run the main loop
-        loop = GLib.MainLoop()
+        self.loop = GLib.MainLoop()
         
         # Add a message handler to the pipeline bus
         bus = self.pipeline.get_bus()
         bus.add_signal_watch()
-        bus.connect("message", self.on_message, loop)
+        bus.connect("message", self.on_message)
         
         try:
-            loop.run()
+            self.loop.run()
         except KeyboardInterrupt:
             pass
         finally:
             self.pipeline.set_state(Gst.State.NULL)
             os.close(self.fd)
 
-    def on_message(self, bus, message, loop):
+    def on_message(self, bus, message):
         t = message.type
         if t == Gst.MessageType.EOS:
-            print("End-of-stream reached, looping back to start")
-            # Seek back to the start of the file
-            self.pipeline.seek_simple(
-                Gst.Format.TIME,
-                Gst.SeekFlags.FLUSH | Gst.SeekFlags.KEY_UNIT,
-                0
-            )
+            logging.info("End-of-stream reached, restarting pipeline")
+            self.restart_pipeline()
         elif t == Gst.MessageType.ERROR:
             err, debug = message.parse_error()
-            print(f"Error: {err.message}")
+            logging.error(f"Error: {err.message}")
             if debug:
-                print(f"Debug info: {debug}")
-            loop.quit()
+                logging.debug(f"Debug info: {debug}")
+            self.loop.quit()
 
-if __name__ == "__main__":
+    def restart_pipeline(self):
+        logging.info("Restarting pipeline")
+        # Stop the pipeline
+        self.pipeline.set_state(Gst.State.NULL)
+        
+        # Close and reopen the file descriptor
+        os.close(self.fd)
+        self.fd = self.open_fd(self.fd_or_path)
+        self.src.set_property("fd", self.fd)
+        
+        # Restart the pipeline
+        self.pipeline.set_state(Gst.State.PLAYING)
+
+def cleanup_with_timeout(ingress, timeout=5):
+    def cleanup():
+        if hasattr(ingress, 'pipeline'):
+            ingress.pipeline.set_state(Gst.State.NULL)
+        if hasattr(ingress, 'fd'):
+            try:
+                os.close(ingress.fd)
+            except OSError:
+                pass
+        if hasattr(ingress, 'publisher'):
+            ingress.publisher.close()
+        if hasattr(ingress, 'context'):
+            ingress.context.term()
+
+    cleanup_thread = threading.Thread(target=cleanup)
+    cleanup_thread.start()
+    cleanup_thread.join(timeout)
+    if cleanup_thread.is_alive():
+        logging.warning("Cleanup timed out, forcing exit")
+
+def main():
     parser = argparse.ArgumentParser(description="Video Ingress from MPEG-TS stream")
     parser.add_argument("--stream", help="File descriptor or path for the input stream", default="/tmp/video_pipe")
     args = parser.parse_args()
 
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+    def signal_handler(sig, frame):
+        logging.info("Received interrupt, shutting down...")
+        nonlocal ingress
+        if ingress:
+            cleanup_with_timeout(ingress)
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, signal_handler)
+
     while True:
+        ingress = None
         try:
+            logging.info(f"Initializing VideoIngress with stream: {args.stream}")
             ingress = VideoIngress(args.stream)
             ingress.run()
         except Exception as e:
-            print(f"Error occurred: {e}")
-            print("Restarting in 5 seconds...")
+            logging.error(f"Error occurred: {e}")
+            logging.info("Restarting in 5 seconds...")
             time.sleep(5)
+        finally:
+            if ingress:
+                logging.info("Cleaning up resources...")
+                cleanup_with_timeout(ingress)
+
+if __name__ == "__main__":
+    main()
