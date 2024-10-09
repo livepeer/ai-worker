@@ -3,12 +3,14 @@ import gi
 import zmq
 import time
 import argparse
+import os
+import errno
 
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GLib
 
 class VideoIngress:
-    def __init__(self, fd):
+    def __init__(self, fd_or_path):
         Gst.init(None)
         
         self.pipeline = Gst.Pipeline.new("video-ingress")
@@ -25,7 +27,8 @@ class VideoIngress:
         self.appsink = Gst.ElementFactory.make("appsink", "app-sink")
         
         # Set properties
-        self.src.set_property("fd", fd)
+        self.fd = self.open_fd(fd_or_path)
+        self.src.set_property("fd", self.fd)
         self.queue.set_property("max-size-buffers", 1)
         self.queue.set_property("max-size-time", 0)
         self.queue.set_property("max-size-bytes", 0)
@@ -66,6 +69,20 @@ class VideoIngress:
         # Variables for frame rate calculation
         self.frame_count = 0
         self.start_time = time.time()
+
+    def open_fd(self, fd_or_path):
+        if isinstance(fd_or_path, int):
+            return fd_or_path
+        else:
+            while True:
+                try:
+                    return os.open(fd_or_path, os.O_RDONLY | os.O_NONBLOCK)
+                except OSError as e:
+                    if e.errno == errno.ENOENT:
+                        print(f"Pipe {fd_or_path} not found. Waiting for it to be created...")
+                        time.sleep(1)
+                    else:
+                        raise
 
     def on_pad_added(self, element, pad):
         if pad.get_direction() == Gst.PadDirection.SRC:
@@ -115,6 +132,7 @@ class VideoIngress:
             pass
         finally:
             self.pipeline.set_state(Gst.State.NULL)
+            os.close(self.fd)
 
     def on_message(self, bus, message, loop):
         t = message.type
@@ -135,8 +153,14 @@ class VideoIngress:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Video Ingress from MPEG-TS stream")
-    parser.add_argument("--stream", type=int, help="File descriptor for the input stream", default=0)
+    parser.add_argument("--stream", help="File descriptor or path for the input stream", default="/tmp/video_pipe")
     args = parser.parse_args()
 
-    ingress = VideoIngress(args.stream)
-    ingress.run()
+    while True:
+        try:
+            ingress = VideoIngress(args.stream)
+            ingress.run()
+        except Exception as e:
+            print(f"Error occurred: {e}")
+            print("Restarting in 5 seconds...")
+            time.sleep(5)
