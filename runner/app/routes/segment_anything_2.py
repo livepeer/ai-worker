@@ -58,9 +58,8 @@ RESPONSES = {
     include_in_schema=False,
 )
 async def segment_anything_2(
-    media_file: Annotated[
-        # UploadFile, File(description="Image to segment.", media_type="image/*")
-        UploadFile, File(description="Media file to segment.", media_type="image/*,video/mp4")
+    image: Annotated[
+        UploadFile, File(description="Image to segment.", media_type="image/*")
     ],
     model_id: Annotated[
         str, Form(description="Hugging Face model ID used for image generation.")
@@ -126,10 +125,6 @@ async def segment_anything_2(
             )
         ),
     ] = True,
-    frame_idx : Annotated[
-        int, 
-        Form(description="Frame index reference for (required video file input only)")
-    ] = -1,
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
@@ -162,73 +157,18 @@ async def segment_anything_2(
             content=http_error(str(e)),
         )
 
-    supported_video_types = ["video/mp4"]
-    supported_image_types = ["image/jpeg", "image/png", "image/jpg"]
-    supported_media_types = supported_image_types + supported_video_types
-
     try:
-        # if media_file.content_type in supported_image_types:
-        #     masks, scores, low_res_mask_logits = pipeline(
-        #         media_file,
-        #         media_type="image",
-        #         point_coords=point_coords,
-        #         point_labels=point_labels,
-        #         box=box,
-        #         mask_input=mask_input,
-        #         multimask_output=multimask_output,
-        #         return_logits=return_logits,
-        #         normalize_coords=normalize_coords,
-        #     )
-
-        #     # Return masks sorted by descending score as string.
-        #     sorted_ind = np.argsort(scores)[::-1]
-        #     return {
-        #         "masks": str(masks[sorted_ind].tolist()),
-        #         "scores": str(scores[sorted_ind].tolist()),
-        #         "logits": str(low_res_mask_logits[sorted_ind].tolist()),
-        #     }
-        # elif media_file.content_type == "application/octet-stream":
-            # Try to infer the type from the file extension
-            # filename = media_file.filename.lower()
-            # if filename.endswith(".mp4"):
-                # media_file.content_type = "video/mp4"
-                # out_frame_idx, out_obj_ids, out_mask_logits = pipeline(
-                #             media_file,
-                #             media_type="video",
-                #             frame_idx=frame_idx,
-                #             points=point_coords,
-                #             labels=point_labels,
-                #         )
-
-                video_segments = []
-
-                for out_frame_idx, out_obj_ids, out_mask_logits in pipeline(
-                    media_file,
-                    media_type="video",
-                    frame_idx=frame_idx,
-                    points=point_coords,
-                    labels=point_labels
-                ):
-                    # Collect the data for each frame
-                    segment_data = {
-                        "frame_idx": out_frame_idx, #type int
-                        "obj_ids": out_obj_ids, #type list
-                        "mask_logits": [mask.cpu().numpy().tolist() for mask in out_mask_logits]
-                    }
-                    video_segments.append(segment_data)
-
-                # Return the collected video segments as JSON
-                # return JSONResponse(content={"video_segments": video_segments})
-                print(f"***************************updated123******")
-                return {
-                    "masks": "",
-                    "scores": "",
-                    "logits": "",
-                    "video_segments": video_segments,
-                }
-        # else:
-        #     raise InferenceError(f"Unsupported media type: {media_file.content_type}")
-
+        image = Image.open(image.file).convert("RGB")
+        masks, scores, low_res_mask_logits = pipeline(
+            image,
+            point_coords=point_coords,
+            point_labels=point_labels,
+            box=box,
+            mask_input=mask_input,
+            multimask_output=multimask_output,
+            return_logits=return_logits,
+            normalize_coords=normalize_coords,
+        )
     except Exception as e:
         logger.error(f"Segment Anything 2 error: {e}")
         logger.exception(e)
@@ -240,13 +180,13 @@ async def segment_anything_2(
 
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=http_error(f"Segment Anything 2 error: {e}"),
+            content=http_error("Segment Anything 2 error"),
         )
 
-    # # Return masks sorted by descending score as string.
-    # sorted_ind = np.argsort(scores)[::-1]
-    # return {
-    #     "masks": str(masks[sorted_ind].tolist()),
-    #     "scores": str(scores[sorted_ind].tolist()),
-    #     "logits": str(low_res_mask_logits[sorted_ind].tolist()),
-    # }
+    # Return masks sorted by descending score as string.
+    sorted_ind = np.argsort(scores)[::-1]
+    return {
+        "masks": str(masks[sorted_ind].tolist()),
+        "scores": str(scores[sorted_ind].tolist()),
+        "logits": str(low_res_mask_logits[sorted_ind].tolist()),
+    }

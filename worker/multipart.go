@@ -300,16 +300,16 @@ func NewSegmentAnything2MultipartWriter(w io.Writer, req GenSegmentAnything2Mult
 	mw := multipart.NewWriter(w)
 
 	// Create form file for video (instead of image)
-	writer, err := mw.CreateFormFile("media_file", req.MediaFile.Filename()) // Use 'media_file' instead of 'image'
+	writer, err := mw.CreateFormFile("media_file", req.Image.Filename()) // Use 'media_file' instead of 'image'
 	if err != nil {
 		return nil, err
 	}
 
 	// Get video file size
-	videoSize := req.MediaFile.FileSize()
+	videoSize := req.Image.FileSize()
 
 	// Get video file reader
-	videoRdr, err := req.MediaFile.Reader()
+	videoRdr, err := req.Image.Reader()
 	if err != nil {
 		return nil, err
 	}

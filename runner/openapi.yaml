@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Livepeer AI Runner
   description: An application to run AI pipelines
-  version: ''
+  version: v0.7.0
 servers:
 - url: https://dream-gateway.livepeer.cloud
   description: Livepeer Cloud Community Gateway
@@ -557,11 +557,11 @@ components:
       title: Body_genLLM
     Body_genSegmentAnything2:
       properties:
-        media_file:
+        image:
           type: string
           format: binary
-          title: Media File
-          description: Media file to segment.
+          title: Image
+          description: Image to segment.
         model_id:
           type: string
           title: Model Id
@@ -605,14 +605,9 @@ components:
           description: If true, the point coordinates will be normalized to the range
             [0,1], with point_coords expected to be with respect to image dimensions.
           default: true
-        frame_idx:
-          type: integer
-          title: Frame Idx
-          description: Frame index reference for (required video file input only)
-          default: -1
       type: object
       required:
-      - media_file
+      - image
       title: Body_genSegmentAnything2
     Body_genUpscale:
       properties:
@@ -889,7 +884,11 @@ components:
         mask_logits:
           items:
             items:
-              type: number
+              items:
+                items:
+                  type: number
+                type: array
+              type: array
             type: array
           type: array
           title: Mask Logits
