@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Livepeer AI Runner
   description: An application to run AI pipelines
-  version: ''
+  version: v0.7.0
 servers:
 - url: https://dream-gateway.livepeer.cloud
   description: Livepeer Cloud Community Gateway
@@ -361,6 +361,60 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: llm
+  /image-to-text:
+    post:
+      tags:
+      - generate
+      summary: Image To Text
+      description: Transform image files to text.
+      operationId: genImageToText
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_genImageToText'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TextResponse'
+                x-speakeasy-name-override: data
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '413':
+          description: Request Entity Too Large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+      x-speakeasy-name-override: imageToText
 components:
   schemas:
     APIError:
@@ -463,6 +517,27 @@ components:
       - prompt
       - image
       title: Body_genImageToImage
+    Body_genImageToText:
+      properties:
+        prompt:
+          type: string
+          title: Prompt
+          description: Text prompt(s) to guide transformation.
+        image:
+          type: string
+          format: binary
+          title: Image
+          description: Uploaded image to transform with the pipeline.
+        model_id:
+          type: string
+          title: Model Id
+          description: Hugging Face model ID used for transformation.
+          default: ''
+      type: object
+      required:
+      - prompt
+      - image
+      title: Body_genImageToText
     Body_genImageToVideo:
       properties:
         image:
