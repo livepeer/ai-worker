@@ -1,20 +1,19 @@
 import torch
-import os
-from torchvision.transforms import v2
-from tqdm import tqdm
 import bisect
 import numpy as np
-from app.pipelines.utils.utils import get_model_dir
 
+from tqdm import tqdm
+from torchvision.transforms import v2
+from app.pipelines.base import Pipeline
+from app.pipelines.utils.utils import get_model_dir, get_torch_device
 
-class FILMPipeline:
+class FILMPipeline(Pipeline):
     model: torch.jit.ScriptModule
 
     def __init__(self, model_id: str):
-        model_id = os.environ.get("MODEL_ID", "")
-        model_dir = get_model_dir()  # Get the directory where models are stored
-        model_path = f"{model_dir}/{model_id}"  # Construct the full path to the model file
-
+        self.model_id = model_id
+        kwargs = {"cache_dir": get_model_dir()}
+        model_path = f"{kwargs['cache_dir']}/{model_id}"  # Construct the full path to the model file 
         self.model = torch.jit.load(model_path, map_location="cpu")
         self.model.eval()
 
@@ -40,6 +39,7 @@ class FILMPipeline:
         writer,
         inter_frames: int = 2,
     ):
+        self.model.to(device=get_torch_device(), dtype=torch.float16)
         transforms = v2.Compose(
             [
                 v2.ToDtype(torch.uint8, scale=True),
@@ -73,6 +73,9 @@ class FILMPipeline:
                 writer.write_frame(frame)
 
         writer.close()
+
+    def __str__(self) -> str:
+        return f"frame-interpolation model_id={self.model_id}"
 
 
 def inference(

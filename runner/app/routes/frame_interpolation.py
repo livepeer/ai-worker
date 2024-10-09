@@ -1,18 +1,18 @@
 # app/routes/film_interpolate.py
-
-import logging
 import os
-import torch
+import cv2
 import glob
-from typing import Annotated, Optional
-from fastapi import APIRouter, Depends, File, Form, UploadFile, status
-from fastapi.responses import JSONResponse
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from PIL import Image, ImageFile
+import logging
 
+from typing import Annotated
+from PIL import Image, ImageFile
+from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+from app.pipelines.base import Pipeline
 from app.dependencies import get_pipeline
-from app.pipelines.frame_interpolation import FILMPipeline
-from app.pipelines.utils.utils import DirectoryReader, DirectoryWriter, get_torch_device, video_shredder
+from app.pipelines.utils.utils import DirectoryReader, DirectoryWriter, video_shredder
 from app.routes.util import HTTPError, VideoResponse, http_error, image_to_data_url
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -35,9 +35,10 @@ RESPONSES = {
     include_in_schema=False,
 )
 async def frame_interpolation(
-    model_id: Annotated[str, Form()] = "",
-    video: Annotated[UploadFile, File()]= None,
-    inter_frames: Annotated[int, Form()] = 2,
+    model_id: Annotated[str, Form(description="Currently there is only one model used `film_net_fp16.pt`.")] = "",
+    video: Annotated[UploadFile, File(description="Video file of any arbitrary length.")]= None,
+    inter_frames: Annotated[int, Form(description="Number of frames to create as the intermediate frames.")] = 2,
+    pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
     auth_token = os.environ.get("AUTH_TOKEN")
@@ -48,11 +49,16 @@ async def frame_interpolation(
                 headers={"WWW-Authenticate": "Bearer"},
                 content=http_error("Invalid bearer token"),
             )
-
-    # Initialize FILMPipeline
-    film_pipeline = FILMPipeline(model_id)
-    film_pipeline.to(device=get_torch_device(), dtype=torch.float16)
-
+        
+    if model_id != "" and model_id != pipeline.model_id:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content=http_error(
+                f"pipeline configured with {pipeline.model_id} but called with "
+                f"{model_id}"
+            ),
+        )
+    
     # Prepare directories for input and output
     temp_input_dir = "temp_input"
     temp_output_dir = "temp_output"
@@ -75,8 +81,9 @@ async def frame_interpolation(
         reader = DirectoryReader(temp_input_dir)
         writer = DirectoryWriter(temp_output_dir)
 
-        # Perform interpolation
-        film_pipeline(reader, writer, inter_frames=inter_frames)
+        # Initialize FILMPipeline
+        pipeline(reader=reader, writer=writer, inter_frames=inter_frames)
+
         writer.close()
         reader.reset()
 

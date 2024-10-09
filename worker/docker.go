@@ -42,7 +42,8 @@ var containerHostPorts = map[string]string{
 
 // Mapping for per pipeline container images.
 var pipelineToImage = map[string]string{
-	"segment-anything-2": "livepeer/ai-runner:segment-anything-2",
+	"segment-anything-2":  "livepeer/ai-runner:segment-anything-2",
+	"frame-interpolation": "livepeer/ai-runner:frame-interpolation",
 }
 
 type DockerManager struct {

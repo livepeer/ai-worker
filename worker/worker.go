@@ -351,6 +351,59 @@ func (w *Worker) SegmentAnything2(ctx context.Context, req GenSegmentAnything2Mu
 	return resp.JSON200, nil
 }
 
+func (w *Worker) FrameInterpolation(ctx context.Context, req FrameInterpolationFrameInterpolationPostMultipartRequestBody) (*VideoResponse, error) {
+	c, err := w.borrowContainer(ctx, "frame-interpolation", *req.ModelId)
+	if err != nil {
+		return nil, err
+	}
+	defer w.returnContainer(c)
+
+	var buf bytes.Buffer
+	mw, err := NewFrameInterpolationMultipartWriter(&buf, req)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.Client.FrameInterpolationFrameInterpolationPostWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("frame-interpolation container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("frame-interpolation container returned 422")
+	}
+
+	if resp.JSON400 != nil {
+		val, err := json.Marshal(resp.JSON400)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("frame-iinterpolation container returned 400", slog.String("err", string(val)))
+		return nil, errors.New("frame-interpolation container returned 400")
+	}
+
+	if resp.JSON500 != nil {
+		val, err := json.Marshal(resp.JSON500)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("frame-iinterpolation container returned 500", slog.String("err", string(val)))
+		return nil, errors.New("frame-iinterpolation container returned 500")
+	}
+
+	if resp.JSON200 == nil {
+		slog.Error("frame-iinterpolation container returned no content")
+		return nil, errors.New("frame-iinterpolation container returned no content")
+	}
+
+	return resp.JSON200, nil
+}
+
 func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endpoint RunnerEndpoint, optimizationFlags OptimizationFlags) error {
 	if endpoint.URL == "" {
 		return w.manager.Warm(ctx, pipeline, modelID, optimizationFlags)

@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Livepeer AI Runner
   description: An application to run AI pipelines
-  version: v0.5.0
+  version: v1.0.0
 servers:
 - url: https://dream-gateway.livepeer.cloud
   description: Livepeer Cloud Community Gateway
@@ -153,54 +153,6 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: imageToVideo
-  /upscale:
-    post:
-      tags:
-      - generate
-      summary: Upscale
-      description: Upscale an image by increasing its resolution.
-      operationId: genUpscale
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Body_genUpscale'
-        required: true
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ImageResponse'
-                x-speakeasy-name-override: data
-        '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPError'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPError'
-        '500':
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPError'
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-      security:
-      - HTTPBearer: []
-      x-speakeasy-name-override: upscale
   /audio-to-text:
     post:
       tags:
@@ -255,6 +207,98 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: audioToText
+  /frame-interpolation:
+    post:
+      summary: Frame Interpolation
+      operationId: frame_interpolation_frame_interpolation_post
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              allOf:
+              - $ref: '#/components/schemas/Body_frame_interpolation_frame_interpolation_post'
+              title: Body
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /upscale:
+    post:
+      tags:
+      - generate
+      summary: Upscale
+      description: Upscale an image by increasing its resolution.
+      operationId: genUpscale
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_genUpscale'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageResponse'
+                x-speakeasy-name-override: data
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+      x-speakeasy-name-override: upscale
   /segment-anything-2:
     post:
       tags:
@@ -316,6 +360,25 @@ components:
       - msg
       title: APIError
       description: API error response model.
+    Body_frame_interpolation_frame_interpolation_post:
+      properties:
+        model_id:
+          type: string
+          title: Model Id
+          description: Currently there is only one model used `film_net_fp16.pt`.
+          default: ''
+        video:
+          type: string
+          format: binary
+          title: Video
+          description: Video file of any arbitrary length.
+        inter_frames:
+          type: integer
+          title: Inter Frames
+          description: Number of frames to create as the intermediate frames.
+          default: 2
+      type: object
+      title: Body_frame_interpolation_frame_interpolation_post
     Body_genAudioToText:
       properties:
         audio:
