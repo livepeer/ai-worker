@@ -70,9 +70,6 @@ COPY requirements.txt /app/
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r /app/requirements.txt
 
-# Install StreamDiffusion
-RUN pip install streamdiffusion[tensorrt]
-
 # Move StreamDiffusion to /app/streamdiffusion instead of copying
 RUN mv /streamdiffusion /app/streamdiffusion
 # Set up PYTHONPATH
