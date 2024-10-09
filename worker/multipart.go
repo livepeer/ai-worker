@@ -298,48 +298,22 @@ func NewLLMMultipartWriter(w io.Writer, req BodyGenLLM) (*multipart.Writer, erro
 
 func NewSegmentAnything2MultipartWriter(w io.Writer, req GenSegmentAnything2MultipartRequestBody) (*multipart.Writer, error) {
 	mw := multipart.NewWriter(w)
-
-	// Create form file for video (instead of image)
-	writer, err := mw.CreateFormFile("media_file", req.Image.Filename()) // Use 'media_file' instead of 'image'
+	writer, err := mw.CreateFormFile("image", req.Image.Filename())
 	if err != nil {
 		return nil, err
 	}
-
-	// Get video file size
-	videoSize := req.Image.FileSize()
-
-	// Get video file reader
-	videoRdr, err := req.Image.Reader()
+	imageSize := req.Image.FileSize()
+	imageRdr, err := req.Image.Reader()
 	if err != nil {
 		return nil, err
 	}
-
-	// Copy video content to the multipart writer
-	copied, err := io.Copy(writer, videoRdr)
+	copied, err := io.Copy(writer, imageRdr)
 	if err != nil {
 		return nil, err
 	}
-
-	// Ensure the entire video file was copied
-	if copied != videoSize {
-		return nil, fmt.Errorf("failed to copy video to multipart request videoBytes=%v copiedBytes=%v", videoSize, copied)
+	if copied != imageSize {
+		return nil, fmt.Errorf("failed to copy image to multipart request imageBytes=%v copiedBytes=%v", imageSize, copied)
 	}
-	// writer, err := mw.CreateFormFile("image", req.Image.Filename())
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// imageSize := req.Image.FileSize()
-	// imageRdr, err := req.Image.Reader()
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// copied, err := io.Copy(writer, imageRdr)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// if copied != imageSize {
-	// 	return nil, fmt.Errorf("failed to copy image to multipart request imageBytes=%v copiedBytes=%v", imageSize, copied)
-	// }
 
 	// Handle input fields.
 	if req.ModelId != nil {
@@ -389,3 +363,71 @@ func NewSegmentAnything2MultipartWriter(w io.Writer, req GenSegmentAnything2Mult
 
 	return mw, nil
 }
+
+// func NewSegmentAnything2VideoMultipartWriter(w io.Writer, req GenSegmentAnything2MultipartRequestBody) (*multipart.Writer, error) {
+// 	mw := multipart.NewWriter(w)
+// 	writer, err := mw.CreateFormFile("media_file", req.Image.Filename())
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	imageSize := req.media_file.FileSize()
+// 	imageRdr, err := req.media_file.Reader()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	copied, err := io.Copy(writer, imageRdr)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	if copied != imageSize {
+// 		return nil, fmt.Errorf("failed to copy image to multipart request imageBytes=%v copiedBytes=%v", imageSize, copied)
+// 	}
+
+// 	// Handle input fields.
+// 	if req.ModelId != nil {
+// 		if err := mw.WriteField("model_id", *req.ModelId); err != nil {
+// 			return nil, err
+// 		}
+// 	}
+// 	if req.PointCoords != nil {
+// 		if err := mw.WriteField("point_coords", *req.PointCoords); err != nil {
+// 			return nil, err
+// 		}
+// 	}
+// 	if req.PointLabels != nil {
+// 		if err := mw.WriteField("point_labels", *req.PointLabels); err != nil {
+// 			return nil, err
+// 		}
+// 	}
+// 	if req.Box != nil {
+// 		if err := mw.WriteField("box", *req.Box); err != nil {
+// 			return nil, err
+// 		}
+// 	}
+// 	if req.MaskInput != nil {
+// 		if err := mw.WriteField("mask_input", *req.MaskInput); err != nil {
+// 			return nil, err
+// 		}
+// 	}
+// 	if req.MultimaskOutput != nil {
+// 		if err := mw.WriteField("multimask_output", strconv.FormatBool(*req.MultimaskOutput)); err != nil {
+// 			return nil, err
+// 		}
+// 	}
+// 	if req.ReturnLogits != nil {
+// 		if err := mw.WriteField("return_logits", strconv.FormatBool(*req.ReturnLogits)); err != nil {
+// 			return nil, err
+// 		}
+// 	}
+// 	if req.NormalizeCoords != nil {
+// 		if err := mw.WriteField("normalize_coords", strconv.FormatBool(*req.NormalizeCoords)); err != nil {
+// 			return nil, err
+// 		}
+// 	}
+
+// 	if err := mw.Close(); err != nil {
+// 		return nil, err
+// 	}
+
+// 	return mw, nil
+// }
