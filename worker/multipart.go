@@ -40,6 +40,11 @@ func NewImageToImageMultipartWriter(w io.Writer, req GenImageToImageMultipartReq
 			return nil, err
 		}
 	}
+	if req.Loras != nil {
+		if err := mw.WriteField("loras", *req.Loras); err != nil {
+			return nil, err
+		}
+	}
 	if req.Strength != nil {
 		if err := mw.WriteField("strength", fmt.Sprintf("%f", *req.Strength)); err != nil {
 			return nil, err
@@ -236,6 +241,56 @@ func NewAudioToTextMultipartWriter(w io.Writer, req GenAudioToTextMultipartReque
 
 	if err := mw.Close(); err != nil {
 		return nil, err
+	}
+
+	return mw, nil
+}
+
+func NewLLMMultipartWriter(w io.Writer, req BodyGenLLM) (*multipart.Writer, error) {
+	mw := multipart.NewWriter(w)
+
+	if err := mw.WriteField("prompt", req.Prompt); err != nil {
+		return nil, fmt.Errorf("failed to write prompt field: %w", err)
+	}
+
+	if req.History != nil {
+		if err := mw.WriteField("history", *req.History); err != nil {
+			return nil, fmt.Errorf("failed to write history field: %w", err)
+		}
+	}
+
+	if req.ModelId != nil {
+		if err := mw.WriteField("model_id", *req.ModelId); err != nil {
+			return nil, fmt.Errorf("failed to write model_id field: %w", err)
+		}
+	}
+
+	if req.SystemMsg != nil {
+		if err := mw.WriteField("system_msg", *req.SystemMsg); err != nil {
+			return nil, fmt.Errorf("failed to write system_msg field: %w", err)
+		}
+	}
+
+	if req.Temperature != nil {
+		if err := mw.WriteField("temperature", fmt.Sprintf("%f", *req.Temperature)); err != nil {
+			return nil, fmt.Errorf("failed to write temperature field: %w", err)
+		}
+	}
+
+	if req.MaxTokens != nil {
+		if err := mw.WriteField("max_tokens", strconv.Itoa(*req.MaxTokens)); err != nil {
+			return nil, fmt.Errorf("failed to write max_tokens field: %w", err)
+		}
+	}
+
+	if req.Stream != nil {
+		if err := mw.WriteField("stream", fmt.Sprintf("%v", *req.Stream)); err != nil {
+			return nil, fmt.Errorf("failed to write stream field: %w", err)
+		}
+	}
+
+	if err := mw.Close(); err != nil {
+		return nil, fmt.Errorf("failed to close multipart writer: %w", err)
 	}
 
 	return mw, nil
