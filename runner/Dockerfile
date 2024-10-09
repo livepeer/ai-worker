@@ -18,14 +18,14 @@ ENV PYENV_ROOT /root/.pyenv
 ENV PATH $PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH
 
 # Install your desired Python version
-ARG PYTHON_VERSION=3.11
+ARG PYTHON_VERSION=3.10
 RUN pyenv install $PYTHON_VERSION && \
     pyenv global $PYTHON_VERSION && \
     pyenv rehash
 
 # Upgrade pip and install your desired packages
 ARG PIP_VERSION=23.3.2
-RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools==69.5.1 wheel==0.43.0 
+RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools==69.5.1 wheel==0.43.0
 
 # Set environment variables
 ENV MAX_WORKERS=1
