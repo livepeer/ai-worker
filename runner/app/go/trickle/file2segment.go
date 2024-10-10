@@ -31,7 +31,11 @@ func run(in string, segmentHandler SegmentReader) {
 		processSegments(segmentHandler, outFilePattern, completionSignal)
 	}()
 	// Need to add demuxer options to lpms
-	cmd := exec.Command("ffmpeg", "-re", "-i", in, "-c", "copy", "-f", "segment", outFilePattern)
+	ffmpegPath := os.Getenv("FFMPEG_PATH")
+	if ffmpegPath == "" {
+		ffmpegPath = "ffmpeg"
+	}
+	cmd := exec.Command(ffmpegPath, "-re", "-i", in, "-c", "copy", "-f", "segment", outFilePattern)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		slog.Error("Error running ffmpeg", "err", err)
