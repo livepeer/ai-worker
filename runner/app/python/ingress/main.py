@@ -8,6 +8,11 @@ import errno
 import logging
 import signal
 import threading
+import io
+
+# Disable output buffering
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, line_buffering=True)
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, line_buffering=True)
 
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GLib
@@ -189,7 +194,7 @@ def main():
     parser.add_argument("--stream", help="File descriptor or path for the input stream", default="/tmp/video_pipe")
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', stream=sys.stdout)
 
     def signal_handler(sig, frame):
         logging.info("Received interrupt, shutting down...")
