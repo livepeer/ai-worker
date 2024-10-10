@@ -87,10 +87,10 @@ RUN apt-get update && apt-get install -y wget software-properties-common \
 
 WORKDIR /app/
 
-# reactivate origininal venv for overrides TODO: Fix me
+# reactivate origininal venv for overrides
 ENV VIRTUAL_ENV=/opt/venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-COPY ./runner/requirements.txt /app
+COPY requirements.txt /app
 # RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir \
     transformers==4.43.0 \
@@ -107,6 +107,6 @@ RUN pip install --no-cache-dir \
 WORKDIR /app/
 
 ENV PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/sbin:$PATH"
-COPY ./runner/app/ /app/app
+COPY app/ /app/app
 # Ensure the virtual environment is activated before starting Uvicorn
 ENTRYPOINT ["bash", "-c", "source /opt/venv/bin/activate && exec uvicorn app.main:app --log-config app/cfg/uvicorn_logging_config.json --host 0.0.0.0 --port 8000"]
