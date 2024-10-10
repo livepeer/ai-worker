@@ -365,6 +365,7 @@ class LoraLoader:
         if not self.loras_enabled:
             self.pipeline.enable_lora()
             self.loras_enabled = True
+
 def save_image_to_temp_file(image_file):
     try:
         image = Image.open(image_file)
