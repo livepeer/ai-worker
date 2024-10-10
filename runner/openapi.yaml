@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Livepeer AI Runner
   description: An application to run AI pipelines
-  version: ''
+  version: v0.6.0
 servers:
 - url: https://dream-gateway.livepeer.cloud
   description: Livepeer Cloud Community Gateway
@@ -361,6 +361,53 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: llm
+  /lipsync:
+    post:
+      tags:
+      - generate
+      summary: Lipsync
+      description: Generate Lip Sync'ed video given an image and uploaded audio file
+        or text.
+      operationId: genLipsync
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_genLipsync'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoBinaryResponse'
+                x-speakeasy-name-override: data
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      x-speakeasy-name-override: lipsync
 components:
   schemas:
     APIError:
@@ -555,6 +602,42 @@ components:
       required:
       - prompt
       title: Body_genLLM
+    Body_genLipsync:
+      properties:
+        text_input:
+          type: string
+          title: Text Input
+          description: Text input for lip-syncing.
+          default: ''
+        tts_steering:
+          type: string
+          title: Tts Steering
+          description: Prompt to steer generated voice characteristics.
+          default: A male speaker delivers a slightly expressive and animated speech
+            with a moderate speed and pitch. The recording is of very high quality,
+            with the speaker's voice sounding clear and very close up.
+        model_id:
+          type: string
+          title: Model Id
+          description: Hugging Face model ID used for Text-to-speech.
+          default: ''
+        audio:
+          type: string
+          format: binary
+          title: Audio
+        image:
+          type: string
+          format: binary
+          title: Image
+        return_frames:
+          type: boolean
+          title: Return Frames
+          description: Set to True to return frames instead of mp4.
+          default: false
+      type: object
+      required:
+      - image
+      title: Body_genLipsync
     Body_genSegmentAnything2:
       properties:
         image:
@@ -847,6 +930,22 @@ components:
       - msg
       - type
       title: ValidationError
+    VideoBinaryResponse:
+      properties:
+        base64_video:
+          type: string
+          title: Base64 Video
+          description: The base64-encoded video content.
+        file_size:
+          type: integer
+          title: File Size
+          description: Size of the video file in bytes.
+      type: object
+      required:
+      - base64_video
+      - file_size
+      title: VideoBinaryResponse
+      description: Response model for video generation.
     VideoResponse:
       properties:
         frames:
