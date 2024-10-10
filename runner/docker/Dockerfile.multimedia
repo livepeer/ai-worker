@@ -72,9 +72,9 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
 
 # Install NVIDIA codec libraries for hardware acceleration
 # Note: The exact package names might vary depending on your NVIDIA driver version
-RUN apt-get install -y --no-install-recommends \
-    libnvidia-decode-535-server \
-    libnvidia-encode-535-server 
+#RUN apt-get install -y --no-install-recommends \
+#    libnvidia-decode-535-server \
+#    libnvidia-encode-535-server 
 
 # Clean up APT cache to reduce image size
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
