@@ -1,13 +1,5 @@
 #!/bin/sh
 
-#cd /app/streamdiffusion/examples/img2img/
-echo "Starting single.py"
-#exec python single.py 2>&1
-echo "Done single.py"
-#sv stop /etc/service/infer
-
-# just a sample bash loop to verify runit launches this script:
-#while true; do
-#  echo "infer service is running"
-#  sleep 5
-#done
+echo "Starting infer"
+exec 2>&1
+exec python -u /app/python/infer/infer.py
