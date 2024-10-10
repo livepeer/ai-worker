@@ -9,8 +9,8 @@ uvicorn==0.30.0
 huggingface_hub==0.23.2
 xformers==0.0.23
 triton>=2.1.0
-peft==0.11.1
-deepcache==0.1.1
+peft==0.11.1 # may need to loosen constraint/update? check before merge and remove comments
+deepcache==0.1.1 # may need to loosen constraint/update? check before merge and remove comments
 safetensors==0.4.3
 scipy==1.13.0
 numpy==1.26.4
@@ -19,3 +19,6 @@ sentencepiece== 0.2.0
 protobuf==5.27.2
 bitsandbytes==0.43.3
 psutil==6.0.0
+
+# only needed to satisfy "cv2" requirement of gen_openapi.py for building lipsync, is installed in Dockerfile.lipsync
+# opencv-python

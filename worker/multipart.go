@@ -363,3 +363,66 @@ func NewSegmentAnything2MultipartWriter(w io.Writer, req GenSegmentAnything2Mult
 
 	return mw, nil
 }
+
+func NewLipsyncMultipartWriter(w io.Writer, req GenLipsyncMultipartRequestBody) (*multipart.Writer, error) {
+	mw := multipart.NewWriter(w)
+	writer, err := mw.CreateFormFile("image", req.Image.Filename())
+	if err != nil {
+		return nil, err
+	}
+	imageSize := req.Image.FileSize()
+	imageRdr, err := req.Image.Reader()
+	if err != nil {
+		return nil, err
+	}
+	copied, err := io.Copy(writer, imageRdr)
+	if err != nil {
+		return nil, err
+	}
+	if copied != imageSize {
+		return nil, fmt.Errorf("failed to copy image to multipart request imageBytes=%v copiedBytes=%v", imageSize, copied)
+	}
+
+	// Handle optional audio file upload
+	if req.Audio != nil {
+		audioWriter, err := mw.CreateFormFile("audio", req.Audio.Filename())
+		if err != nil {
+			return nil, err
+		}
+		audioSize := req.Audio.FileSize()
+		audioRdr, err := req.Audio.Reader()
+		if err != nil {
+			return nil, err
+		}
+		copied, err := io.Copy(audioWriter, audioRdr)
+		if err != nil {
+			return nil, err
+		}
+		if copied != audioSize {
+			return nil, fmt.Errorf("failed to copy audio to multipart request audioBytes=%v copiedBytes=%v", audioSize, copied)
+		}
+	}
+
+	// Handle input fields
+	if req.TextInput != nil {
+		if err := mw.WriteField("text_input", *req.TextInput); err != nil {
+			return nil, err
+		}
+	}
+	if req.TtsSteering != nil {
+		if err := mw.WriteField("tts_steering", *req.TtsSteering); err != nil {
+			return nil, err
+		}
+	}
+	if req.ReturnFrames != nil {
+		if err := mw.WriteField("return_frames", strconv.FormatBool(*req.ReturnFrames)); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := mw.Close(); err != nil {
+		return nil, err
+	}
+
+	return mw, nil
+}
