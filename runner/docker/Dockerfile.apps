@@ -70,11 +70,6 @@ COPY requirements.txt /app/
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r /app/requirements.txt
 
-# Move StreamDiffusion to /app/streamdiffusion instead of copying
-RUN mv /streamdiffusion /app/streamdiffusion
-# Set up PYTHONPATH
-ENV PYTHONPATH="${PYTHONPATH}:/app:/app/streamdiffusion"
-
 # Copy application files
 COPY app/ /app/
 COPY images/ /app/images
