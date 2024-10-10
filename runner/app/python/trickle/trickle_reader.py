@@ -7,7 +7,7 @@ logging.basicConfig(level=logging.INFO)
 
 class TrickleReader:
     def __init__(self, base_url: str, stream_name: str):
-        self.base_url = f"{base_url}/realtime"
+        self.base_url = f"{base_url}/realtime/{stream_name}"
         self.stream_name = stream_name
         self.idx = -1  # Start with -1 for 'latest' index
         self.pending_get = None  # Pre-initialized GET request
@@ -27,7 +27,7 @@ class TrickleReader:
 
     async def preconnect(self):
         """Preconnect to the server by making a GET request to fetch the next segment."""
-        url = f"{self.base_url}/{self.stream_name}/{self.idx}"
+        url = f"{self.base_url}/{self.idx}"
         logging.info(f"Preconnecting to URL: {url}")
         try:
 

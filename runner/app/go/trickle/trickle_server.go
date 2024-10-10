@@ -377,6 +377,9 @@ func (s *Segment) readData(startPos int) ([]byte, bool) {
 }
 
 func (s *Segment) close() {
+	if s == nil {
+		return // sometimes happens, weird
+	}
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	if !s.closed {
