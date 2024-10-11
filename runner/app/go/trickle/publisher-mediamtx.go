@@ -1,15 +1,12 @@
 package main
 
 import (
-	"encoding/base32"
 	"fmt"
 	"io"
 	"log"
 	"log/slog"
-	"math/rand"
 	"net/http"
 	"os"
-	"strings"
 )
 
 // Listens to new streams from MediaMTX and publishes
@@ -41,15 +38,6 @@ func (fw *FilePublisher) NewSegment(reader io.Reader) {
 		fw.count += 1
 		io.Copy(file, reader)
 	}()
-}
-
-func randomString() string {
-	// Create a random 4-byte string encoded as base32, trimming padding
-	b := make([]byte, 4)
-	for i := range b {
-		b[i] = byte(rand.Intn(256))
-	}
-	return strings.TrimRight(base32.StdEncoding.EncodeToString(b), "=")
 }
 
 func segmentPoster(streamName string) *SegmentPoster {

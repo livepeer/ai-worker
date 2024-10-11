@@ -2,11 +2,14 @@ package main
 
 import (
 	"bufio"
+	"encoding/base32"
 	"fmt"
 	"io"
 	"log/slog"
+	"math/rand"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -23,7 +26,7 @@ var waitTimeout = 20 * time.Second
 
 func run(in string, segmentHandler SegmentReader) {
 
-	outFilePattern := "out-%d.ts"
+	outFilePattern := randomString() + "-%d.ts"
 	completionSignal := make(chan bool)
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -251,4 +254,13 @@ func readSegment(segmentReader SegmentReader, file *os.File, pipeName string) {
 			break
 		}
 	}
+}
+
+func randomString() string {
+	// Create a random 4-byte string encoded as base32, trimming padding
+	b := make([]byte, 4)
+	for i := range b {
+		b[i] = byte(rand.Intn(256))
+	}
+	return strings.TrimRight(base32.StdEncoding.EncodeToString(b), "=")
 }
