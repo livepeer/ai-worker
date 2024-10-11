@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"log"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -46,7 +45,7 @@ func getIndex(resp *http.Response) int {
 // preconnect pre-initializes the next GET request for fetching the next segment (always index -1)
 func (c *TrickleSubscriber) preconnect() (*http.Response, error) {
 	url := fmt.Sprintf("%s/%s/%d", c.baseURL, c.streamName, c.idx)
-	log.Println("JOSH - preconnecting", url)
+	slog.Info("preconnecting", "url", url)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -80,7 +79,7 @@ func (c *TrickleSubscriber) Read() (*http.Response, error) {
 	conn := c.pendingGet
 	if conn == nil {
 		// Preconnect if we don't have a pending GET
-		fmt.Println("JOSH - no conn, preconnecting", c.idx)
+		slog.Info("No preconnect, connecting", "stream", c.streamName, "idx", c.idx)
 		p, err := c.preconnect()
 		if err != nil {
 			c.mu.Unlock()
@@ -97,7 +96,6 @@ func (c *TrickleSubscriber) Read() (*http.Response, error) {
 
 	// Set up the next connection
 	go func() {
-		slog.Info("JOSH - setting next conn,  preconnecting", "idx", c.idx)
 		c.mu.Lock()
 		defer c.mu.Unlock()
 		nextConn, err := c.preconnect()

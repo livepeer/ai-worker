@@ -22,6 +22,9 @@ else
 	$(error Unsupported OS: $(OS))
 endif
 
+pubsub:
+	go run pubsub-mediamtx.go rtmp2segment.go $(SELECT_FILE) trickle_publisher.go trickle_subscriber.go --out $(out)
+
 publisher:
 	go run publisher-mediamtx.go rtmp2segment.go $(SELECT_FILE) trickle_publisher.go
 
