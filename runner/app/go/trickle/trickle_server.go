@@ -226,7 +226,9 @@ func (s *Stream) getForWrite(idx int) (*Segment, bool) {
 	defer s.mutex.Unlock()
 	if idx == -1 {
 		idx = s.latestWrite
-	} else if idx > s.latestWrite {
+		// TODO figure out how to better handle restarts while maintaining ordering
+		/* } else if idx > s.latestWrite { */
+	} else {
 		s.latestWrite = idx
 	}
 	log.Println("POST segment for", idx, "latest", s.latestWrite)
