@@ -4,6 +4,8 @@ import zmq
 import argparse
 from threading import Thread
 import os
+import time
+import logging
 
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GLib
@@ -57,12 +59,26 @@ class VideoEgress:
         self.zmq_thread = Thread(target=self.receive_frames)
         self.zmq_thread.start()
 
+        # Variables for input FPS calculation
+        self.input_frame_count = 0
+        self.input_start_time = time.time()
+
     def receive_frames(self):
         while self.running:
             try:
                 frame = self.subscriber.recv(flags=zmq.NOBLOCK)
                 buffer = Gst.Buffer.new_wrapped(frame)
                 self.appsrc.emit("push-buffer", buffer)
+                
+                # Update input frame count and calculate FPS
+                self.input_frame_count += 1
+                elapsed = time.time() - self.input_start_time
+                if elapsed >= 5.0:  # Log every 5 seconds
+                    input_fps = self.input_frame_count / elapsed
+                    logging.info(f"Input FPS: {input_fps:.2f}")
+                    self.input_frame_count = 0
+                    self.input_start_time = time.time()
+                
             except zmq.Again:
                 continue
 
@@ -90,13 +106,13 @@ class VideoEgress:
     def on_message(self, bus, message, loop):
         t = message.type
         if t == Gst.MessageType.EOS:
-            print("End-of-stream")
+            logging.info("End-of-stream")
             loop.quit()
         elif t == Gst.MessageType.ERROR:
             err, debug = message.parse_error()
-            print(f"Error: {err.message}")
+            logging.error(f"Error: {err.message}")
             if debug:
-                print(f"Debug info: {debug}")
+                logging.debug(f"Debug info: {debug}")
             loop.quit()
 
 if __name__ == "__main__":
@@ -106,11 +122,14 @@ if __name__ == "__main__":
     parser.add_argument("--zmq-address", type=str, help="ZMQ address to subscribe to", default="tcp://localhost:5556")
     args = parser.parse_args()
 
+    # Set up logging
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
     # Construct RTMP URL
     rtmp_url = f"rtmp://{args.rtmp_host}/{args.rtmp_stream}"
     
-    print(f"Streaming to: {rtmp_url}")
-    print(f"Receiving from ZMQ: {args.zmq_address}")
+    logging.info(f"Streaming to: {rtmp_url}")
+    logging.info(f"Receiving from ZMQ: {args.zmq_address}")
 
     egress = VideoEgress(rtmp_url, args.zmq_address)
     egress.run()
