@@ -52,6 +52,9 @@ type BodyGenImageToImage struct {
 	// ImageGuidanceScale Degree to which the generated image is pushed towards the initial image.
 	ImageGuidanceScale *float32 `json:"image_guidance_scale,omitempty"`
 
+	// Loras A LoRA (Low-Rank Adaptation) model and its corresponding weight for image generation. Example: { "latent-consistency/lcm-lora-sdxl": 1.0, "nerijs/pixel-art-xl": 1.2}.
+	Loras *string `json:"loras,omitempty"`
+
 	// ModelId Hugging Face model ID used for image generation.
 	ModelId *string `json:"model_id,omitempty"`
 
@@ -108,6 +111,17 @@ type BodyGenImageToVideo struct {
 
 	// Width The width in pixels of the generated video.
 	Width *int `json:"width,omitempty"`
+}
+
+// BodyGenLLM defines model for Body_genLLM.
+type BodyGenLLM struct {
+	History     *string  `json:"history,omitempty"`
+	MaxTokens   *int     `json:"max_tokens,omitempty"`
+	ModelId     *string  `json:"model_id,omitempty"`
+	Prompt      string   `json:"prompt"`
+	Stream      *bool    `json:"stream,omitempty"`
+	SystemMsg   *string  `json:"system_msg,omitempty"`
+	Temperature *float32 `json:"temperature,omitempty"`
 }
 
 // BodyGenSegmentAnything2 defines model for Body_genSegmentAnything2.
@@ -195,6 +209,12 @@ type ImageResponse struct {
 	Images []Media `json:"images"`
 }
 
+// LLMResponse defines model for LLMResponse.
+type LLMResponse struct {
+	Response   string `json:"response"`
+	TokensUsed int    `json:"tokens_used"`
+}
+
 // MasksResponse Response model for object segmentation.
 type MasksResponse struct {
 	// Logits The raw, unnormalized predictions (logits) for the masks.
@@ -235,6 +255,9 @@ type TextToImageParams struct {
 
 	// Height The height in pixels of the generated image.
 	Height *int `json:"height,omitempty"`
+
+	// Loras A LoRA (Low-Rank Adaptation) model and its corresponding weight for image generation. Example: { "latent-consistency/lcm-lora-sdxl": 1.0, "nerijs/pixel-art-xl": 1.2}.
+	Loras *string `json:"loras,omitempty"`
 
 	// ModelId Hugging Face model ID used for image generation.
 	ModelId *string `json:"model_id,omitempty"`
@@ -305,6 +328,9 @@ type GenImageToVideoMultipartRequestBody = BodyGenImageToVideo
 
 // LivePortraitLivePortraitPostMultipartRequestBody defines body for LivePortraitLivePortraitPost for multipart/form-data ContentType.
 type LivePortraitLivePortraitPostMultipartRequestBody = BodyLivePortraitLivePortraitPost
+
+// GenLLMFormdataRequestBody defines body for GenLLM for application/x-www-form-urlencoded ContentType.
+type GenLLMFormdataRequestBody = BodyGenLLM
 
 // GenSegmentAnything2MultipartRequestBody defines body for GenSegmentAnything2 for multipart/form-data ContentType.
 type GenSegmentAnything2MultipartRequestBody = BodyGenSegmentAnything2
@@ -465,6 +491,11 @@ type ClientInterface interface {
 	// LivePortraitLivePortraitPostWithBody request with any body
 	LivePortraitLivePortraitPostWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GenLLMWithBody request with any body
+	GenLLMWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	GenLLMWithFormdataBody(ctx context.Context, body GenLLMFormdataRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GenSegmentAnything2WithBody request with any body
 	GenSegmentAnything2WithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -527,6 +558,21 @@ func (c *Client) GenImageToVideoWithBody(ctx context.Context, contentType string
 
 func (c *Client) LivePortraitLivePortraitPostWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewLivePortraitLivePortraitPostRequestWithBody(c.Server, contentType, body)
+
+func (c *Client) GenLLMWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGenLLMRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GenLLMWithFormdataBody(ctx context.Context, body GenLLMFormdataRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGenLLMRequestWithFormdataBody(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -701,6 +747,20 @@ func NewGenImageToVideoRequestWithBody(server string, contentType string, body i
 
 // NewLivePortraitLivePortraitPostRequestWithBody generates requests for LivePortraitLivePortraitPost with any type of body
 func NewLivePortraitLivePortraitPostRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+  	operationPath := fmt.Sprintf("/live-portrait")
+// NewGenLLMRequestWithFormdataBody calls the generic GenLLM builder with application/x-www-form-urlencoded body
+func NewGenLLMRequestWithFormdataBody(server string, body GenLLMFormdataRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	bodyStr, err := runtime.MarshalForm(body, nil)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = strings.NewReader(bodyStr.Encode())
+	return NewGenLLMRequestWithBody(server, "application/x-www-form-urlencoded", bodyReader)
+}
+
+// NewGenLLMRequestWithBody generates requests for GenLLM with any type of body
+func NewGenLLMRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -708,7 +768,7 @@ func NewLivePortraitLivePortraitPostRequestWithBody(server string, contentType s
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/live-portrait")
+	operationPath := fmt.Sprintf("/llm")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -884,6 +944,11 @@ type ClientWithResponsesInterface interface {
 	// LivePortraitLivePortraitPostWithBodyWithResponse request with any body
 	LivePortraitLivePortraitPostWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LivePortraitLivePortraitPostResponse, error)
 
+	// GenLLMWithBodyWithResponse request with any body
+	GenLLMWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenLLMResponse, error)
+
+	GenLLMWithFormdataBodyWithResponse(ctx context.Context, body GenLLMFormdataRequestBody, reqEditors ...RequestEditorFn) (*GenLLMResponse, error)
+
 	// GenSegmentAnything2WithBodyWithResponse request with any body
 	GenSegmentAnything2WithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenSegmentAnything2Response, error)
 
@@ -1001,6 +1066,11 @@ type LivePortraitLivePortraitPostResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *VideoResponse
+
+type GenLLMResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *LLMResponse
 	JSON400      *HTTPError
 	JSON401      *HTTPError
 	JSON422      *HTTPValidationError
@@ -1009,6 +1079,8 @@ type LivePortraitLivePortraitPostResponse struct {
 
 // Status returns HTTPResponse.Status
 func (r LivePortraitLivePortraitPostResponse) Status() string {
+
+func (r GenLLMResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -1017,6 +1089,8 @@ func (r LivePortraitLivePortraitPostResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r LivePortraitLivePortraitPostResponse) StatusCode() int {
+
+func (r GenLLMResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1137,6 +1211,7 @@ func (c *ClientWithResponses) GenImageToVideoWithBodyWithResponse(ctx context.Co
 	return ParseGenImageToVideoResponse(rsp)
 }
 
+
 // LivePortraitLivePortraitPostWithBodyWithResponse request with arbitrary body returning *LivePortraitLivePortraitPostResponse
 func (c *ClientWithResponses) LivePortraitLivePortraitPostWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LivePortraitLivePortraitPostResponse, error) {
 	rsp, err := c.LivePortraitLivePortraitPostWithBody(ctx, contentType, body, reqEditors...)
@@ -1144,6 +1219,22 @@ func (c *ClientWithResponses) LivePortraitLivePortraitPostWithBodyWithResponse(c
 		return nil, err
 	}
 	return ParseLivePortraitLivePortraitPostResponse(rsp)
+
+// GenLLMWithBodyWithResponse request with arbitrary body returning *GenLLMResponse
+func (c *ClientWithResponses) GenLLMWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenLLMResponse, error) {
+	rsp, err := c.GenLLMWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGenLLMResponse(rsp)
+}
+
+func (c *ClientWithResponses) GenLLMWithFormdataBodyWithResponse(ctx context.Context, body GenLLMFormdataRequestBody, reqEditors ...RequestEditorFn) (*GenLLMResponse, error) {
+	rsp, err := c.GenLLMWithFormdataBody(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGenLLMResponse(rsp)
 }
 
 // GenSegmentAnything2WithBodyWithResponse request with arbitrary body returning *GenSegmentAnything2Response
@@ -1378,20 +1469,24 @@ func ParseGenImageToVideoResponse(rsp *http.Response) (*GenImageToVideoResponse,
 
 // ParseLivePortraitLivePortraitPostResponse parses an HTTP response from a LivePortraitLivePortraitPostWithResponse call
 func ParseLivePortraitLivePortraitPostResponse(rsp *http.Response) (*LivePortraitLivePortraitPostResponse, error) {
+	response := &LivePortraitLivePortraitPostResponse{
+    var dest VideoResponse
+// ParseGenLLMResponse parses an HTTP response from a GenLLMWithResponse call
+func ParseGenLLMResponse(rsp *http.Response) (*GenLLMResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &LivePortraitLivePortraitPostResponse{
+	response := &GenLLMResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest VideoResponse
+		var dest LLMResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1609,6 +1704,9 @@ type ServerInterface interface {
 	// Live Portrait
 	// (POST /live-portrait)
 	LivePortraitLivePortraitPost(w http.ResponseWriter, r *http.Request)
+	// LLM
+	// (POST /llm)
+	GenLLM(w http.ResponseWriter, r *http.Request)
 	// Segment Anything 2
 	// (POST /segment-anything-2)
 	GenSegmentAnything2(w http.ResponseWriter, r *http.Request)
@@ -1653,7 +1751,11 @@ func (_ Unimplemented) GenImageToVideo(w http.ResponseWriter, r *http.Request) {
 func (_ Unimplemented) LivePortraitLivePortraitPost(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
-
+// LLM
+// (POST /llm)
+func (_ Unimplemented) GenLLM(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
 // Segment Anything 2
 // (POST /segment-anything-2)
 func (_ Unimplemented) GenSegmentAnything2(w http.ResponseWriter, r *http.Request) {
@@ -1749,12 +1851,15 @@ func (siw *ServerInterfaceWrapper) GenImageToVideo(w http.ResponseWriter, r *htt
 
 // LivePortraitLivePortraitPost operation middleware
 func (siw *ServerInterfaceWrapper) LivePortraitLivePortraitPost(w http.ResponseWriter, r *http.Request) {
+  		siw.Handler.LivePortraitLivePortraitPost(w, r)
+// GenLLM operation middleware
+func (siw *ServerInterfaceWrapper) GenLLM(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	ctx = context.WithValue(ctx, HTTPBearerScopes, []string{})
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.LivePortraitLivePortraitPost(w, r)
+		siw.Handler.GenLLM(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1942,6 +2047,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/live-portrait", wrapper.LivePortraitLivePortraitPost)
+	})
+  r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/llm", wrapper.GenLLM)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/segment-anything-2", wrapper.GenSegmentAnything2)
