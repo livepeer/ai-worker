@@ -233,7 +233,7 @@ async def handle_params_update(request):
 async def start_http_server(handler: SocketHandler, port: int):
     app = web.Application()
     app['handler'] = handler
-    app.router.add_post('/params', handle_params_update)
+    app.router.add_post('/api/params', handle_params_update)
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', port)
