@@ -75,7 +75,7 @@ func cleanUpPipe(pipeName string) {
 	}
 }
 
-func openNonBlockingWithRetry(name string, timeout time.Duration) (*os.File, error) {
+func openNonBlockingWithRetry(name string, timeout time.Duration, completed <-chan bool) (*os.File, error) {
 	// Pipes block if there is no writer available
 
 	// Attempt to open the named pipe in non-blocking mode once
@@ -97,6 +97,14 @@ func openNonBlockingWithRetry(name string, timeout time.Duration) (*os.File, err
 	}
 
 	for {
+		// Check if completed
+		select {
+		case <-completed:
+			syscall.Close(fd)
+			return nil, fmt.Errorf("Completed")
+		default:
+			// continue
+		}
 		// Calculate the remaining time until the deadline
 		timeLeft := time.Until(deadline)
 		if timeLeft <= 0 {
@@ -176,7 +184,7 @@ func processSegments(segmentReader SegmentReader, outFilePattern string, complet
 
 		// Open the current pipe for reading
 		// Blocks if no writer is available so do some tricks to it
-		file, err := openNonBlockingWithRetry(pipeName, waitTimeout)
+		file, err := openNonBlockingWithRetry(pipeName, waitTimeout, completionSignal)
 		if err != nil {
 			fmt.Printf("Error opening pipe %s: %v\n", pipeName, err)
 			// TODO clean up pipeName if necessary, eg if still exists
