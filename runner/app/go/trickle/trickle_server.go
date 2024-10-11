@@ -107,6 +107,11 @@ func (sm *StreamManager) handleDelete(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid stream name", http.StatusBadRequest)
 		return
 	}
+
+	// TODO properly clear sessions once we have a good solution
+	//      for session reuse
+	return
+
 	stream.clear()
 	sm.mutex.Lock()
 	defer sm.mutex.Unlock()
@@ -177,8 +182,12 @@ func (tr *timeoutReader) Read(p []byte) (int, error) {
 func (s *Stream) handlePost(w http.ResponseWriter, r *http.Request, idx int) {
 	segment, exists := s.getForWrite(idx)
 	if exists {
-		http.Error(w, "Entry already exists for this index", http.StatusBadRequest)
-		return
+		slog.Warn("Overwriting existing entry", "idx", idx)
+		/*
+			// Overwrite anything that exists now. TODO figure out a safer behavior?
+				http.Error(w, "Entry already exists for this index", http.StatusBadRequest)
+				return
+		*/
 	}
 
 	// Wrap the request body with the custom timeoutReader
