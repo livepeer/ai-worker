@@ -1,25 +1,20 @@
---extra-index-url https://download.pytorch.org/whl/cu12.6
-torch
-torchvision==0.18.0
-torchaudio==2.3.0
 diffusers==0.30.0
 accelerate==0.30.1
 transformers==4.41.1
+Pillow==10.3.0
 fastapi==0.111.0
 pydantic==2.7.2
 Pillow==10.3.0
 python-multipart==0.0.9
 uvicorn==0.30.0
 huggingface_hub==0.23.2
-xformers
+xformers==0.0.23
 triton>=2.1.0
 peft==0.11.1
 deepcache==0.1.1
 safetensors==0.4.3
-scipy==1.13.1
+scipy==1.13.0
 numpy==1.26.4
 av==12.1.0
-sentencepiece==0.2.0
+sentencepiece== 0.2.0
 protobuf==5.27.2
-opencv-python
-https://github.com/JJassonn69/liveportrait/releases/download/liveportrait/liveportrait-0.1.0-py3-none-any.whl

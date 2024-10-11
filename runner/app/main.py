@@ -51,9 +51,9 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
 
             return UpscalePipeline(model_id)
         case "live-portrait":
-            from liveportrait import Inference
+            from app.pipelines.live_portrait import Inference
 
-            return 
+            return Inference()
         case "segment-anything-2":
             from app.pipelines.segment_anything_2 import SegmentAnything2Pipeline
 

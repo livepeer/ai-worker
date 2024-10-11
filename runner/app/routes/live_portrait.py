@@ -5,7 +5,6 @@ import cv2
 from typing import Annotated
 
 from app.dependencies import get_pipeline
-from liveportrait import Inference
 from app.pipelines.base import Pipeline
 from app.routes.util import HTTPError, VideoResponse, http_error, image_to_data_url
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
@@ -57,7 +56,7 @@ async def live_portrait(
         File(description="Uploaded driving video to guide the animation."),
     ],
     model_id: Annotated[
-        str, Form(description="Hugging Face model ID used for video generation.")
+        str, Form(description="No model id needed as leave empty.")
     ] = "",
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
@@ -70,16 +69,6 @@ async def live_portrait(
                 headers={"WWW-Authenticate": "Bearer"},
                 content=http_error("Invalid bearer token"),
             )
-
-    if model_id != "" and model_id != pipeline.model_id:
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content=http_error(
-                f"pipeline configured with {pipeline.model_id} but called with "
-                f"{model_id}"
-            ),
-        )
-
     try:
         # Save the driving video to a temporary file
         temp_video_path = "temp_driving_video.mp4"
@@ -90,12 +79,13 @@ async def live_portrait(
         with open(temp_image_path, "wb") as buffer:
             buffer.write(await source_image.read())
         
-        # Run inference to get the video output
-        result_video_path, _ = Inference().run(
+        result_video_path = pipeline(
             source_image=temp_image_path,
-            driving_video=temp_video_path)
-        
+            driving_info=temp_video_path
+        )
+
         output_frames = []
+
         cap = cv2.VideoCapture(result_video_path)
 
         with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
