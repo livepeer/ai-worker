@@ -98,7 +98,7 @@ func (w *Worker) TextToImage(ctx context.Context, req GenTextToImageJSONRequestB
 			return nil, err
 		}
 		slog.Error("text-to-image container returned 500", slog.String("err", string(val)))
-		return nil, errors.New("text-to-image container returned 500")
+		return nil, errors.New("text-to-image container returned 500: " + string(val))
 	}
 
 	return resp.JSON200, nil
@@ -128,7 +128,7 @@ func (w *Worker) ImageToImage(ctx context.Context, req GenImageToImageMultipartR
 			return nil, err
 		}
 		slog.Error("image-to-image container returned 422", slog.String("err", string(val)))
-		return nil, errors.New("image-to-image container returned 422")
+		return nil, errors.New("image-to-image container returned 422: " + string(val))
 	}
 
 	if resp.JSON400 != nil {
@@ -146,7 +146,7 @@ func (w *Worker) ImageToImage(ctx context.Context, req GenImageToImageMultipartR
 			return nil, err
 		}
 		slog.Error("image-to-image container returned 500", slog.String("err", string(val)))
-		return nil, errors.New("image-to-image container returned 500")
+		return nil, errors.New("image-to-image container returned 500: " + string(val))
 	}
 
 	return resp.JSON200, nil
@@ -176,7 +176,7 @@ func (w *Worker) ImageToVideo(ctx context.Context, req GenImageToVideoMultipartR
 			return nil, err
 		}
 		slog.Error("image-to-video container returned 422", slog.String("err", string(val)))
-		return nil, errors.New("image-to-video container returned 422")
+		return nil, errors.New("image-to-video container returned 422: " + string(val))
 	}
 
 	if resp.JSON400 != nil {
@@ -185,7 +185,7 @@ func (w *Worker) ImageToVideo(ctx context.Context, req GenImageToVideoMultipartR
 			return nil, err
 		}
 		slog.Error("image-to-video container returned 400", slog.String("err", string(val)))
-		return nil, errors.New("image-to-video container returned 400")
+		return nil, errors.New("image-to-video container returned 400: " + string(val))
 	}
 
 	if resp.JSON500 != nil {
@@ -194,7 +194,7 @@ func (w *Worker) ImageToVideo(ctx context.Context, req GenImageToVideoMultipartR
 			return nil, err
 		}
 		slog.Error("image-to-video container returned 500", slog.String("err", string(val)))
-		return nil, errors.New("image-to-video container returned 500")
+		return nil, errors.New("image-to-video container returned 500: " + string(val))
 	}
 
 	if resp.JSON200 == nil {
@@ -229,7 +229,7 @@ func (w *Worker) Upscale(ctx context.Context, req GenUpscaleMultipartRequestBody
 			return nil, err
 		}
 		slog.Error("upscale container returned 422", slog.String("err", string(val)))
-		return nil, errors.New("upscale container returned 422")
+		return nil, errors.New("upscale container returned 422: " + string(val))
 	}
 
 	if resp.JSON400 != nil {
@@ -238,7 +238,7 @@ func (w *Worker) Upscale(ctx context.Context, req GenUpscaleMultipartRequestBody
 			return nil, err
 		}
 		slog.Error("upscale container returned 400", slog.String("err", string(val)))
-		return nil, errors.New("upscale container returned 400")
+		return nil, errors.New("upscale container returned 400: " + string(val))
 	}
 
 	if resp.JSON500 != nil {
@@ -247,7 +247,7 @@ func (w *Worker) Upscale(ctx context.Context, req GenUpscaleMultipartRequestBody
 			return nil, err
 		}
 		slog.Error("upscale container returned 500", slog.String("err", string(val)))
-		return nil, errors.New("upscale container returned 500")
+		return nil, errors.New("upscale container returned 500: " + string(val))
 	}
 
 	return resp.JSON200, nil
@@ -277,7 +277,7 @@ func (w *Worker) AudioToText(ctx context.Context, req GenAudioToTextMultipartReq
 			return nil, err
 		}
 		slog.Error("audio-to-text container returned 422", slog.String("err", string(val)))
-		return nil, errors.New("audio-to-text container returned 422")
+		return nil, errors.New("audio-to-text container returned 422: " + string(val))
 	}
 
 	if resp.JSON400 != nil {
@@ -286,7 +286,7 @@ func (w *Worker) AudioToText(ctx context.Context, req GenAudioToTextMultipartReq
 			return nil, err
 		}
 		slog.Error("audio-to-text container returned 400", slog.String("err", string(val)))
-		return nil, errors.New("audio-to-text container returned 400")
+		return nil, errors.New("audio-to-text container returned 400: " + string(val))
 	}
 
 	if resp.JSON413 != nil {
@@ -301,7 +301,7 @@ func (w *Worker) AudioToText(ctx context.Context, req GenAudioToTextMultipartReq
 			return nil, err
 		}
 		slog.Error("audio-to-text container returned 500", slog.String("err", string(val)))
-		return nil, errors.New("audio-to-text container returned 500")
+		return nil, errors.New("audio-to-text container returned 500: " + string(val))
 	}
 
 	return resp.JSON200, nil
@@ -366,7 +366,7 @@ func (w *Worker) SegmentAnything2(ctx context.Context, req GenSegmentAnything2Mu
 			return nil, err
 		}
 		slog.Error("segment anything 2 container returned 422", slog.String("err", string(val)))
-		return nil, errors.New("segment anything 2 container returned 422")
+		return nil, errors.New("segment anything 2 container returned 422" + string(val))
 	}
 
 	if resp.JSON400 != nil {
@@ -375,7 +375,7 @@ func (w *Worker) SegmentAnything2(ctx context.Context, req GenSegmentAnything2Mu
 			return nil, err
 		}
 		slog.Error("segment anything 2 container returned 400", slog.String("err", string(val)))
-		return nil, errors.New("segment anything 2 container returned 400")
+		return nil, errors.New("segment anything 2 container returned 400" + string(val))
 	}
 
 	if resp.JSON500 != nil {
@@ -384,7 +384,7 @@ func (w *Worker) SegmentAnything2(ctx context.Context, req GenSegmentAnything2Mu
 			return nil, err
 		}
 		slog.Error("segment anything 2 container returned 500", slog.String("err", string(val)))
-		return nil, errors.New("segment anything 2 container returned 500")
+		return nil, errors.New("segment anything 2 container returned 500" + string(val))
 	}
 
 	return resp.JSON200, nil
@@ -481,7 +481,7 @@ func (w *Worker) handleNonStreamingResponse(c *RunnerContainer, resp *GenLLMResp
 			return nil, err
 		}
 		slog.Error("LLM container returned 400", slog.String("err", string(val)))
-		return nil, errors.New("LLM container returned 400")
+		return nil, errors.New("LLM container returned 400" + string(val))
 	}
 
 	if resp.JSON401 != nil {
@@ -490,7 +490,7 @@ func (w *Worker) handleNonStreamingResponse(c *RunnerContainer, resp *GenLLMResp
 			return nil, err
 		}
 		slog.Error("LLM container returned 401", slog.String("err", string(val)))
-		return nil, errors.New("LLM container returned 401")
+		return nil, errors.New("LLM container returned 401" + string(val))
 	}
 
 	if resp.JSON500 != nil {
@@ -499,7 +499,7 @@ func (w *Worker) handleNonStreamingResponse(c *RunnerContainer, resp *GenLLMResp
 			return nil, err
 		}
 		slog.Error("LLM container returned 500", slog.String("err", string(val)))
-		return nil, errors.New("LLM container returned 500")
+		return nil, errors.New("LLM container returned 500" + string(val))
 	}
 
 	return resp.JSON200, nil

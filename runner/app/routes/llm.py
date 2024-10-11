@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
-from app.routes.util import HTTPError, LLMResponse, http_error
+from app.routes.util import HTTPError, LLMResponse, http_error, handle_pipeline_exception
 import json
 
 router = APIRouter()

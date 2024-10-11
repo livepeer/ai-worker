@@ -5,7 +5,7 @@ from typing import Annotated
 
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
-from app.routes.util import HTTPError, ImageResponse, http_error, image_to_data_url
+from app.routes.util import HTTPError, ImageResponse, http_error, image_to_data_url, handle_pipeline_exception
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -120,10 +120,7 @@ async def upscale(
     except Exception as e:
         logger.error(f"UpscalePipeline error: {e}")
         logger.exception(e)
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=http_error("UpscalePipeline error"),
-        )
+        return handle_pipeline_exception(e, "UpscalePipeline error")
 
     seeds = [seed]
 

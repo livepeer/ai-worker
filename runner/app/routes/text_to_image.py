@@ -7,7 +7,7 @@ import torch
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.pipelines.utils.utils import LoraLoadingError
-from app.routes.util import HTTPError, ImageResponse, http_error, image_to_data_url
+from app.routes.util import HTTPError, ImageResponse, http_error, image_to_data_url, handle_pipeline_exception
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -176,19 +176,14 @@ async def text_to_image(
             has_nsfw_concept.extend(nsfw_check)
         except LoraLoadingError as e:
             logger.error(f"TextToImagePipeline error: {e}")
-            return JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content=http_error(str(e)),
-            )
+            logger.exception(e)
+            return handle_pipeline_exception(e, "TextToImagePipeline error")
         except Exception as e:
             if isinstance(e, torch.cuda.OutOfMemoryError):
                 torch.cuda.empty_cache()
             logger.error(f"TextToImagePipeline error: {e}")
             logger.exception(e)
-            return JSONResponse(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content=http_error("TextToImagePipeline error"),
-            )
+            return handle_pipeline_exception(e, "TextToImagePipeline error")
 
     # TODO: Return None once Go codegen tool supports optional properties
     # OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373

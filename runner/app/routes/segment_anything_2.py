@@ -11,6 +11,7 @@ from app.routes.util import (
     MasksResponse,
     http_error,
     json_str_to_np_array,
+    handle_pipeline_exception,
 )
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
@@ -152,10 +153,7 @@ async def segment_anything_2(
         box = json_str_to_np_array(box, var_name="box")
         mask_input = json_str_to_np_array(mask_input, var_name="mask_input")
     except ValueError as e:
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content=http_error(str(e)),
-        )
+        return handle_pipeline_exception(e, str(e))
 
     try:
         image = Image.open(image.file).convert("RGB")
@@ -173,15 +171,8 @@ async def segment_anything_2(
         logger.error(f"Segment Anything 2 error: {e}")
         logger.exception(e)
         if isinstance(e, InferenceError):
-            return JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content=http_error(str(e)),
-            )
-
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=http_error("Segment Anything 2 error"),
-        )
+            return handle_pipeline_exception(e, str(e))
+        return handle_pipeline_exception(e, "Segment Anything 2 error")
 
     # Return masks sorted by descending score as string.
     sorted_ind = np.argsort(scores)[::-1]

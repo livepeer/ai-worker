@@ -2,13 +2,17 @@ import base64
 import io
 import json
 import os
-from typing import List, Optional
+from typing import List, Optional, Union, Tuple, Dict
+import logging
+import torch
 
 import numpy as np
 from fastapi import UploadFile
 from PIL import Image
 from pydantic import BaseModel, Field
-
+from fastapi import status
+from fastapi.responses import JSONResponse
+from app.pipelines.utils.utils import LoraLoadingError
 
 class Media(BaseModel):
     """A media object containing information about the generated media."""
@@ -181,3 +185,47 @@ def json_str_to_np_array(
             error_message += f": {e}"
             raise ValueError(error_message)
     return None
+
+def handle_pipeline_exception(e: object, default_error_message: Union[str, object] = "Pipeline error", default_status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR) -> JSONResponse:
+    """Handles pipeline exceptions by returning a JSON response with the appropriate error message and status code.
+
+    Args:
+        e (object): The exception to handle. Can be any type of object.
+        default_error_message (Union[str, Dict[str, Any]]): The default error message or content dictionary. Default will be used if no specific error type is matched.
+        default_status_code (int): The default status code to use if no specific error type is matched. Defaults to HTTP_500_INTERNAL_SERVER_ERROR.
+
+    Returns:
+        JSONResponse: The JSON response with appropriate status code and error message.
+    """
+    error_config: Dict[str, Tuple[str, int]] = {
+        # Specific error types
+        "LoraLoadingError": ("Error loading LoRA model", status.HTTP_400_BAD_REQUEST),
+        "InferenceError": (default_error_message, status.HTTP_400_BAD_REQUEST),
+        "ValueError": (default_error_message, status.HTTP_400_BAD_REQUEST),
+        # General error patterns
+        "out of memory": ("Out of memory", status.HTTP_500_INTERNAL_SERVER_ERROR),
+        "CUDA out of memory": ("GPU out of memory", status.HTTP_500_INTERNAL_SERVER_ERROR),
+    }
+
+    error_message = default_error_message
+    status_code = default_status_code
+
+    error_type = type(e).__name__
+    if error_type in error_config:
+        error_message, status_code = error_config[error_type]
+    else:
+        for error_pattern, (message, code) in error_config.items():
+            if error_pattern.lower() in str(e).lower():
+                error_message = message
+                status_code = code
+                break
+
+    if isinstance(error_message, str):
+        content = http_error(error_message)
+    else:
+        content = error_message
+
+    return JSONResponse(
+        status_code=status_code,
+        content=content,
+    )
