@@ -9,9 +9,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/*
 
 # Install NVIDIA headers for NVENC/NVDEC
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    nvidia-cuda-dev nvidia-cuda-toolkit nvidia-cuda-toolkit-gcc && \
-    rm -rf /var/lib/apt/lists/*
+#RUN apt-get update && apt-get install -y --no-install-recommends \
+#    nvidia-cuda-dev nvidia-cuda-toolkit nvidia-cuda-toolkit-gcc && \
+#    rm -rf /var/lib/apt/lists/*
 
 # Set up environment variables
 ENV NV_CODEC_HEADERS=/usr/local/cuda/include/ffnvcodec/
@@ -72,9 +72,9 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
 
 # Install NVIDIA codec libraries for hardware acceleration
 # Note: The exact package names might vary depending on your NVIDIA driver version
-RUN apt-get install -y --no-install-recommends \
-    libnvidia-decode-535-server \
-    libnvidia-encode-535-server 
+#RUN apt-get install -y --no-install-recommends \
+#    libnvidia-decode-535-server \
+#    libnvidia-encode-535-server 
 
 # Clean up APT cache to reduce image size
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
