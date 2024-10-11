@@ -388,8 +388,10 @@ func NewImageToTextMultipartWriter(w io.Writer, req GenImageToTextMultipartReque
 			return nil, err
 		}
 	}
-	if err := mw.WriteField("prompt", req.Prompt); err != nil {
-		return nil, err
+	if req.Prompt != nil {
+		if err := mw.WriteField("prompt", *req.Prompt); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := mw.Close(); err != nil {

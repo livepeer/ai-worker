@@ -49,12 +49,12 @@ RESPONSES = {
     include_in_schema=False,
 )
 async def image_to_text(
-    prompt: Annotated[
-        str, Form(description="Text prompt(s) to guide transformation."),
-    ],
     image: Annotated[
         UploadFile, File(description="Uploaded image to transform with the pipeline.")
     ],
+    prompt: Annotated[
+        str, Form(description="Text prompt(s) to guide transformation."),
+    ] = "",
     model_id: Annotated[
         str,
         Form(description="Hugging Face model ID used for transformation."),
@@ -88,7 +88,7 @@ async def image_to_text(
 
     image = Image.open(image.file).convert("RGB")
     try:
-        return JSONResponse(content={"text": pipeline(prompt=prompt, image=image)})
+        return TextResponse(text=pipeline(prompt=prompt, image=image))
     except Exception as e:
         logger.error(f"ImageToTextPipeline error: {e}")
         logger.exception(e)

@@ -510,15 +510,16 @@ components:
       title: Body_genImageToImage
     Body_genImageToText:
       properties:
-        prompt:
-          type: string
-          title: Prompt
-          description: Text prompt(s) to guide transformation.
         image:
           type: string
           format: binary
           title: Image
           description: Uploaded image to transform with the pipeline.
+        prompt:
+          type: string
+          title: Prompt
+          description: Text prompt(s) to guide transformation.
+          default: ''
         model_id:
           type: string
           title: Model Id
@@ -526,7 +527,6 @@ components:
           default: ''
       type: object
       required:
-      - prompt
       - image
       - model_id
       title: Body_genImageToText
@@ -820,7 +820,6 @@ components:
       type: object
       required:
       - text
-      - chunks
       title: TextResponse
       description: Response model for text generation.
     TextToImageParams:
