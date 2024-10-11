@@ -74,7 +74,12 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
 # Note: The exact package names might vary depending on your NVIDIA driver version
 RUN apt-get install -y --no-install-recommends \
     libnvidia-decode-535-server \
-    libnvidia-encode-535-server 
+    libnvidia-encode-535-server
+
+# Copy mediamtx and config
+RUN apt-get update && apt-get install -y curl
+COPY --from=bluenviron/mediamtx:1.9.2 /mediamtx /usr/local
+COPY mediamtx.yml .
 
 # Clean up APT cache to reduce image size
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
