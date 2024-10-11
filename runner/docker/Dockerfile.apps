@@ -78,7 +78,7 @@ COPY bench.py /app/bench.py
 # Set up runit service directories and copy run scripts
 COPY app/runit /etc/service
 # Create log directories for each service
-RUN mkdir -p /var/log/uvicorn /var/log/infer /var/log/ingress
+RUN mkdir -p /var/log/uvicorn /var/log/infer /var/log/ingress /var/log/egress
 # Ensure all run scripts are executable
 RUN chmod +x /etc/service/*/run /etc/service/*/log/run
 
