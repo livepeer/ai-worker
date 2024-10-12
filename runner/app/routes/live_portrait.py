@@ -114,6 +114,8 @@ async def live_portrait(
             os.remove(temp_video_path)
         if os.path.exists(result_video_path):
             os.remove(result_video_path)
+        if os.path.exists(temp_image_path):
+            os.remove(temp_image_path)
 
     # Return frames wrapped in an outer list, adhering to the required schema
     return {"frames": [output_frames]}

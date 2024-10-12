@@ -32,5 +32,5 @@ class Inference(Pipeline):
         )
 
         # Run the pipeline
-        wfp, _ = live_portrait_pipeline.execute(self.args)
+        wfp = live_portrait_pipeline.execute(self.args)
         return wfp
