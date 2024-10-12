@@ -38,7 +38,11 @@ RESPONSES = {
     "/segment-anything-2-video",
     response_model=VideoSegmentResponse,
     responses=RESPONSES,
-    description="Segment objects in an image.",
+    operation_id="genSegmentAnything2Video",
+    description="Segment objects in an video.",
+    summary="Segment Anything 2 Video",
+    tags=["generate"],
+    openapi_extra={"x-speakeasy-name-override": "segmentAnything2Video"},
 )
 @router.post(
     "/segment-anything-2-video/",

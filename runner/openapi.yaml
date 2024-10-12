@@ -316,14 +316,16 @@ paths:
       x-speakeasy-name-override: segmentAnything2
   /segment-anything-2-video:
     post:
+      tags:
+      - generate
       summary: Segment Anything 2 Video
-      description: Segment objects in an image.
-      operationId: segment_anything_2_video_segment_anything_2_video_post
+      description: Segment objects in an video.
+      operationId: genSegmentAnything2Video
       requestBody:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Body_segment_anything_2_video_segment_anything_2_video_post'
+              $ref: '#/components/schemas/Body_genSegmentAnything2Video'
         required: true
       responses:
         '200':
@@ -358,6 +360,7 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
       security:
       - HTTPBearer: []
+      x-speakeasy-name-override: segmentAnything2Video
   /llm:
     post:
       tags:
@@ -653,44 +656,7 @@ components:
       required:
       - image
       title: Body_genSegmentAnything2
-    Body_genUpscale:
-      properties:
-        prompt:
-          type: string
-          title: Prompt
-          description: Text prompt(s) to guide upscaled image generation.
-        image:
-          type: string
-          format: binary
-          title: Image
-          description: Uploaded image to modify with the pipeline.
-        model_id:
-          type: string
-          title: Model Id
-          description: Hugging Face model ID used for upscaled image generation.
-          default: ''
-        safety_check:
-          type: boolean
-          title: Safety Check
-          description: Perform a safety check to estimate if generated images could
-            be offensive or harmful.
-          default: true
-        seed:
-          type: integer
-          title: Seed
-          description: Seed for random number generation.
-        num_inference_steps:
-          type: integer
-          title: Num Inference Steps
-          description: Number of denoising steps. More steps usually lead to higher
-            quality images but slower inference. Modulated by strength.
-          default: 75
-      type: object
-      required:
-      - prompt
-      - image
-      title: Body_genUpscale
-    Body_segment_anything_2_video_segment_anything_2_video_post:
+    Body_genSegmentAnything2Video:
       properties:
         media_file:
           type: string
@@ -748,7 +714,44 @@ components:
       type: object
       required:
       - media_file
-      title: Body_segment_anything_2_video_segment_anything_2_video_post
+      title: Body_genSegmentAnything2Video
+    Body_genUpscale:
+      properties:
+        prompt:
+          type: string
+          title: Prompt
+          description: Text prompt(s) to guide upscaled image generation.
+        image:
+          type: string
+          format: binary
+          title: Image
+          description: Uploaded image to modify with the pipeline.
+        model_id:
+          type: string
+          title: Model Id
+          description: Hugging Face model ID used for upscaled image generation.
+          default: ''
+        safety_check:
+          type: boolean
+          title: Safety Check
+          description: Perform a safety check to estimate if generated images could
+            be offensive or harmful.
+          default: true
+        seed:
+          type: integer
+          title: Seed
+          description: Seed for random number generation.
+        num_inference_steps:
+          type: integer
+          title: Num Inference Steps
+          description: Number of denoising steps. More steps usually lead to higher
+            quality images but slower inference. Modulated by strength.
+          default: 75
+      type: object
+      required:
+      - prompt
+      - image
+      title: Body_genUpscale
     HTTPError:
       properties:
         detail:
