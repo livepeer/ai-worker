@@ -365,70 +365,70 @@ func NewSegmentAnything2MultipartWriter(w io.Writer, req GenSegmentAnything2Mult
 }
 
 
-// func NewSegmentAnything2VideoMultipartWriter(w io.Writer, req GenSegmentAnything2MultipartRequestBody) (*multipart.Writer, error) {
-// 	mw := multipart.NewWriter(w)
-// 	writer, err := mw.CreateFormFile("media_file", req.Image.Filename())
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	imageSize := req.media_file.FileSize()
-// 	imageRdr, err := req.media_file.Reader()
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	copied, err := io.Copy(writer, imageRdr)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	if copied != imageSize {
-// 		return nil, fmt.Errorf("failed to copy image to multipart request imageBytes=%v copiedBytes=%v", imageSize, copied)
-// 	}
+func NewSegmentAnything2VideoMultipartWriter(w io.Writer, req GenSegmentAnything2VideoMultipartRequestBody) (*multipart.Writer, error) {
+	mw := multipart.NewWriter(w)
+	writer, err := mw.CreateFormFile("media_file", req.MediaFile.Filename())
+	if err != nil {
+		return nil, err
+	}
+	videoSize := req.MediaFile.FileSize()
+	videoRdr, err := req.MediaFile.Reader()
+	if err != nil {
+		return nil, err
+	}
+	copied, err := io.Copy(writer, videoRdr)
+	if err != nil {
+		return nil, err
+	}
+	if copied != videoSize {
+		return nil, fmt.Errorf("failed to copy image to multipart request videoBytes=%v copiedBytes=%v", videoSize, copied)
+	}
 
-// 	// Handle input fields.
-// 	if req.ModelId != nil {
-// 		if err := mw.WriteField("model_id", *req.ModelId); err != nil {
-// 			return nil, err
-// 		}
-// 	}
-// 	if req.PointCoords != nil {
-// 		if err := mw.WriteField("point_coords", *req.PointCoords); err != nil {
-// 			return nil, err
-// 		}
-// 	}
-// 	if req.PointLabels != nil {
-// 		if err := mw.WriteField("point_labels", *req.PointLabels); err != nil {
-// 			return nil, err
-// 		}
-// 	}
-// 	if req.Box != nil {
-// 		if err := mw.WriteField("box", *req.Box); err != nil {
-// 			return nil, err
-// 		}
-// 	}
-// 	if req.MaskInput != nil {
-// 		if err := mw.WriteField("mask_input", *req.MaskInput); err != nil {
-// 			return nil, err
-// 		}
-// 	}
-// 	if req.MultimaskOutput != nil {
-// 		if err := mw.WriteField("multimask_output", strconv.FormatBool(*req.MultimaskOutput)); err != nil {
-// 			return nil, err
-// 		}
-// 	}
-// 	if req.ReturnLogits != nil {
-// 		if err := mw.WriteField("return_logits", strconv.FormatBool(*req.ReturnLogits)); err != nil {
-// 			return nil, err
-// 		}
-// 	}
-// 	if req.NormalizeCoords != nil {
-// 		if err := mw.WriteField("normalize_coords", strconv.FormatBool(*req.NormalizeCoords)); err != nil {
-// 			return nil, err
-// 		}
-// 	}
+	// Handle input fields.
+	if req.ModelId != nil {
+		if err := mw.WriteField("model_id", *req.ModelId); err != nil {
+			return nil, err
+		}
+	}
+	if req.PointCoords != nil {
+		if err := mw.WriteField("point_coords", *req.PointCoords); err != nil {
+			return nil, err
+		}
+	}
+	if req.PointLabels != nil {
+		if err := mw.WriteField("point_labels", *req.PointLabels); err != nil {
+			return nil, err
+		}
+	}
+	if req.Box != nil {
+		if err := mw.WriteField("box", *req.Box); err != nil {
+			return nil, err
+		}
+	}
+	if req.MaskInput != nil {
+		if err := mw.WriteField("mask_input", *req.MaskInput); err != nil {
+			return nil, err
+		}
+	}
+	if req.MultimaskOutput != nil {
+		if err := mw.WriteField("multimask_output", strconv.FormatBool(*req.MultimaskOutput)); err != nil {
+			return nil, err
+		}
+	}
+	if req.ReturnLogits != nil {
+		if err := mw.WriteField("return_logits", strconv.FormatBool(*req.ReturnLogits)); err != nil {
+			return nil, err
+		}
+	}
+	if req.NormalizeCoords != nil {
+		if err := mw.WriteField("normalize_coords", strconv.FormatBool(*req.NormalizeCoords)); err != nil {
+			return nil, err
+		}
+	}
 
-// 	if err := mw.Close(); err != nil {
-// 		return nil, err
-// 	}
+	if err := mw.Close(); err != nil {
+		return nil, err
+	}
 
-// 	return mw, nil
-// }
+	return mw, nil
+}
