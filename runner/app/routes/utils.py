@@ -192,45 +192,42 @@ def handle_pipeline_exception(
     error message and status code.
 
     Args:
-        e (object): The exception to handle. Can be any type of object.
-        default_error_message (Union[str, Dict[str, Any]]): The default error message
-            or content dictionary. Default will be used if no specific error type is
-            matched.
-        default_status_code (int): The default status code to use if no specific error
-            type is matched. Defaults to HTTP_500_INTERNAL_SERVER_ERROR.
-        custom_error_config (Dict[str, Tuple[str, int]]): Custom error configuration
-            to override the application error configuration.
+        e(int): The exception to handle. Can be any type of object.
+        default_error_message: The default error message or content dictionary. Default
+            will be used if no specific error type ismatched.
+        default_status_code: The default status code to use if no specific error type is
+            matched. Defaults to HTTP_500_INTERNAL_SERVER_ERROR.
+        custom_error_config: Custom error configuration to override the application
+            error configuration.
 
     Returns:
-        JSONResponse: The JSON response with appropriate status code and error message.
+        The JSON response with appropriate status code and error message.
     """
     error_config = ERROR_CONFIG.copy()
-
-    # Update error_config with custom_error_config if provided.
     if custom_error_config:
         error_config.update(custom_error_config)
 
-    error_message = default_error_message
     status_code = default_status_code
+    error_message = default_error_message
 
     error_type = type(e).__name__
     if error_type in error_config:
-        message, status_code = error_config[error_type]
-        error_message = str(e) if message is None else message
+        error_message, status_code = error_config[error_type]
     else:
         for error_pattern, (message, code) in error_config.items():
             if error_pattern.lower() in str(e).lower():
-                error_message = str(e) if message is None else message
                 status_code = code
+                error_message = message
                 break
 
-    if error_message == "":
+    if error_message is None:
+        error_message = f"{e}."
+    elif error_message == "":
         error_message = default_error_message
 
-    if isinstance(error_message, str):
-        content = http_error(error_message)
-    else:
-        content = error_message
+    content = (
+        http_error(error_message) if isinstance(error_message, str) else error_message
+    )
 
     return JSONResponse(
         status_code=status_code,
