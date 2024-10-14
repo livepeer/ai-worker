@@ -15,11 +15,3 @@ class InferenceError(Exception):
             message = f"{message}: {original_exception}"
         super().__init__(message)
         self.original_exception = original_exception
-
-
-class OutOfMemoryError(Exception):
-    """Raised when the system runs out of memory."""
-
-    def __init__(self, message="GPU ran out of memory."):
-        self.message = message
-        super().__init__(self.message)
