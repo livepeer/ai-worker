@@ -2,10 +2,11 @@ import base64
 import io
 import json
 import os
-from typing import List, Optional
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
-from fastapi import UploadFile
+from fastapi import UploadFile, status
+from fastapi.responses import JSONResponse
 from PIL import Image
 from pydantic import BaseModel, Field
 
@@ -165,3 +166,69 @@ def json_str_to_np_array(
             error_message += f": {e}"
             raise ValueError(error_message)
     return None
+
+
+# Global error handling configuration.
+ERROR_CONFIG: Dict[str, Tuple[Union[str, None], int]] = {
+    # Specific error types.
+    "LoraLoadingError": (None, status.HTTP_400_BAD_REQUEST),
+    "InferenceError": (None, status.HTTP_400_BAD_REQUEST),
+    "ValueError": ("Pipeline error.", status.HTTP_400_BAD_REQUEST),
+    "OutOfMemoryError": ("GPU out of memory.", status.HTTP_500_INTERNAL_SERVER_ERROR),
+    # General error patterns.
+    "out of memory": ("Out of memory.", status.HTTP_500_INTERNAL_SERVER_ERROR),
+    "CUDA out of memory": ("GPU out of memory.", status.HTTP_500_INTERNAL_SERVER_ERROR),
+}
+
+
+def handle_pipeline_exception(
+    e: object,
+    default_error_message: Union[str, Dict[str, object]] = "Pipeline error.",
+    default_status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR,
+    custom_error_config: Dict[str, Tuple[str, int]] = None,
+) -> JSONResponse:
+    """Handles pipeline exceptions by returning a JSON response with the appropriate
+    error message and status code.
+
+    Args:
+        e (object): The exception to handle. Can be any type of object.
+        default_error_message (Union[str, Dict[str, Any]]): The default error message
+            or content dictionary. Default will be used if no specific error type is
+            matched.
+        default_status_code (int): The default status code to use if no specific error
+            type is matched. Defaults to HTTP_500_INTERNAL_SERVER_ERROR.
+        custom_error_config (Dict[str, Tuple[str, int]]): Custom error configuration
+            to override the application error configuration.
+
+    Returns:
+        JSONResponse: The JSON response with appropriate status code and error message.
+    """
+    error_config = ERROR_CONFIG.copy()
+
+    # Update error_config with custom_error_config if provided.
+    if custom_error_config:
+        error_config.update(custom_error_config)
+
+    error_message = default_error_message
+    status_code = default_status_code
+
+    error_type = type(e).__name__
+    if error_type in error_config:
+        message, status_code = error_config[error_type]
+        error_message = str(e) if message is None or message == "" else message
+    else:
+        for error_pattern, (message, code) in error_config.items():
+            if error_pattern.lower() in str(e).lower():
+                error_message = str(e) if message is None or message == "" else message
+                status_code = code
+                break
+
+    if isinstance(error_message, str):
+        content = http_error(error_message)
+    else:
+        content = error_message
+
+    return JSONResponse(
+        status_code=status_code,
+        content=content,
+    )

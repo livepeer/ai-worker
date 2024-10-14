@@ -1,13 +1,17 @@
 import logging
 import os
-from typing import Annotated
+from typing import Annotated, Dict, Tuple, Union
 
 import torch
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
-from app.pipelines.utils.audio import AudioConversionError
-from app.routes.utils import HTTPError, TextResponse, file_exceeds_max_size, http_error
-from app.utils.errors import InferenceError
+from app.routes.utils import (
+    HTTPError,
+    TextResponse,
+    file_exceeds_max_size,
+    http_error,
+    handle_pipeline_exception,
+)
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -15,6 +19,20 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
+
+# Pipeline specific error handling configuration.
+AUDIO_FORMAT_ERROR_MESSAGE = "Unsupported audio format or malformed file."
+PIPELINE_ERROR_CONFIG: Dict[str, Tuple[Union[str, None], int]] = {
+    # Specific error types.
+    "AudioConversionError": (
+        AUDIO_FORMAT_ERROR_MESSAGE,
+        status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+    ),
+    "Soundfile is either not in the correct format or is malformed": (
+        AUDIO_FORMAT_ERROR_MESSAGE,
+        status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+    ),
+}
 
 RESPONSES = {
     status.HTTP_200_OK: {
@@ -32,37 +50,6 @@ RESPONSES = {
     status.HTTP_415_UNSUPPORTED_MEDIA_TYPE: {"model": HTTPError},
     status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPError},
 }
-
-
-def handle_pipeline_error(e: Exception) -> JSONResponse:
-    """Handles exceptions raised during audio pipeline processing.
-
-    Args:
-        e: The exception raised during audio processing.
-
-    Returns:
-        A JSONResponse with the appropriate error message and status code.
-    """
-    if "Soundfile is either not in the correct format or is malformed" in str(
-        e
-    ) or isinstance(e, AudioConversionError):
-        status_code = status.HTTP_415_UNSUPPORTED_MEDIA_TYPE
-        error_message = "Unsupported audio format or malformed file."
-    elif isinstance(e, torch.cuda.OutOfMemoryError):
-        status_code = status.HTTP_400_BAD_REQUEST
-        error_message = "Out of memory error."
-        torch.cuda.empty_cache()
-    elif isinstance(e, InferenceError):
-        status_code = status.HTTP_400_BAD_REQUEST
-        error_message = str(e)
-    else:
-        status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-        error_message = "Audio-to-text pipeline error."
-
-    return JSONResponse(
-        status_code=status_code,
-        content=http_error(error_message),
-    )
 
 
 @router.post(
@@ -119,5 +106,11 @@ async def audio_to_text(
     try:
         return pipeline(audio=audio)
     except Exception as e:
+        if isinstance(e, torch.cuda.OutOfMemoryError):
+            torch.cuda.empty_cache()
         logger.error(f"AudioToText pipeline error: {e}")
-        return handle_pipeline_error(e)
+        return handle_pipeline_exception(
+            e,
+            default_error_message="Audio-to-text pipeline error.",
+            custom_error_config=PIPELINE_ERROR_CONFIG,
+        )

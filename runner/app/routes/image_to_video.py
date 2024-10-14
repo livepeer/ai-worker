@@ -1,13 +1,18 @@
 import logging
 import os
 import random
-from typing import Annotated
+from typing import Annotated, Dict, Tuple, Union
 
 import torch
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
-from app.routes.utils import HTTPError, VideoResponse, http_error, image_to_data_url
-from app.utils.errors import InferenceError
+from app.routes.utils import (
+    HTTPError,
+    VideoResponse,
+    http_error,
+    image_to_data_url,
+    handle_pipeline_exception,
+)
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -19,33 +24,14 @@ router = APIRouter()
 
 logger = logging.getLogger(__name__)
 
-
-def handle_pipeline_error(e: Exception) -> JSONResponse:
-    """Handles exceptions raised during image-to-video pipeline processing.
-
-    Args:
-        e: The exception raised during image-to-video processing.
-
-    Returns:
-        A JSONResponse with the appropriate error message and status code.
-    """
-    if isinstance(e, torch.cuda.OutOfMemoryError):
-        status_code = status.HTTP_400_BAD_REQUEST
-        error_message = (
-            "Out of memory error. Try reducing input or output video resolution."
-        )
-        torch.cuda.empty_cache()
-    elif isinstance(e, InferenceError):
-        status_code = status.HTTP_400_BAD_REQUEST
-        error_message = str(e)
-    else:
-        status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-        error_message = "Image-to-video pipeline error."
-
-    return JSONResponse(
-        status_code=status_code,
-        content=http_error(error_message),
+# Pipeline specific error handling configuration.
+PIPELINE_ERROR_CONFIG: Dict[str, Tuple[Union[str, None], int]] = {
+    # Specific error types.
+    "OutOfMemoryError": (
+        "Out of memory error. Try reducing input or output video resolution.",
+        status.HTTP_500_INTERNAL_SERVER_ERROR,
     )
+}
 
 
 RESPONSES = {
@@ -182,8 +168,14 @@ async def image_to_video(
             seed=seed,
         )
     except Exception as e:
+        if isinstance(e, torch.cuda.OutOfMemoryError):
+            torch.cuda.empty_cache()
         logger.error(f"ImageToVideo pipeline error: {e}")
-        return handle_pipeline_error(e)
+        return handle_pipeline_exception(
+            e,
+            default_error_message="Image-to-video pipeline error.",
+            custom_error_config=PIPELINE_ERROR_CONFIG,
+        )
 
     output_frames = []
     for frames in batch_frames:

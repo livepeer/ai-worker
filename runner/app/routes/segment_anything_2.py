@@ -1,13 +1,18 @@
 import logging
 import os
-from typing import Annotated
+from typing import Annotated, Dict, Tuple, Union
 
 import numpy as np
 import torch
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
-from app.routes.utils import HTTPError, MasksResponse, http_error, json_str_to_np_array
-from app.utils.errors import InferenceError
+from app.routes.utils import (
+    HTTPError,
+    MasksResponse,
+    http_error,
+    json_str_to_np_array,
+    handle_pipeline_exception,
+)
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -20,30 +25,14 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-def handle_pipeline_error(e: Exception) -> JSONResponse:
-    """Handles exceptions raised during segment-anything-2 pipeline processing.
-
-    Args:
-        e: The exception raised during segment-anything-2 processing.
-
-    Returns:
-        A JSONResponse with the appropriate error message and status code.
-    """
-    if isinstance(e, torch.cuda.OutOfMemoryError):
-        status_code = status.HTTP_400_BAD_REQUEST
-        error_message = "Out of memory error. Try reducing input image resolution."
-        torch.cuda.empty_cache()
-    elif isinstance(e, InferenceError):
-        status_code = status.HTTP_400_BAD_REQUEST
-        error_message = str(e)
-    else:
-        status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-        error_message = "Segment-anything-2 pipeline error."
-
-    return JSONResponse(
-        status_code=status_code,
-        content=http_error(error_message),
+# Pipeline specific error handling configuration.
+PIPELINE_ERROR_CONFIG: Dict[str, Tuple[Union[str, None], int]] = {
+    # Specific error types.
+    "OutOfMemoryError": (
+        "Out of memory error. Try reducing input image resolution.",
+        status.HTTP_500_INTERNAL_SERVER_ERROR,
     )
+}
 
 
 RESPONSES = {
@@ -193,8 +182,14 @@ async def segment_anything_2(
             normalize_coords=normalize_coords,
         )
     except Exception as e:
+        if isinstance(e, torch.cuda.OutOfMemoryError):
+            torch.cuda.empty_cache()
         logger.error(f"SegmentAnything2 pipeline error: {e}")
-        return handle_pipeline_error(e)
+        return handle_pipeline_exception(
+            e,
+            default_error_message="Segment-anything-2 pipeline error.",
+            custom_error_config=PIPELINE_ERROR_CONFIG,
+        )
 
     # Return masks sorted by descending score as string.
     sorted_ind = np.argsort(scores)[::-1]
