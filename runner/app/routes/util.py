@@ -63,6 +63,12 @@ class LLMResponse(BaseModel):
     tokens_used: int
 
 
+class ImageToTextResponse(BaseModel):
+    """Response model for text generation."""
+
+    text: str = Field(..., description="The generated text.")
+
+
 class APIError(BaseModel):
     """API error response model."""
 
