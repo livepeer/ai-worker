@@ -207,8 +207,8 @@ def handle_pipeline_exception(
     if custom_error_config:
         error_config.update(custom_error_config)
 
-    status_code = default_status_code
     error_message = default_error_message
+    status_code = default_status_code
 
     error_type = type(e).__name__
     if error_type in error_config:
