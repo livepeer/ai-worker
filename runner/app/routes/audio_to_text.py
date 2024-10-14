@@ -2,6 +2,7 @@ import logging
 import os
 from typing import Annotated
 
+import torch
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.pipelines.utils.audio import AudioConversionError
@@ -42,15 +43,15 @@ def handle_pipeline_error(e: Exception) -> JSONResponse:
     Returns:
         A JSONResponse with the appropriate error message and status code.
     """
-    logger.error(f"AudioToText pipeline error: {str(e)}")  # Log the detailed error
     if "Soundfile is either not in the correct format or is malformed" in str(
         e
     ) or isinstance(e, AudioConversionError):
         status_code = status.HTTP_415_UNSUPPORTED_MEDIA_TYPE
         error_message = "Unsupported audio format or malformed file."
-    elif "CUDA out of memory" in str(e) or isinstance(e, OutOfMemoryError):
+    elif isinstance(e, torch.cuda.OutOfMemoryError):
         status_code = status.HTTP_400_BAD_REQUEST
         error_message = "Out of memory error."
+        torch.cuda.empty_cache()
     elif isinstance(e, InferenceError):
         status_code = status.HTTP_400_BAD_REQUEST
         error_message = str(e)
@@ -118,4 +119,5 @@ async def audio_to_text(
     try:
         return pipeline(audio=audio)
     except Exception as e:
+        logger.error(f"AudioToText pipeline error: {str(e)}")
         return handle_pipeline_error(e)

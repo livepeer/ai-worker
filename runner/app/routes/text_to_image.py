@@ -7,7 +7,7 @@ import torch
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.routes.utils import HTTPError, ImageResponse, http_error, image_to_data_url
-from app.utils.errors import InferenceError, OutOfMemoryError
+from app.utils.errors import InferenceError
 from app.pipelines.utils.utils import LoraLoadingError
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
@@ -28,8 +28,7 @@ def handle_pipeline_error(e: Exception) -> JSONResponse:
     Returns:
         A JSONResponse with the appropriate error message and status code.
     """
-    logger.error(f"TextToImage pipeline error: {str(e)}")  # Log the detailed error
-    if "CUDA out of memory" in str(e) or isinstance(e, OutOfMemoryError) or isinstance(e, torch.cuda.OutOfMemoryError): # TODO: Simplify.
+    if isinstance(e, torch.cuda.OutOfMemoryError):
         status_code = status.HTTP_400_BAD_REQUEST
         error_message = "Out of memory error. Try reducing output image resolution."
         torch.cuda.empty_cache()
@@ -204,6 +203,7 @@ async def text_to_image(
         try:
             imgs, nsfw_check = pipeline(**kwargs)
         except Exception as e:
+            logger.error(f"TextToImage pipeline error: {str(e)}")
             return handle_pipeline_error(e)
         images.extend(imgs)
         has_nsfw_concept.extend(nsfw_check)

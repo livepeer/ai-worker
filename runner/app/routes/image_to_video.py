@@ -4,9 +4,10 @@ import random
 from typing import Annotated
 
 from app.dependencies import get_pipeline
+import torch
 from app.pipelines.base import Pipeline
 from app.routes.utils import HTTPError, VideoResponse, http_error, image_to_data_url
-from app.utils.errors import InferenceError, OutOfMemoryError
+from app.utils.errors import InferenceError
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -28,12 +29,12 @@ def handle_pipeline_error(e: Exception) -> JSONResponse:
     Returns:
         A JSONResponse with the appropriate error message and status code.
     """
-    logger.error(f"ImageToVideo pipeline error: {str(e)}")  # Log the detailed error
-    if "CUDA out of memory" in str(e) or isinstance(e, OutOfMemoryError):
+    if isinstance(e, torch.cuda.OutOfMemoryError):
         status_code = status.HTTP_400_BAD_REQUEST
         error_message = (
             "Out of memory error. Try reducing input or output video resolution."
         )
+        torch.cuda.empty_cache()
     elif isinstance(e, InferenceError):
         status_code = status.HTTP_400_BAD_REQUEST
         error_message = str(e)
@@ -181,6 +182,7 @@ async def image_to_video(
             seed=seed,
         )
     except Exception as e:
+        logger.error(f"ImageToVideo pipeline error: {str(e)}")
         return handle_pipeline_error(e)
 
     output_frames = []

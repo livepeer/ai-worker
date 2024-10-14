@@ -3,6 +3,7 @@ import os
 from typing import Annotated
 
 import numpy as np
+import torch
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.routes.utils import HTTPError, MasksResponse, http_error, json_str_to_np_array
@@ -28,10 +29,10 @@ def handle_pipeline_error(e: Exception) -> JSONResponse:
     Returns:
         A JSONResponse with the appropriate error message and status code.
     """
-    logger.error(f"SegmentAnything2 pipeline error: {str(e)}")  # Log the detailed error
-    if "CUDA out of memory" in str(e) or isinstance(e, OutOfMemoryError):
+    if isinstance(e, torch.cuda.OutOfMemoryError):
         status_code = status.HTTP_400_BAD_REQUEST
         error_message = "Out of memory error. Try reducing input image resolution."
+        torch.cuda.empty_cache()
     elif isinstance(e, InferenceError):
         status_code = status.HTTP_400_BAD_REQUEST
         error_message = str(e)
@@ -192,6 +193,7 @@ async def segment_anything_2(
             normalize_coords=normalize_coords,
         )
     except Exception as e:
+        logger.error(f"SegmentAnything2 pipeline error: {str(e)}")
         return handle_pipeline_error(e)
 
     # Return masks sorted by descending score as string.

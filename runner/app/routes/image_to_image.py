@@ -30,11 +30,7 @@ def handle_pipeline_error(e: Exception) -> JSONResponse:
     Returns:
         A JSONResponse with the appropriate error message and status code.
     """
-    logger.error(
-        f"ImageToImagePipeline pipeline error: {str(e)}"
-    )  # Log the detailed error
-    logger.exception(e) # TODO: Check if needed.
-    if "CUDA out of memory" in str(e) or isinstance(e, OutOfMemoryError) or isinstance(torch.cuda.OutOfMemoryError): # TODO: simplify condition.
+    if isinstance(e, torch.cuda.OutOfMemoryError):
         status_code = status.HTTP_400_BAD_REQUEST
         error_message = "Out of memory error. Try reducing input image resolution."
         torch.cuda.empty_cache()
@@ -215,6 +211,7 @@ async def image_to_image(
                 num_inference_steps=num_inference_steps,
             )
         except Exception as e:
+            logger.error(f"ImageToImagePipeline pipeline error: {str(e)}")
             return handle_pipeline_error(e)
         images.extend(imgs)
         has_nsfw_concept.extend(nsfw_checks)
