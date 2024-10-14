@@ -35,6 +35,9 @@ function download_beta_models() {
     # Download audio-to-text models.
     huggingface-cli download openai/whisper-large-v3 --include "*.safetensors" "*.json" --cache-dir models
 
+    # Download sketch-to-image models.
+    huggingface-cli download xinsir/controlnet-scribble-sdxl-1.0 --include "*.safetensors" "*.json" --cache-dir models
+    
     printf "\nDownloading token-gated models...\n"
 
     # Download image-to-video models (token-gated).

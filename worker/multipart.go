@@ -313,3 +313,35 @@ func NewSegmentAnything2MultipartWriter(w io.Writer, req GenSegmentAnything2Mult
 
 	return mw, nil
 }
+
+func NewSketchToImageMultipartWriter(w io.Writer, req SketchToImageMultipartRequestBody) (*multipart.Writer, error) {
+	mw := multipart.NewWriter(w)
+	writer, err := mw.CreateFormFile("audio", req.Audio.Filename())
+	if err != nil {
+		return nil, err
+	}
+	audioSize := req.Audio.FileSize()
+	audioRdr, err := req.Audio.Reader()
+	if err != nil {
+		return nil, err
+	}
+	copied, err := io.Copy(writer, audioRdr)
+	if err != nil {
+		return nil, err
+	}
+	if copied != audioSize {
+		return nil, fmt.Errorf("failed to copy audio to multipart request audioBytes=%v copiedBytes=%v", audioSize, copied)
+	}
+
+	if req.ModelId != nil {
+		if err := mw.WriteField("model_id", *req.ModelId); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := mw.Close(); err != nil {
+		return nil, err
+	}
+
+	return mw, nil
+}
