@@ -55,12 +55,18 @@ class TextResponse(BaseModel):
     """Response model for text generation."""
 
     text: str = Field(..., description="The generated text.")
-    chunks: List[chunk] = Field(None, description="The generated text chunks.")
+    chunks: List[chunk] = Field(..., description="The generated text chunks.")
 
 
 class LLMResponse(BaseModel):
     response: str
     tokens_used: int
+
+
+class ImageToTextResponse(BaseModel):
+    """Response model for text generation."""
+
+    text: str = Field(..., description="The generated text.")
 
 
 class APIError(BaseModel):

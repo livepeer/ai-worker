@@ -380,7 +380,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TextResponse'
+                $ref: '#/components/schemas/ImageToTextResponse'
                 x-speakeasy-name-override: data
         '400':
           description: Bad Request
@@ -762,6 +762,17 @@ components:
       - images
       title: ImageResponse
       description: Response model for image generation.
+    ImageToTextResponse:
+      properties:
+        text:
+          type: string
+          title: Text
+          description: The generated text.
+      type: object
+      required:
+      - text
+      title: ImageToTextResponse
+      description: Response model for text generation.
     LLMResponse:
       properties:
         response:
@@ -832,6 +843,7 @@ components:
       type: object
       required:
       - text
+      - chunks
       title: TextResponse
       description: Response model for text generation.
     TextToImageParams:

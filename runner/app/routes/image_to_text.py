@@ -4,7 +4,7 @@ from typing import Annotated
 
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
-from app.routes.util import HTTPError, TextResponse, file_exceeds_max_size, http_error
+from app.routes.util import HTTPError, ImageToTextResponse, file_exceeds_max_size, http_error
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -34,7 +34,7 @@ RESPONSES = {
 
 @router.post(
     "/image-to-text",
-    response_model=TextResponse,
+    response_model=ImageToTextResponse,
     responses=RESPONSES,
     description="Transform image files to text.",
     operation_id="genImageToText",
@@ -44,7 +44,7 @@ RESPONSES = {
 )
 @router.post(
     "/image-to-text/",
-    response_model=TextResponse,
+    response_model=ImageToTextResponse,
     responses=RESPONSES,
     include_in_schema=False,
 )
@@ -88,7 +88,7 @@ async def image_to_text(
 
     image = Image.open(image.file).convert("RGB")
     try:
-        return TextResponse(text=pipeline(prompt=prompt, image=image))
+        return ImageToTextResponse(text=pipeline(prompt=prompt, image=image))
     except Exception as e:
         logger.error(f"ImageToTextPipeline error: {e}")
         logger.exception(e)

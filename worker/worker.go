@@ -390,7 +390,7 @@ func (w *Worker) SegmentAnything2(ctx context.Context, req GenSegmentAnything2Mu
 	return resp.JSON200, nil
 }
 
-func (w *Worker) ImageToText(ctx context.Context, req GenImageToTextMultipartRequestBody) (*TextResponse, error) {
+func (w *Worker) ImageToText(ctx context.Context, req GenImageToTextMultipartRequestBody) (*ImageToTextResponse, error) {
 	c, err := w.borrowContainer(ctx, "image-to-text", *req.ModelId)
 	if err != nil {
 		return nil, err
