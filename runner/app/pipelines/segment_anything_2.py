@@ -3,7 +3,7 @@ from typing import List, Optional, Tuple
 
 import PIL
 from app.pipelines.base import Pipeline
-from app.pipelines.utils import get_torch_device, get_model_dir
+from app.pipelines.utils import get_model_dir, get_torch_device
 from app.utils.errors import InferenceError
 from PIL import ImageFile
 from sam2.sam2_image_predictor import SAM2ImagePredictor

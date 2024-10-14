@@ -4,10 +4,10 @@ import random
 from typing import Annotated
 
 import torch
-from app.utils.errors import InferenceError
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.routes.utils import HTTPError, ImageResponse, http_error, image_to_data_url
+from app.utils.errors import InferenceError
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer

@@ -4,7 +4,6 @@ from typing import List, Optional, Tuple
 
 import PIL
 import torch
-from app.utils.errors import InferenceError
 from app.pipelines.base import Pipeline
 from app.pipelines.utils import (
     SafetyChecker,
@@ -13,6 +12,7 @@ from app.pipelines.utils import (
     is_lightning_model,
     is_turbo_model,
 )
+from app.utils.errors import InferenceError
 from diffusers import StableDiffusionUpscalePipeline
 from huggingface_hub import file_download
 from PIL import ImageFile

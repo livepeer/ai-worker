@@ -3,8 +3,8 @@ import os
 import random
 from typing import Annotated
 
-from app.dependencies import get_pipeline
 import torch
+from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.routes.utils import HTTPError, VideoResponse, http_error, image_to_data_url
 from app.utils.errors import InferenceError
