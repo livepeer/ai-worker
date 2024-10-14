@@ -169,11 +169,12 @@ def json_str_to_np_array(
 
 
 # Global error handling configuration.
+# NOTE: "" for default message, None for exception message.
 ERROR_CONFIG: Dict[str, Tuple[Union[str, None], int]] = {
     # Specific error types.
     "LoraLoadingError": (None, status.HTTP_400_BAD_REQUEST),
     "InferenceError": (None, status.HTTP_400_BAD_REQUEST),
-    "ValueError": ("Pipeline error.", status.HTTP_400_BAD_REQUEST),
+    "ValueError": ("", status.HTTP_400_BAD_REQUEST),
     "OutOfMemoryError": ("GPU out of memory.", status.HTTP_500_INTERNAL_SERVER_ERROR),
     # General error patterns.
     "out of memory": ("Out of memory.", status.HTTP_500_INTERNAL_SERVER_ERROR),
@@ -215,13 +216,16 @@ def handle_pipeline_exception(
     error_type = type(e).__name__
     if error_type in error_config:
         message, status_code = error_config[error_type]
-        error_message = str(e) if message is None or message == "" else message
+        error_message = str(e) if message is None else message
     else:
         for error_pattern, (message, code) in error_config.items():
             if error_pattern.lower() in str(e).lower():
-                error_message = str(e) if message is None or message == "" else message
+                error_message = str(e) if message is None else message
                 status_code = code
                 break
+
+    if error_message == "":
+        error_message = default_error_message
 
     if isinstance(error_message, str):
         content = http_error(error_message)
