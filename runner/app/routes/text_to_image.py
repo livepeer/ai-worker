@@ -203,7 +203,7 @@ async def text_to_image(
         try:
             imgs, nsfw_check = pipeline(**kwargs)
         except Exception as e:
-            logger.error(f"TextToImage pipeline error: {str(e)}")
+            logger.error(f"TextToImage pipeline error: {e}")
             return handle_pipeline_error(e)
         images.extend(imgs)
         has_nsfw_concept.extend(nsfw_check)

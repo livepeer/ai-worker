@@ -119,5 +119,5 @@ async def audio_to_text(
     try:
         return pipeline(audio=audio)
     except Exception as e:
-        logger.error(f"AudioToText pipeline error: {str(e)}")
+        logger.error(f"AudioToText pipeline error: {e}")
         return handle_pipeline_error(e)

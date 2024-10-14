@@ -211,7 +211,7 @@ async def image_to_image(
                 num_inference_steps=num_inference_steps,
             )
         except Exception as e:
-            logger.error(f"ImageToImagePipeline pipeline error: {str(e)}")
+            logger.error(f"ImageToImagePipeline pipeline error: {e}")
             return handle_pipeline_error(e)
         images.extend(imgs)
         has_nsfw_concept.extend(nsfw_checks)

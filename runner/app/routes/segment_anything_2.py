@@ -193,7 +193,7 @@ async def segment_anything_2(
             normalize_coords=normalize_coords,
         )
     except Exception as e:
-        logger.error(f"SegmentAnything2 pipeline error: {str(e)}")
+        logger.error(f"SegmentAnything2 pipeline error: {e}")
         return handle_pipeline_error(e)
 
     # Return masks sorted by descending score as string.

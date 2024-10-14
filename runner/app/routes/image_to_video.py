@@ -182,7 +182,7 @@ async def image_to_video(
             seed=seed,
         )
     except Exception as e:
-        logger.error(f"ImageToVideo pipeline error: {str(e)}")
+        logger.error(f"ImageToVideo pipeline error: {e}")
         return handle_pipeline_error(e)
 
     output_frames = []
