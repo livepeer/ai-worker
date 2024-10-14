@@ -3,10 +3,12 @@ import os
 import random
 from typing import Annotated
 
+import torch
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.routes.utils import HTTPError, ImageResponse, http_error, image_to_data_url
 from app.utils.errors import InferenceError, OutOfMemoryError
+from app.pipelines.utils.utils import LoraLoadingError
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -27,9 +29,13 @@ def handle_pipeline_error(e: Exception) -> JSONResponse:
         A JSONResponse with the appropriate error message and status code.
     """
     logger.error(f"TextToImage pipeline error: {str(e)}")  # Log the detailed error
-    if "CUDA out of memory" in str(e) or isinstance(e, OutOfMemoryError):
+    if "CUDA out of memory" in str(e) or isinstance(e, OutOfMemoryError) or isinstance(e, torch.cuda.OutOfMemoryError): # TODO: Simplify.
         status_code = status.HTTP_400_BAD_REQUEST
         error_message = "Out of memory error. Try reducing output image resolution."
+        torch.cuda.empty_cache()
+    elif isinstance(e, LoraLoadingError):
+        status_code = status.HTTP_400_BAD_REQUEST
+        error_message = str(e)
     elif isinstance(e, InferenceError):
         status_code = status.HTTP_400_BAD_REQUEST
         error_message = str(e)
@@ -50,6 +56,17 @@ class TextToImageParams(BaseModel):
         str,
         Field(
             default="", description="Hugging Face model ID used for image generation."
+        ),
+    ]
+    loras: Annotated[
+        str,
+        Field(
+            default="",
+            description=(
+                "A LoRA (Low-Rank Adaptation) model and its corresponding weight for "
+                'image generation. Example: { "latent-consistency/lcm-lora-sdxl": '
+                '1.0, "nerijs/pixel-art-xl": 1.2}.'
+            ),
         ),
     ]
     prompt: Annotated[
@@ -119,6 +136,15 @@ class TextToImageParams(BaseModel):
 
 
 RESPONSES = {
+    status.HTTP_200_OK: {
+        "content": {
+            "application/json": {
+                "schema": {
+                    "x-speakeasy-name-override": "data",
+                }
+            }
+        },
+    },
     status.HTTP_400_BAD_REQUEST: {"model": HTTPError},
     status.HTTP_401_UNAUTHORIZED: {"model": HTTPError},
     status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPError},
@@ -130,6 +156,10 @@ RESPONSES = {
     response_model=ImageResponse,
     responses=RESPONSES,
     description="Generate images from text prompts.",
+    operation_id="genTextToImage",
+    summary="Text To Image",
+    tags=["generate"],
+    openapi_extra={"x-speakeasy-name-override": "textToImage"},
 )
 @router.post(
     "/text-to-image/",

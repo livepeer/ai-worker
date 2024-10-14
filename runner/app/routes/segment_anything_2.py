@@ -46,6 +46,15 @@ def handle_pipeline_error(e: Exception) -> JSONResponse:
 
 
 RESPONSES = {
+    status.HTTP_200_OK: {
+        "content": {
+            "application/json": {
+                "schema": {
+                    "x-speakeasy-name-override": "data",
+                }
+            }
+        },
+    },
     status.HTTP_400_BAD_REQUEST: {"model": HTTPError},
     status.HTTP_401_UNAUTHORIZED: {"model": HTTPError},
     status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPError},
@@ -59,6 +68,10 @@ RESPONSES = {
     response_model=MasksResponse,
     responses=RESPONSES,
     description="Segment objects in an image.",
+    operation_id="genSegmentAnything2",
+    summary="Segment Anything 2",
+    tags=["generate"],
+    openapi_extra={"x-speakeasy-name-override": "segmentAnything2"},
 )
 @router.post(
     "/segment-anything-2/",

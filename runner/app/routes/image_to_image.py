@@ -3,10 +3,12 @@ import os
 import random
 from typing import Annotated
 
+import torch
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.routes.utils import HTTPError, ImageResponse, http_error, image_to_data_url
 from app.utils.errors import InferenceError, OutOfMemoryError
+from app.pipelines.utils.utils import LoraLoadingError
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -31,9 +33,14 @@ def handle_pipeline_error(e: Exception) -> JSONResponse:
     logger.error(
         f"ImageToImagePipeline pipeline error: {str(e)}"
     )  # Log the detailed error
-    if "CUDA out of memory" in str(e) or isinstance(e, OutOfMemoryError):
+    logger.exception(e) # TODO: Check if needed.
+    if "CUDA out of memory" in str(e) or isinstance(e, OutOfMemoryError) or isinstance(torch.cuda.OutOfMemoryError): # TODO: simplify condition.
         status_code = status.HTTP_400_BAD_REQUEST
         error_message = "Out of memory error. Try reducing input image resolution."
+        torch.cuda.empty_cache()
+    elif isinstance(e, LoraLoadingError):
+        status_code = status.HTTP_400_BAD_REQUEST
+        error_message = str(e)
     elif isinstance(e, InferenceError):
         status_code = status.HTTP_400_BAD_REQUEST
         error_message = str(e)
@@ -48,6 +55,15 @@ def handle_pipeline_error(e: Exception) -> JSONResponse:
 
 
 RESPONSES = {
+    status.HTTP_200_OK: {
+        "content": {
+            "application/json": {
+                "schema": {
+                    "x-speakeasy-name-override": "data",
+                }
+            }
+        },
+    },
     status.HTTP_400_BAD_REQUEST: {"model": HTTPError},
     status.HTTP_401_UNAUTHORIZED: {"model": HTTPError},
     status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPError},
@@ -61,6 +77,10 @@ RESPONSES = {
     response_model=ImageResponse,
     responses=RESPONSES,
     description="Apply image transformations to a provided image.",
+    operation_id="genImageToImage",
+    summary="Image To Image",
+    tags=["generate"],
+    openapi_extra={"x-speakeasy-name-override": "imageToImage"},
 )
 @router.post(
     "/image-to-image/",
@@ -80,6 +100,16 @@ async def image_to_image(
     model_id: Annotated[
         str,
         Form(description="Hugging Face model ID used for image generation."),
+    ] = "",
+    loras: Annotated[
+        str,
+        Form(
+            description=(
+                "A LoRA (Low-Rank Adaptation) model and its corresponding weight for "
+                'image generation. Example: { "latent-consistency/lcm-lora-sdxl": '
+                '1.0, "nerijs/pixel-art-xl": 1.2}.'
+            )
+        ),
     ] = "",
     strength: Annotated[
         float,
@@ -175,6 +205,7 @@ async def image_to_image(
                 prompt=prompt,
                 image=image,
                 strength=strength,
+                loras=loras,
                 guidance_scale=guidance_scale,
                 image_guidance_scale=image_guidance_scale,
                 negative_prompt=negative_prompt,
