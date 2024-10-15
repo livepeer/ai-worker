@@ -3,8 +3,10 @@ import os
 import random
 from typing import Annotated
 
+import torch
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
+from app.pipelines.utils.utils import LoraLoadingError
 from app.routes.util import HTTPError, ImageResponse, http_error, image_to_data_url
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
@@ -64,6 +66,16 @@ async def image_to_image(
     model_id: Annotated[
         str,
         Form(description="Hugging Face model ID used for image generation."),
+    ] = "",
+    loras: Annotated[
+        str,
+        Form(
+            description=(
+                "A LoRA (Low-Rank Adaptation) model and its corresponding weight for "
+                'image generation. Example: { "latent-consistency/lcm-lora-sdxl": '
+                '1.0, "nerijs/pixel-art-xl": 1.2}.'
+            )
+        ),
     ] = "",
     strength: Annotated[
         float,
@@ -159,6 +171,7 @@ async def image_to_image(
                 prompt=prompt,
                 image=image,
                 strength=strength,
+                loras=loras,
                 guidance_scale=guidance_scale,
                 image_guidance_scale=image_guidance_scale,
                 negative_prompt=negative_prompt,
@@ -169,7 +182,15 @@ async def image_to_image(
             )
             images.extend(imgs)
             has_nsfw_concept.extend(nsfw_checks)
+        except LoraLoadingError as e:
+            logger.error(f"ImageToImagePipeline error: {e}")
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content=http_error(str(e)),
+            )
         except Exception as e:
+            if isinstance(e, torch.cuda.OutOfMemoryError):
+                torch.cuda.empty_cache()
             logger.error(f"ImageToImagePipeline error: {e}")
             logger.exception(e)
             return JSONResponse(

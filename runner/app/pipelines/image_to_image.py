@@ -8,6 +8,7 @@ import PIL
 import torch
 from app.pipelines.base import Pipeline
 from app.pipelines.utils import (
+    LoraLoader,
     SafetyChecker,
     get_model_dir,
     get_torch_device,
@@ -173,17 +174,26 @@ class ImageToImagePipeline(Pipeline):
         safety_checker_device = os.getenv("SAFETY_CHECKER_DEVICE", "cuda").lower()
         self._safety_checker = SafetyChecker(device=safety_checker_device)
 
+        self._lora_loader = LoraLoader(self.ldm)
+
     def __call__(
         self, prompt: str, image: PIL.Image, **kwargs
     ) -> Tuple[List[PIL.Image], List[Optional[bool]]]:
         seed = kwargs.pop("seed", None)
         safety_check = kwargs.pop("safety_check", True)
+        loras_json = kwargs.pop("loras", "")
 
         if seed is not None:
             if isinstance(seed, int):
                 kwargs["generator"] = torch.Generator(get_torch_device()).manual_seed(seed)
             elif isinstance(seed, list):
                 kwargs["generator"] = [torch.Generator(get_torch_device()).manual_seed(s) for s in seed]
+
+        # Dynamically (un)load LoRas.
+        if not loras_json:
+            self._lora_loader.disable_loras()
+        else:
+            self._lora_loader.load_loras(loras_json)
 
         if "num_inference_steps" in kwargs and (
             kwargs["num_inference_steps"] is None or kwargs["num_inference_steps"] < 1
