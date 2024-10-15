@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Livepeer AI Runner
   description: An application to run AI pipelines
-  version: ''
+  version: v1.0.0
 servers:
 - url: https://dream-gateway.livepeer.cloud
   description: Livepeer Cloud Community Gateway
@@ -153,54 +153,6 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: imageToVideo
-  /upscale:
-    post:
-      tags:
-      - generate
-      summary: Upscale
-      description: Upscale an image by increasing its resolution.
-      operationId: genUpscale
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Body_genUpscale'
-        required: true
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ImageResponse'
-                x-speakeasy-name-override: data
-        '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPError'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPError'
-        '500':
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPError'
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-      security:
-      - HTTPBearer: []
-      x-speakeasy-name-override: upscale
   /audio-to-text:
     post:
       tags:
@@ -255,6 +207,54 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: audioToText
+  /upscale:
+    post:
+      tags:
+      - generate
+      summary: Upscale
+      description: Upscale an image by increasing its resolution.
+      operationId: genUpscale
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_genUpscale'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageResponse'
+                x-speakeasy-name-override: data
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+      x-speakeasy-name-override: upscale
   /segment-anything-2:
     post:
       tags:

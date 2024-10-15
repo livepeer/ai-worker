@@ -1,7 +1,7 @@
 """This module provides a function to enable StableFast optimization for the pipeline.
 
-For more information, see the DeepCache project on GitHub: https://github.com/chengzeyi/stable-fast
-"""  # noqa: E501
+For more information, see the Stable Fast project on GitHub: https://github.com/chengzeyi/stable-fast
+"""
 
 import logging
 
