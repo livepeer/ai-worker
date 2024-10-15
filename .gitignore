@@ -15,3 +15,4 @@ checkpoints
 
 # Python
 runner/.venv
+runner/.models
