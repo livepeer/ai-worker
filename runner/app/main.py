@@ -1,7 +1,5 @@
 import logging
 import os
-import sys
-import cv2
 from contextlib import asynccontextmanager
 
 from app.routes import health

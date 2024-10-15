@@ -19,6 +19,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 logger = logging.getLogger(__name__)
 
+SFAST_WARMUP_ITERATIONS = 2 # Model warm-up iterations when SFAST is enabled.
 
 class ImageToVideoPipeline(Pipeline):
     def __init__(self, model_id: str):
