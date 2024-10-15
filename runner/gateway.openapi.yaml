@@ -310,13 +310,20 @@ paths:
       summary: Sketch To Image
       description: Transform sketch to image.
       operationId: genSketchToImage
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_genSketchToImage'
+        required: true
       responses:
         '200':
           description: Successful Response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TextResponse'
+                $ref: '#/components/schemas/ImageResponse'
+                x-speakeasy-name-override: data
         '400':
           description: Bad Request
           content:
@@ -341,6 +348,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+      x-speakeasy-name-override: sketchToImage
 components:
   schemas:
     APIError:
@@ -560,6 +576,57 @@ components:
       - image
       - model_id
       title: Body_genSegmentAnything2
+    Body_genSketchToImage:
+      properties:
+        prompt:
+          type: string
+          title: Prompt
+          description: Text prompt(s) to guide image generation. Separate multiple
+            prompts with '|' if supported by the model.
+        image:
+          type: string
+          format: binary
+          title: Image
+          description: Uploaded sketch image to generate a image from.
+        model_id:
+          type: string
+          title: Model Id
+          description: Hugging Face model ID used for image generation.
+          default: ''
+        height:
+          type: integer
+          title: Height
+          description: The height in pixels of the generated image.
+          default: 512
+        width:
+          type: integer
+          title: Width
+          description: The width in pixels of the generated image.
+          default: 1024
+        negative_prompt:
+          type: string
+          title: Negative Prompt
+          description: Text prompt(s) to guide what to exclude from image generation.
+            Ignored if guidance_scale < 1.
+          default: ''
+        num_inference_steps:
+          type: integer
+          title: Num Inference Steps
+          description: Number of denoising steps. More steps usually lead to higher
+            quality images but slower inference. Modulated by strength.
+          default: 8
+        controlnet_conditioning_scale:
+          type: number
+          title: Controlnet Conditioning Scale
+          description: Encourages model to generate images follow the conditioning
+            input more strictly
+          default: 1.0
+      type: object
+      required:
+      - prompt
+      - image
+      - model_id
+      title: Body_genSketchToImage
     Body_genUpscale:
       properties:
         prompt:

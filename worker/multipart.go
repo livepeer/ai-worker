@@ -314,27 +314,55 @@ func NewSegmentAnything2MultipartWriter(w io.Writer, req GenSegmentAnything2Mult
 	return mw, nil
 }
 
-func NewSketchToImageMultipartWriter(w io.Writer, req SketchToImageMultipartRequestBody) (*multipart.Writer, error) {
+func NewSketchToImageMultipartWriter(w io.Writer, req GenSketchToImageMultipartRequestBody) (*multipart.Writer, error) {
 	mw := multipart.NewWriter(w)
-	writer, err := mw.CreateFormFile("audio", req.Audio.Filename())
+	writer, err := mw.CreateFormFile("image", req.Image.Filename())
 	if err != nil {
 		return nil, err
 	}
-	audioSize := req.Audio.FileSize()
-	audioRdr, err := req.Audio.Reader()
+	imageSize := req.Image.FileSize()
+	imageRdr, err := req.Image.Reader()
 	if err != nil {
 		return nil, err
 	}
-	copied, err := io.Copy(writer, audioRdr)
+	copied, err := io.Copy(writer, imageRdr)
 	if err != nil {
 		return nil, err
 	}
-	if copied != audioSize {
-		return nil, fmt.Errorf("failed to copy audio to multipart request audioBytes=%v copiedBytes=%v", audioSize, copied)
+	if copied != imageSize {
+		return nil, fmt.Errorf("failed to copy image to multipart request imageBytes=%v copiedBytes=%v", imageSize, copied)
 	}
 
+	if err := mw.WriteField("prompt", req.Prompt); err != nil {
+		return nil, err
+	}
 	if req.ModelId != nil {
 		if err := mw.WriteField("model_id", *req.ModelId); err != nil {
+			return nil, err
+		}
+	}
+	if req.Width != nil {
+		if err := mw.WriteField("width", strconv.Itoa(*req.Width)); err != nil {
+			return nil, err
+		}
+	}
+	if req.Height != nil {
+		if err := mw.WriteField("height", strconv.Itoa(*req.Height)); err != nil {
+			return nil, err
+		}
+	}
+	if req.ControlnetConditioningScale != nil {
+		if err := mw.WriteField("controlnet_conditioning_scale", fmt.Sprintf("%f", *req.ControlnetConditioningScale)); err != nil {
+			return nil, err
+		}
+	}
+	if req.NegativePrompt != nil {
+		if err := mw.WriteField("negative_prompt", *req.NegativePrompt); err != nil {
+			return nil, err
+		}
+	}
+	if req.NumInferenceSteps != nil {
+		if err := mw.WriteField("num_inference_steps", strconv.Itoa(*req.NumInferenceSteps)); err != nil {
 			return nil, err
 		}
 	}
