@@ -77,6 +77,10 @@ async def audio_to_text(
         Form(description="Hugging Face model ID used for transcription."),
     ] = "",
     pipeline: Pipeline = Depends(get_pipeline),
+    return_timestamps:  Annotated[
+        str,
+        Form(description="Optionally return timestamps for the transcribed text by sentence or word. Supported values 'false' and 'word'. Defaults to sentence-level timestamps."),
+    ] = "sentence",
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
     auth_token = os.environ.get("AUTH_TOKEN")
@@ -96,15 +100,21 @@ async def audio_to_text(
                 f"{model_id}."
             ),
         )
-
-    if file_exceeds_max_size(audio, 50 * 1024 * 1024):
+    
+    if return_timestamps is not None and return_timestamps not in ["false", "sentence", "word"]:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content=http_error("return_timestamps must be either 'false' or 'word'"),
+        )
+    
+    if file_exceeds_max_size(audio, 100 * 1024 * 1024):
         return JSONResponse(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             content=http_error("File size exceeds limit."),
         )
 
     try:
-        return pipeline(audio=audio)
+        return pipeline(audio=audio, return_timestamps=return_timestamps)
     except Exception as e:
         if isinstance(e, torch.cuda.OutOfMemoryError):
             torch.cuda.empty_cache()
