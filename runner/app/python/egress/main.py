@@ -11,9 +11,9 @@ gi.require_version('Gst', '1.0')
 from gi.repository import Gst, GLib
 
 class VideoEgress:
-    def __init__(self, rtmp_url, zmq_address=None, framerate=30, width=1280, height=720, use_test_src=False):
+    def __init__(self, rtmp_url, zmq_address=None, framerate=30, width=640, height=480, use_test_src=False):
         Gst.init(None)
-        
+        logging.info("init video egress")        
         self.pipeline = Gst.Pipeline.new("video-egress")
         
         # Create elements
@@ -29,6 +29,7 @@ class VideoEgress:
             self.jpegdec = Gst.ElementFactory.make("jpegdec", "jpeg-decoder")
 
         self.videoconvert = Gst.ElementFactory.make("videoconvert", "video-convert")
+        self.queue = Gst.ElementFactory.make("queue", "buffer-queue")
         self.x264enc = Gst.ElementFactory.make("x264enc", "x264-encoder")
         self.h264parse = Gst.ElementFactory.make("h264parse", "h264-parser")
         self.flvmux = Gst.ElementFactory.make("flvmux", "flv-muxer")
@@ -38,15 +39,21 @@ class VideoEgress:
         if use_test_src:
             src_caps = Gst.Caps.from_string(f"video/x-raw,format=I420,width={width},height={height},framerate={framerate}/1")
         else:
-            src_caps = Gst.Caps.from_string(f"image/jpeg,width={width},height={height},framerate={framerate}/1")
+            src_caps = Gst.Caps.from_string(f"image/jpeg,width=640,height=480,framerate=30/1")
         self.capsfilter_src = Gst.ElementFactory.make("capsfilter", "src-caps")
         self.capsfilter_src.set_property("caps", src_caps)
         
+        # Configure queue element
+        self.queue.set_property("max-size-buffers", 30)  # Adjust as needed
+        self.queue.set_property("max-size-bytes", 0)
+        self.queue.set_property("max-size-time", 0)
+        
         # Configure x264enc
         self.x264enc.set_property("tune", "zerolatency")
-        self.x264enc.set_property("speed-preset", "ultrafast")
+        self.x264enc.set_property("speed-preset", "medium")
+        self.x264enc.set_property("threads", 4)
         self.x264enc.set_property("bitrate", 2000)
-        self.x264enc.set_property("key-int-max", framerate * 2)  # GOP of 2 seconds
+        #self.x264enc.set_property("key-int-max", framerate * 2)  # GOP of 2 seconds
         self.x264enc.set_property("bframes", 0)  # No B-frames
         
         # Set H.264 profile using capsfilter after x264enc
@@ -59,10 +66,10 @@ class VideoEgress:
         
         # Add elements to pipeline
         if use_test_src:
-            elements = [self.src, self.capsfilter_src, self.videoconvert, 
+            elements = [self.src, self.capsfilter_src, self.videoconvert, self.queue,
                         self.x264enc, self.capsfilter_h264, self.h264parse, self.flvmux, self.rtmpsink]
         else:
-            elements = [self.src, self.capsfilter_src, self.jpegdec, self.videoconvert, 
+            elements = [self.src, self.capsfilter_src, self.jpegdec, self.videoconvert, self.queue,
                         self.x264enc, self.capsfilter_h264, self.h264parse, self.flvmux, self.rtmpsink]
         for element in elements:
             self.pipeline.add(element)
@@ -71,11 +78,13 @@ class VideoEgress:
         if use_test_src:
             self.src.link(self.capsfilter_src)
             self.capsfilter_src.link(self.videoconvert)
+            self.videoconvert.link(self.queue)
         else:
             self.src.link(self.capsfilter_src)
             self.capsfilter_src.link(self.jpegdec)
             self.jpegdec.link(self.videoconvert)
-        self.videoconvert.link(self.x264enc)
+            self.videoconvert.link(self.queue)
+        self.queue.link(self.x264enc)
         self.x264enc.link(self.capsfilter_h264)
         self.capsfilter_h264.link(self.h264parse)
         self.h264parse.link(self.flvmux)
