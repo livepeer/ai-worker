@@ -34,7 +34,7 @@ class AudioToTextPipeline(Pipeline):
             for _, _, files in os.walk(folder_path)
             for fname in files
         )
-        if torch_device != "cpu" and has_fp16_variant:
+        if torch_device.type != "cpu" and has_fp16_variant:
             logger.info("AudioToTextPipeline loading fp16 variant for %s", model_id)
 
             kwargs["torch_dtype"] = torch.float16
