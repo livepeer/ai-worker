@@ -174,8 +174,8 @@ class TextToImagePipeline(Pipeline):
 
             self.ldm = compile_model(self.ldm)
 
-            # Retrieve default model params.
-            # TODO: Retrieve defaults from Pydantic class in route.
+            # Warm-up the pipeline.
+            # TODO: Not yet supported for ImageToImagePipeline.
             if os.getenv("SFAST_WARMUP", "true").lower() == "true":
                 logger.warning(
                     "The 'SFAST_WARMUP' flag is not yet supported for the "
