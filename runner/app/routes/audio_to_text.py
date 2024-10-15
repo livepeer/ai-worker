@@ -107,7 +107,7 @@ async def audio_to_text(
             content=http_error("return_timestamps must be either 'false' or 'word'"),
         )
     
-    if file_exceeds_max_size(audio, 100 * 1024 * 1024):
+    if file_exceeds_max_size(audio, 50 * 1024 * 1024):
         return JSONResponse(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             content=http_error("File size exceeds limit."),
