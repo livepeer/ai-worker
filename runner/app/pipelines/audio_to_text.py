@@ -55,11 +55,6 @@ class AudioToTextPipeline(Pipeline):
 
         processor = AutoProcessor.from_pretrained(model_id, cache_dir=get_model_dir())
 
-        # if return_timestamps != "false":
-        #     kwargs["return_timestamps"] = return_timestamps if return_timestamps == "word" else True
-        # else:
-        #     kwargs.pop("return_timestamps", None)
-
         self.tm = pipeline(
             "automatic-speech-recognition",
             model=model,
