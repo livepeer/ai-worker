@@ -6,10 +6,6 @@ pydantic==2.7.2
 Pillow==10.3.0
 python-multipart==0.0.9
 uvicorn==0.30.0
-setuptools==71.1.0
-torch --index-url https://download.pytorch.org/whl/cu121
-torchvision --index-url https://download.pytorch.org/whl/cu121
-torchaudio --index-url https://download.pytorch.org/whl/cu121
 huggingface_hub==0.23.2
 xformers==0.0.23
 triton>=2.1.0
@@ -21,6 +17,5 @@ numpy==1.26.4
 av==12.1.0
 sentencepiece== 0.2.0
 protobuf==5.27.2
-opencv-python==4.10.0.84
 bitsandbytes==0.43.3
 psutil==6.0.0

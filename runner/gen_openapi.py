@@ -11,7 +11,6 @@ from app.routes import (
     image_to_video,
     segment_anything_2,
     text_to_image,
-    frame_interpolation,
     upscale,
     llm
 )
