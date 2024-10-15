@@ -20,7 +20,7 @@ MODEL_INCOMPATIBLE_EXTENSIONS = {
 
 
 class AudioToTextPipeline(Pipeline):
-    def __init__(self, model_id: str):
+    def __init__(self, model_id: str, return_timestamps: str = "false"):
         self.model_id = model_id
         kwargs = {}
 
@@ -63,7 +63,6 @@ class AudioToTextPipeline(Pipeline):
             max_new_tokens=128,
             chunk_length_s=30,
             batch_size=16,
-            return_timestamps=True,
             **kwargs,
         )
 
@@ -77,11 +76,19 @@ class AudioToTextPipeline(Pipeline):
             converted_bytes = audio_converter.convert(audio, "mp3")
             audio_converter.write_bytes_to_file(converted_bytes, audio)
 
+        if kwargs["return_timestamps"] != "false":
+            kwargs["return_timestamps"] = kwargs["return_timestamps"] if kwargs["return_timestamps"] == "word" else True
+        else:
+            kwargs.pop("return_timestamps", None)
+
         try:
             outputs = self.tm(audio.file.read(), **kwargs)
         except Exception as e:
             raise InferenceError(original_exception=e)
 
+        # When timestamps are not requested, add the chunks field to the response to satisfy the response schema
+        if "chunks" not in outputs:
+            outputs["chunks"] = []
         return outputs
 
     def __str__(self) -> str:
