@@ -9,7 +9,7 @@ import numpy as np
 
 import sys
 import os
-
+import logging
 # FasterLivePotrait modules imports files from the root of the project, so we need to monkey patch the sys path
 base_flip_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "FasterLivePortrait"))
 sys.path.append(base_flip_dir)
@@ -22,7 +22,7 @@ def make_flip_path(rel_path):
     return os.path.normpath(os.path.join(base_flip_dir, rel_path))
 
 class LivePortraitParams(BaseModel):
-    src_image: str = 'assets/examples/source/s12.jpg'
+    src_image: str = 'flame-smile'
     animal: bool = False
     cfg: str = 'configs/trt_infer.yaml'
 
@@ -37,18 +37,18 @@ class LivePortrait(Transmorgrifier):
         self.first_frame = False
 
         if out_crop is None:
-            print(f"No face in driving frame")
+            logging.info(f"No face in driving frame")
             return image
 
         return Image.fromarray(out_crop)
 
     def update_params(self, **params):
-        print(f"params: {params}")
+        logging.info(f"params: {params}")
         self.params = LivePortraitParams(**params)
         self.params.cfg = make_flip_path(self.params.cfg)
-        self.params.src_image = make_flip_path(self.params.src_image)
+        self.params.src_image = make_flip_path(f"assets/examples/source/{self.params.src_image}.jpg")
 
-        print(f"params.cfg: {self.params}")
+        logging.info(f"params.cfg: {self.params}")
 
         self.infer_cfg = OmegaConf.load(self.params.cfg)
         self.infer_cfg.infer_params.mask_crop_path = make_flip_path(self.infer_cfg.infer_params.mask_crop_path)

@@ -17,7 +17,7 @@ class StreamKohakuParams(BaseModel):
     scale: float = 1.0
     acceleration: Literal["none", "xformers", "tensorrt"] = "tensorrt"
     use_denoising_batch: bool = True
-    enable_similar_image_filter: bool = True
+    enable_similar_image_filter: bool = False
     seed: int = 2
     guidance_scale: float = 1.2
 
