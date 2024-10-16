@@ -127,8 +127,11 @@ class TransmorgrifierProcess:
             while not self.is_done():
                 if not self.param_update_queue.empty():
                     params = self.param_update_queue.get_nowait()
-                    transmorgrifier.update_params(**params)
-                    logging.info(f"Updated params: {params}")
+                    try:
+                        transmorgrifier.update_params(**params)
+                        logging.info(f"Updated params: {params}")
+                    except Exception as e:
+                        logging.error(f"Error updating params: {e}")
 
                 try:
                     input_image = self.input_queue.get(timeout=0.1)
