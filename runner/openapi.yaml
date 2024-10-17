@@ -367,6 +367,42 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: llm
+  /live-video-to-video:
+    post:
+      tags:
+      - generate
+      summary: Live Video inference
+      description: Run inference on a video stream and get a video back, in real-time.
+      operationId: startLiveVideoToVideo
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Body_startVideoToVideo'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response_startVideoToVideo'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+      security:
+      - HTTPBearer: []
+      x-speakeasy-name-override: liveVideoToVideo
+
 components:
   schemas:
     APIError:
@@ -652,6 +688,30 @@ components:
       - prompt
       - image
       title: Body_genUpscale
+    Body_startVideoToVideo:
+      title: Body_startVideoToVideo
+      type: object
+      properties:
+        prompt:
+          type: string
+          title: Prompt
+          description: "Prompt to initialize the model with"
+        model_id:
+          type: string
+          title: Model Id
+    Response_startVideoToVideo:
+      title: Response_startVideoToVideo
+      type: object
+      properties:
+        publish_url:
+          type: string
+          description: URL for publishing video.
+        subscribe_url:
+          type: string
+          description: URL for subscribing to generated video.
+        example:
+          publish_url: "/live-video/stream-id"
+          subscribe_url: "/live-video/stream-id/out"
     HTTPError:
       properties:
         detail:
