@@ -29,9 +29,9 @@ RUN pyenv install $PYTHON_VERSION && \
   pyenv rehash
 
 # Upgrade pip and install your desired packages
-ARG PIP_VERSION=23.3.2
+ARG PIP_VERSION=24.2
 RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools==69.5.1 wheel==0.43.0 && \
-  pip install --no-cache-dir torch==2.1.1 torchvision==0.16.1 torchaudio==2.1.1
+  pip install --no-cache-dir torch==2.4.0 torchvision torchaudio
 
 WORKDIR /app
 COPY ./requirements.txt /app
@@ -48,6 +48,8 @@ ENV MAX_WORKERS=$max_workers
 ENV HUGGINGFACE_HUB_CACHE=/models
 ENV DIFFUSERS_CACHE=/models
 ENV MODEL_DIR=/models
+# This ensures compatbility with how GPUs are addresses within go-livepeer
+ENV CUDA_DEVICE_ORDER=PCI_BUS_ID
 
 COPY app/ /app/app
 COPY images/ /app/images

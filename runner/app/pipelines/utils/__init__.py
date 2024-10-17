@@ -14,4 +14,5 @@ from app.pipelines.utils.utils import (
     is_numeric,
     split_prompt,
     validate_torch_device,
+    get_max_memory
 )
