@@ -73,11 +73,12 @@ class SegmentAnything2VideoPipeline(Pipeline):
             subprocess.run(ffmpeg_command, shell=True, check=True)
             shutil.rmtree(temp_dir) 
 
-            # Limit to the first 500 frames to avoid running out of memory
             frame_files = sorted(
                 [f for f in os.listdir(frame_dir) if f.endswith('.jpg')]
             )
-            for frame_file in frame_files[:-3]:
+
+            # Limit to the first 5 frames for testing
+            for frame_file in frame_files[:-5]:
                 os.remove(os.path.join(frame_dir, frame_file))
             
             inference_state = self.tm_vid.init_state(video_path=frame_dir)
@@ -86,7 +87,7 @@ class SegmentAnything2VideoPipeline(Pipeline):
             _, out_obj_ids, out_mask_logits = self.tm_vid.add_new_points_or_box(
                 inference_state,
                 frame_idx=kwargs.get('frame_idx', None),
-                obj_id=1, #TODO: obj_id is hardcoded to 1
+                obj_id=1, #TODO: obj_id is hardcoded to 1, should support multiple objects
                 points=kwargs.get('points', None),
                 labels=kwargs.get('labels', None),
                 )

@@ -52,7 +52,7 @@ RESPONSES = {
 )
 async def segment_anything_2_video(
     media_file: Annotated[
-        UploadFile, File(description="Media file to segment.", media_type="image/*,video/mp4")
+        UploadFile, File(description="Media file to segment.", media_type="video/mp4")
     ],
     model_id: Annotated[
         str, Form(description="Hugging Face model ID used for image generation.")
@@ -154,10 +154,6 @@ async def segment_anything_2_video(
             content=http_error(str(e)),
         )
 
-    supported_video_types = ["video/mp4"]
-    supported_image_types = ["image/jpeg", "image/png", "image/jpg"]
-    supported_media_types = supported_image_types + supported_video_types
-
     try:
         video_segments = {}
 
@@ -169,11 +165,11 @@ async def segment_anything_2_video(
             labels=point_labels
         ):
             # Collect the data for each frame
-            segment_data = {
-                "frame_idx":out_frame_idx, #type int
-                "obj_ids":out_obj_ids, #type list
-                "mask_logits": [mask.cpu().numpy().tolist() for mask in out_mask_logits]
-            }
+            # segment_data = {
+            #     "frame_idx":out_frame_idx, #type int
+            #     "obj_ids":out_obj_ids, #type list
+            #     "mask_logits": [mask.cpu().numpy().tolist() for mask in out_mask_logits]
+            # }
             if out_frame_idx not in video_segments:
                 video_segments[out_frame_idx] = {"obj_ids": [], "mask_logits": []}
             
@@ -189,26 +185,23 @@ async def segment_anything_2_video(
             mask_logits = segments["mask_logits"]
             try:
                 # Create a dictionary to map obj_id to its corresponding mask_logits
-                mask_logits_dict = {obj_id: mask_logits[i] for i, obj_id in enumerate(obj_ids)}
-                mask_logits_list = [mask_logits_dict[obj_id] for obj_id in obj_ids]
+                #mask_logits_dict = {obj_id: mask_logits[i] for i, obj_id in enumerate(obj_ids)}
+                #mask_logits_list = [mask_logits_dict[obj_id] for obj_id in obj_ids]
 
-                segment_data = VideoSegmentResponse(
+                video_segment_responses.append(VideoSegmentResponse(
                     frame_idx=frame_idx,
                     obj_ids=obj_ids,
-                    mask_logits=mask_logits_list
-                )
-                video_segment_responses.append(segment_data)
+                    mask_logits=mask_logits
+                ))
             except ValidationError as e:
                 print(f"Validation error for frame {frame_idx}: {e}")
 
-        # Print video_segment_responses to inspect its structure
-        # print("video_segment_responses:", video_segment_responses)
-
         # TODO: Return response in some usable format
-        return video_segment_responses
-
-        # else:
-        #     raise InferenceError(f"Unsupported media type: {media_file.content_type}")
+        return VideoSegmentResponse(
+            frame_idx=frame_idx,
+            obj_ids=obj_ids,
+            mask_logits=mask_logits
+        )
 
     except Exception as e:
         logger.error(f"Segment Anything 2 error: {e}")
