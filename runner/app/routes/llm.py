@@ -38,6 +38,8 @@ async def llm(
     system_msg: Annotated[str, Form()] = "",
     temperature: Annotated[float, Form()] = 0.7,
     max_tokens: Annotated[int, Form()] = 256,
+    top_p: Annotated[float, Form()] = 1.0,
+    top_k: Annotated[int, Form()] = -1,
     history: Annotated[str, Form()] = "[]",  # We'll parse this as JSON
     stream: Annotated[bool, Form()] = False,
     pipeline: Pipeline = Depends(get_pipeline),
@@ -71,7 +73,9 @@ async def llm(
             history=history_list,
             system_msg=system_msg if system_msg else None,
             temperature=temperature,
-            max_tokens=max_tokens
+            max_tokens=max_tokens,
+            top_p=top_p,
+            top_k=top_k
         )
 
         if stream:

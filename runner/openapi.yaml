@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Livepeer AI Runner
   description: An application to run AI pipelines
-  version: v0.7.0
+  version: 0.7.1
 servers:
 - url: https://dream-gateway.livepeer.cloud
   description: Livepeer Cloud Community Gateway
@@ -549,6 +549,14 @@ components:
           type: integer
           title: Max Tokens
           default: 256
+        top_p:
+          type: number
+          title: Top P
+          default: 1.0
+        top_k:
+          type: integer
+          title: Top K
+          default: -1
         history:
           type: string
           title: History
