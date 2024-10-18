@@ -351,7 +351,7 @@ func (w *Worker) SegmentAnything2(ctx context.Context, req GenSegmentAnything2Mu
 	return resp.JSON200, nil
 }
 
-func (w *Worker) SketchToImage(ctx context.Context, req GenSketchToImageMultipartRequestBody) (*TextResponse, error) {
+func (w *Worker) SketchToImage(ctx context.Context, req GenSketchToImageMultipartRequestBody) (*ImageResponse, error) {
 	c, err := w.borrowContainer(ctx, "sketch-to-image", *req.ModelId)
 	if err != nil {
 		return nil, err

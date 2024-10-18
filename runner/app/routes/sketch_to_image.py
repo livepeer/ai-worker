@@ -152,7 +152,7 @@ async def sketch_to_image(
         handle_pipeline_error(e)
 
     output_images = [
-        {"url": image_to_data_url(img), "seed": sd, "nsfw": nsfw or False}
+        {"url": image_to_data_url(img), "seed": 0, "nsfw": nsfw or False}
         for img, sd, nsfw in zip(images, [1], has_nsfw_concept)
     ]
 
