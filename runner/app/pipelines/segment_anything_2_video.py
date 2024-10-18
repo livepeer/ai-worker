@@ -78,7 +78,7 @@ class SegmentAnything2VideoPipeline(Pipeline):
             )
 
             # Limit to the first 5 frames for testing
-            for frame_file in frame_files[:-5]:
+            for frame_file in frame_files[:-3]:
                 os.remove(os.path.join(frame_dir, frame_file))
             
             inference_state = self.tm_vid.init_state(video_path=frame_dir)

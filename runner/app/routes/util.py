@@ -31,7 +31,7 @@ class VideoResponse(BaseModel):
 
     frames: List[List[Media]] = Field(..., description="The generated video frames.")
 
-class VideoSegmentResponse(BaseModel):
+class VideoSegmentationItem(BaseModel):
     frame_idx: int = Field(
         ..., description="Index of the frame corresponding to this segmentation"
     )
@@ -41,6 +41,9 @@ class VideoSegmentResponse(BaseModel):
     mask_logits: List[List[List[List[float]]]] = Field(
          ..., description="The generated masks."
     )
+
+class VideoSegmentResponse(BaseModel):
+    VideoFrames: List[VideoSegmentationItem] = Field(..., description="The generated masks of all video frames.")
 
 class MasksResponse(BaseModel):
     """Response model for object segmentation."""
