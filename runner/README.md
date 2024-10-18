@@ -3,9 +3,8 @@ docker build --no-cache -t livepeer/ai-runner:base .
 docker build --no-cache -t livepeer/ai-runner:multimedia -f docker/Dockerfile.multimedia .
 docker build --no-cache -t livepeer/ai-runner:stream-diffusion -f docker/Dockerfile.stream-diffusion .
 docker build --no-cache -t livepeer/ai-runner:apps -f docker/Dockerfile.apps .
-docker run -d --add-host=host.docker.internal:host-gateway --gpus all -p 10420:8080 --name realtime -v ~/ai-worker/runner/app:/app -v /tmp/video:/tmp/video livepeer/ai-runner:apps
-docker exec -it realtime /bin/bash
-
+docker run -d --gpus all -p 10420:8080 --name live-ai -v ~/ai-worker/runner/app:/app livepeer/ai-runner:apps
+docker exec -it live-ai /bin/bash
 
 # Runner
 
