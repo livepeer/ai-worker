@@ -1,10 +1,12 @@
 import logging
 import os
-from typing import Annotated
+from typing import Annotated, Dict, Tuple, Union
+
+import torch
 
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
-from app.routes.util import HTTPError, ImageToTextResponse, file_exceeds_max_size, http_error
+from app.routes.utils import HTTPError, ImageToTextResponse, file_exceeds_max_size, handle_pipeline_exception, http_error
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -14,6 +16,15 @@ from PIL import Image
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
+
+# Pipeline specific error handling configuration.
+PIPELINE_ERROR_CONFIG: Dict[str, Tuple[Union[str, None], int]] = {
+    # Specific error types.
+    "OutOfMemoryError": (
+        "Out of memory error. Try reducing input image resolution.",
+        status.HTTP_500_INTERNAL_SERVER_ERROR,
+    )
+}
 
 RESPONSES = {
     status.HTTP_200_OK: {
@@ -90,9 +101,11 @@ async def image_to_text(
     try:
         return ImageToTextResponse(text=pipeline(prompt=prompt, image=image))
     except Exception as e:
+        if isinstance(e, torch.cuda.OutOfMemoryError):
+            torch.cuda.empty_cache()
         logger.error(f"ImageToTextPipeline error: {e}")
-        logger.exception(e)
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=http_error("ImageToTextPipeline error"),
+        return handle_pipeline_exception(
+            e,
+            default_error_message="Image-to-text pipeline error.",
+            custom_error_config=PIPELINE_ERROR_CONFIG,
         )

@@ -8,6 +8,8 @@ from huggingface_hub import file_download
 from transformers import BlipProcessor, BlipForConditionalGeneration
 from PIL import Image
 
+from app.utils.errors import InferenceError
+
 logger = logging.getLogger(__name__)
 
 
@@ -51,7 +53,10 @@ class ImageToTextPipeline(Pipeline):
         inputs = self.processor(image, prompt, return_tensors="pt").to(self.torch_device)
         out = self.model.generate(**inputs)
 
-        return self.processor.decode(out[0], skip_special_tokens=True)
+        try:
+            return self.processor.decode(out[0], skip_special_tokens=True)
+        except Exception as e:
+            raise InferenceError(original_exception=e)
 
     def __str__(self) -> str:
         return f"ImageToTextPipeline model_id={self.model_id}"
