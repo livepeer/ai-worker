@@ -251,6 +251,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPError'
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
         '500':
           description: Internal Server Error
           content:

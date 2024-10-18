@@ -6,6 +6,7 @@ import torch
 from app.pipelines.base import Pipeline
 from app.pipelines.utils import get_model_dir, get_torch_device
 from app.pipelines.utils.audio import AudioConverter
+from app.utils.errors import InferenceError
 from fastapi import File, UploadFile
 from huggingface_hub import file_download
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
@@ -76,7 +77,12 @@ class AudioToTextPipeline(Pipeline):
             converted_bytes = audio_converter.convert(audio, "mp3")
             audio_converter.write_bytes_to_file(converted_bytes, audio)
 
-        return self.tm(audio.file.read(), **kwargs)
+        try:
+            outputs = self.tm(audio.file.read(), **kwargs)
+        except Exception as e:
+            raise InferenceError(original_exception=e)
+
+        return outputs
 
     def __str__(self) -> str:
         return f"AudioToTextPipeline model_id={self.model_id}"

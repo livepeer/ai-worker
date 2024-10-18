@@ -1,6 +1,8 @@
 import argparse
 import copy
 import json
+import logging
+import subprocess
 
 import yaml
 from app.main import app
@@ -16,8 +18,6 @@ from app.routes import (
     image_to_text,
 )
 from fastapi.openapi.utils import get_openapi
-import subprocess
-import logging
 
 logging.basicConfig(
     level=logging.INFO,
