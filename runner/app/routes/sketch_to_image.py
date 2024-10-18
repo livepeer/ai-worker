@@ -10,7 +10,7 @@ from PIL import Image, ImageFile
 
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
-from app.routes.util import HTTPError, ImageResponse, image_to_data_url, http_error
+from app.routes.utils import HTTPError, ImageResponse, image_to_data_url, http_error
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 

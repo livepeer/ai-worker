@@ -12,7 +12,3 @@ checkpoints
 # IDE
 .vscode
 *.code-workspace
-
-# Python
-runner/.venv
-runner/.models
