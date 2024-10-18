@@ -56,7 +56,12 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
             return SegmentAnything2Pipeline(model_id)
         case "llm":
             from app.pipelines.llm import LLMPipeline
+
             return LLMPipeline(model_id)
+        case "sketch-to-image":
+            from app.pipelines.sketch_to_image import SketchToImagePipeline
+
+            return SketchToImagePipeline(model_id)
         case _:
             raise EnvironmentError(
                 f"{pipeline} is not a valid pipeline for model {model_id}"
@@ -93,7 +98,12 @@ def load_route(pipeline: str) -> any:
             return segment_anything_2.router
         case "llm":
             from app.routes import llm
+
             return llm.router
+        case "sketch-to-image":
+            from app.routes import sketch_to_image
+
+            return sketch_to_image.router
         case _:
             raise EnvironmentError(f"{pipeline} is not a valid pipeline")
 

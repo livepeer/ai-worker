@@ -38,6 +38,7 @@ var containerHostPorts = map[string]string{
 	"audio-to-text":      "8400",
 	"llm":                "8500",
 	"segment-anything-2": "8600",
+	"sketch-to-image":    "8800",
 }
 
 // Mapping for per pipeline container images.
