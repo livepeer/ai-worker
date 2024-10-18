@@ -1,6 +1,8 @@
 import argparse
 import copy
 import json
+import logging
+import subprocess
 
 import yaml
 from app.main import app
@@ -12,11 +14,10 @@ from app.routes import (
     segment_anything_2,
     text_to_image,
     upscale,
+    llm,
     sketch_to_image,
 )
 from fastapi.openapi.utils import get_openapi
-import subprocess
-import logging
 
 logging.basicConfig(
     level=logging.INFO,
@@ -124,6 +125,7 @@ def write_openapi(fname: str, entrypoint: str = "runner", version: str = "0.0.0"
     app.include_router(upscale.router)
     app.include_router(audio_to_text.router)
     app.include_router(segment_anything_2.router)
+    app.include_router(llm.router)
     app.include_router(sketch_to_image.router)
 
     logger.info(f"Generating OpenAPI schema for '{entrypoint}' entrypoint...")

@@ -113,6 +113,17 @@ type BodyGenImageToVideo struct {
 	Width *int `json:"width,omitempty"`
 }
 
+// BodyGenLLM defines model for Body_genLLM.
+type BodyGenLLM struct {
+	History     *string  `json:"history,omitempty"`
+	MaxTokens   *int     `json:"max_tokens,omitempty"`
+	ModelId     *string  `json:"model_id,omitempty"`
+	Prompt      string   `json:"prompt"`
+	Stream      *bool    `json:"stream,omitempty"`
+	SystemMsg   *string  `json:"system_msg,omitempty"`
+	Temperature *float32 `json:"temperature,omitempty"`
+}
+
 // BodyGenSegmentAnything2 defines model for Body_genSegmentAnything2.
 type BodyGenSegmentAnything2 struct {
 	// Box A length 4 array given as a box prompt to the model, in XYXY format.
@@ -211,6 +222,12 @@ type HealthCheck struct {
 type ImageResponse struct {
 	// Images The generated images.
 	Images []Media `json:"images"`
+}
+
+// LLMResponse defines model for LLMResponse.
+type LLMResponse struct {
+	Response   string `json:"response"`
+	TokensUsed int    `json:"tokens_used"`
 }
 
 // MasksResponse Response model for object segmentation.
@@ -323,6 +340,9 @@ type GenImageToImageMultipartRequestBody = BodyGenImageToImage
 
 // GenImageToVideoMultipartRequestBody defines body for GenImageToVideo for multipart/form-data ContentType.
 type GenImageToVideoMultipartRequestBody = BodyGenImageToVideo
+
+// GenLLMFormdataRequestBody defines body for GenLLM for application/x-www-form-urlencoded ContentType.
+type GenLLMFormdataRequestBody = BodyGenLLM
 
 // GenSegmentAnything2MultipartRequestBody defines body for GenSegmentAnything2 for multipart/form-data ContentType.
 type GenSegmentAnything2MultipartRequestBody = BodyGenSegmentAnything2
@@ -483,6 +503,11 @@ type ClientInterface interface {
 	// GenImageToVideoWithBody request with any body
 	GenImageToVideoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GenLLMWithBody request with any body
+	GenLLMWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	GenLLMWithFormdataBody(ctx context.Context, body GenLLMFormdataRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GenSegmentAnything2WithBody request with any body
 	GenSegmentAnything2WithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -536,6 +561,30 @@ func (c *Client) GenImageToImageWithBody(ctx context.Context, contentType string
 
 func (c *Client) GenImageToVideoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGenImageToVideoRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GenLLMWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGenLLMRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GenLLMWithFormdataBody(ctx context.Context, body GenLLMFormdataRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGenLLMRequestWithFormdataBody(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -701,6 +750,46 @@ func NewGenImageToVideoRequestWithBody(server string, contentType string, body i
 	}
 
 	operationPath := fmt.Sprintf("/image-to-video")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGenLLMRequestWithFormdataBody calls the generic GenLLM builder with application/x-www-form-urlencoded body
+func NewGenLLMRequestWithFormdataBody(server string, body GenLLMFormdataRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	bodyStr, err := runtime.MarshalForm(body, nil)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = strings.NewReader(bodyStr.Encode())
+	return NewGenLLMRequestWithBody(server, "application/x-www-form-urlencoded", bodyReader)
+}
+
+// NewGenLLMRequestWithBody generates requests for GenLLM with any type of body
+func NewGenLLMRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/llm")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -902,6 +991,11 @@ type ClientWithResponsesInterface interface {
 	// GenImageToVideoWithBodyWithResponse request with any body
 	GenImageToVideoWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenImageToVideoResponse, error)
 
+	// GenLLMWithBodyWithResponse request with any body
+	GenLLMWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenLLMResponse, error)
+
+	GenLLMWithFormdataBodyWithResponse(ctx context.Context, body GenLLMFormdataRequestBody, reqEditors ...RequestEditorFn) (*GenLLMResponse, error)
+
 	// GenSegmentAnything2WithBodyWithResponse request with any body
 	GenSegmentAnything2WithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenSegmentAnything2Response, error)
 
@@ -924,6 +1018,7 @@ type GenAudioToTextResponse struct {
 	JSON400      *HTTPError
 	JSON401      *HTTPError
 	JSON413      *HTTPError
+	JSON415      *HTTPError
 	JSON422      *HTTPValidationError
 	JSON500      *HTTPError
 }
@@ -1012,6 +1107,32 @@ func (r GenImageToVideoResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GenImageToVideoResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GenLLMResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *LLMResponse
+	JSON400      *HTTPError
+	JSON401      *HTTPError
+	JSON422      *HTTPValidationError
+	JSON500      *HTTPError
+}
+
+// Status returns HTTPResponse.Status
+func (r GenLLMResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GenLLMResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1159,6 +1280,23 @@ func (c *ClientWithResponses) GenImageToVideoWithBodyWithResponse(ctx context.Co
 	return ParseGenImageToVideoResponse(rsp)
 }
 
+// GenLLMWithBodyWithResponse request with arbitrary body returning *GenLLMResponse
+func (c *ClientWithResponses) GenLLMWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenLLMResponse, error) {
+	rsp, err := c.GenLLMWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGenLLMResponse(rsp)
+}
+
+func (c *ClientWithResponses) GenLLMWithFormdataBodyWithResponse(ctx context.Context, body GenLLMFormdataRequestBody, reqEditors ...RequestEditorFn) (*GenLLMResponse, error) {
+	rsp, err := c.GenLLMWithFormdataBody(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGenLLMResponse(rsp)
+}
+
 // GenSegmentAnything2WithBodyWithResponse request with arbitrary body returning *GenSegmentAnything2Response
 func (c *ClientWithResponses) GenSegmentAnything2WithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenSegmentAnything2Response, error) {
 	rsp, err := c.GenSegmentAnything2WithBody(ctx, contentType, body, reqEditors...)
@@ -1244,6 +1382,13 @@ func ParseGenAudioToTextResponse(rsp *http.Response) (*GenAudioToTextResponse, e
 			return nil, err
 		}
 		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 415:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON415 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest HTTPValidationError
@@ -1360,6 +1505,60 @@ func ParseGenImageToVideoResponse(rsp *http.Response) (*GenImageToVideoResponse,
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest VideoResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest HTTPValidationError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGenLLMResponse parses an HTTP response from a GenLLMWithResponse call
+func ParseGenLLMResponse(rsp *http.Response) (*GenLLMResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GenLLMResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LLMResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1635,6 +1834,9 @@ type ServerInterface interface {
 	// Image To Video
 	// (POST /image-to-video)
 	GenImageToVideo(w http.ResponseWriter, r *http.Request)
+	// LLM
+	// (POST /llm)
+	GenLLM(w http.ResponseWriter, r *http.Request)
 	// Segment Anything 2
 	// (POST /segment-anything-2)
 	GenSegmentAnything2(w http.ResponseWriter, r *http.Request)
@@ -1674,6 +1876,12 @@ func (_ Unimplemented) GenImageToImage(w http.ResponseWriter, r *http.Request) {
 // Image To Video
 // (POST /image-to-video)
 func (_ Unimplemented) GenImageToVideo(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// LLM
+// (POST /llm)
+func (_ Unimplemented) GenLLM(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1767,6 +1975,23 @@ func (siw *ServerInterfaceWrapper) GenImageToVideo(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GenImageToVideo(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// GenLLM operation middleware
+func (siw *ServerInterfaceWrapper) GenLLM(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, HTTPBearerScopes, []string{})
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GenLLM(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1970,6 +2195,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/image-to-video", wrapper.GenImageToVideo)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/llm", wrapper.GenLLM)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/segment-anything-2", wrapper.GenSegmentAnything2)
 	})
 	r.Group(func(r chi.Router) {
@@ -1988,63 +2216,64 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"AA==",
+	"H4sIAAAAAAAC/+xb+28bt5P/V4i9A5oAkiW7dXMw8P3BSdPEODsNbKVpkRgCtTtaseaSWz4sqTn/7wcO",
+	"d1fch165xL1vqp/iiOTMZ4bzIjn7KYpllksBwujo7FOk4xlkFP88f3vxUimp3N8J6Fix3DApojM3QsAN",
+	"EQU6l0IDyWQC/CjqRbmSOSjDAGlkOm0vH82gWJ6B1jQFt84wwyE6i6506v63zN1/tFFMpNHDQy9S8Kdl",
+	"CpLo7ANSvV0tqYBW6+TkD4hN9NCLnstkOU5BnNuEyZEcwcI4QHWU1A22cb7LuaQJJATHyZRxIEaSCRCj",
+	"qHAzJ5A47FOpMmqis2jCBFXLQBpk25anF6G+xizxXKfUcrc+6jUgvLZpykRKfqZxoWNy8ROxGhIylarC",
+	"gdNrWvRTk62q9KIHyuxS2Aa9XmQ0hZHEf9qKTS1LqIhhrGPKoSbrs6PTprAvRSytoinoQlQjSQoCFDVA",
+	"WIYDMZca+JJwJu4gcTPMDIiBhSG5klluyJMZS2egyD3l1lGiS6IgsXFBgvxpKWdm+TRU16sCJ7lBnJW8",
+	"wmYTUE5eVgq4xkQ8bSMdcjZdkjkzM4SWsxw4E7DZTrz+OuwE6Y436PG4rcefIFWAYOYzFnsYpR5LpEyT",
+	"3OoZqnBOVaJxFhPMMMr9nKMmPrJdTVwqHzw22PQ5uZTX5+TJpZz3r6m4I+cJzQ11o0+LjaciIcxoEkvl",
+	"I0zinGAOLJ0ZNHwvRCGUs33yckGznMMZ+UQ+RpwaEKYfS6GZNiDi5YDHWd+h6+tkwT9GZ+T4aNgjHyMB",
+	"iv2hBzlbAO9TZfrl6MlDqIBLFOyrOXJLnp18uRcJSKlh9zD2xr8FxGjlJk/0U3QvyxIg8xk17n+wiLlN",
+	"gEyVzDpUfJEKqZwFTUndIMlHOxx+H5PjEPabAhp566F1obfZ2Pv1OAfVJcNxU4Q3aGpETsuAEMaIHFQh",
+	"Xg2IzciFn/wWVAsOEwZSb72IR0xBAYpmIK/b8vFwuB5PAkIy7fYYFx6RK6nA/02stpS7qAUUY1YRoopQ",
+	"VIoysYZoLuegSIXCkUksR8+dLIk2CkRqZi35yvnkBlF3SReqdxer2GST6/dU0ymY5TieQXxXU55RFpra",
+	"ewvKxURCiV9GcBmaojYsw7g/bcYuFxYsT1weltMpCO2MTCoyoyqbWh7CvPFUXyCYCuxESg5UIFqApK2R",
+	"GyjcUlGRyIz4+LZGFW5yp77LvappYXj0X2vCtZz6dO6TBJOC0DznbJXkFJR77HfmydCNHNcS2U3JsxWb",
+	"G3k/LzfQJ7aOAqCW2bdXAL+yBGS7Apg2XOjHXkcxOFU0A43uqyGWIkFl1LLWvSMfSvrzGiufYZKo8Tx9",
+	"1snVzyRMEAz+egemrz3xLr47FwhVtKKePkbbz6wOvkzy8TD2Tz6ZdLPHExvfgWmiOD551oTxrmTotpi5",
+	"Hx0op3KaSSuM2wBP0xe3s3r6wT3zgdMNFU7p/sxcpC1WzhnnLjQwgUOtLbzy054j6JpgYSKQTMOY2nS8",
+	"xomHJ62qphIBFxOaJCvXrQnsiyvyulamFiWqAg3ZhGORtXatL49ErIDqUu5aQkAA5zYl68PB9mR3cvpv",
+	"nOsOWajUxJwlDes9Hp780BUPceZe4fA90m5zbeSabSnGp44NKeby8qqdWWZMG6mW9dD34TaM1sWMrtBF",
+	"F2Mj70A0bf7HIFLQBRn5OV2KXRt7dwmdq1psh4rKKKBZjc2Ucg31rE+zbtNaagPZuLqH6cB5g1NI58VL",
+	"LzKQ5W7/rYJGDHy2IjEKJu1YeXSYg9vmDVZwA2kGwpyLpZkxkZ60TWIiFx2XVYRjGCE/EKoUXZKU3YMg",
+	"VBNKJnJRXhsU0RZ3tee84Lfff/ud+Jwc2vxzuVh7Tm8zvyizvvbgPzfPU303ZiK3plM+Oe8r0JJbTG1u",
+	"MsHJDaHMMmcxxmY84FGSK7hn0mr3R8JiXM1MEV16qzsMjI7Hi9eL9+TJ63+9/9fJ6Y8YmG7Or2rV55Xj",
+	"fIEw/9+dlDPLXSzXd2NpTaXIDVnhwtXjFnorDfraQoGxyhUXrmh3BDXiotmEpdYp06vem5XuETk1INx/",
+	"Exs7uSZgDKhipZlR4fIOEymHYBtqUpXIyS8eeZefC2dUnP0F41hKlej9xMslE4bgSiaoAV2VURXd1TGE",
+	"ihTIh2Hv+LYwEVxd8CWwyCE2fvoE/AQF2v3ofvLbl7DMZUwpdL1uKXiRF16GLkFDZm1neLM4KbxcTgup",
+	"io1o+MJ8BgoI0LiAT5jbOPLkt97vT1c5sHbkxWlNZEFIR2CcToB3ALvE36u6tgatRHNMmEhYjPqnbiqk",
+	"SlqRFLNd1TesTZnQ+C6c0obr2XbB9WY85jJlZg9r8cs0saLvPEDPJHd1Lpqnp0WY0MbVfnLqIGKMw/EQ",
+	"3bV3okvPvb3Pu1YQrZywIX+8y6vb03ra+Lvudr9MQLRerOTz7xC3HASenf6DLr120ubh9mvbuWPv26bS",
+	"OTv89/Vo9HbNQ6Qb2vElMgFDGcfXPs5/mUZnHz5F/6lgGp1F/zFYvYEOigfQQfWo+HDbvrBzpCApODNR",
+	"XdkdtSQv2AYSr8RZI+uvlLMEyVVSrxOFGcjwp02SNOk9rLB4SVZAMHWiDCHaJoEu3EC5mb0ozb6OVxtq",
+	"bONV6Jf/rt1a4oSut8rVzduKQQd/jLHXhQm07eS6Zhxr68iOtKC7n6+bTulW77QZV5AwGm6Bf5no2oJW",
+	"AtShGdUl7lDJ5eVVqJC6bCoYWeXkJrHgFIjn4LFLOuESfzwm7/QuQUAF9ANygUwh5A6J3PFC77XJfm15",
+	"+Fqzz2EJ1NxnRec9YkVQBa9qdE2e+KVPq7IOi/r6s2G9wKkf6bYaV4seqqAz8cRSrTNW1Md3LnGIKUsw",
+	"YfrpiBtr4DrLWoD3hLe2ZBTAdDm90OptA/vG/UXf6DjgZm6g3MxYCkOZvw0VwWPJRLoDb119bl17w4We",
+	"ztts3s/AlHfLnuGcajLlNE0hIVSTNzc/v6+VII7M7mnV7YQb8ZVb+BBQcdzpQs8q3k383fVlcZBYiRBT",
+	"4SoFGsegtW9WKRm8U3zrrlqcoz0UVFu4n7hdHfvoaqu93BTbNzaF4nhmxXZvQTJ+6s7xGKeH8fiFZ9WM",
+	"x73IFK1D2xCEOq53z6xRsvGTChlv66s3+YsbLx7o3lJFvbDfagPOl3zXa7W3bHjXO3S0HDpavt2OltN/",
+	"dEMLuYGcop7xdjjHK1h/W4h3PN/9z3fONLTNc6kKwNUd4uFC4G97iGzF7x0fIttPT+0U2pFntx7IuYxr",
+	"p3EqlsUNQ9MePrUg3j6EITlGNh3VR/GAt6q9sHG686iGP6ymImYycr9uq0ScHJ5VMTPQ1A6XAPiOu1fh",
+	"19V50ugfwtagbXVX2Ujj5tZKvz3P5M2Sr+w18iC2nNELqKHOagrp0JivPjtOPDiAhu9iGQYjSgzLQBua",
+	"5W01rS9OkUDhQUh1e33qxgtOa2iWwy3Cpb4D5Y0qWlv0Z8KJDligSa+olgYxZMVWMbO8cZvplfF6NHr7",
+	"HKgCVX3RgHHO/1QRmRmTRw+OhjtHduxC0YHnfdJFYWUFOb+orv11WE2xe8gBlBu/tkIgo3tQ2tO6Hx49",
+	"Oxo61cocBM1ZdBZ9f3R8NHQ7Sc0McQ+wGb9vZL/czlzqrm2tvj4IvkzwD1zF+UPmhUNdJK64bnbzO62D",
+	"Ns9lgu0T7kQNAhn5PEiVGbhE1E+ooauvQrb5UdenAw/1XXZZD3/wPoFinwyHDRSB2gd/aCfzrhBqRybk",
+	"3UhlFk/CU8vJalov+uELQljd73bwf04Tcu217/kePw7fd4JaM5OK/QUJMj7+/nEYF8KSl8K4wnAkJbmk",
+	"KvVaPz59LOlXJRwGe58OHYSTky8KoXXX3gazmkKq+/jTx7K/C2FACcrJDah7UCWCII5i2RJG0A+3D7e9",
+	"SNsso2pZftJERpKUyYOm2oXvMhu7sL3o6xzoHVC97AuaQV/eg1IsweBfiw69aDDDq328rQCUvR69/M1/",
+	"9BWDRvi2sGvMeAhVUkBEabA2dTG8elXuDuLnec6X5dNyre8bIzl1JxFX1gTVbiuqN1q0v3JYr3F75Lhe",
+	"f+04BPb1gf0Q0PYNaL5HbyRJ1aixZ0RjdccIg8B99VVEZxB41fUtwF6+X/bOPo7ve26P7Pv1U9TB9w++",
+	"/xV8v+pB/zzfLx2jFw04z3ZweDyWW7xdpYRTkVoHpLpYbLm7741e7+Whihf9+XzeR2+3ioOIZeKv9fbz",
+	"ecfykV09bAA4OPrB0b+coxffFuzp3c6X0amLDpI+LRpN+yfrfbzoSS36FbCtmIoNmbyjh/UrZ/MWx0d2",
+	"83onyMHRD47+5Ry99L7SuMnJZ/i9bjtILxq4nL3Dyf5Vo2MCa/qgQUJ3RoHgJWrnRL//3Wj9retwiD+4",
+	"/Tfi9vjm/384w5vA/dDZbfC1SKebFx3rVW4nk2X5UTb2JhpNVh/ldbr8quf9K+f7ktHB3w/+/o34e/C9",
+	"yJ6ebkNn0AhAI7vGB3vlg+4LLm1CXsgss4KZJXlFDczpMio6cfEZWZ8NBokCmvVTP3rEi+VHsVuOnR9r",
+	"6N8YfFBZR7YipHHegOZsMAFDB5W8D7cP/xsAAP//D8iZJcZPAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

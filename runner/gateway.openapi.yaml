@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Livepeer AI Runner
   description: An application to run AI pipelines
-  version: ''
+  version: v0.7.0
 servers:
 - url: https://dream-gateway.livepeer.cloud
   description: Livepeer Cloud Community Gateway
@@ -240,6 +240,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPError'
+        '415':
+          description: Unsupported Media Type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
         '500':
           description: Internal Server Error
           content:
@@ -303,18 +309,18 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: segmentAnything2
-  /sketch-to-image:
+  /llm:
     post:
       tags:
       - generate
-      summary: Sketch To Image
-      description: Transform sketch to image.
-      operationId: genSketchToImage
+      summary: LLM
+      description: Generate text using a language model.
+      operationId: genLLM
       requestBody:
         content:
-          multipart/form-data:
+          application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Body_genSketchToImage'
+              $ref: '#/components/schemas/Body_genLLM'
         required: true
       responses:
         '200':
@@ -322,8 +328,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ImageResponse'
-                x-speakeasy-name-override: data
+                $ref: '#/components/schemas/LLMResponse'
         '400':
           description: Bad Request
           content:
@@ -332,12 +337,6 @@ paths:
                 $ref: '#/components/schemas/HTTPError'
         '401':
           description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPError'
-        '413':
-          description: Request Entity Too Large
           content:
             application/json:
               schema:
@@ -356,7 +355,7 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
       security:
       - HTTPBearer: []
-      x-speakeasy-name-override: sketchToImage
+      x-speakeasy-name-override: llm
 components:
   schemas:
     APIError:
@@ -521,6 +520,40 @@ components:
       - image
       - model_id
       title: Body_genImageToVideo
+    Body_genLLM:
+      properties:
+        prompt:
+          type: string
+          title: Prompt
+        model_id:
+          type: string
+          title: Model Id
+          default: ''
+        system_msg:
+          type: string
+          title: System Msg
+          default: ''
+        temperature:
+          type: number
+          title: Temperature
+          default: 0.7
+        max_tokens:
+          type: integer
+          title: Max Tokens
+          default: 256
+        history:
+          type: string
+          title: History
+          default: '[]'
+        stream:
+          type: boolean
+          title: Stream
+          default: false
+      type: object
+      required:
+      - prompt
+      - model_id
+      title: Body_genLLM
     Body_genSegmentAnything2:
       properties:
         image:
@@ -698,6 +731,19 @@ components:
       - images
       title: ImageResponse
       description: Response model for image generation.
+    LLMResponse:
+      properties:
+        response:
+          type: string
+          title: Response
+        tokens_used:
+          type: integer
+          title: Tokens Used
+      type: object
+      required:
+      - response
+      - tokens_used
+      title: LLMResponse
     MasksResponse:
       properties:
         masks:
