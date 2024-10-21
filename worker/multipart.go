@@ -383,13 +383,13 @@ func NewImageToTextMultipartWriter(w io.Writer, req GenImageToTextMultipartReque
 		return nil, fmt.Errorf("failed to copy image to multipart request imageBytes=%v copiedBytes=%v", imageSize, copied)
 	}
 
-	if req.ModelId != nil {
-		if err := mw.WriteField("model_id", *req.ModelId); err != nil {
+	if req.Prompt != nil {
+		if err := mw.WriteField("prompt", *req.Prompt); err != nil {
 			return nil, err
 		}
 	}
-	if req.Prompt != nil {
-		if err := mw.WriteField("prompt", *req.Prompt); err != nil {
+	if req.ModelId != nil {
+		if err := mw.WriteField("model_id", *req.ModelId); err != nil {
 			return nil, err
 		}
 	}

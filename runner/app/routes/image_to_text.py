@@ -6,11 +6,16 @@ import torch
 
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
-from app.routes.utils import HTTPError, ImageToTextResponse, file_exceeds_max_size, handle_pipeline_exception, http_error
+from app.routes.utils import (
+    HTTPError,
+    ImageToTextResponse,
+    file_exceeds_max_size,
+    handle_pipeline_exception,
+    http_error,
+)
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, Field
 from PIL import Image
 
 router = APIRouter()
@@ -64,7 +69,8 @@ async def image_to_text(
         UploadFile, File(description="Uploaded image to transform with the pipeline.")
     ],
     prompt: Annotated[
-        str, Form(description="Text prompt(s) to guide transformation."),
+        str,
+        Form(description="Text prompt(s) to guide transformation."),
     ] = "",
     model_id: Annotated[
         str,

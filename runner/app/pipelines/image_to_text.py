@@ -39,7 +39,7 @@ class ImageToTextPipeline(Pipeline):
             logger.info("ImageToTextPipeline using bfloat16 precision for %s", model_id)
             kwargs["torch_dtype"] = torch.bfloat16
 
-        self.model = BlipForConditionalGeneration.from_pretrained(
+        self.tm = BlipForConditionalGeneration.from_pretrained(
             model_id,
             low_cpu_mem_usage=True,
             use_safetensors=True,
@@ -47,11 +47,15 @@ class ImageToTextPipeline(Pipeline):
             **kwargs,
         ).to(self.torch_device)
 
-        self.processor = BlipProcessor.from_pretrained(model_id, cache_dir=get_model_dir())
+        self.processor = BlipProcessor.from_pretrained(
+            model_id, cache_dir=get_model_dir()
+        )
 
     def __call__(self, prompt: str, image: Image, **kwargs) -> str:
-        inputs = self.processor(image, prompt, return_tensors="pt").to(self.torch_device)
-        out = self.model.generate(**inputs)
+        inputs = self.processor(image, prompt, return_tensors="pt").to(
+            self.torch_device
+        )
+        out = self.tm.generate(**inputs)
 
         try:
             return self.processor.decode(out[0], skip_special_tokens=True)
