@@ -471,22 +471,22 @@ func (w *Worker) ImageToText(ctx context.Context, req GenImageToTextMultipartReq
 		return nil, err
 	}
 
-	if resp.JSON422 != nil {
-		val, err := json.Marshal(resp.JSON422)
-		if err != nil {
-			return nil, err
-		}
-		slog.Error("image-to-text container returned 422", slog.String("err", string(val)))
-		return nil, errors.New("image-to-text container returned 422")
-	}
-
 	if resp.JSON400 != nil {
 		val, err := json.Marshal(resp.JSON400)
 		if err != nil {
 			return nil, err
 		}
 		slog.Error("image-to-text container returned 400", slog.String("err", string(val)))
-		return nil, errors.New("image-to-text container returned 400")
+		return nil, errors.New("image-to-text container returned 400: " + resp.JSON400.Detail.Msg)
+	}
+
+	if resp.JSON401 != nil {
+		val, err := json.Marshal(resp.JSON401)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("image-to-text container returned 401", slog.String("err", string(val)))
+		return nil, errors.New("image-to-text container returned 401: " + resp.JSON401.Detail.Msg)
 	}
 
 	if resp.JSON413 != nil {
@@ -495,13 +495,22 @@ func (w *Worker) ImageToText(ctx context.Context, req GenImageToTextMultipartReq
 		return nil, errors.New(msg)
 	}
 
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("image-to-text container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("image-to-text  container returned 422: " + string(val))
+	}
+
 	if resp.JSON500 != nil {
 		val, err := json.Marshal(resp.JSON500)
 		if err != nil {
 			return nil, err
 		}
 		slog.Error("image-to-text container returned 500", slog.String("err", string(val)))
-		return nil, errors.New("image-to-text container returned 500")
+		return nil, errors.New("image-to-text container returned 500: " + resp.JSON500.Detail.Msg)
 	}
 
 	return resp.JSON200, nil
