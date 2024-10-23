@@ -71,6 +71,10 @@ function download_all_models() {
 
     # Custom pipeline models.
     huggingface-cli download facebook/sam2-hiera-large --include "*.pt" "*.yaml" --cache-dir models
+
+    # Download video-to-video models.
+    huggingface-cli download KBlueLeaf/kohaku-v2.1 --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
+    huggingface-cli download KwaiVGI/LivePortrait --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
 }
 
 # Download models with a restrictive license.
