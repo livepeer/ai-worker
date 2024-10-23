@@ -139,8 +139,7 @@ async def segment_anything_2_video(
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=http_error(
-                f"pipeline configured with {pipeline.model_id} but called with "
-                f"{model_id}"
+                f"pipeline configured with {pipeline.model_id} but called with {model_id}"
             ),
         )
 
@@ -165,15 +164,15 @@ async def segment_anything_2_video(
             points=point_coords,
             labels=point_labels
         ):
+            
+            binary_mask = (out_mask_logits > 0.5).cpu().numpy()
+            mask_logits = binary_mask.astype(np.uint8).tolist()
             video_segment_responses.append(VideoSegmentationItem(
                 frame_idx=out_frame_idx,
                 obj_ids=out_obj_ids,
-                mask_logits=[mask.cpu().numpy().tolist() for mask in out_mask_logits]
+                mask_logits=mask_logits
             ))
             
-        # video_segment_responses = []
-
-        # for testing purposes
         # print(video_segment_responses)
         
         return VideoSegmentResponse(
