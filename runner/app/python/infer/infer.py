@@ -1,43 +1,46 @@
 import argparse
 import asyncio
-import logging
+import hashlib
 import io
+import logging
+import mimetypes
+import multiprocessing as mp
+import os
+import queue
 import signal
+import sys
+import tempfile
 import time
 import traceback
-import sys
+from multiprocessing.synchronize import Event
 from typing import List
 
 import zmq.asyncio
+from aiohttp import BodyPartReader, web
 from PIL import Image
-from aiohttp import web
-import os
-import tempfile
-import hashlib
-from aiohttp import BodyPartReader
-import mimetypes
 
-from pipelines import load_pipeline
-import multiprocessing as mp
-from multiprocessing.synchronize import Event
-import queue
+from .pipelines import load_pipeline
+
 fps_log_interval = 10
 
-TEMP_SUBDIR = 'infer_temp'
-MAX_FILE_AGE = 86400 # 1 day
+TEMP_SUBDIR = "infer_temp"
+MAX_FILE_AGE = 86400  # 1 day
+
 
 def to_jpeg_bytes(frame: Image.Image):
     buffer = io.BytesIO()
-    frame.save(buffer, format='JPEG')
+    frame.save(buffer, format="JPEG")
     bytes = buffer.getvalue()
     buffer.close()
     return bytes
 
+
 def from_jpeg_bytes(frame_bytes: bytes):
     image = Image.open(io.BytesIO(frame_bytes))
-    if image.mode != 'RGBA':
-        image = image.convert('RGBA')
+    if image.mode != "RGBA":
+        image = image.convert("RGBA")
     return image
+
 
 class PipelineProcess:
     @staticmethod
@@ -48,12 +51,12 @@ class PipelineProcess:
 
     def __init__(self, pipeline_name: str):
         self.pipeline_name = pipeline_name
-        self.ctx = mp.get_context('spawn')
+        self.ctx = mp.get_context("spawn")
 
         self.input_queue = self.ctx.Queue(maxsize=5)
-        self.last_input_time = 0
+        self.last_input_time = 0.0
         self.output_queue = self.ctx.Queue()
-        self.last_output_time = 0
+        self.last_output_time = 0.0
         self.param_update_queue = self.ctx.Queue()
 
         self.done = self.ctx.Event()
@@ -62,7 +65,7 @@ class PipelineProcess:
     def stop(self):
         self.done.set()
         if self.process.is_alive():
-            logging.info(f"Terminating pipeline process")
+            logging.info("Terminating pipeline process")
             self.process.terminate()
             try:
                 self.process.join(timeout=5)
@@ -130,7 +133,7 @@ class PipelineProcess:
                 try:
                     input_image = self.input_queue.get(timeout=0.1)
                 except queue.Empty:
-                    logging.debug(f"Input queue empty")
+                    logging.debug("Input queue empty")
                     continue
 
                 try:
@@ -141,14 +144,20 @@ class PipelineProcess:
         except Exception as e:
             logging.error(f"Error in process run method: {e}")
 
+
 class SocketHandler:
-    def __init__(self, input_socket: zmq.asyncio.Socket, output_socket: zmq.asyncio.Socket, pipeline: str):
+    def __init__(
+        self,
+        input_socket: zmq.asyncio.Socket,
+        output_socket: zmq.asyncio.Socket,
+        pipeline: str,
+    ):
         self.input_socket = input_socket
         self.output_socket = output_socket
         self.pipeline = pipeline
         self.process = None
-        self.last_params = None
-        self.last_params_time = 0
+        self.last_params: dict | None = None
+        self.last_params_time = 0.0
         self.restart_count = 0
 
     def start(self):
@@ -179,7 +188,9 @@ class SocketHandler:
             await self.stop()
             self.start()
             self.restart_count += 1
-            logging.info(f"PipelineProcess restarted. Restart count: {self.restart_count}")
+            logging.info(
+                f"PipelineProcess restarted. Restart count: {self.restart_count}"
+            )
 
             if self.last_params:
                 self.update_params(self.last_params)
@@ -197,6 +208,9 @@ class SocketHandler:
         start_time = time.time()
         while not done.is_set():
             await asyncio.sleep(2)
+            if not self.process:
+                return
+
             current_time = time.time()
             time_since_last_input = current_time - self.process.last_input_time
             time_since_last_output = current_time - self.process.last_output_time
@@ -208,10 +222,16 @@ class SocketHandler:
                 # nothing to do if we're not sending inputs
                 continue
 
-            stopped_recently = time_since_last_output < (time_since_reload + 1) and time_since_last_output > 5 and time_since_last_output < 60
+            stopped_recently = (
+                time_since_last_output < (time_since_reload + 1)
+                and time_since_last_output > 5
+                and time_since_last_output < 60
+            )
             gone_stale = time_since_last_output > 60 and time_since_reload > 60
             if stopped_recently or gone_stale:
-                logging.warning("No output received while inputs are being sent. Restarting process.")
+                logging.warning(
+                    "No output received while inputs are being sent. Restarting process."
+                )
                 await self.restart()
                 return
 
@@ -222,6 +242,8 @@ class SocketHandler:
             frame_bytes = await self.input_socket.recv()
             frame = from_jpeg_bytes(frame_bytes)
 
+            if not self.process:
+                return
             self.process.send_input(frame)
 
             # Increment frame count and measure FPS
@@ -236,11 +258,13 @@ class SocketHandler:
     async def output_loop(self, done: Event):
         frame_count = 0
         start_time = time.time()
-        while not done.is_set():
+        while not done.is_set() and self.process:
             output_image = await self.process.recv_output()
             if not output_image:
                 break
-            logging.debug(f"Output image received out_width: {output_image.width}, out_height: {output_image.height}")
+            logging.debug(
+                f"Output image received out_width: {output_image.width}, out_height: {output_image.height}"
+            )
 
             await self.output_socket.send(to_jpeg_bytes(output_image))
 
@@ -264,6 +288,7 @@ def cleanup_old_files(temp_dir):
                 os.remove(file_path)
                 logging.info(f"Removed old file: {file_path}")
 
+
 async def handle_params_update(request):
     try:
         params = {}
@@ -271,53 +296,57 @@ async def handle_params_update(request):
         os.makedirs(temp_dir, exist_ok=True)
         cleanup_old_files(temp_dir)
 
-        if request.content_type.startswith('application/json'):
+        if request.content_type.startswith("application/json"):
             params = await request.json()
-        elif request.content_type.startswith('multipart/'):
+        elif request.content_type.startswith("multipart/"):
             reader = await request.multipart()
 
             async for part in reader:
-                if part.name == 'params':
+                if part.name == "params":
                     params.update(await part.json())
                 elif isinstance(part, BodyPartReader):
                     content = await part.read()
 
                     file_hash = hashlib.md5(content).hexdigest()
-                    content_type = part.headers.get('Content-Type', 'application/octet-stream')
-                    ext = mimetypes.guess_extension(content_type) or ''
+                    content_type = part.headers.get(
+                        "Content-Type", "application/octet-stream"
+                    )
+                    ext = mimetypes.guess_extension(content_type) or ""
                     new_filename = f"{file_hash}{ext}"
 
                     file_path = os.path.join(temp_dir, new_filename)
-                    with open(file_path, 'wb') as f:
+                    with open(file_path, "wb") as f:
                         f.write(content)
 
                     params[part.name] = file_path
         else:
             raise ValueError(f"Unknown content type: {request.content_type}")
 
-        request.app['handler'].update_params(params)
+        request.app["handler"].update_params(params)
         return web.Response(text="Params updated successfully")
     except Exception as e:
         logging.error(f"Error updating params: {e}")
         return web.Response(text=f"Error updating params: {str(e)}", status=400)
 
+
 async def start_http_server(handler: SocketHandler, port: int):
     app = web.Application()
-    app['handler'] = handler
-    app.router.add_post('/api/params', handle_params_update)
+    app["handler"] = handler
+    app.router.add_post("/api/params", handle_params_update)
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', port)
+    site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
     logging.info(f"HTTP server started on port {port}")
     return runner
+
 
 async def main(http_port: int, input_address: str, output_address: str, pipeline: str):
     context = zmq.asyncio.Context()
 
     input_socket = context.socket(zmq.SUB)
     input_socket.connect(input_address)
-    input_socket.setsockopt_string(zmq.SUBSCRIBE, '')  # Subscribe to all messages
+    input_socket.setsockopt_string(zmq.SUBSCRIBE, "")  # Subscribe to all messages
     input_socket.set_hwm(10)
 
     output_socket = context.socket(zmq.PUB)
@@ -343,6 +372,7 @@ async def main(http_port: int, input_address: str, output_address: str, pipeline
         logging.error(f"Stack trace:\n{traceback.format_exc()}")
         raise e
 
+
 async def block_until_signal(sigs: List[signal.Signals]):
     loop = asyncio.get_running_loop()
     future: asyncio.Future[signal.Signals] = loop.create_future()
@@ -350,22 +380,40 @@ async def block_until_signal(sigs: List[signal.Signals]):
     def signal_handler(sig, _):
         logging.info(f"Received signal: {sig}")
         loop.call_soon_threadsafe(future.set_result, sig)
+
     for sig in sigs:
         signal.signal(sig, signal_handler)
     return await future
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Infer process to run the AI pipeline")
-    parser.add_argument("--http-port", type=int, default=8888, help="Port for the HTTP server")
-    parser.add_argument("--input-address", type=str, default="tcp://localhost:5555", help="Address for the input socket")
-    parser.add_argument("--output-address", type=str, default="tcp://localhost:5556", help="Address for the output socket")
-    parser.add_argument("--pipeline", type=str, default="streamkohaku", help="Pipeline to use")
+    parser.add_argument(
+        "--http-port", type=int, default=8888, help="Port for the HTTP server"
+    )
+    parser.add_argument(
+        "--input-address",
+        type=str,
+        default="tcp://localhost:5555",
+        help="Address for the input socket",
+    )
+    parser.add_argument(
+        "--output-address",
+        type=str,
+        default="tcp://localhost:5556",
+        help="Address for the output socket",
+    )
+    parser.add_argument(
+        "--pipeline", type=str, default="streamkohaku", help="Pipeline to use"
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO)
 
     try:
-        asyncio.run(main(args.http_port, args.input_address, args.output_address, args.pipeline))
+        asyncio.run(
+            main(args.http_port, args.input_address, args.output_address, args.pipeline)
+        )
     except Exception as e:
         logging.error(f"Fatal error in main: {e}")
         logging.error(f"Traceback:\n{''.join(traceback.format_tb(e.__traceback__))}")
