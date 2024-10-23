@@ -2,7 +2,7 @@ import logging
 import os
 import multiprocessing
 import cv2
-from typing import Annotated
+from typing import Annotated, Dict, Tuple, Union
 
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
