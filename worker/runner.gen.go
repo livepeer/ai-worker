@@ -32,6 +32,18 @@ type APIError struct {
 	Msg string `json:"msg"`
 }
 
+// BodyFrameInterpolationFrameInterpolationPost defines model for Body_frame_interpolation_frame_interpolation_post.
+type BodyFrameInterpolationFrameInterpolationPost struct {
+	// InterFrames Number of frames to create as the intermediate frames.
+	InterFrames *int `json:"inter_frames,omitempty"`
+
+	// ModelId Currently there is only one model used `film_net_fp16.pt`.
+	ModelId *string `json:"model_id,omitempty"`
+
+	// Video Video file of any arbitrary length.
+	Video *openapi_types.File `json:"video,omitempty"`
+}
+
 // BodyGenAudioToText defines model for Body_genAudioToText.
 type BodyGenAudioToText struct {
 	// Audio Uploaded audio file to be transcribed.
@@ -323,8 +335,14 @@ type Chunk struct {
 	Timestamp []interface{} `json:"timestamp"`
 }
 
+// FrameInterpolationFrameInterpolationPostMultipartBody defines parameters for FrameInterpolationFrameInterpolationPost.
+type FrameInterpolationFrameInterpolationPostMultipartBody = BodyFrameInterpolationFrameInterpolationPost
+
 // GenAudioToTextMultipartRequestBody defines body for GenAudioToText for multipart/form-data ContentType.
 type GenAudioToTextMultipartRequestBody = BodyGenAudioToText
+
+// FrameInterpolationFrameInterpolationPostMultipartRequestBody defines body for FrameInterpolationFrameInterpolationPost for multipart/form-data ContentType.
+type FrameInterpolationFrameInterpolationPostMultipartRequestBody = FrameInterpolationFrameInterpolationPostMultipartBody
 
 // GenImageToImageMultipartRequestBody defines body for GenImageToImage for multipart/form-data ContentType.
 type GenImageToImageMultipartRequestBody = BodyGenImageToImage
@@ -485,6 +503,9 @@ type ClientInterface interface {
 	// GenAudioToTextWithBody request with any body
 	GenAudioToTextWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// FrameInterpolationFrameInterpolationPostWithBody request with any body
+	FrameInterpolationFrameInterpolationPostWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// Health request
 	Health(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -516,6 +537,18 @@ type ClientInterface interface {
 
 func (c *Client) GenAudioToTextWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGenAudioToTextRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) FrameInterpolationFrameInterpolationPostWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewFrameInterpolationFrameInterpolationPostRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -656,6 +689,35 @@ func NewGenAudioToTextRequestWithBody(server string, contentType string, body io
 	}
 
 	operationPath := fmt.Sprintf("/audio-to-text")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewFrameInterpolationFrameInterpolationPostRequestWithBody generates requests for FrameInterpolationFrameInterpolationPost with any type of body
+func NewFrameInterpolationFrameInterpolationPostRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/frame-interpolation")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -973,6 +1035,9 @@ type ClientWithResponsesInterface interface {
 	// GenAudioToTextWithBodyWithResponse request with any body
 	GenAudioToTextWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenAudioToTextResponse, error)
 
+	// FrameInterpolationFrameInterpolationPostWithBodyWithResponse request with any body
+	FrameInterpolationFrameInterpolationPostWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*FrameInterpolationFrameInterpolationPostResponse, error)
+
 	// HealthWithResponse request
 	HealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*HealthResponse, error)
 
@@ -1024,6 +1089,32 @@ func (r GenAudioToTextResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GenAudioToTextResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type FrameInterpolationFrameInterpolationPostResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *VideoResponse
+	JSON400      *HTTPError
+	JSON401      *HTTPError
+	JSON422      *HTTPValidationError
+	JSON500      *HTTPError
+}
+
+// Status returns HTTPResponse.Status
+func (r FrameInterpolationFrameInterpolationPostResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r FrameInterpolationFrameInterpolationPostResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1244,6 +1335,15 @@ func (c *ClientWithResponses) GenAudioToTextWithBodyWithResponse(ctx context.Con
 	return ParseGenAudioToTextResponse(rsp)
 }
 
+// FrameInterpolationFrameInterpolationPostWithBodyWithResponse request with arbitrary body returning *FrameInterpolationFrameInterpolationPostResponse
+func (c *ClientWithResponses) FrameInterpolationFrameInterpolationPostWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*FrameInterpolationFrameInterpolationPostResponse, error) {
+	rsp, err := c.FrameInterpolationFrameInterpolationPostWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseFrameInterpolationFrameInterpolationPostResponse(rsp)
+}
+
 // HealthWithResponse request returning *HealthResponse
 func (c *ClientWithResponses) HealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*HealthResponse, error) {
 	rsp, err := c.Health(ctx, reqEditors...)
@@ -1380,6 +1480,60 @@ func ParseGenAudioToTextResponse(rsp *http.Response) (*GenAudioToTextResponse, e
 			return nil, err
 		}
 		response.JSON415 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest HTTPValidationError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseFrameInterpolationFrameInterpolationPostResponse parses an HTTP response from a FrameInterpolationFrameInterpolationPostWithResponse call
+func ParseFrameInterpolationFrameInterpolationPostResponse(rsp *http.Response) (*FrameInterpolationFrameInterpolationPostResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &FrameInterpolationFrameInterpolationPostResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest VideoResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
 		var dest HTTPValidationError
@@ -1816,6 +1970,9 @@ type ServerInterface interface {
 	// Audio To Text
 	// (POST /audio-to-text)
 	GenAudioToText(w http.ResponseWriter, r *http.Request)
+	// Frame Interpolation
+	// (POST /frame-interpolation)
+	FrameInterpolationFrameInterpolationPost(w http.ResponseWriter, r *http.Request)
 	// Health
 	// (GET /health)
 	Health(w http.ResponseWriter, r *http.Request)
@@ -1849,6 +2006,12 @@ type Unimplemented struct{}
 // Audio To Text
 // (POST /audio-to-text)
 func (_ Unimplemented) GenAudioToText(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Frame Interpolation
+// (POST /frame-interpolation)
+func (_ Unimplemented) FrameInterpolationFrameInterpolationPost(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1917,6 +2080,23 @@ func (siw *ServerInterfaceWrapper) GenAudioToText(w http.ResponseWriter, r *http
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GenAudioToText(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// FrameInterpolationFrameInterpolationPost operation middleware
+func (siw *ServerInterfaceWrapper) FrameInterpolationFrameInterpolationPost(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, HTTPBearerScopes, []string{})
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.FrameInterpolationFrameInterpolationPost(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2177,6 +2357,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/audio-to-text", wrapper.GenAudioToText)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/frame-interpolation", wrapper.FrameInterpolationFrameInterpolationPost)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/health", wrapper.Health)
 	})
 	r.Group(func(r chi.Router) {
@@ -2206,7 +2389,6 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
-
 	"H4sIAAAAAAAC/+xce28bNxL/KsTeAU0AyZLcurkz0D+cNE2Ms9PAlpsWiSFQu6MV611yy4clNefvfuBw",
 	"d8V96OXabi/VX3W0JOf9m+GQ7OcgFGkmOHCtguPPgQqnkFL88+T96WsphbR/R6BCyTLNBA+O7RcC9hOR",
 	"oDLBFZBURJAcBJ0gkyIDqRngGqmKm9OHU8inp6AUjcHO00wnEBwH5yq2/1pk9h9KS8bj4O6uE0j4zTAJ",

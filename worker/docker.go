@@ -30,19 +30,21 @@ const containerCreator = "ai-worker"
 // This only works right now on a single GPU because if there is another container
 // using the GPU we stop it so we don't have to worry about having enough ports
 var containerHostPorts = map[string]string{
-	"text-to-image":      "8000",
-	"image-to-image":     "8100",
-	"image-to-video":     "8200",
-	"upscale":            "8300",
-	"audio-to-text":      "8400",
-	"llm":                "8500",
-	"segment-anything-2": "8600",
-	"image-to-text":      "8700",
+	"text-to-image":       "8000",
+	"image-to-image":      "8100",
+	"image-to-video":      "8200",
+	"upscale":             "8300",
+	"audio-to-text":       "8400",
+	"llm":                 "8500",
+	"segment-anything-2":  "8600",
+  "frame-interpolation": "8700",
+ 	"image-to-text":       "8900",
 }
 
 // Mapping for per pipeline container images.
 var pipelineToImage = map[string]string{
-	"segment-anything-2": "livepeer/ai-runner:segment-anything-2",
+	"segment-anything-2":  "livepeer/ai-runner:segment-anything-2",
+	"frame-interpolation": "livepeer/ai-runner:frame-interpolation",
 }
 
 type DockerManager struct {
