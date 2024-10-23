@@ -416,3 +416,40 @@ func NewLivePortraitMultipartWriter(w io.Writer, req LivePortraitLivePortraitPos
 
 	return mw, nil
 }
+
+func NewImageToTextMultipartWriter(w io.Writer, req GenImageToTextMultipartRequestBody) (*multipart.Writer, error) {
+	mw := multipart.NewWriter(w)
+	writer, err := mw.CreateFormFile("image", req.Image.Filename())
+	if err != nil {
+		return nil, err
+	}
+	imageSize := req.Image.FileSize()
+	imageRdr, err := req.Image.Reader()
+	if err != nil {
+		return nil, err
+	}
+	copied, err := io.Copy(writer, imageRdr)
+	if err != nil {
+		return nil, err
+	}
+	if copied != imageSize {
+		return nil, fmt.Errorf("failed to copy image to multipart request imageBytes=%v copiedBytes=%v", imageSize, copied)
+	}
+
+	if req.Prompt != nil {
+		if err := mw.WriteField("prompt", *req.Prompt); err != nil {
+			return nil, err
+		}
+	}
+	if req.ModelId != nil {
+		if err := mw.WriteField("model_id", *req.ModelId); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := mw.Close(); err != nil {
+		return nil, err
+	}
+
+	return mw, nil
+}
