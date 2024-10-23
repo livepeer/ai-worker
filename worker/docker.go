@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/docker/cli/opts"
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/mount"
@@ -38,7 +37,8 @@ var containerHostPorts = map[string]string{
 	"audio-to-text":       "8400",
 	"llm":                 "8500",
 	"segment-anything-2":  "8600",
-  	"frame-interpolation": "8700",
+  "frame-interpolation": "8700",
+ 	"image-to-text":       "8900",
 }
 
 // Mapping for per pipeline container images.
@@ -231,7 +231,7 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	}
 
 	cctx, cancel := context.WithTimeout(ctx, containerTimeout)
-	if err := m.dockerClient.ContainerStart(cctx, resp.ID, types.ContainerStartOptions{}); err != nil {
+	if err := m.dockerClient.ContainerStart(cctx, resp.ID, container.StartOptions{}); err != nil {
 		cancel()
 		dockerRemoveContainer(m.dockerClient, resp.ID)
 		return nil, err
@@ -311,7 +311,7 @@ func (m *DockerManager) allocGPU(ctx context.Context) (string, error) {
 
 func removeExistingContainers(ctx context.Context, client *client.Client) error {
 	filters := filters.NewArgs(filters.Arg("label", containerCreatorLabel+"="+containerCreator))
-	containers, err := client.ContainerList(ctx, types.ContainerListOptions{All: true, Filters: filters})
+	containers, err := client.ContainerList(ctx, container.ListOptions{All: true, Filters: filters})
 	if err != nil {
 		return err
 	}
@@ -345,7 +345,7 @@ func dockerRemoveContainer(client *client.Client, containerID string) error {
 
 	ctx, cancel = context.WithTimeout(context.Background(), containerRemoveTimeout)
 	defer cancel()
-	return client.ContainerRemove(ctx, containerID, types.ContainerRemoveOptions{})
+	return client.ContainerRemove(ctx, containerID, container.RemoveOptions{})
 }
 
 func dockerWaitUntilRunning(ctx context.Context, client *client.Client, containerID string, pollingInterval time.Duration) error {

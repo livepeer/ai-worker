@@ -6,6 +6,7 @@ from typing import List, Optional, Tuple
 import PIL
 import torch
 from app.pipelines.base import Pipeline
+from app.utils.errors import InferenceError
 from diffusers import StableVideoDiffusionPipeline
 from huggingface_hub import file_download
 from PIL import ImageFile
@@ -139,7 +140,12 @@ class ImageToVideoPipeline(Pipeline):
         else:
             has_nsfw_concept = [None]
 
-        return self.ldm(image, **kwargs).frames, has_nsfw_concept
+        try:
+            outputs = self.ldm(image, **kwargs)
+        except Exception as e:
+            raise InferenceError(original_exception=e)
+
+        return outputs.frames, has_nsfw_concept
 
     def __str__(self) -> str:
         return f"ImageToVideoPipeline model_id={self.model_id}"

@@ -68,6 +68,10 @@ function download_all_models() {
 
     #Download frame-interpolation model.
     wget https://github.com/dajes/frame-interpolation-pytorch/releases/download/v1.0.2/film_net_fp16.pt -O /models/film_net_fp16.pt
+
+    # Download image-to-text models.
+    huggingface-cli download Salesforce/blip-image-captioning-large --include "*.safetensors" "*.json" --cache-dir models
+
     # Custom pipeline models.
     huggingface-cli download facebook/sam2-hiera-large --include "*.pt" "*.yaml" --cache-dir models
 }

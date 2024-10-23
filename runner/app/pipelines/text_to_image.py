@@ -15,6 +15,7 @@ from app.pipelines.utils import (
     is_turbo_model,
     split_prompt,
 )
+from app.utils.errors import InferenceError
 from diffusers import (
     AutoPipelineForText2Image,
     EulerDiscreteScheduler,
@@ -271,14 +272,17 @@ class TextToImagePipeline(Pipeline):
         )
         kwargs.update(neg_prompts)
 
-        output = self.ldm(prompt=prompt, **kwargs)
+        try:
+            outputs = self.ldm(prompt=prompt, **kwargs)
+        except Exception as e:
+            raise InferenceError(original_exception=e)
 
         if safety_check:
-            _, has_nsfw_concept = self._safety_checker.check_nsfw_images(output.images)
+            _, has_nsfw_concept = self._safety_checker.check_nsfw_images(outputs.images)
         else:
-            has_nsfw_concept = [None] * len(output.images)
+            has_nsfw_concept = [None] * len(outputs.images)
 
-        return output.images, has_nsfw_concept
+        return outputs.images, has_nsfw_concept
 
     def __str__(self) -> str:
         return f"TextToImagePipeline model_id={self.model_id}"

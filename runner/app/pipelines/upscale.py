@@ -13,6 +13,7 @@ from app.pipelines.utils import (
     is_lightning_model,
     is_turbo_model,
 )
+from app.utils.errors import InferenceError
 from diffusers import StableDiffusionUpscalePipeline
 from huggingface_hub import file_download
 from PIL import ImageFile
@@ -113,14 +114,20 @@ class UpscalePipeline(Pipeline):
             kwargs["num_inference_steps"] is None or kwargs["num_inference_steps"] < 1
         ):
             del kwargs["num_inference_steps"]
-        output = self.ldm(prompt, image=image, **kwargs)
+
+        try:
+            outputs = self.ldm(prompt, image=image, **kwargs)
+        except torch.cuda.OutOfMemoryError as e:
+            raise e
+        except Exception as e:
+            raise InferenceError(original_exception=e)
 
         if safety_check:
-            _, has_nsfw_concept = self._safety_checker.check_nsfw_images(output.images)
+            _, has_nsfw_concept = self._safety_checker.check_nsfw_images(outputs.images)
         else:
-            has_nsfw_concept = [None] * len(output.images)
+            has_nsfw_concept = [None] * len(outputs.images)
 
-        return output.images, has_nsfw_concept
+        return outputs.images, has_nsfw_concept
 
     def __str__(self) -> str:
         return f"UpscalePipeline model_id={self.model_id}"

@@ -61,6 +61,10 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
         case "llm":
             from app.pipelines.llm import LLMPipeline
             return LLMPipeline(model_id)
+        case "image-to-text":
+            from app.pipelines.image_to_text import ImageToTextPipeline
+
+            return ImageToTextPipeline(model_id)
         case _:
             raise EnvironmentError(
                 f"{pipeline} is not a valid pipeline for model {model_id}"
@@ -100,6 +104,9 @@ def load_route(pipeline: str) -> any:
         case "llm":
             from app.routes import llm
             return llm.router
+        case "image-to-text":
+            from app.routes import image_to_text
+            return image_to_text.router
         case _:
             raise EnvironmentError(f"{pipeline} is not a valid pipeline")
 
