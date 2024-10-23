@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from PIL import Image
 
-class Transmorgrifier(ABC):
+class Pipeline(ABC):
     def __init__(self, **params):
         pass
 

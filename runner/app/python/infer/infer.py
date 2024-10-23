@@ -1,24 +1,30 @@
 import argparse
 import asyncio
 import logging
-import os
 import io
 import signal
 import time
 import traceback
-from typing import Callable, List
+import sys
+from typing import List
 
-import watchdog.events
-import watchdog.observers
 import zmq.asyncio
 from PIL import Image
 from aiohttp import web
+import os
+import tempfile
+import hashlib
+from aiohttp import BodyPartReader
+import mimetypes
 
-from transmorgrifiers import Transmorgrifier
+from pipelines import load_pipeline
 import multiprocessing as mp
+from multiprocessing.synchronize import Event
 import queue
-prompt_file = "./prompt.txt"
 fps_log_interval = 10
+
+TEMP_SUBDIR = 'infer_temp'
+MAX_FILE_AGE = 86400 # 1 day
 
 def to_jpeg_bytes(frame: Image.Image):
     buffer = io.BytesIO()
@@ -33,65 +39,45 @@ def from_jpeg_bytes(frame_bytes: bytes):
         image = image.convert('RGBA')
     return image
 
-class FileWatcher(watchdog.events.FileSystemEventHandler):
-    def __init__(self, filename: str, callback: Callable[[str], None]):
-        self.filename = filename
-        self.callback = callback
-        self.setup_observer()
+class PipelineProcess:
+    @staticmethod
+    def start(pipeline_name: str):
+        instance = PipelineProcess(pipeline_name)
+        instance.process.start()
+        return instance
 
-    def setup_observer(self):
-        self.load_file()
-        observer = watchdog.observers.Observer()
-        observer.schedule(self, path=os.path.dirname(self.filename), recursive=False)
-        observer.start()
-
-    def on_modified(self, event):
-        if event.src_path == self.filename:
-            self.load_file()
-
-    def load_file(self):
-        try:
-            with open(self.filename, 'r') as f:
-                contents = f.read().strip()
-                if contents:
-                    self.callback(contents)
-        except FileNotFoundError:
-            pass
-
-def load_transmorgrifier(name: str, **params) -> Transmorgrifier:
-    if name == "streamkohaku":
-        from transmorgrifiers.streamkohaku import StreamKohaku
-        return StreamKohaku(**params)
-    elif name == "liveportrait":
-        from transmorgrifiers.liveportrait import LivePortrait
-        return LivePortrait(**params)
-    raise ValueError(f"Unknown transmorgrifier: {name}")
-
-class TransmorgrifierProcess:
-    def __init__(self, transmorgrifier_name: str):
-        self.transmorgrifier_name = transmorgrifier_name
-
+    def __init__(self, pipeline_name: str):
+        self.pipeline_name = pipeline_name
         self.ctx = mp.get_context('spawn')
+
         self.input_queue = self.ctx.Queue(maxsize=5)
+        self.last_input_time = 0
         self.output_queue = self.ctx.Queue()
+        self.last_output_time = 0
         self.param_update_queue = self.ctx.Queue()
+
         self.done = self.ctx.Event()
-
         self.process = self.ctx.Process(target=self.process_loop, args=())
-
-    def start(self):
-        self.process.start()
 
     def stop(self):
         self.done.set()
-        self.process.join(timeout=5)
         if self.process.is_alive():
+            logging.info(f"Terminating pipeline process")
             self.process.terminate()
+            try:
+                self.process.join(timeout=5)
+            except Exception as e:
+                logging.error(f"Killing process due to join error: {e}")
+                self.process.kill()
+
+    def is_done(self):
+        return self.done.is_set()
 
     def send_input(self, frame: Image.Image):
         while not self.is_done():
             try:
                 self.input_queue.put_nowait(frame)
+                self.last_input_time = time.time()
                 break
             except queue.Full:
                 try:
@@ -105,30 +91,38 @@ class TransmorgrifierProcess:
         # event loop, so we loop with nowait and sleep async instead.
         while not self.is_done():
             try:
-                return self.output_queue.get_nowait()
+                output = self.output_queue.get_nowait()
+                self.last_output_time = time.time()
+                return output
             except queue.Empty:
                 await asyncio.sleep(0.005)
                 continue
         return None
 
-    def is_done(self):
-        return self.done.is_set()
-
     def process_loop(self):
         logging.basicConfig(level=logging.INFO)
         try:
+            params = {}
             try:
                 params = self.param_update_queue.get_nowait()
             except queue.Empty:
-                params = {}
-            transmorgrifier = load_transmorgrifier(self.transmorgrifier_name, **params)
-            logging.info("Transmorgrifier loaded successfully")
+                pass
+            except Exception as e:
+                logging.error(f"Error getting params: {e}")
+
+            try:
+                pipeline = load_pipeline(self.pipeline_name, **params)
+                logging.info("Pipeline loaded successfully")
+            except Exception as e:
+                logging.error(f"Error loading pipeline: {e}")
+                pipeline = load_pipeline(self.pipeline_name)
+                logging.info("Pipeline loaded with default params")
 
             while not self.is_done():
                 if not self.param_update_queue.empty():
                     params = self.param_update_queue.get_nowait()
                     try:
-                        transmorgrifier.update_params(**params)
+                        pipeline.update_params(**params)
                         logging.info(f"Updated params: {params}")
                     except Exception as e:
                         logging.error(f"Error updating params: {e}")
@@ -140,7 +134,7 @@ class TransmorgrifierProcess:
                     continue
 
                 try:
-                    output_image = transmorgrifier.process_frame(input_image)
+                    output_image = pipeline.process_frame(input_image)
                     self.output_queue.put(output_image)
                 except Exception as e:
                     logging.error(f"Error processing frame: {e}")
@@ -151,45 +145,80 @@ class SocketHandler:
     def __init__(self, input_socket: zmq.asyncio.Socket, output_socket: zmq.asyncio.Socket, pipeline: str):
         self.input_socket = input_socket
         self.output_socket = output_socket
-        self.process = TransmorgrifierProcess(pipeline)
-        self.last_prompt = None
-        self.prompt_watcher = FileWatcher(prompt_file, self.set_prompt)
+        self.pipeline = pipeline
+        self.process = None
+        self.last_params = None
+        self.last_params_time = 0
+        self.restart_count = 0
 
     def start(self):
-        self.input_task = asyncio.create_task(self.input_loop())
-        self.process.start()
-        self.output_task = asyncio.create_task(self.output_loop())
+        self.process = PipelineProcess.start(self.pipeline)
+        self.input_task = asyncio.create_task(self.input_loop(self.process.done))
+        self.output_task = asyncio.create_task(self.output_loop(self.process.done))
+        self.monitor_task = asyncio.create_task(self.monitor_loop(self.process.done))
 
     async def stop(self):
+        if self.process:
+            self.process.stop()
+            self.process = None
+
         if self.input_task:
             self.input_task.cancel()
-            try:
-                await self.input_task
-            finally:
-                self.input_task = None
-
-        self.process.stop()
+            self.input_task = None
 
         if self.output_task:
             self.output_task.cancel()
-            try:
-                await self.output_task
-            finally:
-                self.output_task = None
+            self.output_task = None
 
-    def set_prompt(self, prompt: str):
-        if prompt != self.last_prompt:
-            self.update_params({'prompt': prompt})
-            logging.info(f"Prompt: {prompt}")
+        if self.monitor_task:
+            self.monitor_task.cancel()
+            self.monitor_task = None
+
+    async def restart(self):
+        try:
+            await self.stop()
+            self.start()
+            self.restart_count += 1
+            logging.info(f"PipelineProcess restarted. Restart count: {self.restart_count}")
+
+            if self.last_params:
+                self.update_params(self.last_params)
+        except Exception as e:
+            logging.error(f"Error restarting pipeline process: {e}")
+            logging.error(f"Stack trace:\n{traceback.format_exc()}")
 
     def update_params(self, params: dict):
-        self.last_prompt = params.get('prompt', None)
-        self.process.param_update_queue.put(params)
+        self.last_params = params
+        self.last_params_time = time.time()
+        if self.process:
+            self.process.param_update_queue.put(params)
 
-    async def input_loop(self):
+    async def monitor_loop(self, done: Event):
+        start_time = time.time()
+        while not done.is_set():
+            await asyncio.sleep(2)
+            current_time = time.time()
+            time_since_last_input = current_time - self.process.last_input_time
+            time_since_last_output = current_time - self.process.last_output_time
+            time_since_start = current_time - start_time
+            time_since_last_params = current_time - self.last_params_time
+            time_since_reload = min(time_since_last_params, time_since_start)
+
+            if time_since_last_input > 5:
+                # nothing to do if we're not sending inputs
+                continue
+
+            stopped_recently = time_since_last_output < (time_since_reload + 1) and time_since_last_output > 5 and time_since_last_output < 60
+            gone_stale = time_since_last_output > 60 and time_since_reload > 60
+            if stopped_recently or gone_stale:
+                logging.warning("No output received while inputs are being sent. Restarting process.")
+                await self.restart()
+                return
+
+    async def input_loop(self, done: Event):
         frame_count = 0
         start_time = time.time()
-        while not self.process.is_done():
+        while not done.is_set():
             frame_bytes = await self.input_socket.recv()
             frame = from_jpeg_bytes(frame_bytes)
 
@@ -204,10 +233,10 @@ class SocketHandler:
                 frame_count = 0
                 start_time = time.time()
 
-    async def output_loop(self):
+    async def output_loop(self, done: Event):
         frame_count = 0
         start_time = time.time()
-        while True:
+        while not done.is_set():
             output_image = await self.process.recv_output()
             if not output_image:
                 break
@@ -224,9 +253,48 @@ class SocketHandler:
                 frame_count = 0
                 start_time = time.time()
 
+
+def cleanup_old_files(temp_dir):
+    current_time = time.time()
+    for filename in os.listdir(temp_dir):
+        file_path = os.path.join(temp_dir, filename)
+        if os.path.isfile(file_path):
+            file_age = current_time - os.path.getmtime(file_path)
+            if file_age > MAX_FILE_AGE:
+                os.remove(file_path)
+                logging.info(f"Removed old file: {file_path}")
+
 async def handle_params_update(request):
     try:
-        params = await request.json()
+        params = {}
+        temp_dir = os.path.join(tempfile.gettempdir(), TEMP_SUBDIR)
+        os.makedirs(temp_dir, exist_ok=True)
+        cleanup_old_files(temp_dir)
+
+        if request.content_type.startswith('application/json'):
+            params = await request.json()
+        elif request.content_type.startswith('multipart/'):
+            reader = await request.multipart()
+
+            async for part in reader:
+                if part.name == 'params':
+                    params.update(await part.json())
+                elif isinstance(part, BodyPartReader):
+                    content = await part.read()
+
+                    file_hash = hashlib.md5(content).hexdigest()
+                    content_type = part.headers.get('Content-Type', 'application/octet-stream')
+                    ext = mimetypes.guess_extension(content_type) or ''
+                    new_filename = f"{file_hash}{ext}"
+
+                    file_path = os.path.join(temp_dir, new_filename)
+                    with open(file_path, 'wb') as f:
+                        f.write(content)
+
+                    params[part.name] = file_path
+        else:
+            raise ValueError(f"Unknown content type: {request.content_type}")
+
         request.app['handler'].update_params(params)
         return web.Response(text="Params updated successfully")
     except Exception as e:
@@ -296,4 +364,9 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO)
 
-    asyncio.run(main(args.http_port, args.input_address, args.output_address, args.pipeline))
+    try:
+        asyncio.run(main(args.http_port, args.input_address, args.output_address, args.pipeline))
+    except Exception as e:
+        logging.error(f"Fatal error in main: {e}")
+        logging.error(f"Traceback:\n{''.join(traceback.format_tb(e.__traceback__))}")
+        sys.exit(1)
