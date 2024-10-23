@@ -79,7 +79,7 @@ async def audio_to_text(
     pipeline: Pipeline = Depends(get_pipeline),
     return_timestamps:  Annotated[
         str,
-        Form(description="Optionally return timestamps for the transcribed text by sentence or word. Supported values 'false' and 'word'. Defaults to sentence-level timestamps."),
+        Form(description="Optionally return timestamps for the transcribed text by sentence or word. Supported values are 'none', 'sentence' or 'word'. Defaults to 'sentence' timestamps."),
     ] = "sentence",
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
