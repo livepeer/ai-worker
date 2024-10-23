@@ -1,6 +1,5 @@
 import logging
 import os
-import time
 from typing import List, Optional, Tuple
 
 import PIL
@@ -21,6 +20,7 @@ from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 logger = logging.getLogger(__name__)
+
 
 class UpscalePipeline(Pipeline):
     def __init__(self, model_id: str):
