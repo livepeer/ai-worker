@@ -48,5 +48,5 @@ RUN mkdir -p /var/log/uvicorn /var/log/infer
 # Ensure all run scripts are executable
 RUN chmod +x /etc/service/*/run /etc/service/*/log/run
 
-# We're keeping the WORKDIR /app here as it's a good default
-WORKDIR /app
+# Boot uvicorn for now - we'll make it daemonized later 
+CMD ["uvicorn", "app.main:app", "--log-config", "app/cfg/uvicorn_logging_config.json", "--host", "0.0.0.0", "--port", "8000"]
