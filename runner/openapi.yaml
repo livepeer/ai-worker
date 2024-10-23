@@ -451,8 +451,8 @@ components:
           type: string
           title: Return Timestamps
           description: Optionally return timestamps for the transcribed text by sentence
-            or word. Supported values 'false' and 'word'. Defaults to sentence-level
-            timestamps.
+            or word. Supported values are 'none', 'sentence' or 'word'. Defaults to
+            'sentence' timestamps.
           default: sentence
       type: object
       required:
