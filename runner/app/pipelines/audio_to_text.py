@@ -20,7 +20,7 @@ MODEL_INCOMPATIBLE_EXTENSIONS = {
 
 
 class AudioToTextPipeline(Pipeline):
-    def __init__(self, model_id: str, return_timestamps: str = "false"):
+    def __init__(self, model_id: str):
         self.model_id = model_id
         kwargs = {}
 
@@ -76,7 +76,7 @@ class AudioToTextPipeline(Pipeline):
             converted_bytes = audio_converter.convert(audio, "mp3")
             audio_converter.write_bytes_to_file(converted_bytes, audio)
 
-        if kwargs["return_timestamps"] != "false":
+        if kwargs["return_timestamps"] != "none":
             kwargs["return_timestamps"] = kwargs["return_timestamps"] if kwargs["return_timestamps"] == "word" else True
         else:
             kwargs.pop("return_timestamps", None)
