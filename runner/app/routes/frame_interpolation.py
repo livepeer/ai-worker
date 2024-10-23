@@ -4,7 +4,7 @@ import cv2
 import glob
 import logging
 
-from typing import Annotated
+from typing import Annotated, Dict, Tuple, Union
 from PIL import Image, ImageFile
 from fastapi.responses import JSONResponse
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
@@ -13,7 +13,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.pipelines.base import Pipeline
 from app.dependencies import get_pipeline
 from app.pipelines.utils.utils import DirectoryReader, DirectoryWriter, video_shredder
-from app.routes.util import HTTPError, VideoResponse, http_error, image_to_data_url
+from app.routes.utils import HTTPError, VideoResponse, http_error, image_to_data_url, handle_pipeline_exception
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -21,9 +21,28 @@ router = APIRouter()
 
 logger = logging.getLogger(__name__)
 
+# Pipeline specific error handling configuration.
+PIPELINE_ERROR_CONFIG: Dict[str, Tuple[Union[str, None], int]] = {
+    # Specific error types.
+    "OutOfMemoryError": (
+        "Out of memory error. Try reducing input image resolution.",
+        status.HTTP_500_INTERNAL_SERVER_ERROR,
+    )
+}
+
 RESPONSES = {
+    status.HTTP_200_OK: {
+        "content": {
+            "application/json": {
+                "schema": {
+                    "x-speakeasy-name-override": "data",
+                }
+            }
+        },
+    },
     status.HTTP_400_BAD_REQUEST: {"model": HTTPError},
     status.HTTP_401_UNAUTHORIZED: {"model": HTTPError},
+    status.HTTP_413_REQUEST_ENTITY_TOO_LARGE: {"model": HTTPError},
     status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPError},
 }
 
@@ -105,10 +124,10 @@ async def frame_interpolation(
 
     except Exception as e:
         logger.error(f"FILMPipeline error: {e}")
-        logger.exception(e)
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=http_error("FILMPipeline error"),
+        return handle_pipeline_exception(
+            e,
+            default_error_message="frame-interpolation pipeline error.",
+            custom_error_config=PIPELINE_ERROR_CONFIG,
         )
     finally:
         # Clean up temporary directories
