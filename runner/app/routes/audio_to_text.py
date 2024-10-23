@@ -101,10 +101,10 @@ async def audio_to_text(
             ),
         )
     
-    if return_timestamps is not None and return_timestamps not in ["false", "sentence", "word"]:
+    if return_timestamps is not None and return_timestamps not in ["none", "sentence", "word"]:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content=http_error("return_timestamps must be either 'false' or 'word'"),
+            content=http_error("return_timestamps must be either 'none', 'sentence' or 'word'"),
         )
     
     if file_exceeds_max_size(audio, 50 * 1024 * 1024):
