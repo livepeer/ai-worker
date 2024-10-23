@@ -88,4 +88,5 @@ WORKDIR /app
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Set the init system to runit
-CMD ["runsvdir", "/etc/service"]
+#CMD ["runsvdir", "/etc/service"]
+CMD ["uvicorn", "app.main:app", "--log-config", "app/cfg/uvicorn_logging_config.json", "--host", "0.0.0.0", "--port", "8000"]
