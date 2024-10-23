@@ -6,7 +6,7 @@ from typing import Annotated
 
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
-from app.routes.utils import HTTPError, VideoResponse, http_error, image_to_data_url
+from app.routes.utils import HTTPError, VideoResponse, http_error, image_to_data_url, handle_pipeline_exception
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -18,7 +18,26 @@ router = APIRouter()
 
 logger = logging.getLogger(__name__)
 
+# Pipeline specific error handling configuration.
+PIPELINE_ERROR_CONFIG: Dict[str, Tuple[Union[str, None], int]] = {
+    # Specific error types.
+    "faceNotDetected": (
+        "No face detected in either driving video or source image.",
+        status.HTTP_500_INTERNAL_SERVER_ERROR,
+    )
+}
+
+
 RESPONSES = {
+    status.HTTP_200_OK: {
+        "content": {
+            "application/json": {
+                "schema": {
+                    "x-speakeasy-name-override": "data",
+                }
+            }
+        },
+    },
     status.HTTP_400_BAD_REQUEST: {"model": HTTPError},
     status.HTTP_401_UNAUTHORIZED: {"model": HTTPError},
     status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPError},
@@ -103,10 +122,10 @@ async def live_portrait(
 
     except Exception as e:
         logger.error(f"LivePortraitPipeline error: {e}")
-        logger.exception(e)
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=http_error("LivePortraitPipeline error"),
+        return handle_pipeline_exception(
+            e,
+            default_error_message="Live-portrait pipeline error.",
+            custom_error_config=PIPELINE_ERROR_CONFIG,
         )
     finally:
         # Clean up the temporary files
