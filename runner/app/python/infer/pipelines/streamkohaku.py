@@ -1,16 +1,16 @@
-from typing import Literal, Optional, List, Dict
+import logging
+from typing import Dict, List, Literal, Optional
+
 from PIL import Image
 from pydantic import BaseModel, Field
-
 from StreamDiffusionWrapper import StreamDiffusionWrapper
 
 from .interface import Pipeline
 
-import logging
 
 class StreamKohakuParams(BaseModel):
     class Config:
-        extra = 'forbid'
+        extra = "forbid"
 
     prompt: str = "talking head, cyberpunk, tron, matrix, ultra-realistic, dark, futuristic, neon, 8k"
     model_id: str = "KBlueLeaf/kohaku-v2.1"
@@ -29,7 +29,10 @@ class StreamKohakuParams(BaseModel):
     def __init__(self, **data):
         super().__init__(**data)
         if self.t_index_ratio_list is not None and self.t_index_list is None:
-            self.t_index_list = [int(i * self.num_inference_steps) for i in self.t_index_ratio_list]
+            self.t_index_list = [
+                int(i * self.num_inference_steps) for i in self.t_index_ratio_list
+            ]
+
 
 class StreamKohaku(Pipeline):
     def __init__(self, **params):
@@ -53,7 +56,7 @@ class StreamKohaku(Pipeline):
         new_params = StreamKohakuParams(**params)
         if self.pipe is not None:
             # avoid resetting the pipe if only the prompt changed
-            only_prompt = self.params.model_copy(update={'prompt': new_params.prompt})
+            only_prompt = self.params.model_copy(update={"prompt": new_params.prompt})
             if new_params == only_prompt:
                 logging.info(f"Updating prompt: {new_params.prompt}")
                 self.pipe.stream.update_prompt(new_params.prompt)

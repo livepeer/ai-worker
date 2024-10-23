@@ -2,18 +2,16 @@
 
 import gc
 import os
-from pathlib import Path
 import traceback
-from typing import List, Literal, Optional, Union, Dict
+from pathlib import Path
+from typing import Dict, List, Literal, Optional, Union
 
 import numpy as np
 import torch
 from diffusers import AutoencoderTiny, StableDiffusionPipeline
 from PIL import Image
-
 from streamdiffusion import StreamDiffusion
 from streamdiffusion.image_utils import postprocess_image
-
 
 torch.set_grad_enabled(False)
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -173,7 +171,9 @@ class StreamDiffusionWrapper:
             )
 
         if enable_similar_image_filter:
-            self.stream.enable_similar_image_filter(similar_image_filter_threshold, similar_image_filter_max_skip_frame)
+            self.stream.enable_similar_image_filter(
+                similar_image_filter_threshold, similar_image_filter_max_skip_frame
+            )
 
     def prepare(
         self,
@@ -634,7 +634,7 @@ class StreamDiffusionWrapper:
             traceback.print_exc()
             print("Acceleration has failed. Falling back to normal mode.")
 
-        if seed < 0: # Random seed
+        if seed < 0:  # Random seed
             seed = np.random.randint(0, 1000000)
 
         stream.prepare(
@@ -649,10 +649,10 @@ class StreamDiffusionWrapper:
         )
 
         if self.use_safety_checker:
-            from transformers import CLIPFeatureExtractor
             from diffusers.pipelines.stable_diffusion.safety_checker import (
                 StableDiffusionSafetyChecker,
             )
+            from transformers import CLIPFeatureExtractor
 
             self.safety_checker = StableDiffusionSafetyChecker.from_pretrained(
                 "CompVis/stable-diffusion-safety-checker"
