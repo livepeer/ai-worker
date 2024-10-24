@@ -1,14 +1,16 @@
 import logging
+import os
+import subprocess
+import threading
+import time
+from pathlib import Path
 from typing import List, Optional, Tuple
 
-import PIL
-import torch
+from PIL import Image
+
 from app.pipelines.base import Pipeline
 from app.pipelines.utils import get_model_dir, get_torch_device
 from app.utils.errors import InferenceError
-from PIL import ImageFile
-
-ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 logger = logging.getLogger(__name__)
 
@@ -16,32 +18,73 @@ logger = logging.getLogger(__name__)
 class VideoToVideoPipeline(Pipeline):
     def __init__(self, model_id: str):
         self.model_id = model_id
-        kwargs = {"cache_dir": get_model_dir()}
-
-        torch_device = get_torch_device()
-        
-        # TODO: Replace with actual video-to-video model initialization
-        self.model = self.load_model(model_id, torch_device, **kwargs)
-
-    def load_model(self, model_id, device, **kwargs):
-        # TODO: Implement model loading logic
-        pass
+        self.model_dir = get_model_dir()
+        self.torch_device = get_torch_device()
+        self.infer_script_path = (
+            Path(__file__).parent.parent.parent / "python" / "infer" / "infer.py"
+        )
+        self.process = None
+        self.monitor_thread = None
 
     def __call__(
-        self, input_frames: List[PIL.Image], **kwargs
-    ) -> Tuple[List[PIL.Image], List[Optional[bool]]]:
+        self, inputs: List[Image.Image], **kwargs
+    ) -> Tuple[List[Image.Image], List[Optional[bool]]]:
         try:
-            # TODO: Implement video processing logic
-            output_frames = self.process_video(input_frames, **kwargs)
+            if not self.process:
+                self.start_process(
+                    pipeline=self.model_id,  # we use the model_id as the pipeline name for now
+                    input_address="tcp://localhost:5555",
+                    output_address="tcp://localhost:5556",
+                    http_port="8888",
+                    # TODO: set torch device from self.torch_device
+                    # TODO: set initial params of the pipeline from kwargs
+                )
+
+            return [], []
         except Exception as e:
             raise InferenceError(original_exception=e)
 
-        return output_frames 
+    def start_process(self, **kwargs):
+        cmd = ["python", str(self.infer_script_path)]
 
-    def process_video(self, input_frames, **kwargs):
-        # TODO: Implement actual video processing logic
-        pass
+        # Add any additional kwargs as command-line arguments
+        for key, value in kwargs.items():
+            cmd.extend([f"--{key}", str(value)])
+
+        env = os.environ.copy()
+        env["HUGGINGFACE_HUB_CACHE"] = self.model_dir
+
+        try:
+            self.process = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env
+            )
+
+            self.monitor_thread = threading.Thread(target=self.monitor_process)
+            self.monitor_thread.start()
+
+        except subprocess.CalledProcessError as e:
+            raise InferenceError(f"Error starting infer.py: {e}")
+
+    def monitor_process(self):
+        while True:
+            return_code = self.process.poll()
+            if return_code is not None:
+                logger.info(f"infer.py process completed. Return code: {return_code}")
+                if return_code != 0:
+                    _, stderr = self.process.communicate()
+                    logger.error(
+                        f"infer.py process failed with return code {return_code}. Error: {stderr}"
+                    )
+                break
+
+            logger.info("infer.py process is running...")
+            time.sleep(10)
+
+    def stop_process(self):
+        if self.process:
+            self.process.terminate()
+        if self.monitor_thread:
+            self.monitor_thread.join()
 
     def __str__(self) -> str:
         return f"VideoToVideoPipeline model_id={self.model_id}"
-
