@@ -13,7 +13,7 @@ from app.utils.errors import InferenceError
 logger = logging.getLogger(__name__)
 
 
-class VideoToVideoPipeline(Pipeline):
+class LiveVideoToVideoPipeline(Pipeline):
     def __init__(self, model_id: str):
         self.model_id = model_id
         self.model_dir = get_model_dir()
@@ -84,4 +84,4 @@ class VideoToVideoPipeline(Pipeline):
             self.monitor_thread.join()
 
     def __str__(self) -> str:
-        return f"VideoToVideoPipeline model_id={self.model_id}"
+        return f"LiveVideoToVideoPipeline model_id={self.model_id}"

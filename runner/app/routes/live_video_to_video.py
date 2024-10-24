@@ -44,20 +44,20 @@ RESPONSES = {
 }
 
 @router.post(
-    "/video-to-video",
+    "/live-video-to-video",
     responses=RESPONSES,
     description="Apply video-like transformations to a provided image.",
-    operation_id="genVideoToVideo",
+    operation_id="genLiveVideoToVideo",
     summary="Video To Video",
     tags=["generate"],
-    openapi_extra={"x-speakeasy-name-override": "videoToVideo"},
+    openapi_extra={"x-speakeasy-name-override": "liveVideoToVideo"},
 )
 @router.post(
-    "/video-to-video/",
+    "/live-video-to-video/",
     responses=RESPONSES,
     include_in_schema=False,
 )
-async def video_to_video(
+async def live_video_to_video(
     model_id: Annotated[
         str,
         Form(description="Hugging Face model ID used for image transformation."),
@@ -91,11 +91,11 @@ async def video_to_video(
     except Exception as e:
         if isinstance(e, torch.cuda.OutOfMemoryError):
             torch.cuda.empty_cache()
-        logger.error(f"VideoToVideoPipeline error: {e}")
+        logger.error(f"LiveVideoToVideoPipeline error: {e}")
         logger.error(traceback.format_exc())
         return handle_pipeline_exception(
             e,
-            default_error_message="Video-to-video pipeline error.",
+            default_error_message="live-video-to-video pipeline error.",
             custom_error_config=PIPELINE_ERROR_CONFIG,
         )
 

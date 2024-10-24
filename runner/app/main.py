@@ -61,9 +61,9 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
             from app.pipelines.image_to_text import ImageToTextPipeline
 
             return ImageToTextPipeline(model_id)
-        case "video-to-video":
-            from app.pipelines.video_to_video import VideoToVideoPipeline
-            return VideoToVideoPipeline(model_id)
+        case "live-video-to-video":
+            from app.pipelines.live_video_to_video import LiveVideoToVideoPipeline
+            return LiveVideoToVideoPipeline(model_id)
         case _:
             raise EnvironmentError(
                 f"{pipeline} is not a valid pipeline for model {model_id}"
@@ -104,9 +104,9 @@ def load_route(pipeline: str) -> any:
         case "image-to-text":
             from app.routes import image_to_text
             return image_to_text.router
-        case "video-to-video":
-            from app.routes import video_to_video
-            return video_to_video.router
+        case "live-video-to-video":
+            from app.routes import live_video_to_video
+            return live_video_to_video.router
         case _:
             raise EnvironmentError(f"{pipeline} is not a valid pipeline")
 
