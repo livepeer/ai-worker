@@ -516,6 +516,54 @@ func (w *Worker) ImageToText(ctx context.Context, req GenImageToTextMultipartReq
 	return resp.JSON200, nil
 }
 
+func (w *Worker) SketchToImage(ctx context.Context, req GenSketchToImageMultipartRequestBody) (*ImageResponse, error) {
+	c, err := w.borrowContainer(ctx, "sketch-to-image", *req.ModelId)
+	if err != nil {
+		return nil, err
+	}
+	defer w.returnContainer(c)
+
+	var buf bytes.Buffer
+	mw, err := NewSketchToImageMultipartWriter(&buf, req)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.Client.GenSketchToImageWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("sketch-to-image container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("sketch-to-image container returned 422")
+	}
+
+	if resp.JSON400 != nil {
+		val, err := json.Marshal(resp.JSON400)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("sketch-to-image container returned 400", slog.String("err", string(val)))
+		return nil, errors.New("sketch-to-image container returned 400: " + resp.JSON400.Detail.Msg)
+	}
+
+	if resp.JSON500 != nil {
+		val, err := json.Marshal(resp.JSON500)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("sketch-to-image container returned 500", slog.String("err", string(val)))
+		return nil, errors.New("sketch-to-image container returned 500")
+	}
+
+	return resp.JSON200, nil
+}
+
 func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endpoint RunnerEndpoint, optimizationFlags OptimizationFlags) error {
 	if endpoint.URL == "" {
 		return w.manager.Warm(ctx, pipeline, modelID, optimizationFlags)

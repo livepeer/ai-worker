@@ -16,6 +16,7 @@ from app.routes import (
     upscale,
     llm,
     image_to_text,
+    sketch_to_image,
 )
 from fastapi.openapi.utils import get_openapi
 
@@ -127,6 +128,7 @@ def write_openapi(fname: str, entrypoint: str = "runner", version: str = "0.0.0"
     app.include_router(segment_anything_2.router)
     app.include_router(llm.router)
     app.include_router(image_to_text.router)
+    app.include_router(sketch_to_image.router)
 
     logger.info(f"Generating OpenAPI schema for '{entrypoint}' entrypoint...")
     openapi = get_openapi(

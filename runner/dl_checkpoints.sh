@@ -28,6 +28,7 @@ function download_beta_models() {
     huggingface-cli download SG161222/RealVisXL_V4.0_Lightning --include "*.fp16.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
     huggingface-cli download ByteDance/SDXL-Lightning --include "*unet.safetensors" --cache-dir models
     huggingface-cli download timbrooks/instruct-pix2pix --include "*.fp16.safetensors" "*.json" "*.txt" --cache-dir models
+    huggingface-cli download xinsir/controlnet-scribble-sdxl-1.0 --include "*.safetensors" "*.json" --cache-dir models
 
     # Download upscale models
     huggingface-cli download stabilityai/stable-diffusion-x4-upscaler --include "*.fp16.safetensors" --cache-dir models
