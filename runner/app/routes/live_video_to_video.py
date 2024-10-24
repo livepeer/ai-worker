@@ -97,10 +97,9 @@ async def live_video_to_video(
         )
 
     seed = random.randint(0, 2**32 - 1)
+    kwargs = {k: v for k, v in params.model_dump().items()}
     try:
-        pipeline(
-            seed=seed,
-        )
+        pipeline(**kwargs)
     except Exception as e:
         if isinstance(e, torch.cuda.OutOfMemoryError):
             torch.cuda.empty_cache()

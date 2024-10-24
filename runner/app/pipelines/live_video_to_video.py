@@ -37,6 +37,9 @@ class LiveVideoToVideoPipeline(Pipeline):
                     # TODO: set torch device from self.torch_device
                     # TODO: set initial params of the pipeline from kwargs
                 )
+            # TODO: start pulling the stream
+            stream_url = kwargs["stream_url"]
+            logger.info(f"Starting pulling stream, stream_url={stream_url}")
             return
         except Exception as e:
             raise InferenceError(original_exception=e)
@@ -84,4 +87,4 @@ class LiveVideoToVideoPipeline(Pipeline):
             self.monitor_thread.join()
 
     def __str__(self) -> str:
-        return f"LiveVideoToVideoPipeline model_id={self.model_id}"
+        return f"VideoToVideoPipeline model_id={self.model_id}"
