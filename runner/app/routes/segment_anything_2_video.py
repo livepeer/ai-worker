@@ -1,5 +1,8 @@
+import base64
+import json
 import logging
 import os
+import zstd
 from typing import Annotated
 
 import numpy as np
@@ -165,15 +168,15 @@ async def segment_anything_2_video(
             labels=point_labels
         ):
             
-            binary_mask = (out_mask_logits > 0.5).cpu().numpy()
-            mask_logits = binary_mask.astype(np.uint8).tolist()
-            video_segment_responses.append(VideoSegmentationItem(
-                frame_idx=out_frame_idx,
-                obj_ids=out_obj_ids,
-                mask_logits=mask_logits
-            ))
-            
-        # print(video_segment_responses)
+            bool_mask = (out_mask_logits > 0.5).cpu().numpy()
+            bool_mask_bytes = bool_mask.astype(np.uint8).tobytes()
+            # Serialize shape and data
+            serialized_data = base64.b64encode(json.dumps({
+                'shape': bool_mask.shape,
+                'data': bool_mask_bytes.hex()
+            }).encode('utf-8'))
+
+            video_segment_responses.append(base64.b64encode(zstd.compress(serialized_data, 1)).decode('utf-8'))
         
         return VideoSegmentResponse(
             VideoFrames=video_segment_responses

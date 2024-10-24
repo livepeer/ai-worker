@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Livepeer AI Runner
   description: An application to run AI pipelines
-  version: v0.7.0
+  version: v0.9.0
 servers:
 - url: https://dream-gateway.livepeer.cloud
   description: Livepeer Cloud Community Gateway
@@ -970,34 +970,26 @@ components:
       description: Response model for video generation.
     VideoSegmentResponse:
       properties:
-        frame_idx:
-          type: integer
-          title: Frame Idx
-          description: Index of the frame corresponding to this segmentation
-        obj_ids:
+        VideoFrames:
           items:
-            type: integer
+            $ref: '#/components/schemas/VideoSegmentationItem'
           type: array
-          title: Obj Ids
-          description: list of ids of segmented objects in this frame
-        mask_logits:
-          items:
-            items:
-              items:
-                items:
-                  type: number
-                type: array
-              type: array
-            type: array
-          type: array
-          title: Mask Logits
-          description: The generated masks.
+          title: Videoframes
+          description: The generated masks of all video frames.
       type: object
       required:
-      - frame_idx
-      - obj_ids
-      - mask_logits
+      - VideoFrames
       title: VideoSegmentResponse
+    VideoSegmentationItem:
+      properties:
+        mask_logits:
+          type: string
+          title: Mask Logits
+          description: The compressed bytes for generated mask_logits.
+      type: object
+      required:
+      - mask_logits
+      title: VideoSegmentationItem
     chunk:
       properties:
         timestamp:
