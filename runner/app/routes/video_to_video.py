@@ -9,17 +9,12 @@ from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.routes.utils import (
     HTTPError,
-    ImageResponse,
     http_error,
-    image_to_data_url,
     handle_pipeline_exception,
 )
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from PIL import Image, ImageFile
-
-ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 router = APIRouter()
 
@@ -50,7 +45,6 @@ RESPONSES = {
 
 @router.post(
     "/video-to-video",
-    response_model=ImageResponse,
     responses=RESPONSES,
     description="Apply video-like transformations to a provided image.",
     operation_id="genVideoToVideo",
@@ -60,58 +54,14 @@ RESPONSES = {
 )
 @router.post(
     "/video-to-video/",
-    response_model=ImageResponse,
     responses=RESPONSES,
     include_in_schema=False,
 )
 async def video_to_video(
-    prompt: Annotated[
-        str,
-        Form(description="Text prompt(s) to guide image transformation."),
-    ],
-    image: Annotated[
-        UploadFile,
-        File(description="Uploaded image to modify with the pipeline."),
-    ],
     model_id: Annotated[
         str,
         Form(description="Hugging Face model ID used for image transformation."),
     ] = "",
-    strength: Annotated[
-        float,
-        Form(
-            description=(
-                "Degree of transformation applied to the reference image (0 to 1)."
-            )
-        ),
-    ] = 0.8,
-    guidance_scale: Annotated[
-        float,
-        Form(
-            description=(
-                "Encourages model to generate images closely linked to the text prompt "
-                "(higher values may reduce image quality)."
-            )
-        ),
-    ] = 7.5,
-    negative_prompt: Annotated[
-        str,
-        Form(
-            description=(
-                "Text prompt(s) to guide what to exclude from image generation. "
-                "Ignored if guidance_scale < 1."
-            )
-        ),
-    ] = "",
-    num_inference_steps: Annotated[
-        int,
-        Form(
-            description=(
-                "Number of denoising steps. More steps usually lead to higher quality "
-                "images but slower inference."
-            )
-        ),
-    ] = 50,
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
@@ -134,17 +84,8 @@ async def video_to_video(
         )
 
     seed = random.randint(0, 2**32 - 1)
-
-    image = Image.open(image.file).convert("RGB")
-
     try:
-        output_image, has_nsfw_concept = pipeline(
-            prompt=prompt,
-            image=image,
-            strength=strength,
-            guidance_scale=guidance_scale,
-            negative_prompt=negative_prompt,
-            num_inference_steps=num_inference_steps,
+        pipeline(
             seed=seed,
         )
     except Exception as e:
@@ -158,11 +99,5 @@ async def video_to_video(
             custom_error_config=PIPELINE_ERROR_CONFIG,
         )
 
-    output_image = {
-        "url": image_to_data_url(output_image),
-        "seed": seed,
-        "nsfw": has_nsfw_concept or False
-    }
-
-    return {"images": [output_image]}
+    return
 

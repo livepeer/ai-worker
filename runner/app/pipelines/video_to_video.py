@@ -6,8 +6,6 @@ import time
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-from PIL import Image
-
 from app.pipelines.base import Pipeline
 from app.pipelines.utils import get_model_dir, get_torch_device
 from app.utils.errors import InferenceError
@@ -28,7 +26,7 @@ class VideoToVideoPipeline(Pipeline):
 
     def __call__(
         self, **kwargs
-    ) -> Tuple[List[Image.Image], List[Optional[bool]]]:
+    ):
         try:
             if not self.process:
                 self.start_process(
@@ -39,8 +37,7 @@ class VideoToVideoPipeline(Pipeline):
                     # TODO: set torch device from self.torch_device
                     # TODO: set initial params of the pipeline from kwargs
                 )
-
-            return [], []
+            return
         except Exception as e:
             raise InferenceError(original_exception=e)
 
