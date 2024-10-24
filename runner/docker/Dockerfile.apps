@@ -16,54 +16,6 @@ RUN apt-get update && apt-get install -y \
 
 ENV PATH=$PATH:/usr/local/go/bin
 
-# Set a default value for APP_DIRS
-ARG APP_DIRS="ingress"
-# Set environment variable for the app directories
-# ENV APP_DIRS=${APP_DIRS}
-
-# Add a build argument for installing Go apps
-ARG INSTALL_GO_APPS=false
-
-# Create the app directory and build Go apps if INSTALL_GO_APPS is true
-RUN if [ "$INSTALL_GO_APPS" = "true" ]; then \
-    mkdir -p /app/go && \
-    cd /app/go && \
-    for app in ${APP_DIRS}; do \
-        if [ -d "$app" ]; then \
-            cd $app && \
-            if [ ! -f go.mod ]; then \
-                go mod init github.com/livepeer/ai-worker/runner/app/go/$app; \
-            fi && \
-            go mod tidy && \
-            if [ -f main.go ]; then \
-                CGO_ENABLED=1 go build -o main; \
-            elif [ -f Makefile ]; then \
-                make; \
-            else \
-                echo "No recognized build process for ${app}"; \
-                exit 1; \
-            fi && \
-            cd ..; \
-        else \
-            echo "Directory not found for ${app}"; \
-            exit 1; \
-        fi; \
-    done && \
-    for app in ${APP_DIRS}; do \
-        if [ -f ${app}/main ]; then \
-            mv ${app}/main /usr/local/bin/${app}; \
-        elif [ -f ${app}/${app} ]; then \
-            mv ${app}/${app} /usr/local/bin/${app}; \
-        else \
-            echo "No compiled binary found for ${app}"; \
-            exit 1; \
-        fi; \
-    done; \
-fi
-
-# Copy Go app source files if INSTALL_GO_APPS is true
-COPY --chown=root:root app/go/. /app/go/
-
 # Return to the app directory
 WORKDIR /app
 # Install any additional Python packages
