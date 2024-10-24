@@ -118,7 +118,7 @@ class PipelineStreamer(ABC):
                 start_time = time.time()
 
     async def run_egress_loop(self, done: Event):
-        async def gen_output_frames(self) -> AsyncGenerator[Image.Image, None]:
+        async def gen_output_frames() -> AsyncGenerator[Image.Image, None]:
             frame_count = 0
             start_time = time.time()
             while not done.is_set() and self.process:
@@ -145,6 +145,8 @@ class PipelineStreamer(ABC):
     @abstractmethod
     async def ingress_loop(self, done: Event) -> AsyncGenerator[Image.Image, None]:
         """Generator that yields the ingress frames."""
+        if False:
+            yield Image.new('RGB', (1, 1)) # dummy yield for linter to see this is a generator
         pass
 
     @abstractmethod

@@ -56,7 +56,7 @@ class PipelineProcess:
                 except queue.Empty:
                     continue
 
-    async def recv_output(self):
+    async def recv_output(self) -> Image.Image | None:
         # we cannot do a long get with timeout as that would block the asyncio
         # event loop, so we loop with nowait and sleep async instead.
         while not self.is_done():
