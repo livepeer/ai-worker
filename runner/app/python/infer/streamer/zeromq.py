@@ -2,6 +2,8 @@ import io
 
 import zmq.asyncio
 from PIL import Image
+from multiprocessing.synchronize import Event
+from typing import AsyncGenerator
 
 from .streamer import PipelineStreamer
 
@@ -54,9 +56,12 @@ class ZeroMQStreamer(PipelineStreamer):
         self.output_socket.close()
         self.context.term()
 
-    async def recv_ingress_frame(self) -> Image.Image:
-        frame_bytes = await self.input_socket.recv()
-        return from_jpeg_bytes(frame_bytes)
+    async def ingress_loop(self, done: Event) -> AsyncGenerator[Image.Image, None]:
+        while not done.is_set():
+            frame_bytes = await self.input_socket.recv()
+            yield from_jpeg_bytes(frame_bytes)
 
-    async def send_egress_frame(self, frame: Image.Image):
-        await self.output_socket.send(to_jpeg_bytes(frame))
+    async def egress_loop(self, output_frames: AsyncGenerator[Image.Image, None]):
+        async for frame in output_frames:
+            frame_bytes = to_jpeg_bytes(frame)
+            await self.output_socket.send(frame_bytes)
