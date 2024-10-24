@@ -13,7 +13,6 @@ from app.routes.util import (
     HTTPError,
     InferenceError,
     VideoSegmentResponse,
-    VideoSegmentationItem,
     http_error,
     json_str_to_np_array,
 )
@@ -160,7 +159,7 @@ async def segment_anything_2_video(
     try:
         video_segment_responses = []
 
-        for out_frame_idx, out_obj_ids, out_mask_logits in pipeline(
+        for _, _, out_mask_logits in pipeline(
             media_file,
             media_type="video",
             frame_idx=frame_idx,
@@ -195,11 +194,3 @@ async def segment_anything_2_video(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=http_error(f"Segment Anything 2 error: {e}"),
         )
-
-    # # Return masks sorted by descending score as string.
-    # sorted_ind = np.argsort(scores)[::-1]
-    # return {
-    #     "masks": str(masks[sorted_ind].tolist()),
-    #     "scores": str(scores[sorted_ind].tolist()),
-    #     "logits": str(low_res_mask_logits[sorted_ind].tolist()),
-    # }
