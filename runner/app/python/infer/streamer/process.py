@@ -6,7 +6,7 @@ import time
 
 from PIL import Image
 
-from ..pipelines import load_pipeline
+from pipelines import load_pipeline
 
 
 class PipelineProcess:

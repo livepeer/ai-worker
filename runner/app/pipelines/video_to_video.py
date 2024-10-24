@@ -27,7 +27,7 @@ class VideoToVideoPipeline(Pipeline):
         self.monitor_thread = None
 
     def __call__(
-        self, inputs: List[Image.Image], **kwargs
+        self, **kwargs
     ) -> Tuple[List[Image.Image], List[Optional[bool]]]:
         try:
             if not self.process:

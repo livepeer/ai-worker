@@ -4,6 +4,7 @@ import random
 from typing import Annotated, Dict, Tuple, Union
 
 import torch
+import traceback
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.routes.utils import (
@@ -150,6 +151,7 @@ async def video_to_video(
         if isinstance(e, torch.cuda.OutOfMemoryError):
             torch.cuda.empty_cache()
         logger.error(f"VideoToVideoPipeline error: {e}")
+        logger.error(traceback.format_exc())
         return handle_pipeline_exception(
             e,
             default_error_message="Video-to-video pipeline error.",

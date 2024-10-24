@@ -7,7 +7,7 @@ import time
 
 from aiohttp import BodyPartReader, web
 
-from ..streamer import PipelineStreamer
+from streamer import PipelineStreamer
 
 TEMP_SUBDIR = "infer_temp"
 MAX_FILE_AGE = 86400  # 1 day

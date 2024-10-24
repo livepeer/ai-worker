@@ -3,11 +3,16 @@ import asyncio
 import logging
 import signal
 import sys
+import os
 import traceback
 from typing import List
 
-from .params_api.api import start_http_server
-from .streamer.zeromq import ZeroMQStreamer
+# loads neighbouring modules with absolute paths
+infer_root = os.path.abspath(os.path.dirname(__file__))
+sys.path.insert(0, infer_root)
+
+from params_api import start_http_server
+from streamer.zeromq import ZeroMQStreamer
 
 
 async def main(http_port: int, input_address: str, output_address: str, pipeline: str):
