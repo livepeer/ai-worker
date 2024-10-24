@@ -4,6 +4,7 @@ import time
 import traceback
 from abc import ABC, abstractmethod
 from multiprocessing.synchronize import Event
+from typing import AsyncGenerator
 
 from PIL import Image
 
@@ -22,8 +23,8 @@ class PipelineStreamer(ABC):
 
     def start(self):
         self.process = PipelineProcess.start(self.pipeline)
-        self.ingress_task = asyncio.create_task(self.ingress_loop(self.process.done))
-        self.egress_task = asyncio.create_task(self.egress_loop(self.process.done))
+        self.ingress_task = asyncio.create_task(self.run_ingress_loop(self.process.done))
+        self.egress_task = asyncio.create_task(self.run_egress_loop(self.process.done))
         self.monitor_task = asyncio.create_task(self.monitor_loop(self.process.done))
 
     async def stop(self):
@@ -99,12 +100,11 @@ class PipelineStreamer(ABC):
                 await self.restart()
                 return
 
-    async def ingress_loop(self, done: Event):
+    async def run_ingress_loop(self, done: Event):
         frame_count = 0
         start_time = time.time()
-        while not done.is_set():
-            frame = await self.recv_ingress_frame()
-            if not self.process:
+        async for frame in self.ingress_loop(done):
+            if done.is_set() or not self.process:
                 return
             self.process.send_input(frame)
 
@@ -117,32 +117,37 @@ class PipelineStreamer(ABC):
                 frame_count = 0
                 start_time = time.time()
 
-    async def egress_loop(self, done: Event):
-        frame_count = 0
-        start_time = time.time()
-        while not done.is_set() and self.process:
-            output_image = await self.process.recv_output()
-            if not output_image:
-                break
-            logging.debug(
-                f"Output image received out_width: {output_image.width}, out_height: {output_image.height}"
-            )
+    async def run_egress_loop(self, done: Event):
+        async def gen_output_frames(self) -> AsyncGenerator[Image.Image, None]:
+            frame_count = 0
+            start_time = time.time()
+            while not done.is_set() and self.process:
+                output_image = await self.process.recv_output()
+                if not output_image:
+                    break
+                logging.debug(
+                    f"Output image received out_width: {output_image.width}, out_height: {output_image.height}"
+                )
 
-            await self.send_egress_frame(output_image)
+                yield output_image
 
-            # Increment frame count and measure FPS
-            frame_count += 1
-            elapsed_time = time.time() - start_time
-            if elapsed_time >= fps_log_interval:
-                fps = frame_count / elapsed_time
-                logging.info(f"Output FPS: {fps:.2f}")
-                frame_count = 0
-                start_time = time.time()
+                # Increment frame count and measure FPS
+                frame_count += 1
+                elapsed_time = time.time() - start_time
+                if elapsed_time >= fps_log_interval:
+                    fps = frame_count / elapsed_time
+                    logging.info(f"Output FPS: {fps:.2f}")
+                    frame_count = 0
+                    start_time = time.time()
+
+        await self.egress_loop(gen_output_frames())
 
     @abstractmethod
-    async def recv_ingress_frame(self) -> Image.Image:
+    async def ingress_loop(self, done: Event) -> AsyncGenerator[Image.Image, None]:
+        """Generator that yields the ingress frames."""
         pass
 
     @abstractmethod
-    async def send_egress_frame(self, frame: Image.Image):
+    async def egress_loop(self, output_frames: AsyncGenerator[Image.Image, None]):
+        """Consumes generated frames and processes them."""
         pass
