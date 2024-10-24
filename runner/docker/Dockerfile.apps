@@ -63,6 +63,7 @@ fi
 
 # Copy Go app source files if INSTALL_GO_APPS is true
 COPY --chown=root:root app/go/. /app/go/
+
 # Return to the app directory
 WORKDIR /app
 # Install any additional Python packages
@@ -78,7 +79,7 @@ COPY bench.py /app/bench.py
 # Set up runit service directories and copy run scripts
 COPY app/runit /etc/service
 # Create log directories for each service
-RUN mkdir -p /var/log/uvicorn /var/log/infer /var/log/ingress /var/log/egress
+RUN mkdir -p /var/log/uvicorn /var/log/infer
 # Ensure all run scripts are executable
 RUN chmod +x /etc/service/*/run /etc/service/*/log/run
 

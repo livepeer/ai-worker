@@ -1,11 +1,3 @@
-# How to run
-docker build --no-cache -t livepeer/ai-runner:base .
-docker build --no-cache -t livepeer/ai-runner:multimedia -f docker/Dockerfile.multimedia .
-docker build --no-cache -t livepeer/ai-runner:stream-diffusion -f docker/Dockerfile.stream-diffusion .
-docker build --no-cache -t livepeer/ai-runner:apps -f docker/Dockerfile.apps .
-docker run -d --gpus all -p 10420:8080 --name live-ai -v ~/ai-worker/runner/app:/app livepeer/ai-runner:apps
-docker exec -it live-ai /bin/bash
-
 # Runner
 
 The AI runner is a containerized Python application responsible for processes AI inference requests on the [Livepeer AI subnet](https://explorer.livepeer.org/treasury/82843445347363563575858115586375001878287509193479217286690041153234635982713). It loads models into GPU memory and exposes a REST API other programs like the [AI worker](../README.md) can use to request AI inference requests.
