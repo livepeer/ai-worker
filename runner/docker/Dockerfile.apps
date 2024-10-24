@@ -19,7 +19,7 @@ ENV PATH=$PATH:/usr/local/go/bin
 # Return to the app directory
 WORKDIR /app
 # Install any additional Python packages
-COPY requirements.txt /app/
+COPY requirements.live-ai.txt /app/
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r /app/requirements.txt
 
