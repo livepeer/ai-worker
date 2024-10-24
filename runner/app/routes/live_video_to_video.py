@@ -28,6 +28,21 @@ PIPELINE_ERROR_CONFIG: Dict[str, Tuple[Union[str, None], int]] = {
     )
 }
 
+class LiveVideoToVideoRequest:
+    stream_url: Annotated[
+        str,
+        Field(
+            ...,
+            description="URL of the video stream to pull.",
+        ),
+    ]
+    model_id: Annotated[
+        str,
+        Field(
+            default="", description="Hugging Face model ID used for image generation."
+        ),
+    ]
+
 RESPONSES = {
     status.HTTP_200_OK: {
         "content": {
@@ -58,10 +73,7 @@ RESPONSES = {
     include_in_schema=False,
 )
 async def live_video_to_video(
-    model_id: Annotated[
-        str,
-        Form(description="Hugging Face model ID used for image transformation."),
-    ] = "",
+    params: LiveVideoToVideoRequest,
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
@@ -74,12 +86,12 @@ async def live_video_to_video(
                 content=http_error("Invalid bearer token."),
             )
 
-    if model_id != "" and model_id != pipeline.model_id:
+    if params.model_id != "" and params.model_id != pipeline.model_id:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=http_error(
                 f"pipeline configured with {pipeline.model_id} but called with "
-                f"{model_id}."
+                f"{params.model_id}."
             ),
         )
 
@@ -99,5 +111,5 @@ async def live_video_to_video(
             custom_error_config=PIPELINE_ERROR_CONFIG,
         )
 
-    return
+    return {}
 

@@ -731,8 +731,7 @@ components:
     HTTPError:
       properties:
         detail:
-          allOf:
-          - $ref: '#/components/schemas/APIError'
+          $ref: '#/components/schemas/APIError'
           description: Detailed error information.
       type: object
       required:
