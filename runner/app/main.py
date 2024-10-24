@@ -58,6 +58,10 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
             from app.pipelines.llm import LLMPipeline
 
             return LLMPipeline(model_id)
+        case "image-to-text":
+            from app.pipelines.image_to_text import ImageToTextPipeline
+
+            return ImageToTextPipeline(model_id)
         case "sketch-to-image":
             from app.pipelines.sketch_to_image import SketchToImagePipeline
 
@@ -100,6 +104,10 @@ def load_route(pipeline: str) -> any:
             from app.routes import llm
 
             return llm.router
+        case "image-to-text":
+            from app.routes import image_to_text
+
+            return image_to_text.router
         case "sketch-to-image":
             from app.routes import sketch_to_image
 
