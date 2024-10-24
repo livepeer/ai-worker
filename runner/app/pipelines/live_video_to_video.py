@@ -19,7 +19,7 @@ class LiveVideoToVideoPipeline(Pipeline):
         self.model_dir = get_model_dir()
         self.torch_device = get_torch_device()
         self.infer_script_path = (
-            Path(__file__).parent.parent.parent / "python" / "infer" / "infer.py"
+            Path(__file__).parent.parent / "python" / "infer" / "infer.py"
         )
         self.process = None
         self.monitor_thread = None

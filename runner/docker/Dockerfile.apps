@@ -24,7 +24,7 @@ RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r /app/requirements.txt
 
 # Copy application files
-COPY app/ /app/
+COPY app/ /app/app
 COPY images/ /app/images
 COPY bench.py /app/bench.py
 
