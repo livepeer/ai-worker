@@ -49,7 +49,7 @@ class VideoToVideoPipeline(Pipeline):
 
         # Add any additional kwargs as command-line arguments
         for key, value in kwargs.items():
-            cmd.extend([f"--{key}", str(value)])
+            cmd.extend([f"--{key.replace('_', '-')}", str(value)])
 
         env = os.environ.copy()
         env["HUGGINGFACE_HUB_CACHE"] = self.model_dir
