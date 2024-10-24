@@ -1,6 +1,0 @@
-#!/bin/sh
-
-echo "Starting ingress"
-exec 2>&1
-exec python -u /app/python/ingress/main.py --stream /tmp/video
-echo "Exiting ingress"
