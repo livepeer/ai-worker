@@ -19,3 +19,9 @@ sentencepiece== 0.2.0
 protobuf==5.27.2
 bitsandbytes==0.43.3
 psutil==6.0.0
+pyzmq==26.2.0
+opencv-python==4.10.0.84
+PyGObject==3.50.0
+onnxruntime==1.19.2
+watchdog==5.0.2
+aiohttp==3.10.9

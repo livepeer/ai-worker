@@ -1,0 +1,6 @@
+#!/bin/sh
+
+echo "Starting egress"
+exec 2>&1
+exec python -u /app/python/egress/main.py --rtmp-stream mystream
+echo "Exiting egress"
