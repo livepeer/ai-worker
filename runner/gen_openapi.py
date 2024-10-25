@@ -40,28 +40,6 @@ SERVERS = [
 ]
 
 
-def get_latest_git_release_tag() -> str:
-    """
-    Get the latest Git release tag that follows semantic versioning.
-
-    Returns:
-        The latest Git release tag, or None if an error occurred.
-    """
-    try:
-        command = (
-            "git tag -l 'v*' | grep -E '^v[0-9]+\\.[0-9]+\\.[0-9]+$' | sort -V | "
-            "tail -n 1"
-        )
-        latest_tag = subprocess.check_output(command, shell=True, text=True)
-        return latest_tag.strip()
-    except subprocess.CalledProcessError as e:
-        logger.error("Error occurred while getting the latest git tag: %s", e)
-        return None
-    except Exception as e:
-        logger.error("Unexpected error: %s", e)
-        return None
-
-
 def translate_to_gateway(openapi: dict) -> dict:
     """Translate the OpenAPI schema from the 'runner' entrypoint to the 'gateway'
     entrypoint created by the https://github.com/livepeer/go-livepeer package.
@@ -109,7 +87,7 @@ def translate_to_gateway(openapi: dict) -> dict:
     return openapi
 
 
-def write_openapi(fname: str, entrypoint: str = "runner", version: str = "0.0.0"):
+def write_openapi(fname: str, entrypoint: str = "runner"):
     """Write OpenAPI schema to file.
 
     Args:
@@ -117,7 +95,6 @@ def write_openapi(fname: str, entrypoint: str = "runner", version: str = "0.0.0"
             type. Either 'json' or 'yaml'.
         entrypoint: The entrypoint to generate the OpenAPI schema for, either
             'gateway' or 'runner'. Default is 'runner'.
-        version: The version to set in the OpenAPI schema. Default is '0.0.0'.
     """
     app.include_router(health.router)
     app.include_router(text_to_image.router)
@@ -133,7 +110,7 @@ def write_openapi(fname: str, entrypoint: str = "runner", version: str = "0.0.0"
     logger.info(f"Generating OpenAPI schema for '{entrypoint}' entrypoint...")
     openapi = get_openapi(
         title="Livepeer AI Runner",
-        version=version,
+        version="0.0.0",
         openapi_version=app.openapi_version,
         description="An application to run AI pipelines",
         routes=app.routes,
@@ -187,20 +164,9 @@ if __name__ == "__main__":
             "and 'gateway'. Default is both."
         ),
     )
-    parser.add_argument(
-        "--version",
-        type=str,
-        default=None,
-        help="The OpenAPI schema version. Default is latest Git semver tag.",
-    )
     args = parser.parse_args()
 
-    # Set the 'version' to the latest Git release tag.
-    latest_tag = args.version if args.version else get_latest_git_release_tag()
-
     # Generate orchestrator and Gateway facing OpenAPI schemas.
-    logger.info("Generating OpenAPI schema version: $latest_tag")
+    logger.info("Generating OpenAPI schema.")
     for entrypoint in args.entrypoint:
-        write_openapi(
-            f"openapi.{args.type.lower()}", entrypoint=entrypoint, version=latest_tag
-        )
+        write_openapi(f"openapi.{args.type.lower()}", entrypoint=entrypoint)
