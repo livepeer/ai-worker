@@ -37,6 +37,7 @@ function download_beta_models() {
 
     # Download custom pipeline models.
     huggingface-cli download facebook/sam2-hiera-large --include "*.pt" "*.yaml" --cache-dir models
+    
 
     printf "\nDownloading token-gated models...\n"
 
@@ -81,7 +82,8 @@ function download_restricted_models() {
     huggingface-cli download black-forest-labs/FLUX.1-dev --include "*.safetensors" "*.json" "*.txt" "*.model" --exclude ".onnx" ".onnx_data" --cache-dir models ${TOKEN_FLAG:+"$TOKEN_FLAG"}
     # Download LLM models (Warning: large model size)
     huggingface-cli download meta-llama/Meta-Llama-3.1-8B-Instruct --include "*.json" "*.bin" "*.safetensors" "*.txt" --cache-dir models
-
+    #Download text-to-audio model 
+    huggingface-cli download stabilityai/stable-audio-open-1.0 --include "*.safetensors" "*.bin" "*.json" --cache-dir models
 }
 
 # Enable HF transfer acceleration.

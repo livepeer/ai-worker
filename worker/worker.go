@@ -688,3 +688,60 @@ func (w *Worker) handleStreamingResponse(ctx context.Context, c *RunnerContainer
 
 	return outputChan, nil
 }
+func (w *Worker) TextToAudio(ctx context.Context, req GenTextToAudioFormdataRequestBody) (*http.Response, error) {
+	c, err := w.borrowContainer(ctx, "text-to-audio", *req.ModelId)
+	if err != nil {
+		return nil, err
+	}
+	defer w.returnContainer(c)
+
+	var buf bytes.Buffer
+	mw, err := NewTextToAudioFormdataWriter(&buf, req)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.Client.GenTextToAudioWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.JSON400 != nil {
+		val, err := json.Marshal(resp.JSON400)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("text-to-audio container returned 400", slog.String("err", string(val)))
+		return nil, errors.New("text-to-audio container returned 400: " + resp.JSON400.Detail.Msg)
+	}
+
+	if resp.JSON401 != nil {
+		val, err := json.Marshal(resp.JSON401)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("text-to-audio container returned 401", slog.String("err", string(val)))
+		return nil, errors.New("text-to-audio container returned 401: " + resp.JSON401.Detail.Msg)
+	}
+
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("text-to-audio container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("text-to-audio container returned 422: " + string(val))
+	}
+
+	if resp.JSON500 != nil {
+		val, err := json.Marshal(resp.JSON500)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("text-to-audio container returned 500", slog.String("err", string(val)))
+		return nil, errors.New("text-to-audio container returned 500: " + resp.JSON500.Detail.Msg)
+	}
+
+	// Return the raw HTTP response since we're returning audio data
+	return resp.HTTPResponse, nil
+}
