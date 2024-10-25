@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import json
 import logging
 import signal
 import sys
@@ -15,8 +16,8 @@ from params_api import start_http_server
 from streamer.zeromq import ZeroMQStreamer
 
 
-async def main(http_port: int, input_address: str, output_address: str, pipeline: str):
-    handler = ZeroMQStreamer(input_address, output_address, pipeline)
+async def main(http_port: int, input_address: str, output_address: str, pipeline: str, params: dict):
+    handler = ZeroMQStreamer(input_address, output_address, pipeline, **params)
     runner = None
     try:
         handler.start()
@@ -69,13 +70,21 @@ if __name__ == "__main__":
     parser.add_argument(
         "--pipeline", type=str, default="streamkohaku", help="Pipeline to use"
     )
+    parser.add_argument(
+        "--initial-params", type=str, default="{}", help="Initial parameters for the pipeline"
+    )
     args = parser.parse_args()
+    try:
+        params = json.loads(args.initial_params)
+    except Exception as e:
+        logging.error(f"Error parsing --initial-params: {e}")
+        sys.exit(1)
 
     logging.basicConfig(level=logging.INFO)
 
     try:
         asyncio.run(
-            main(args.http_port, args.input_address, args.output_address, args.pipeline)
+            main(args.http_port, args.input_address, args.output_address, args.pipeline, params)
         )
     except Exception as e:
         logging.error(f"Fatal error in main: {e}")

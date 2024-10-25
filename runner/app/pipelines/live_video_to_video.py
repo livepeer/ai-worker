@@ -1,10 +1,10 @@
+import json
 import logging
 import os
 import subprocess
 import threading
 import time
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 from app.pipelines.base import Pipeline
 from app.pipelines.utils import get_model_dir, get_torch_device
@@ -34,8 +34,8 @@ class LiveVideoToVideoPipeline(Pipeline):
                     input_address="tcp://localhost:5555",
                     output_address="tcp://localhost:5556",
                     http_port="8888",
+                    initial_params=json.dumps(kwargs),
                     # TODO: set torch device from self.torch_device
-                    # TODO: set initial params of the pipeline from kwargs
                 )
             # TODO: start pulling the stream
             stream_url = kwargs["stream_url"]
@@ -49,7 +49,9 @@ class LiveVideoToVideoPipeline(Pipeline):
 
         # Add any additional kwargs as command-line arguments
         for key, value in kwargs.items():
-            cmd.extend([f"--{key.replace('_', '-')}", str(value)])
+            kebab_key = key.replace("_", "-")
+            escaped_value = str(value).replace("'", "'\\''")
+            cmd.extend([f"--{kebab_key}", f"'{escaped_value}'"])
 
         env = os.environ.copy()
         env["HUGGINGFACE_HUB_CACHE"] = self.model_dir

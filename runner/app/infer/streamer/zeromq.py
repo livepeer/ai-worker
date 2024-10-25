@@ -29,8 +29,9 @@ class ZeroMQStreamer(PipelineStreamer):
         input_address: str,
         output_address: str,
         pipeline: str,
+        **params,
     ):
-        super().__init__(pipeline)
+        super().__init__(pipeline, **params)
         self.input_address = input_address
         self.output_address = output_address
 

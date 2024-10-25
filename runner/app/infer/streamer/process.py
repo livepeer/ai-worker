@@ -11,8 +11,10 @@ from pipelines import load_pipeline
 
 class PipelineProcess:
     @staticmethod
-    def start(pipeline_name: str):
+    def start(pipeline_name: str, **params):
         instance = PipelineProcess(pipeline_name)
+        if params:
+            instance.update_params(**params)
         instance.process.start()
         return instance
 
@@ -42,6 +44,9 @@ class PipelineProcess:
 
     def is_done(self):
         return self.done.is_set()
+
+    def update_params(self, **params):
+        self.param_update_queue.put(params)
 
     def send_input(self, frame: Image.Image):
         while not self.is_done():

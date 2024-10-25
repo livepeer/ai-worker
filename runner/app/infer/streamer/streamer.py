@@ -14,15 +14,15 @@ fps_log_interval = 10
 
 
 class PipelineStreamer(ABC):
-    def __init__(self, pipeline: str):
+    def __init__(self, pipeline: str, **params):
         self.pipeline = pipeline
+        self.params = params
         self.process = None
-        self.last_params: dict | None = None
         self.last_params_time = 0.0
         self.restart_count = 0
 
     def start(self):
-        self.process = PipelineProcess.start(self.pipeline)
+        self.process = PipelineProcess.start(self.pipeline, **self.params)
         self.ingress_task = asyncio.create_task(self.run_ingress_loop(self.process.done))
         self.egress_task = asyncio.create_task(self.run_egress_loop(self.process.done))
         self.monitor_task = asyncio.create_task(self.monitor_loop(self.process.done))
@@ -52,18 +52,15 @@ class PipelineStreamer(ABC):
             logging.info(
                 f"PipelineProcess restarted. Restart count: {self.restart_count}"
             )
-
-            if self.last_params:
-                self.update_params(self.last_params)
         except Exception as e:
             logging.error(f"Error restarting pipeline process: {e}")
             logging.error(f"Stack trace:\n{traceback.format_exc()}")
 
     def update_params(self, params: dict):
-        self.last_params = params
+        self.params = params
         self.last_params_time = time.time()
         if self.process:
-            self.process.param_update_queue.put(params)
+            self.process.update_params(params)
 
     async def monitor_loop(self, done: Event):
         start_time = time.time()
