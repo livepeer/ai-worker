@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=livepeer/ai-runner:multimedia
+ARG BASE_IMAGE=livepeer/ai-runner:live-multimedia
 FROM ${BASE_IMAGE}
 
 ENV PIP_PREFER_BINARY=1

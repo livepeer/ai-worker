@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=livepeer/ai-runner:stream-diffusion
+ARG BASE_IMAGE=livepeer/ai-runner:live-stream-diffusion
 FROM ${BASE_IMAGE}
 
 # Install latest stable Go version and system dependencies
@@ -14,19 +14,35 @@ RUN apt-get update && apt-get install -y \
     tar -C /usr/local -xzf go1.21.5.linux-amd64.tar.gz && \
     rm go1.21.5.linux-amd64.tar.gz
 
+# Clean up
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+
 ENV PATH=$PATH:/usr/local/go/bin
 
-# Return to the app directory
-WORKDIR /app
 # Install any additional Python packages
 COPY requirements.live-ai.txt /app/requirements.txt
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r /app/requirements.txt
 
+# Set environment variables
+ENV MAX_WORKERS=1
+ENV HUGGINGFACE_HUB_CACHE=/models
+ENV DIFFUSERS_CACHE=/models
+ENV MODEL_DIR=/models
+
 # Copy application files
 COPY app/ /app/app
 COPY images/ /app/images
 COPY bench.py /app/bench.py
+
+# Set up runit service directories and copy run scripts
+COPY app/runit /etc/service
+
+# Create log directories for each service
+RUN mkdir -p /var/log/uvicorn /var/log/infer
+
+# Ensure all run scripts are executable
+RUN chmod +x /etc/service/*/run /etc/service/*/log/run
 
 # Set up runit service directories and copy run scripts
 COPY app/runit /etc/service
@@ -37,8 +53,6 @@ RUN chmod +x /etc/service/*/run /etc/service/*/log/run
 
 # Set working directory to /app
 WORKDIR /app
-# Clean up
-RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Set the init system to runit
 #CMD ["runsvdir", "/etc/service"]

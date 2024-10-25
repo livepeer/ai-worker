@@ -1,5 +1,5 @@
 # Stage 1: Build FFmpeg with the necessary libraries
-ARG BASE_IMAGE=livepeer/ai-runner:base
+ARG BASE_IMAGE=livepeer/ai-runner:live-base
 FROM ${BASE_IMAGE}
 
 # Install necessary packages
@@ -7,11 +7,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     autoconf automake build-essential cmake git-core libtool pkg-config wget \
     nasm yasm zlib1g-dev libpng-dev && \
     rm -rf /var/lib/apt/lists/*
-
-# Install NVIDIA headers for NVENC/NVDEC
-#RUN apt-get update && apt-get install -y --no-install-recommends \
-#    nvidia-cuda-dev nvidia-cuda-toolkit nvidia-cuda-toolkit-gcc && \
-#    rm -rf /var/lib/apt/lists/*
 
 # Set up environment variables
 ENV NV_CODEC_HEADERS=/usr/local/cuda/include/ffnvcodec/
@@ -69,12 +64,6 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     libgstrtspserver-1.0-dev \
     libgirepository1.0-dev \
     python3-gst-1.0
-
-# Install NVIDIA codec libraries for hardware acceleration
-# Note: The exact package names might vary depending on your NVIDIA driver version
-#RUN apt-get install -y --no-install-recommends \
-#    libnvidia-decode-535-server \
-#    libnvidia-encode-535-server 
 
 # Clean up APT cache to reduce image size
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
