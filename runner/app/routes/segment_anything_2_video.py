@@ -13,6 +13,7 @@ from app.routes.util import (
     HTTPError,
     InferenceError,
     VideoSegmentResponse,
+    VideoSegmentationItem,
     http_error,
     json_str_to_np_array,
 )
@@ -166,17 +167,18 @@ async def segment_anything_2_video(
             points=point_coords,
             labels=point_labels
         ):
-            
             bool_mask = (out_mask_logits > 0.5).cpu().numpy()
             bool_mask_bytes = bool_mask.astype(np.uint8).tobytes()
-            # Serialize shape and data
-            serialized_data = base64.b64encode(json.dumps({
-                'shape': bool_mask.shape,
-                'data': bool_mask_bytes.hex()
-            }).encode('utf-8'))
-
-            video_segment_responses.append(base64.b64encode(zstd.compress(serialized_data, 1)).decode('utf-8'))
-        
+            
+            compressed_data = zstd.compress(bool_mask_bytes, 1)
+            encoded_data = base64.b64encode(compressed_data).decode('utf-8')
+            
+            video_segment_responses.append(
+                VideoSegmentationItem(
+                    mask=encoded_data,
+                    shape=bool_mask.shape
+            ))
+                
         return VideoSegmentResponse(
             VideoFrames=video_segment_responses
         )
