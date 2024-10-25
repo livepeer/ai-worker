@@ -13,7 +13,7 @@ from app.routes.utils import (
     HTTPError,
     http_error,
     handle_pipeline_exception,
-    EncodedFileResponse
+    EncodedFileResponse,
 )
 
 router = APIRouter()
@@ -29,31 +29,32 @@ PIPELINE_ERROR_CONFIG: Dict[str, Tuple[Union[str, None], int]] = {
     )
 }
 
+
 class TextToSpeechParams(BaseModel):
     # TODO: Make model_id and other None properties optional once Go codegen tool
     # supports OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
     model_id: Annotated[
         str,
         Field(
-            default="", description="Hugging Face model ID used for text to speech generation."
+            default="",
+            description="Hugging Face model ID used for text to speech generation.",
         ),
     ]
     text_input: Annotated[
         str,
         Field(
             default="",
-            description=(
-                "Text input for speech generation"
-            ),
+            description=("Text input for speech generation"),
         ),
     ]
     description: Annotated[
         str,
         Field(
-            default="A male speaker delivers a slightly expressive and animated speech with a moderate speed and pitch.",
-            description=(
-                "Description of speaker to steer text to speech generation"
-            )
+            default=(
+                "A male speaker delivers a slightly expressive and animated speech "
+                "with a moderate speed and pitch."
+            ),
+            description=("Description of speaker to steer text to speech generation"),
         ),
     ]
 
@@ -80,7 +81,10 @@ RESPONSES = {
     "/text-to-speech",
     response_model=EncodedFileResponse,
     responses=RESPONSES,
-    description="Generate text-to-speech audio file as determined by text_input and tts_steering description of voice.",
+    description=(
+        "Generate text-to-speech audio file as determined by text_input and "
+        "tts_steering description of voice."
+    ),
     operation_id="genTextToSpeech",
     summary="text-to-speech",
     tags=["generate"],
@@ -92,10 +96,8 @@ RESPONSES = {
     responses=RESPONSES,
     include_in_schema=False,
 )
-
 async def text_to_speech(
-    params: TextToSpeechParams,
-    pipeline: Pipeline = Depends(get_pipeline)
+    params: TextToSpeechParams, pipeline: Pipeline = Depends(get_pipeline)
 ):
     if not (params.text_input):
         raise HTTPException(status_code=400, detail="text_input must be provided")
@@ -108,7 +110,7 @@ async def text_to_speech(
                 f"{params.model_id}"
             ),
         )
-    
+
     try:
         audio_file_path = pipeline(params)
     except Exception as e:
@@ -126,28 +128,26 @@ async def text_to_speech(
     else:
         return JSONResponse(
             status_code=400,
-            content={
-                "detail": f"no output found for {audio_file_path}"
-            },
+            content={"detail": f"no output found for {audio_file_path}"},
         )
+
 
 def encode_file(file_path: str):
     try:
         # Read the binary audio file and encode it as base64
         with open(file_path, "rb") as file:
             binary_data = file.read()
-            base64_audio = base64.b64encode(binary_data).decode('utf-8')
+            base64_audio = base64.b64encode(binary_data).decode("utf-8")
 
         # Get the file size
         file_size = os.path.getsize(file_path)
 
         # Return the response model with the base64-encoded video
-        return EncodedFileResponse(
-            base64_data=base64_audio,
-            file_size=file_size
-        )
+        return EncodedFileResponse(base64_data=base64_audio, file_size=file_size)
 
     except Exception as e:
         # Log or print the error for debugging purposes
         print(f"An error occurred while processing the video: {e}")
-        raise HTTPException(status_code=500, detail="An error occurred while processing the video")
+        raise HTTPException(
+            status_code=500, detail="An error occurred while processing the video"
+        )

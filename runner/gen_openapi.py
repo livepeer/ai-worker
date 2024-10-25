@@ -2,7 +2,6 @@ import argparse
 import copy
 import json
 import logging
-import subprocess
 
 import yaml
 from app.main import app

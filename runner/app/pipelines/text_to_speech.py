@@ -1,15 +1,16 @@
-import uuid
-from app.pipelines.base import Pipeline
-from app.pipelines.utils import get_torch_device, get_model_dir
-from transformers import AutoTokenizer
-import torch
-from parler_tts import ParlerTTSForConditionalGeneration
-import soundfile as sf
-import os
-import torch
 import logging
+import os
+import uuid
+
+import soundfile as sf
+import torch
+from app.pipelines.base import Pipeline
+from app.pipelines.utils import get_model_dir, get_torch_device
+from parler_tts import ParlerTTSForConditionalGeneration
+from transformers import AutoTokenizer
 
 logger = logging.getLogger(__name__)
+
 
 class TextToSpeechPipeline(Pipeline):
     def __init__(self, model_id: str):
@@ -38,10 +39,16 @@ class TextToSpeechPipeline(Pipeline):
 
     def generate_speech(self, text, tts_steering, output_file_name):
         with torch.no_grad():
-            input_ids = self.TTS_tokenizer(tts_steering, return_tensors="pt").input_ids.to(self.device)
-            prompt_input_ids = self.TTS_tokenizer(text, return_tensors="pt").input_ids.to(self.device)
+            input_ids = self.TTS_tokenizer(
+                tts_steering, return_tensors="pt"
+            ).input_ids.to(self.device)
+            prompt_input_ids = self.TTS_tokenizer(
+                text, return_tensors="pt"
+            ).input_ids.to(self.device)
 
-            generation = self.TTS_model.generate(input_ids=input_ids, prompt_input_ids=prompt_input_ids)
+            generation = self.TTS_model.generate(
+                input_ids=input_ids, prompt_input_ids=prompt_input_ids
+            )
             generated_audio = generation.cpu().numpy().squeeze()
 
             sf.write(output_file_name, generated_audio, samplerate=44100)
