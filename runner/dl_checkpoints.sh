@@ -37,6 +37,7 @@ function download_beta_models() {
 
     # Download custom pipeline models.
     huggingface-cli download facebook/sam2-hiera-large --include "*.pt" "*.yaml" --cache-dir models
+    huggingface-cli download stabilityai/stable-audio-open-1.0 --include "*.safetensors" "*.bin" "*.json" --cache-dir models
 
     printf "\nDownloading token-gated models...\n"
 

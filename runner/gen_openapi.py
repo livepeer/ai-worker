@@ -16,6 +16,7 @@ from app.routes import (
     upscale,
     llm,
     image_to_text,
+    text_to_audio,
 )
 from fastapi.openapi.utils import get_openapi
 
@@ -104,6 +105,7 @@ def write_openapi(fname: str, entrypoint: str = "runner"):
     app.include_router(segment_anything_2.router)
     app.include_router(llm.router)
     app.include_router(image_to_text.router)
+    app.include_router(text_to_audio.router)
 
     logger.info(f"Generating OpenAPI schema for '{entrypoint}' entrypoint...")
     openapi = get_openapi(

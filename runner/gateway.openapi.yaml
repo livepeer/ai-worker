@@ -411,6 +411,56 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: imageToText
+  /text-to-audio:
+    post:
+      tags:
+      - generate
+      summary: Text To Audio
+      description: Generate audio from text prompts using Stable Audio.
+      operationId: genTextToAudio
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Body_genTextToAudio'
+        required: true
+      responses:
+        '200':
+          description: Successfully generated audio
+          content:
+            application/json:
+              schema: {}
+            audio/wav:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+      x-speakeasy-name-override: textToAudio
 components:
   schemas:
     APIError:
@@ -694,6 +744,43 @@ components:
       - image
       - model_id
       title: Body_genSegmentAnything2
+    Body_genTextToAudio:
+      properties:
+        prompt:
+          type: string
+          title: Prompt
+          description: Text prompt for audio generation.
+        model_id:
+          type: string
+          title: Model Id
+          description: Hugging Face model ID used for audio generation.
+          default: ''
+        duration:
+          type: number
+          title: Duration
+          description: Duration of generated audio in seconds (between 1 and 30 seconds).
+          default: 5.0
+        num_inference_steps:
+          type: integer
+          title: Num Inference Steps
+          description: Number of denoising steps. More steps usually lead to higher
+            quality audio but slower inference.
+          default: 10
+        guidance_scale:
+          type: number
+          title: Guidance Scale
+          description: Scale for classifier-free guidance. Higher values result in
+            audio that better matches the prompt but may be lower quality.
+          default: 3.0
+        negative_prompt:
+          type: string
+          title: Negative Prompt
+          description: Text prompt to guide what to exclude from audio generation.
+      type: object
+      required:
+      - prompt
+      - model_id
+      title: Body_genTextToAudio
     Body_genUpscale:
       properties:
         prompt:
