@@ -66,7 +66,6 @@ class TextToImagePipeline(Pipeline):
             )
             or ModelName.SDXL_LIGHTNING.value in model_id
         )
-        kwargs["torch_dtype"] = torch.float
         if torch_device.type != "cpu" and has_fp16_variant:
             logger.info("TextToImagePipeline loading fp16 variant for %s", model_id)
 
