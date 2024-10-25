@@ -406,3 +406,46 @@ func NewImageToTextMultipartWriter(w io.Writer, req GenImageToTextMultipartReque
 
 	return mw, nil
 }
+func NewTextToAudioFormdataWriter(w io.Writer, req GenTextToAudioFormdataRequestBody) (*multipart.Writer, error) {
+	mw := multipart.NewWriter(w)
+
+	if err := mw.WriteField("prompt", req.Prompt); err != nil {
+		return nil, fmt.Errorf("failed to write prompt field: %w", err)
+	}
+
+	if req.ModelId != nil {
+		if err := mw.WriteField("model_id", *req.ModelId); err != nil {
+			return nil, fmt.Errorf("failed to write model_id field: %w", err)
+		}
+	}
+
+	if req.Duration != nil {
+		if err := mw.WriteField("duration", fmt.Sprintf("%f", *req.Duration)); err != nil {
+			return nil, fmt.Errorf("failed to write duration field: %w", err)
+		}
+	}
+
+	if req.NumInferenceSteps != nil {
+		if err := mw.WriteField("num_inference_steps", strconv.Itoa(*req.NumInferenceSteps)); err != nil {
+			return nil, fmt.Errorf("failed to write num_inference_steps field: %w", err)
+		}
+	}
+
+	if req.GuidanceScale != nil {
+		if err := mw.WriteField("guidance_scale", fmt.Sprintf("%f", *req.GuidanceScale)); err != nil {
+			return nil, fmt.Errorf("failed to write guidance_scale field: %w", err)
+		}
+	}
+
+	if req.NegativePrompt != nil {
+		if err := mw.WriteField("negative_prompt", *req.NegativePrompt); err != nil {
+			return nil, fmt.Errorf("failed to write negative_prompt field: %w", err)
+		}
+	}
+
+	if err := mw.Close(); err != nil {
+		return nil, fmt.Errorf("failed to close multipart writer: %w", err)
+	}
+
+	return mw, nil
+}
