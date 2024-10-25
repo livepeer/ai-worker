@@ -437,13 +437,12 @@ components:
           description: Hugging Face model ID used for transcription.
           default: ''
         return_timestamps:
-          anyOf:
-          - type: string
-          - type: boolean
+          type: string
           title: Return Timestamps
           description: 'Return timestamps for the transcribed text. Supported values:
-            ''sentence'', ''word'', or a boolean. Default is True (''sentence'').
-            False means no timestamps. ''word'' means word-based timestamps.'
+            ''sentence'', ''word'', or a string boolean (''true'' or ''false''). Default
+            is ''true'' (''sentence''). ''false'' means no timestamps. ''word'' means
+            word-based timestamps.'
           default: 'true'
       type: object
       required:
