@@ -96,12 +96,13 @@ async def audio_to_text(
     ] = "",
     pipeline: Pipeline = Depends(get_pipeline),
     return_timestamps: Annotated[
-        Union[str, bool],
+        str,
         Form(
             description=(
                 "Return timestamps for the transcribed text. Supported values: "
-                "'sentence', 'word', or a boolean. Default is True ('sentence'). "
-                "False means no timestamps. 'word' means word-based timestamps."
+                "'sentence', 'word', or a string boolean ('true' or 'false'). Default "
+                "is 'true' ('sentence'). 'false' means no timestamps. 'word' means "
+                "word-based timestamps."
             )
         ),
     ] = "true",
