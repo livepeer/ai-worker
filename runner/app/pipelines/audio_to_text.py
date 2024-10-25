@@ -1,3 +1,4 @@
+from enum import Enum
 import logging
 import os
 from typing import List
@@ -13,13 +14,23 @@ from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 
 logger = logging.getLogger(__name__)
 
-
 MODEL_INCOMPATIBLE_EXTENSIONS = {
     "openai/whisper-large-v3": ["mp4", "m4a", "ac3"],
     "openai/whisper-medium": ["mp4", "m4a", "ac3"],
     "distil-whisper/distil-large-v3": ["mp4", "m4a", "ac3"]
 }
 
+class ModelName(Enum):
+    """Enumeration mapping model names to their corresponding IDs."""
+
+    WHISPER_LARGE_V3 = "openai/whisper-large-v3"
+    WHISPER_MEDIUM = "openai/whisper-medium"
+    WHISPER_DISTIL_LARGE_V3 = "distil-whisper/distil-large-v3"
+
+    @classmethod
+    def list(cls):
+        """Return a list of all model IDs."""
+        return list(map(lambda c: c.value, cls))
 
 class AudioToTextPipeline(Pipeline):
     def __init__(self, model_id: str):
@@ -31,28 +42,36 @@ class AudioToTextPipeline(Pipeline):
             repo_id=model_id, repo_type="model"
         )
         folder_path = os.path.join(get_model_dir(), folder_name)
-        # Load fp16 variant if fp16 safetensors files are found in cache
-        has_fp16_variant = any(
-            ".fp16.safetensors" in fname
-            for _, _, files in os.walk(folder_path)
-            for fname in files
-        )
-        if torch_device.type != "cpu" and has_fp16_variant:
-            logger.info("AudioToTextPipeline loading fp16 variant for %s", model_id)
 
-            kwargs["torch_dtype"] = torch.float16
-            kwargs["variant"] = "fp16"
+        MODEL_OPT_DEFAULTS = {
+            ModelName.WHISPER_LARGE_V3: {
+                "torch_dtype": torch.float16 if torch.cuda.is_available() else torch.float32,
+                "chunk_length_s": 30
+            },
+            ModelName.WHISPER_MEDIUM: 
+            {
+                "torch_dtype": torch.float32,
+                "chunk_length_s": 30
+            },
+            ModelName.WHISPER_DISTIL_LARGE_V3:
+            {
+                "torch_dtype": torch.float16 if torch.cuda.is_available() else torch.float32,
+                "chunk_length_s": 25
+            }
+        }
+        
+        # Map model_id to ModelName enum
+        model_name_enum = next(key for key, value in ModelName.__members__.items() if value.value == model_id)
+        model_type = ModelName[model_name_enum]
 
-        float16_enabled = os.getenv("FLOAT16", "").strip().lower() == "true"
-        bfloat16_enabled = os.getenv("BFLOAT16", "").strip().lower() == "true"
+        # Retrieve torch_dtype from MODEL_OPT_DEFAULTS
+        kwargs["torch_dtype"] = MODEL_OPT_DEFAULTS[model_type].get("torch_dtype", torch.float16)
 
-        if float16_enabled:
-            logger.info("AudioToTextPipeline using float16 precision for %s", model_id)
-            kwargs["torch_dtype"] = torch.float16
-
-        if bfloat16_enabled:
-            logger.info("AudioToTextPipeline using bfloat16 precision for %s", model_id)
-            kwargs["torch_dtype"] = torch.bfloat16
+        if torch_device != "cpu" and kwargs["torch_dtype"] == torch.float16:
+            logger.info("AudioToText loading %s variant for fp16", model_id)
+            
+        elif torch_device != "cpu" and kwargs["torch_dtype"] == torch.float32:
+            logger.info("AudioToText loading %s variant for f32", model_id)
 
         model = AutoModelForSpeechSeq2Seq.from_pretrained(
             model_id,
@@ -70,7 +89,7 @@ class AudioToTextPipeline(Pipeline):
             tokenizer=processor.tokenizer,
             feature_extractor=processor.feature_extractor,
             max_new_tokens=128,
-            chunk_length_s=30,
+            chunk_length_s=MODEL_OPT_DEFAULTS[model_type].get("chunk_length_s"),
             batch_size=16,
             **kwargs,
         )
