@@ -35,7 +35,7 @@ class AudioToTextPipeline(Pipeline):
             for _, _, files in os.walk(folder_path)
             for fname in files
         )
-        if torch_device != "cpu" and has_fp16_variant:
+        if torch_device.type != "cpu" and has_fp16_variant:
             logger.info("AudioToTextPipeline loading fp16 variant for %s", model_id)
 
             kwargs["torch_dtype"] = torch.float16
@@ -63,7 +63,6 @@ class AudioToTextPipeline(Pipeline):
             max_new_tokens=128,
             chunk_length_s=30,
             batch_size=16,
-            return_timestamps=True,
             **kwargs,
         )
 
@@ -79,6 +78,7 @@ class AudioToTextPipeline(Pipeline):
 
         try:
             outputs = self.tm(audio.file.read(), **kwargs)
+            outputs.setdefault("chunks", [])
         except Exception as e:
             raise InferenceError(original_exception=e)
 

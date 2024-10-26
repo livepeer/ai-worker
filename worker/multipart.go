@@ -239,6 +239,12 @@ func NewAudioToTextMultipartWriter(w io.Writer, req GenAudioToTextMultipartReque
 		}
 	}
 
+	if req.ReturnTimestamps != nil {
+		if err := mw.WriteField("return_timestamps", *req.ReturnTimestamps); err != nil {
+			return nil, err
+		}
+	}
+
 	if err := mw.Close(); err != nil {
 		return nil, err
 	}

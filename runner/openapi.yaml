@@ -3,7 +3,7 @@ openapi: 3.1.0
 info:
   title: Livepeer AI Runner
   description: An application to run AI pipelines
-  version: v0.9.0
+  version: 0.0.0
 servers:
 - url: https://dream-gateway.livepeer.cloud
   description: Livepeer Cloud Community Gateway
@@ -491,6 +491,14 @@ components:
           title: Model Id
           description: Hugging Face model ID used for transcription.
           default: ''
+        return_timestamps:
+          type: string
+          title: Return Timestamps
+          description: 'Return timestamps for the transcribed text. Supported values:
+            ''sentence'', ''word'', or a string boolean (''true'' or ''false''). Default
+            is ''true'' (''sentence''). ''false'' means no timestamps. ''word'' means
+            word-based timestamps.'
+          default: 'true'
       type: object
       required:
       - audio

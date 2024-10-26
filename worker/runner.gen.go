@@ -39,6 +39,9 @@ type BodyGenAudioToText struct {
 
 	// ModelId Hugging Face model ID used for transcription.
 	ModelId *string `json:"model_id,omitempty"`
+
+	// ReturnTimestamps Return timestamps for the transcribed text. Supported values: 'sentence', 'word', or a string boolean ('true' or 'false'). Default is 'true' ('sentence'). 'false' means no timestamps. 'word' means word-based timestamps.
+	ReturnTimestamps *string `json:"return_timestamps,omitempty"`
 }
 
 // BodyGenImageToImage defines model for Body_genImageToImage.

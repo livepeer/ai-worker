@@ -52,6 +52,24 @@ RESPONSES = {
 }
 
 
+def parse_return_timestamps(value: str) -> Union[bool, str]:
+    """Convert a string to a boolean or return the string as is. Sentence is considered
+    True as it is the model default value.
+
+    Args:
+        value: The value to parse.
+
+    Returns:
+        The parsed value.
+    """
+    value_lower = value.lower()
+    if value_lower in ("true", "1", "sentence"):
+        return True
+    if value_lower in ("false", "0"):
+        return False
+    return value_lower
+
+
 @router.post(
     "/audio-to-text",
     response_model=TextResponse,
@@ -77,8 +95,20 @@ async def audio_to_text(
         Form(description="Hugging Face model ID used for transcription."),
     ] = "",
     pipeline: Pipeline = Depends(get_pipeline),
+    return_timestamps: Annotated[
+        str,
+        Form(
+            description=(
+                "Return timestamps for the transcribed text. Supported values: "
+                "'sentence', 'word', or a string boolean ('true' or 'false'). Default "
+                "is 'true' ('sentence'). 'false' means no timestamps. 'word' means "
+                "word-based timestamps."
+            )
+        ),
+    ] = "true",
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
+    return_timestamps = parse_return_timestamps(return_timestamps)
     auth_token = os.environ.get("AUTH_TOKEN")
     if auth_token:
         if not token or token.credentials != auth_token:
@@ -104,7 +134,7 @@ async def audio_to_text(
         )
 
     try:
-        return pipeline(audio=audio)
+        return pipeline(audio=audio, return_timestamps=return_timestamps)
     except Exception as e:
         if isinstance(e, torch.cuda.OutOfMemoryError):
             torch.cuda.empty_cache()
