@@ -18,7 +18,7 @@ from app.routes.utils import (
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from PIL import Image, ImageFile
+from PIL import ImageFile
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
