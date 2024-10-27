@@ -136,6 +136,18 @@ type BodyGenLLM struct {
 	Temperature *float32 `json:"temperature,omitempty"`
 }
 
+// BodyGenObjectDetection defines model for Body_genObjectDetection.
+type BodyGenObjectDetection struct {
+	// Video Uploaded video to transform with the pipeline.
+	Video openapi_types.File `json:"video"`
+
+	// Score threshold to keep object detection predictions.
+	ConfidenceThreshold *string `json:"confidence_threshold,omitempty"`
+
+	// ModelId Hugging Face model ID used for transformation.
+	ModelId *string `json:"model_id,omitempty"`
+}
+
 // BodyGenSegmentAnything2 defines model for Body_genSegmentAnything2.
 type BodyGenSegmentAnything2 struct {
 	// Box A length 4 array given as a box prompt to the model, in XYXY format.
@@ -245,6 +257,18 @@ type Media struct {
 	Url string `json:"url"`
 }
 
+// ObjectDetectionResponse Response model for object detection.
+type ObjectDetectionResponse struct {
+	// Frames The generated annotated video frames.
+	Frames [][]Media `json:"frames"`
+
+	// ConfidenceScores The model's confidence scores for each detected object in each frame.
+	ConfidenceScores string `json:"confidence_scores"`
+
+	// Labels The model's labels for each detected object in each frame.
+	Labels string `json:"labels"`
+}
+
 // TextResponse Response model for text generation.
 type TextResponse struct {
 	// Chunks The generated text chunks.
@@ -337,6 +361,9 @@ type GenImageToVideoMultipartRequestBody = BodyGenImageToVideo
 
 // GenLLMFormdataRequestBody defines body for GenLLM for application/x-www-form-urlencoded ContentType.
 type GenLLMFormdataRequestBody = BodyGenLLM
+
+// GenObjectDetectionMultipartRequestBody defines body for GenObjectDetection for multipart/form-data ContentType.
+type GenObjectDetectionMultipartRequestBody = BodyGenObjectDetection
 
 // GenSegmentAnything2MultipartRequestBody defines body for GenSegmentAnything2 for multipart/form-data ContentType.
 type GenSegmentAnything2MultipartRequestBody = BodyGenSegmentAnything2
@@ -502,6 +529,9 @@ type ClientInterface interface {
 
 	GenLLMWithFormdataBody(ctx context.Context, body GenLLMFormdataRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GenObjectDetectionWithBody request with any body
+	GenObjectDetectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GenSegmentAnything2WithBody request with any body
 	GenSegmentAnything2WithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -588,6 +618,18 @@ func (c *Client) GenLLMWithBody(ctx context.Context, contentType string, body io
 
 func (c *Client) GenLLMWithFormdataBody(ctx context.Context, body GenLLMFormdataRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGenLLMRequestWithFormdataBody(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GenObjectDetectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGenObjectDetectionRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -829,6 +871,35 @@ func NewGenLLMRequestWithBody(server string, contentType string, body io.Reader)
 	return req, nil
 }
 
+// NewGenObjectDetectionRequestWithBody generates requests for GenObjectDetection with any type of body
+func NewGenObjectDetectionRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/object-detection")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGenSegmentAnything2RequestWithBody generates requests for GenSegmentAnything2 with any type of body
 func NewGenSegmentAnything2RequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
@@ -989,6 +1060,9 @@ type ClientWithResponsesInterface interface {
 	GenLLMWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenLLMResponse, error)
 
 	GenLLMWithFormdataBodyWithResponse(ctx context.Context, body GenLLMFormdataRequestBody, reqEditors ...RequestEditorFn) (*GenLLMResponse, error)
+
+	// GenObjectDetectionWithBodyWithResponse request with any body
+	GenObjectDetectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenObjectDetectionResponse, error)
 
 	// GenSegmentAnything2WithBodyWithResponse request with any body
 	GenSegmentAnything2WithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenSegmentAnything2Response, error)
@@ -1157,6 +1231,33 @@ func (r GenLLMResponse) StatusCode() int {
 	return 0
 }
 
+type GenObjectDetectionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ObjectDetectionResponse
+	JSON400      *HTTPError
+	JSON401      *HTTPError
+	JSON413      *HTTPError
+	JSON422      *HTTPValidationError
+	JSON500      *HTTPError
+}
+
+// Status returns HTTPResponse.Status
+func (r GenObjectDetectionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GenObjectDetectionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GenSegmentAnything2Response struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -1295,6 +1396,15 @@ func (c *ClientWithResponses) GenLLMWithFormdataBodyWithResponse(ctx context.Con
 		return nil, err
 	}
 	return ParseGenLLMResponse(rsp)
+}
+
+// GenObjectDetectionBodyWithResponse request with arbitrary body returning *GenObjectDetectionResponse
+func (c *ClientWithResponses) GenObjectDetectionBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenObjectDetectionResponse, error) {
+	rsp, err := c.GenObjectDetectionWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGenObjectDetectionResponse(rsp)
 }
 
 // GenSegmentAnything2WithBodyWithResponse request with arbitrary body returning *GenSegmentAnything2Response
@@ -1649,6 +1759,67 @@ func ParseGenLLMResponse(rsp *http.Response) (*GenLLMResponse, error) {
 	return response, nil
 }
 
+// ParseGenObjectDetectionResponse parses an HTTP response from a GenObjectDetectionWithResponse call
+func ParseGenObjectDetectionResponse(rsp *http.Response) (*GenObjectDetectionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GenObjectDetectionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ObjectDetectionResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 413:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON413 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest HTTPValidationError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGenSegmentAnything2Response parses an HTTP response from a GenSegmentAnything2WithResponse call
 func ParseGenSegmentAnything2Response(rsp *http.Response) (*GenSegmentAnything2Response, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -1831,6 +2002,9 @@ type ServerInterface interface {
 	// LLM
 	// (POST /llm)
 	GenLLM(w http.ResponseWriter, r *http.Request)
+	// Object Detection
+	// (POST /object-detection)
+	GenObjectDetection(w http.ResponseWriter, r *http.Request)
 	// Segment Anything 2
 	// (POST /segment-anything-2)
 	GenSegmentAnything2(w http.ResponseWriter, r *http.Request)
@@ -1879,6 +2053,12 @@ func (_ Unimplemented) GenImageToVideo(w http.ResponseWriter, r *http.Request) {
 // LLM
 // (POST /llm)
 func (_ Unimplemented) GenLLM(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Object Detection
+// (POST /object-detection)
+func (_ Unimplemented) GenObjectDetection(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -2000,6 +2180,23 @@ func (siw *ServerInterfaceWrapper) GenLLM(w http.ResponseWriter, r *http.Request
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GenLLM(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// GenObjectDetection operation middleware
+func (siw *ServerInterfaceWrapper) GenObjectDetection(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, HTTPBearerScopes, []string{})
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GenObjectDetection(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2190,6 +2387,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/llm", wrapper.GenLLM)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/object-detection", wrapper.GenObjectDetection)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/segment-anything-2", wrapper.GenSegmentAnything2)

@@ -411,6 +411,60 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: imageToText
+  /object-detection:
+    post:
+      tags:
+      - generate
+      summary: Object Detection
+      description: Generated annotated frames with tracked object for the provided video.
+      operationId: genObjectDetection
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_genObjectDetection'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectDetectionResponse'
+                x-speakeasy-name-override: data
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '413':
+          description: Request Entity Too Large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+      x-speakeasy-name-override: objectDetection
 components:
   schemas:
     APIError:
@@ -631,6 +685,28 @@ components:
       - prompt
       - model_id
       title: Body_genLLM
+    Body_genObjectDetection:
+      properties:
+        video:
+          type: string
+          format: binary
+          title: Video
+          description: Uploaded video for object detection with the pipeline.
+        confidence_threshold:
+          type: number
+          title: Confidence Threshold
+          description: Score threshold to keep object detection predictions.
+          default: 0.6
+        model_id:
+          type: string
+          title: Model Id
+          description: Hugging Face model ID used for object detection.
+          default: ''
+      type: object
+      required:
+      - video
+      - model_id
+      title: Body_genObjectDetection
     Body_genSegmentAnything2:
       properties:
         image:
@@ -823,6 +899,29 @@ components:
       - nsfw
       title: Media
       description: A media object containing information about the generated media.
+    ObjectDetectionResponse:
+      properties:
+        images:
+          items:
+            $ref: '#/components/schemas/Media'
+          type: array
+          title: Images
+          description: The generated annotated video's images/frames for object detection.
+        confidence_scores:
+          type: string
+          title: Confidence Scores
+          description: The model's confidence scores for each detected object in each frame.
+        labels:
+          type: string
+          title: Labels
+          description: The model's labels for each detected object in each frame.
+      type: object
+      required:
+      - images
+      - confidence_scores
+      - labels
+      title: ObjectDetectionResponse
+      description: Response model for object detection.
     TextResponse:
       properties:
         text:

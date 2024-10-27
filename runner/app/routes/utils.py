@@ -70,6 +70,18 @@ class ImageToTextResponse(BaseModel):
     text: str = Field(..., description="The generated text.")
 
 
+class ObjectDetectionResponse(BaseModel):
+    """Response model for object detection."""
+
+    frames: List[List[Media]] = Field(..., description="The generated annotated video frames.")
+    confidence_scores: str = Field(
+        ..., description="The model's confidence scores for each detected object in each frame."
+    )
+    labels: str = Field(
+        ..., description="The model's labels for each detected object in each frame."
+    )
+
+
 class APIError(BaseModel):
     """API error response model."""
 

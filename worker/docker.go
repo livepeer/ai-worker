@@ -38,6 +38,7 @@ var containerHostPorts = map[string]string{
 	"llm":                "8500",
 	"segment-anything-2": "8600",
 	"image-to-text":      "8700",
+	"object-detection":   "8800",
 }
 
 // Mapping for per pipeline container images.

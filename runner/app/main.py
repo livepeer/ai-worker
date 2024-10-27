@@ -61,6 +61,10 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
             from app.pipelines.image_to_text import ImageToTextPipeline
 
             return ImageToTextPipeline(model_id)
+        case "object-detection":
+            from app.pipelines.object_detection import ObjectDetectionPipeline
+
+            return ObjectDetectionPipeline(model_id)
         case _:
             raise EnvironmentError(
                 f"{pipeline} is not a valid pipeline for model {model_id}"
@@ -101,6 +105,9 @@ def load_route(pipeline: str) -> any:
         case "image-to-text":
             from app.routes import image_to_text
             return image_to_text.router
+        case "object-detection":
+            from app.routes import object_detection
+            return object_detection.router
         case _:
             raise EnvironmentError(f"{pipeline} is not a valid pipeline")
 
