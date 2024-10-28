@@ -34,3 +34,19 @@ To build a pipeline-specific container, you need to build the base container fir
    ```
 
    This command builds the `segment-anything-2` pipeline-specific container using the Dockerfile located at [docker/Dockerfile.segment_anything_2](docker/Dockerfile.segment_anything_2) and tags it as `livepeer/ai-runner:segment-anything-2`.
+
+### Steps to Build a Realtime Video AI Container
+
+   ```bash
+   docker build -t livepeer/ai-runner:live-base . -f docker/Dockerfile.live-base
+   docker build -t livepeer/ai-runner:live-multimedia -f docker/Dockerfile.live-multimedia .
+   docker build -t livepeer/ai-runner:live-stream-diffusion -f docker/Dockerfile.live-stream-diffusion .
+   docker build -t livepeer/ai-runner:live-apps -f docker/Dockerfile.live-apps .
+   ```
+
+   Then, you can run and test the Live Container with the following commands:
+   ```bash
+   docker run -it --rm --name video-to-video -e PIPELINE=live-video-to-video -e MODEL_ID=KBlueLeaf/kohaku-v2.1 --gpus all -p 8000:8000 -v ./models:/models livepeer/ai-runner:live-apps
+
+   curl --location -H "Content-Type: application/json" 'http://localhost:8000/live-video-to-video' -X POST -d '{"stream_url":"http://<url-to-trickle-pull>"}'
+   ```
