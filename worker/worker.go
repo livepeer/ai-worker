@@ -516,51 +516,54 @@ func (w *Worker) ImageToText(ctx context.Context, req GenImageToTextMultipartReq
 	return resp.JSON200, nil
 }
 
-func (w *Worker) TextToSpeech(ctx context.Context, req GenTextToSpeechJSONRequestBody) (*EncodedFileResponse, error) {
-	// Borrow the container for the TextToSpeech process, using appropriate model if needed
+func (w *Worker) TextToSpeech(ctx context.Context, req GenTextToSpeechJSONRequestBody) (*AudioResponse, error) {
 	c, err := w.borrowContainer(ctx, "text-to-speech", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
 	defer w.returnContainer(c)
 
-	// Send the JSON request to the container's client
 	resp, err := c.Client.GenTextToSpeechWithResponse(ctx, req)
 	if err != nil {
 		return nil, err
 	}
 
-	// Handle 422 Unprocessable Entity error
-	if resp.JSON422 != nil {
-		val, err := json.Marshal(resp.JSON422)
-		if err != nil {
-			return nil, err
-		}
-		slog.Error("TextToSpeech container returned 422", slog.String("err", string(val)))
-		return nil, errors.New("TextToSpeech container returned 422")
-	}
-
-	// Handle 400 Bad Request error
 	if resp.JSON400 != nil {
 		val, err := json.Marshal(resp.JSON400)
 		if err != nil {
 			return nil, err
 		}
-		slog.Error("TextToSpeech container returned 400", slog.String("err", string(val)))
-		return nil, errors.New("TextToSpeech container returned 400")
+		slog.Error("text-to-speech container returned 400", slog.String("err", string(val)))
+		return nil, errors.New("text-to-speech container returned 400: " + resp.JSON400.Detail.Msg)
 	}
 
-	// Handle 500 Internal Server Error
+	if resp.JSON401 != nil {
+		val, err := json.Marshal(resp.JSON401)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("text-to-speech container returned 401", slog.String("err", string(val)))
+		return nil, errors.New("text-to-speech container returned 401: " + resp.JSON401.Detail.Msg)
+	}
+
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("text-to-speech container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("text-to-speech container returned 422: " + string(val))
+	}
+
 	if resp.JSON500 != nil {
 		val, err := json.Marshal(resp.JSON500)
 		if err != nil {
 			return nil, err
 		}
-		slog.Error("TextToSpeech container returned 500", slog.String("err", string(val)))
-		return nil, errors.New("TextToSpeech container returned 500")
+		slog.Error("text-to-speech container returned 500", slog.String("err", string(val)))
+		return nil, errors.New("text-to-speech container returned 500: " + resp.JSON500.Detail.Msg)
 	}
 
-	// Return the successful response
 	return resp.JSON200, nil
 }
 
