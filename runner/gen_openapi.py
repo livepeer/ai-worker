@@ -9,14 +9,14 @@ from app.routes import (
     audio_to_text,
     health,
     image_to_image,
+    image_to_text,
     image_to_video,
+    live_video_to_video,
+    llm,
     segment_anything_2,
     text_to_image,
-    upscale,
-    llm,
-    image_to_text,
-    live_video_to_video,
     text_to_speech,
+    upscale,
 )
 from fastapi.openapi.utils import get_openapi
 

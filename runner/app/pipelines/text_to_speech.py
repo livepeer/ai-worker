@@ -1,5 +1,5 @@
-import logging
 import io
+import logging
 
 import soundfile as sf
 import torch

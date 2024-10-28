@@ -3,20 +3,19 @@ import os
 from typing import Annotated, Dict, Tuple, Union
 
 import torch
-from fastapi import APIRouter, Depends, status
-from fastapi.responses import JSONResponse
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, Field
-
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.routes.utils import (
     AudioResponse,
     HTTPError,
+    audio_to_data_url,
     handle_pipeline_exception,
     http_error,
-    audio_to_data_url,
 )
+from fastapi import APIRouter, Depends, status
+from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel, Field
 
 router = APIRouter()
 
@@ -42,7 +41,9 @@ class TextToSpeechParams(BaseModel):
             description="Hugging Face model ID used for text to speech generation.",
         ),
     ]
-    text: Annotated[str, Field(default="", description=("Text input for speech generation."))]
+    text: Annotated[
+        str, Field(default="", description=("Text input for speech generation."))
+    ]
     description: Annotated[
         str,
         Field(
