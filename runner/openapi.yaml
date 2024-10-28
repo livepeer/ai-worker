@@ -427,7 +427,8 @@ paths:
       tags:
       - generate
       summary: Object Detection
-      description: Generated annotated frames with tracked object for the provided video.
+      description: Generate annotated video(s) for object detection from the input
+        video(s)
       operationId: genObjectDetection
       requestBody:
         content:
@@ -705,7 +706,7 @@ components:
           type: string
           format: binary
           title: Video
-          description: Uploaded video for object detection with the pipeline.
+          description: Uploaded video to transform with the pipeline.
         confidence_threshold:
           type: number
           title: Confidence Threshold
@@ -714,12 +715,11 @@ components:
         model_id:
           type: string
           title: Model Id
-          description: Hugging Face model ID used for object detection.
+          description: Hugging Face model ID used for transformation.
           default: ''
       type: object
       required:
       - video
-      - model_id
       title: Body_genObjectDetection
     Body_genSegmentAnything2:
       properties:
@@ -928,11 +928,12 @@ components:
             type: array
           type: array
           title: Frames
-          description: The generated annotated video's images/frames for object detection.
+          description: The generated annotated video frames.
         confidence_scores:
           type: string
           title: Confidence Scores
-          description: The model's confidence scores for each detected object in each frame.
+          description: The model's confidence scores for each detected object in each
+            frame.
         labels:
           type: string
           title: Labels
