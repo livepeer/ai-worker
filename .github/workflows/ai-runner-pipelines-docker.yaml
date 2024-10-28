@@ -20,13 +20,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  sam2-docker:
-    name: SAM2 Docker image generation
+  build-and-push-docker-images:
+    name: Build and push pipeline Docker images
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'workflow_dispatch'
     permissions:
       packages: write
       contents: read
     runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        dockerfile: 
+          - docker/Dockerfile.segment_anything_2
     steps:
       - name: Check out code
         uses: actions/checkout@v4.1.1
@@ -54,6 +58,12 @@ jobs:
           username: ${{ secrets.CI_DOCKERHUB_USERNAME }}
           password: ${{ secrets.CI_DOCKERHUB_TOKEN }}
 
+      - name: Extract Pipeline tag from Dockerfile suffix
+        id: docker-tag
+        run: |
+          suffix=$(basename "${{ matrix.dockerfile }}" | sed 's/Dockerfile.//;s/_/-/g')
+          echo "suffix=$suffix" >> $GITHUB_OUTPUT
+
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v5
@@ -61,20 +71,19 @@ jobs:
           images: |
             livepeer/ai-runner
           tags: |
-            type=raw,value=sam2
-            type=raw,value=segment-anything-2
-            type=sha,prefix=sam2-
-            type=ref,event=pr,prefix=sam2-
-            type=ref,event=tag,prefix=sam2-
-            type=sha,format=long,prefix=sam2-
-            type=ref,event=branch,prefix=sam2-
-            type=semver,pattern={{version}},prefix=sam2-
-            type=semver,pattern={{major}}.{{minor}},prefix=sam2-
-            type=semver,pattern={{version}},prefix=sam2-v
-            type=semver,pattern={{major}}.{{minor}},prefix=sam2-v
-            type=raw,value=latest,enable={{is_default_branch}},prefix=sam2-
-            type=raw,value=${{ github.event.pull_request.head.ref }},enable=${{ github.event_name == 'pull_request' }},prefix=sam2-
-            type=raw,value=stable,enable=${{ startsWith(github.event.ref, 'refs/tags/v') }},prefix=sam2-
+            type=raw,value=${{ steps.docker-tag.outputs.suffix }}
+            type=sha,prefix=${{ steps.docker-tag.outputs.suffix }}-
+            type=ref,event=pr,prefix=${{ steps.docker-tag.outputs.suffix }}-
+            type=ref,event=tag,prefix=${{ steps.docker-tag.outputs.suffix }}-
+            type=sha,format=long,prefix=${{ steps.docker-tag.outputs.suffix }}-
+            type=ref,event=branch,prefix=${{ steps.docker-tag.outputs.suffix }}-
+            type=semver,pattern={{version}},prefix=${{ steps.docker-tag.outputs.suffix }}-
+            type=semver,pattern={{major}}.{{minor}},prefix=${{ steps.docker-tag.outputs.suffix }}-
+            type=semver,pattern={{version}},prefix=${{ steps.docker-tag.outputs.suffix }}-v
+            type=semver,pattern={{major}}.{{minor}},prefix=${{ steps.docker-tag.outputs.suffix }}-v
+            type=raw,value=latest,enable={{is_default_branch}},prefix=${{ steps.docker-tag.outputs.suffix }}-
+            type=raw,value=${{ github.event.pull_request.head.ref }},enable=${{ github.event_name == 'pull_request' }},prefix=${{ steps.docker-tag.outputs.suffix }}-
+            type=raw,value=stable,enable=${{ startsWith(github.event.ref, 'refs/tags/v') }},prefix=${{ steps.docker-tag.outputs.suffix }}-
 
       - name: Build and push runner docker image
         uses: docker/build-push-action@v5
@@ -83,19 +92,7 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          file: "Dockerfile"
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=registry,ref=livepeerci/build:cache
-          cache-to: type=registry,ref=livepeerci/build:cache,mode=max
-      
-      - name: Build and push runner docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: "{{defaultContext}}:runner"
-          platforms: linux/amd64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          file: "docker/Dockerfile.segment_anything_2"
+          file: ${{ matrix.dockerfile }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=registry,ref=livepeerci/build:cache
           cache-to: type=registry,ref=livepeerci/build:cache,mode=max

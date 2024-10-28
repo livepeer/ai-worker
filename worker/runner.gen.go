@@ -40,19 +40,8 @@ type BodyGenAudioToText struct {
 	// ModelId Hugging Face model ID used for transcription.
 	ModelId *string `json:"model_id,omitempty"`
 
-	// ReturnTimestamps Return timestamps for the transcribed text. Supported values: 'sentence', 'word', or a boolean. Default is True ('sentence'). False means no timestamps. 'word' means word-based timestamps.
-	ReturnTimestamps *BodyGenAudioToText_ReturnTimestamps `json:"return_timestamps,omitempty"`
-}
-
-// BodyGenAudioToTextReturnTimestamps0 defines model for .
-type BodyGenAudioToTextReturnTimestamps0 = string
-
-// BodyGenAudioToTextReturnTimestamps1 defines model for .
-type BodyGenAudioToTextReturnTimestamps1 = bool
-
-// BodyGenAudioToText_ReturnTimestamps Return timestamps for the transcribed text. Supported values: 'sentence', 'word', or a boolean. Default is True ('sentence'). False means no timestamps. 'word' means word-based timestamps.
-type BodyGenAudioToText_ReturnTimestamps struct {
-	union json.RawMessage
+	// ReturnTimestamps Return timestamps for the transcribed text. Supported values: 'sentence', 'word', or a string boolean ('true' or 'false'). Default is 'true' ('sentence'). 'false' means no timestamps. 'word' means word-based timestamps.
+	ReturnTimestamps *string `json:"return_timestamps,omitempty"`
 }
 
 // BodyGenImageToImage defines model for Body_genImageToImage.
@@ -372,68 +361,6 @@ type GenTextToImageJSONRequestBody = TextToImageParams
 
 // GenUpscaleMultipartRequestBody defines body for GenUpscale for multipart/form-data ContentType.
 type GenUpscaleMultipartRequestBody = BodyGenUpscale
-
-// AsBodyGenAudioToTextReturnTimestamps0 returns the union data inside the BodyGenAudioToText_ReturnTimestamps as a BodyGenAudioToTextReturnTimestamps0
-func (t BodyGenAudioToText_ReturnTimestamps) AsBodyGenAudioToTextReturnTimestamps0() (BodyGenAudioToTextReturnTimestamps0, error) {
-	var body BodyGenAudioToTextReturnTimestamps0
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromBodyGenAudioToTextReturnTimestamps0 overwrites any union data inside the BodyGenAudioToText_ReturnTimestamps as the provided BodyGenAudioToTextReturnTimestamps0
-func (t *BodyGenAudioToText_ReturnTimestamps) FromBodyGenAudioToTextReturnTimestamps0(v BodyGenAudioToTextReturnTimestamps0) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeBodyGenAudioToTextReturnTimestamps0 performs a merge with any union data inside the BodyGenAudioToText_ReturnTimestamps, using the provided BodyGenAudioToTextReturnTimestamps0
-func (t *BodyGenAudioToText_ReturnTimestamps) MergeBodyGenAudioToTextReturnTimestamps0(v BodyGenAudioToTextReturnTimestamps0) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-// AsBodyGenAudioToTextReturnTimestamps1 returns the union data inside the BodyGenAudioToText_ReturnTimestamps as a BodyGenAudioToTextReturnTimestamps1
-func (t BodyGenAudioToText_ReturnTimestamps) AsBodyGenAudioToTextReturnTimestamps1() (BodyGenAudioToTextReturnTimestamps1, error) {
-	var body BodyGenAudioToTextReturnTimestamps1
-	err := json.Unmarshal(t.union, &body)
-	return body, err
-}
-
-// FromBodyGenAudioToTextReturnTimestamps1 overwrites any union data inside the BodyGenAudioToText_ReturnTimestamps as the provided BodyGenAudioToTextReturnTimestamps1
-func (t *BodyGenAudioToText_ReturnTimestamps) FromBodyGenAudioToTextReturnTimestamps1(v BodyGenAudioToTextReturnTimestamps1) error {
-	b, err := json.Marshal(v)
-	t.union = b
-	return err
-}
-
-// MergeBodyGenAudioToTextReturnTimestamps1 performs a merge with any union data inside the BodyGenAudioToText_ReturnTimestamps, using the provided BodyGenAudioToTextReturnTimestamps1
-func (t *BodyGenAudioToText_ReturnTimestamps) MergeBodyGenAudioToTextReturnTimestamps1(v BodyGenAudioToTextReturnTimestamps1) error {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	merged, err := runtime.JSONMerge(t.union, b)
-	t.union = merged
-	return err
-}
-
-func (t BodyGenAudioToText_ReturnTimestamps) MarshalJSON() ([]byte, error) {
-	b, err := t.union.MarshalJSON()
-	return b, err
-}
-
-func (t *BodyGenAudioToText_ReturnTimestamps) UnmarshalJSON(b []byte) error {
-	err := t.union.UnmarshalJSON(b)
-	return err
-}
 
 // AsValidationErrorLoc0 returns the union data inside the ValidationError_Loc_Item as a ValidationErrorLoc0
 func (t ValidationError_Loc_Item) AsValidationErrorLoc0() (ValidationErrorLoc0, error) {
