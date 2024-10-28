@@ -2,4 +2,4 @@
 
 echo "Starting infer"
 exec 2>&1
-exec python -u /app/infer/infer.py
+exec python -u /app/live/infer.py
