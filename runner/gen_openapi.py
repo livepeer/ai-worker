@@ -73,9 +73,7 @@ def translate_to_gateway(openapi: dict) -> dict:
                         ref = content_details["schema"]["$ref"]
                         schema_name = ref.split("/")[-1]
                         schema = openapi["components"]["schemas"][schema_name]
-                        # Ensure 'required' key exists in schema
-                        if "required" not in schema:
-                            schema["required"] = []
+                        schema.setdefault("required", [])
                         if "model_id" in schema["properties"]:
                             schema["required"].append("model_id")
 

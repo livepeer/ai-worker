@@ -1,6 +1,5 @@
 import logging
-import os
-import uuid
+import io
 
 import soundfile as sf
 import torch
@@ -18,45 +17,51 @@ class TextToSpeechPipeline(Pipeline):
         self.model_id = model_id
         kwargs = {"cache_dir": get_model_dir()}
 
-        self.TTS_model = ParlerTTSForConditionalGeneration.from_pretrained(
+        self.model = ParlerTTSForConditionalGeneration.from_pretrained(
             model_id,
             **kwargs,
         ).to(self.device)
 
-        self.TTS_tokenizer = AutoTokenizer.from_pretrained(
+        self.tokenizer = AutoTokenizer.from_pretrained(
             model_id,
             torch_dtype=torch.bfloat16,
             # attn_implementation="flash_attention_2", # TODO (pschroedl): investigate installing flash_attn + cuda toolkit in Dockerfile.text_to_speech
             **kwargs,
         )
 
-    def __call__(self, params):
-        # generate unique filename
-        unique_audio_filename = f"{uuid.uuid4()}.wav"
-        audio_path = os.path.join("/tmp/", unique_audio_filename)
-        self.generate_speech(params.text_input, params.description, audio_path)
-        return audio_path
+    def _generate_speech(self, text: str, tts_steering: str) -> io.BytesIO:
+        """Generate speech from text input using the text-to-speech model.
 
-    def generate_speech(self, text, tts_steering, output_file_name):
+        Args:
+            text: Text input for speech generation.
+            tts_steering: Description of speaker to steer text to speech generation.
+
+        Returns:
+            buffer: BytesIO buffer containing the generated audio.
+        """
         with torch.no_grad():
-            input_ids = self.TTS_tokenizer(
-                tts_steering, return_tensors="pt"
-            ).input_ids.to(self.device)
-            prompt_input_ids = self.TTS_tokenizer(
-                text, return_tensors="pt"
-            ).input_ids.to(self.device)
+            input_ids = self.tokenizer(tts_steering, return_tensors="pt").input_ids.to(
+                self.device
+            )
+            prompt_input_ids = self.tokenizer(text, return_tensors="pt").input_ids.to(
+                self.device
+            )
 
-            generation = self.TTS_model.generate(
+            generation = self.model.generate(
                 input_ids=input_ids, prompt_input_ids=prompt_input_ids
             )
             generated_audio = generation.cpu().numpy().squeeze()
 
-            sf.write(output_file_name, generated_audio, samplerate=44100)
+            buffer = io.BytesIO()
+            sf.write(buffer, generated_audio, samplerate=44100, format="WAV")
+            buffer.seek(0)
 
-            # Free the tensors
             del input_ids, prompt_input_ids, generation, generated_audio
 
-        return output_file_name
+        return buffer
+
+    def __call__(self, params) -> io.BytesIO:
+        return self._generate_speech(params.text, params.description)
 
     def __str__(self) -> str:
-        return f"Text-To-Speech model_id={self.model_id}"
+        return f"TextToSpeechPipeline model_id={self.model_id}"
