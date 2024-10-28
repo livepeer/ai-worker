@@ -25,7 +25,7 @@ class TextToSpeechPipeline(Pipeline):
         self.tokenizer = AutoTokenizer.from_pretrained(
             model_id,
             torch_dtype=torch.bfloat16,
-            # attn_implementation="flash_attention_2", # TODO (pschroedl): investigate installing flash_attn + cuda toolkit in Dockerfile.text_to_speech
+            attn_implementation="flash_attention_2",
             **kwargs,
         )
 

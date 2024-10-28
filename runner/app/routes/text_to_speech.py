@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from typing import Annotated, Dict, Tuple, Union
 
 import torch
@@ -124,7 +125,9 @@ async def text_to_speech(
         )
 
     try:
+        start = time.time()
         out = pipeline(params)
+        logger.info(f"TextToSpeechPipeline took {time.time() - start} seconds.")
     except Exception as e:
         if isinstance(e, torch.cuda.OutOfMemoryError):
             torch.cuda.empty_cache()
