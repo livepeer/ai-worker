@@ -33,7 +33,7 @@ class LiveVideoToVideoPipeline(Pipeline):
                     pipeline=self.model_id,  # we use the model_id as the pipeline name for now
                     input_address="tcp://localhost:5555",
                     output_address="tcp://localhost:5556",
-                    http_port="8888",
+                    http_port=8888,
                     initial_params=json.dumps(kwargs),
                     # TODO: set torch device from self.torch_device
                 )
@@ -50,8 +50,12 @@ class LiveVideoToVideoPipeline(Pipeline):
         # Add any additional kwargs as command-line arguments
         for key, value in kwargs.items():
             kebab_key = key.replace("_", "-")
-            escaped_value = str(value).replace("'", "'\\''")
-            cmd.extend([f"--{kebab_key}", f"'{escaped_value}'"])
+            if isinstance(value, str):
+                escaped_value = str(value).replace("'", "'\\''")
+                cmd.extend([f"--{kebab_key}", f"{escaped_value}"])
+            else:
+                cmd.extend([f"--{kebab_key}", f"{value}"])
+            
 
         env = os.environ.copy()
         env["HUGGINGFACE_HUB_CACHE"] = self.model_dir
