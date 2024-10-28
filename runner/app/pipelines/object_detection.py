@@ -78,12 +78,11 @@ class ObjectDetectionPipeline(Pipeline):
 
             for frame in frames:
                 # Process frame and add annotations
-                pil_frame = Image.fromarray(frame)
-                inputs = self.image_processor(images=pil_frame, return_tensors="pt")
+                inputs = self.image_processor(images=frame, return_tensors="pt")
                 with torch.no_grad():
                     outputs = self.object_detection_model(**inputs)
 
-                target_sizes = torch.tensor([pil_frame.size[::-1]])
+                target_sizes = torch.tensor([frame.size[::-1]])
                 results = self.image_processor.post_process_object_detection(
                     outputs=outputs,
                     threshold=confidence_threshold,
@@ -100,9 +99,11 @@ class ObjectDetectionPipeline(Pipeline):
                     confidence_scores.append(round(score, 3))
 
                 annotated_frame = annotate_image(
-                    input_image=pil_frame,
+                    input_image=frame,
                     detections=detections,
-                    labels=final_labels
+                    labels=final_labels,
+                    font_size=self.font_size,
+                    font=self.font
                 )
 
                 annotated_frames.append(annotated_frame)

@@ -107,8 +107,8 @@ async def object_detection(
         )
 
     frames = []
-    container = av.open(video)
-    
+    container = av.open(video.file)
+
     for frame in container.decode(video=0):  # Decode video frames
         frames.append(frame.to_image())  # Convert each frame to PIL image and add to list
 
@@ -130,13 +130,12 @@ async def object_detection(
         )
 
     output_frames = []
-    for frames in annotated_frames:
+    for frame in annotated_frames:
         output_frames.append(
             [
                 {
                     "url": image_to_data_url(frame),
                 }
-                for frame in frames
             ]
         )
 
