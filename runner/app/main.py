@@ -61,6 +61,9 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
             from app.pipelines.image_to_text import ImageToTextPipeline
 
             return ImageToTextPipeline(model_id)
+        case "live-video-to-video":
+            from app.pipelines.live_video_to_video import LiveVideoToVideoPipeline
+            return LiveVideoToVideoPipeline(model_id)
         case "object-detection":
             from app.pipelines.object_detection import ObjectDetectionPipeline
 
@@ -105,6 +108,9 @@ def load_route(pipeline: str) -> any:
         case "image-to-text":
             from app.routes import image_to_text
             return image_to_text.router
+        case "live-video-to-video":
+            from app.routes import live_video_to_video
+            return live_video_to_video.router
         case "object-detection":
             from app.routes import object_detection
             return object_detection.router

@@ -411,6 +411,53 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: imageToText
+  /live-video-to-video:
+    post:
+      tags:
+      - generate
+      summary: Video To Video
+      description: Apply video-like transformations to a provided image.
+      operationId: genLiveVideoToVideo
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LiveVideoToVideoParams'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                x-speakeasy-name-override: data
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+      x-speakeasy-name-override: liveVideoToVideo
   /object-detection:
     post:
       tags:
@@ -866,6 +913,22 @@ components:
       - response
       - tokens_used
       title: LLMResponse
+    LiveVideoToVideoParams:
+      properties:
+        stream_url:
+          type: string
+          title: Stream Url
+          description: URL of the video stream to pull.
+        model_id:
+          type: string
+          title: Model Id
+          description: Hugging Face model ID used for image generation.
+          default: ''
+      type: object
+      required:
+      - stream_url
+      - model_id
+      title: LiveVideoToVideoParams
     MasksResponse:
       properties:
         masks:

@@ -15,6 +15,7 @@ from app.routes import (
     upscale,
     llm,
     image_to_text,
+    live_video_to_video,
     object_detection,
 )
 from fastapi.openapi.utils import get_openapi
@@ -104,6 +105,7 @@ def write_openapi(fname: str, entrypoint: str = "runner"):
     app.include_router(segment_anything_2.router)
     app.include_router(llm.router)
     app.include_router(image_to_text.router)
+    app.include_router(live_video_to_video.router)
     app.include_router(object_detection.router)
 
     logger.info(f"Generating OpenAPI schema for '{entrypoint}' entrypoint...")
