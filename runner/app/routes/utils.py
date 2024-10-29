@@ -45,10 +45,10 @@ class MasksResponse(BaseModel):
     )
 
 
-class chunk(BaseModel):
+class Chunk(BaseModel):
     """A chunk of text with a timestamp."""
 
-    timestamp: tuple = Field(..., description="The timestamp of the chunk.")
+    timestamp: Tuple[float, float] = Field(..., description="The timestamp of the chunk.")
     text: str = Field(..., description="The text of the chunk.")
 
 
@@ -56,7 +56,7 @@ class TextResponse(BaseModel):
     """Response model for text generation."""
 
     text: str = Field(..., description="The generated text.")
-    chunks: List[chunk] = Field(..., description="The generated text chunks.")
+    chunks: List[Chunk] = Field(..., description="The generated text chunks.")
 
 
 class LLMResponse(BaseModel):

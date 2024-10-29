@@ -156,6 +156,15 @@ async def text_to_image(
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
+    # Ensure required parameters are non-empty.
+    # TODO: Remove if go-livepeer validation is fixed. Was disabled due to optional
+    # params issue.
+    if not params.prompt:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content=http_error("Prompt must be provided."),
+        )
+
     auth_token = os.environ.get("AUTH_TOKEN")
     if auth_token:
         if not token or token.credentials != auth_token:
