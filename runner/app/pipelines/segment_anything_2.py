@@ -38,4 +38,4 @@ class SegmentAnything2Pipeline(Pipeline):
         return prediction
 
     def __str__(self) -> str:
-        return f"Segment Anything 2 model_id={self.model_id}"
+        return f"SegmentAnything2Pipeline model_id={self.model_id}"
