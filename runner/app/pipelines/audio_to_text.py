@@ -1,6 +1,7 @@
 from enum import Enum
 import logging
 import os
+import gc
 from typing import List
 
 import torch
@@ -104,13 +105,27 @@ class AudioToTextPipeline(Pipeline):
             converted_bytes = audio_converter.convert(audio, "mp3")
             audio_converter.write_bytes_to_file(converted_bytes, audio)
 
+        if (kwargs["return_timestamps"] == 'word'):
+            kwargs["batch_size"] = 4
+        else:
+            kwargs["batch_size"] = 16
+            
         try:
             outputs = self.tm(audio.file.read(), **kwargs)
             outputs.setdefault("chunks", [])
+
+        except torch.cuda.OutOfMemoryError:
+            logger.error("CUDA Out of Memory Error during inference")
+            self.cleanup_cuda_memory()
+            raise
         except Exception as e:
             raise InferenceError(original_exception=e)
 
         return outputs
+
+    def cleanup_cuda_memory(self):
+        torch.cuda.empty_cache()
+        gc.collect()
 
     def __str__(self) -> str:
         return f"AudioToTextPipeline model_id={self.model_id}"
