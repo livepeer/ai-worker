@@ -43,6 +43,16 @@ function download_beta_models() {
     # Download image-to-video models (token-gated).
     check_hf_auth
     huggingface-cli download stabilityai/stable-video-diffusion-img2vid-xt-1-1 --include "*.fp16.safetensors" "*.json" --cache-dir models ${TOKEN_FLAG:+"$TOKEN_FLAG"}
+
+    # Download ProPainter and stable-outpainting models
+    printf "\nDownloading outpainting models...\n"
+    huggingface-cli download ruffy369/propainter --cache-dir models
+    # Only download stable-outpainting if ProPainter fails
+    if [ $? -ne 0 ]; then
+        printf "Failed to download ProPainter model. Downloading stable-outpainting as backup...\n"
+        huggingface-cli download Brvcket/stable-outpainting-xl-0.1 --cache-dir models
+    fi
+
 }
 
 # Download all models.

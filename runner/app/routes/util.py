@@ -181,3 +181,15 @@ def json_str_to_np_array(
             error_message += f": {e}"
             raise ValueError(error_message)
     return None
+
+
+class ImageOutpaintingResponse(BaseModel):
+    """
+    Response model for the image outpainting operation.
+    Contains the resulting outpainted image and the parameters used in the process."""
+    
+    image: bytes = Field(..., description="The outpainted image in bytes format.")
+    prompt: str = Field(..., description="The prompt used for outpainting.")
+    negative_prompt: str = Field(None, description="The negative prompt used for outpainting, if any.")
+    num_inference_steps: int = Field(..., description="The number of inference steps used.")
+    guidance_scale: float = Field(..., description="The guidance scale used for outpainting.")

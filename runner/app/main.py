@@ -5,6 +5,9 @@ from contextlib import asynccontextmanager
 from app.routes import health
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
+from .routes import image_outpainting  
+from .pipelines.image_outpainting import ImageOutpaintingPipeline
+from app.routes.image_outpainting import router as image_router
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +60,8 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
         case "llm":
             from app.pipelines.llm import LLMPipeline
             return LLMPipeline(model_id)
+        case "image-outpainting":
+            return ImageOutpaintingPipeline(model_id)
         case _:
             raise EnvironmentError(
                 f"{pipeline} is not a valid pipeline for model {model_id}"
@@ -94,6 +99,8 @@ def load_route(pipeline: str) -> any:
         case "llm":
             from app.routes import llm
             return llm.router
+        case "image-outpainting":
+            return image_router
         case _:
             raise EnvironmentError(f"{pipeline} is not a valid pipeline")
 
@@ -113,3 +120,4 @@ def use_route_names_as_operation_ids(app: FastAPI) -> None:
 
 
 app = FastAPI(lifespan=lifespan)
+app.include_router(image_router)
