@@ -196,6 +196,15 @@ type BodyGenUpscale struct {
 	Seed *int `json:"seed,omitempty"`
 }
 
+// Chunk A chunk of text with a timestamp.
+type Chunk struct {
+	// Text The text of the chunk.
+	Text string `json:"text"`
+
+	// Timestamp The timestamp of the chunk.
+	Timestamp []interface{} `json:"timestamp"`
+}
+
 // HTTPError HTTP error response model.
 type HTTPError struct {
 	// Detail Detailed error information.
@@ -348,15 +357,6 @@ type ValidationError_Loc_Item struct {
 type VideoResponse struct {
 	// Frames The generated video frames.
 	Frames [][]Media `json:"frames"`
-}
-
-// Chunk A chunk of text with a timestamp.
-type Chunk struct {
-	// Text The text of the chunk.
-	Text string `json:"text"`
-
-	// Timestamp The timestamp of the chunk.
-	Timestamp []interface{} `json:"timestamp"`
 }
 
 // GenAudioToTextMultipartRequestBody defines body for GenAudioToText for multipart/form-data ContentType.
@@ -2648,7 +2648,6 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
-
 	"H4sIAAAAAAAC/+xceW8jN7L/KkS/B9gDSLLsZDIPBvYPz+QY43mSgY+dBBNDoLpLLcZsspdkW9LO83d/",
 	"YLEP9qXDsZ3dWf1lWU2yLtavisVqfQlCmaRSgDA6OP0S6HAOCcWPZx/Pf1BKKvs5Ah0qlhomRXBqnxCw",
 	"j4gCnUqhgSQyAj4KBkGqZArKMMA1Eh23p1/PIZ+egNY0BjvPMMMhOA0+6Nj+t0rtP9ooJuLg4WEQKPhH",
