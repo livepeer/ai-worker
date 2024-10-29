@@ -45,7 +45,7 @@ class LiveVideoToVideoPipeline(Pipeline):
             raise InferenceError(original_exception=e)
 
     def start_process(self, **kwargs):
-        cmd = ["python", str(self.infer_script_path)]
+        cmd = ["python", "-u", str(self.infer_script_path)]
 
         # Add any additional kwargs as command-line arguments
         for key, value in kwargs.items():
@@ -59,10 +59,11 @@ class LiveVideoToVideoPipeline(Pipeline):
 
         env = os.environ.copy()
         env["HUGGINGFACE_HUB_CACHE"] = self.model_dir
+        env["PYTHONUNBUFFERED"] = "1"
 
         try:
             self.process = subprocess.Popen(
-                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1, env=env
             )
 
             self.monitor_thread = threading.Thread(target=self.monitor_process)
