@@ -4,6 +4,7 @@ import mimetypes
 import os
 import tempfile
 import time
+from typing import cast
 
 from aiohttp import BodyPartReader, web
 
@@ -57,7 +58,9 @@ async def handle_params_update(request):
         else:
             raise ValueError(f"Unknown content type: {request.content_type}")
 
-        request.app["handler"].update_params(params)
+        handler = cast(PipelineStreamer, request.app["handler"])
+        handler.update_params(**params)
+
         return web.Response(text="Params updated successfully")
     except Exception as e:
         logging.error(f"Error updating params: {e}")
