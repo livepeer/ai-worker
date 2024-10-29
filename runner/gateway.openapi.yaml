@@ -779,6 +779,27 @@ components:
       - image
       - model_id
       title: Body_genUpscale
+    Chunk:
+      properties:
+        timestamp:
+          prefixItems:
+          - type: number
+          - type: number
+          type: array
+          maxItems: 2
+          minItems: 2
+          title: Timestamp
+          description: The timestamp of the chunk.
+        text:
+          type: string
+          title: Text
+          description: The text of the chunk.
+      type: object
+      required:
+      - timestamp
+      - text
+      title: Chunk
+      description: A chunk of text with a timestamp.
     HTTPError:
       properties:
         detail:
@@ -902,7 +923,7 @@ components:
           description: The generated text.
         chunks:
           items:
-            $ref: '#/components/schemas/chunk'
+            $ref: '#/components/schemas/Chunk'
           type: array
           title: Chunks
           description: The generated text chunks.
@@ -1013,23 +1034,6 @@ components:
       - images
       title: VideoResponse
       description: Response model for image generation.
-    chunk:
-      properties:
-        timestamp:
-          items: {}
-          type: array
-          title: Timestamp
-          description: The timestamp of the chunk.
-        text:
-          type: string
-          title: Text
-          description: The text of the chunk.
-      type: object
-      required:
-      - timestamp
-      - text
-      title: chunk
-      description: A chunk of text with a timestamp.
   securitySchemes:
     HTTPBearer:
       type: http
