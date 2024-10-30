@@ -32,6 +32,23 @@ class ModelName(Enum):
     def list(cls):
         """Return a list of all model IDs."""
         return list(map(lambda c: c.value, cls))
+    
+MODEL_OPT_DEFAULTS = {
+    ModelName.WHISPER_LARGE_V3: {
+        "torch_dtype": torch.float16 if torch.cuda.is_available() else torch.float32,
+        "chunk_length_s": 30
+    },
+    ModelName.WHISPER_MEDIUM: 
+    {
+        "torch_dtype": torch.float32,
+        "chunk_length_s": 30
+    },
+    ModelName.WHISPER_DISTIL_LARGE_V3:
+    {
+        "torch_dtype": torch.float16 if torch.cuda.is_available() else torch.float32,
+        "chunk_length_s": 25
+    }
+}
 
 class AudioToTextPipeline(Pipeline):
     def __init__(self, model_id: str):
@@ -39,46 +56,18 @@ class AudioToTextPipeline(Pipeline):
         kwargs = {}
 
         torch_device = get_torch_device()
-        folder_name = file_download.repo_folder_name(
-            repo_id=model_id, repo_type="model"
-        )
-        folder_path = os.path.join(get_model_dir(), folder_name)
-
-        MODEL_OPT_DEFAULTS = {
-            ModelName.WHISPER_LARGE_V3: {
-                "torch_dtype": torch.float16 if torch.cuda.is_available() else torch.float32,
-                "chunk_length_s": 30
-            },
-            ModelName.WHISPER_MEDIUM: 
-            {
-                "torch_dtype": torch.float32,
-                "chunk_length_s": 30
-            },
-            ModelName.WHISPER_DISTIL_LARGE_V3:
-            {
-                "torch_dtype": torch.float16 if torch.cuda.is_available() else torch.float32,
-                "chunk_length_s": 25
-            }
-        }
-        
-        # Map model_id to ModelName enum
-        model_name_enum = next(key for key, value in ModelName.__members__.items() if value.value == model_id)
-        model_type = ModelName[model_name_enum]
 
         # Retrieve torch_dtype from MODEL_OPT_DEFAULTS
-        kwargs["torch_dtype"] = MODEL_OPT_DEFAULTS[model_type].get("torch_dtype", torch.float16)
-
-        if torch_device != "cpu" and kwargs["torch_dtype"] == torch.float16:
-            logger.info("AudioToText loading %s variant for fp16", model_id)
-            
-        elif torch_device != "cpu" and kwargs["torch_dtype"] == torch.float32:
-            logger.info("AudioToText loading %s variant for f32", model_id)
+        model_type = ModelName(model_id)
+        kwargs["torch_dtype"] = MODEL_OPT_DEFAULTS[model_type]["torch_dtype"]
+        logger.info("AudioToText loading %s variant on device %s for %s", model_id, torch_device, kwargs["torch_dtype"])
 
         model = AutoModelForSpeechSeq2Seq.from_pretrained(
             model_id,
             low_cpu_mem_usage=True,
             use_safetensors=True,
             cache_dir=get_model_dir(),
+            attn_implementation="eager",
             **kwargs,
         ).to(torch_device)
 
@@ -90,42 +79,55 @@ class AudioToTextPipeline(Pipeline):
             tokenizer=processor.tokenizer,
             feature_extractor=processor.feature_extractor,
             max_new_tokens=128,
-            chunk_length_s=MODEL_OPT_DEFAULTS[model_type].get("chunk_length_s"),
-            batch_size=16,
             **kwargs,
         )
 
+        self.audio_converter = AudioConverter()
+
     def __call__(self, audio: UploadFile, **kwargs) -> List[File]:
+        audioBytes = audio.file.read()
+
         # Convert M4A/MP4 files for pipeline compatibility.
         if (
             os.path.splitext(audio.filename)[1].lower().lstrip(".")
             in MODEL_INCOMPATIBLE_EXTENSIONS[self.model_id]
         ):
-            audio_converter = AudioConverter()
-            converted_bytes = audio_converter.convert(audio, "mp3")
-            audio_converter.write_bytes_to_file(converted_bytes, audio)
+            audioBytes = self.audio_converter.convert(audioBytes, "mp3")
 
-        if (kwargs["return_timestamps"] == 'word'):
-            kwargs["batch_size"] = 4
-        else:
-            kwargs["batch_size"] = 16
-            
+        # Get media duration to optimize batch size
         try:
-            outputs = self.tm(audio.file.read(), **kwargs)
+            duration = self.audio_converter.get_media_duration_ffmpeg(audioBytes)
+        except Exception as e:
+             raise InferenceError("Unable to calculate duration of file")
+
+        model_type = ModelName(self.model_id)
+        chunk_length_s = int(MODEL_OPT_DEFAULTS[model_type].get("chunk_length_s")) 
+        batch_size = int(16)
+
+        # if duration is greater than optimal length sequential short-form, then use chunking
+        if duration > chunk_length_s:
+            kwargs["batch_size"] = batch_size
+            kwargs["chunk_length_s"] = chunk_length_s
+        
+        # if word timestamps are requested, then reduce batch size
+        if (kwargs["return_timestamps"] == 'word'):
+            max_duration_for_word = chunk_length_s * batch_size
+            if duration > max_duration_for_word:
+                raise InferenceError("Word timestamps are only supported for audio files up to %s minutes long for model %s" % (max_duration_for_word / 60, self.model_id))
+            elif "batch_size" in kwargs:
+                kwargs["batch_size"] = 4
+
+        try:
+            outputs = self.tm(audioBytes, **kwargs)
             outputs.setdefault("chunks", [])
 
-        except torch.cuda.OutOfMemoryError:
+        except torch.cuda.OutOfMemoryError as e:
             logger.error("CUDA Out of Memory Error during inference")
-            self.cleanup_cuda_memory()
-            raise
+            raise e
         except Exception as e:
             raise InferenceError(original_exception=e)
 
         return outputs
-
-    def cleanup_cuda_memory(self):
-        torch.cuda.empty_cache()
-        gc.collect()
 
     def __str__(self) -> str:
         return f"AudioToTextPipeline model_id={self.model_id}"

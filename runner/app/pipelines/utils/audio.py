@@ -5,7 +5,9 @@ formats.
 from io import BytesIO
 
 import av
-from fastapi import UploadFile
+import tempfile
+import os
+import subprocess
 
 
 class AudioConversionError(Exception):
@@ -18,15 +20,14 @@ class AudioConversionError(Exception):
 
 class AudioConverter:
     """Converts audio files to different formats."""
-
     @staticmethod
     def convert(
-        upload_file: UploadFile, output_extension: str, output_codec=None
+        input_bytes: bytes, output_extension: str, output_codec=None
     ) -> bytes:
         """Converts an audio file to a different format.
 
         Args:
-            upload_file: The audio file to convert.
+            input_bytes: The audio file as bytes to convert.
             output_extension: The desired output format.
             output_codec: The desired output codec.
 
@@ -38,7 +39,8 @@ class AudioConverter:
 
         output_buffer = BytesIO()
 
-        input_container = av.open(upload_file.file)
+        input_buffer = BytesIO(input_bytes)
+        input_container = av.open(input_buffer)
         output_container = av.open(output_buffer, mode="w", format=output_extension)
 
         try:
@@ -66,14 +68,34 @@ class AudioConverter:
         converted_bytes = output_buffer.read()
         return converted_bytes
 
+
     @staticmethod
-    def write_bytes_to_file(bytes: bytes, upload_file: UploadFile):
-        """Writes bytes to a file.
+    def get_media_duration_ffmpeg(bytes: bytes) -> float:
+        """Gets the duration of the media using ffprobe.
 
         Args:
-            bytes: The bytes to write.
-            upload_file: The file to write to.
+            bytes: The media file as bytes.
+
+        Returns:
+            The duration of the media in seconds.
         """
-        upload_file.file.seek(0)
-        upload_file.file.write(bytes)
-        upload_file.file.seek(0)
+        temp_file_path = None
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            temp_file.write(bytes)
+            temp_file_path = temp_file.name
+
+        try:
+            result = subprocess.run(
+                ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", temp_file_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            duration = float(result.stdout.strip())
+        except Exception as e:
+            raise AudioConversionError(f"Failed to get duration with ffmpeg: {e}")
+        finally:
+            os.remove(temp_file_path)
+
+        print(f"Duration: {duration} seconds")
+        return duration
