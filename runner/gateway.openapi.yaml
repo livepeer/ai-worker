@@ -859,18 +859,27 @@ components:
       title: LLMResponse
     LiveVideoToVideoParams:
       properties:
-        stream_url:
+        subscribe_url:
           type: string
-          title: Stream Url
-          description: URL of the video stream to pull.
+          title: Subscribe Url
+          description: Source URL of the incoming stream to subscribe to.
+        publish_url:
+          type: string
+          title: Publish Url
+          description: Destination URL of the outgoing stream to publish.
         model_id:
           type: string
           title: Model Id
           description: Hugging Face model ID used for image generation.
           default: ''
+        params:
+          type: object
+          title: Params
+          description: Initial parameters for the model.
       type: object
       required:
-      - stream_url
+      - subscribe_url
+      - publish_url
       - model_id
       title: LiveVideoToVideoParams
     MasksResponse:
