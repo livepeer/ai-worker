@@ -78,7 +78,7 @@ class ObjectDetectionPipeline(Pipeline):
 
             for frame in frames:
                 # Process frame and add annotations
-                inputs = self.image_processor(images=frame, return_tensors="pt")
+                inputs = self.image_processor(images=frame, return_tensors="pt").to(self.torch_device)
                 with torch.no_grad():
                     outputs = self.object_detection_model(**inputs)
 

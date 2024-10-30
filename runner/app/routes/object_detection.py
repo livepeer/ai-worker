@@ -135,6 +135,8 @@ async def object_detection(
             [
                 {
                     "url": image_to_data_url(frame),
+                    "seed": 0,
+                    "nsfw": False,
                 }
             ]
         )
