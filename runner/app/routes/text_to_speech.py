@@ -82,7 +82,7 @@ RESPONSES = {
         "speaker description."
     ),
     operation_id="genTextToSpeech",
-    summary="text-to-speech",
+    summary="Text To Speech",
     tags=["generate"],
     openapi_extra={"x-speakeasy-name-override": "textToSpeech"},
 )

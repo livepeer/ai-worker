@@ -473,7 +473,7 @@ paths:
     post:
       tags:
       - generate
-      summary: text-to-speech
+      summary: Text To Speech
       description: Generate a text-to-speech audio file based on the provided text
         input and speaker description.
       operationId: genTextToSpeech
