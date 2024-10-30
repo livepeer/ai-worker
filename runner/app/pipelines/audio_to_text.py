@@ -15,12 +15,6 @@ from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 
 logger = logging.getLogger(__name__)
 
-MODEL_INCOMPATIBLE_EXTENSIONS = {
-    "openai/whisper-large-v3": ["mp4", "m4a", "ac3"],
-    "openai/whisper-medium": ["mp4", "m4a", "ac3"],
-    "distil-whisper/distil-large-v3": ["mp4", "m4a", "ac3"]
-}
-
 class ModelName(Enum):
     """Enumeration mapping model names to their corresponding IDs."""
 
@@ -48,6 +42,12 @@ MODEL_OPT_DEFAULTS = {
         "torch_dtype": torch.float16 if torch.cuda.is_available() else torch.float32,
         "chunk_length_s": 25
     }
+}
+
+MODEL_INCOMPATIBLE_EXTENSIONS = {
+    ModelName.WHISPER_LARGE_V3: ["mp4", "m4a", "ac3"],
+    ModelName.WHISPER_MEDIUM: ["mp4", "m4a", "ac3"],
+    ModelName.WHISPER_DISTIL_LARGE_V3: ["mp4", "m4a", "ac3"]
 }
 
 class AudioToTextPipeline(Pipeline):
@@ -85,12 +85,13 @@ class AudioToTextPipeline(Pipeline):
         self.audio_converter = AudioConverter()
 
     def __call__(self, audio: UploadFile, **kwargs) -> List[File]:
+        model_type = ModelName(self.model_id)
         audioBytes = audio.file.read()
 
         # Convert M4A/MP4 files for pipeline compatibility.
         if (
             os.path.splitext(audio.filename)[1].lower().lstrip(".")
-            in MODEL_INCOMPATIBLE_EXTENSIONS[self.model_id]
+            in MODEL_INCOMPATIBLE_EXTENSIONS[model_type]
         ):
             audioBytes = self.audio_converter.convert(audioBytes, "mp3")
 
@@ -100,7 +101,6 @@ class AudioToTextPipeline(Pipeline):
         except Exception as e:
              raise InferenceError("Unable to calculate duration of file")
 
-        model_type = ModelName(self.model_id)
         chunk_length_s = int(MODEL_OPT_DEFAULTS[model_type].get("chunk_length_s")) 
         batch_size = int(16)
 
