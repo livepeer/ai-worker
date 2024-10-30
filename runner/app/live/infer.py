@@ -90,7 +90,7 @@ if __name__ == "__main__":
 
     try:
         asyncio.run(
-            main(args.http_port, args.input_address, args.output_address, args.pipeline, args.subscribe_url, args.publish_url, params)
+            main(args.http_port, args.subscribe_url, args.publish_url, args.pipeline, params)
         )
     except Exception as e:
         logging.error(f"Fatal error in main: {e}")
