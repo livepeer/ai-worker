@@ -58,6 +58,7 @@ class PipelineStreamer(ABC):
         except Exception as e:
             logging.error(f"Error restarting pipeline process: {e}")
             logging.error(f"Stack trace:\n{traceback.format_exc()}")
+            exit(1)
 
     def update_params(self, **params):
         self.params = params
