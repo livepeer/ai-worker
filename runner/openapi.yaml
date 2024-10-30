@@ -885,6 +885,7 @@ components:
           description: Hugging Face model ID used for image generation.
           default: ''
         params:
+          type: object
           title: Params
           description: Initial parameters for the model.
       type: object

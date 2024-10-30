@@ -1,7 +1,7 @@
 import logging
 import os
 import random
-from typing import Annotated, Any, Dict, Tuple, Union
+from typing import Annotated, Dict, Tuple, Union
 
 import torch
 import traceback
@@ -51,7 +51,7 @@ class LiveVideoToVideoParams(BaseModel):
         ),
     ]
     params: Annotated[
-        Any,
+        Dict,
         Field(
             default=None,
             description="Initial parameters for the model."
