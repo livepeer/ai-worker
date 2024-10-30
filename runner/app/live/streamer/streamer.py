@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import time
 import traceback
 from abc import ABC, abstractmethod
@@ -22,6 +23,12 @@ class PipelineStreamer(ABC):
         self.restart_count = 0
 
     def start(self):
+        self._start_process()
+
+    async def stop(self):
+        await self._stop_process()
+
+    def _start_process(self):
         if self.process:
             raise RuntimeError("PipelineProcess already started")
 
@@ -30,7 +37,7 @@ class PipelineStreamer(ABC):
         self.egress_task = asyncio.create_task(self.run_egress_loop(self.process.done))
         self.monitor_task = asyncio.create_task(self.monitor_loop(self.process.done))
 
-    async def stop(self):
+    async def _stop_process(self):
         if self.process:
             self.process.stop()
             self.process = None
@@ -47,10 +54,11 @@ class PipelineStreamer(ABC):
             self.monitor_task.cancel()
             self.monitor_task = None
 
-    async def restart(self):
+    async def _restart(self):
         try:
-            await self.stop()
-            self.start()
+            # don't call the start/stop methods since those might be overridden by the concrete implementations
+            await self._stop_process()
+            self._start_process()
             self.restart_count += 1
             logging.info(
                 f"PipelineProcess restarted. Restart count: {self.restart_count}"
@@ -58,7 +66,7 @@ class PipelineStreamer(ABC):
         except Exception as e:
             logging.error(f"Error restarting pipeline process: {e}")
             logging.error(f"Stack trace:\n{traceback.format_exc()}")
-            exit(1)
+            os._exit(1)
 
     def update_params(self, **params):
         self.params = params
@@ -99,7 +107,7 @@ class PipelineStreamer(ABC):
                 logging.warning(
                     "No output received while inputs are being sent. Restarting process."
                 )
-                await self.restart()
+                await self._restart()
                 return
 
     async def run_ingress_loop(self, done: Event):
