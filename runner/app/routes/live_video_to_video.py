@@ -1,7 +1,7 @@
 import logging
 import os
 import random
-from typing import Annotated, Dict, Tuple, Union
+from typing import Annotated, Any, Dict, Tuple, Union
 
 import torch
 import traceback
@@ -48,6 +48,13 @@ class LiveVideoToVideoParams(BaseModel):
         str,
         Field(
             default="", description="Hugging Face model ID used for image generation."
+        ),
+    ]
+    params: Annotated[
+        Any,
+        Field(
+            default=None,
+            description="Initial parameters for the model."
         ),
     ]
 

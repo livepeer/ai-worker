@@ -36,7 +36,7 @@ class LiveVideoToVideoPipeline(Pipeline):
                     http_port=8888,
                     subscribe_url=kwargs["subscribe_url"],
                     publish_url=kwargs["publish_url"],
-                    initial_params=json.dumps(kwargs),
+                    initial_params=json.dumps(kwargs["params"]),
                     # TODO: set torch device from self.torch_device
                 )
             logger.info(f"Starting stream, subscribe={kwargs['subscribe_url']} publish={kwargs['publish_url']}")

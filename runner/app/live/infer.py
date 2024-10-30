@@ -17,7 +17,7 @@ from streamer.zeromq import ZeroMQStreamer
 
 
 async def main(http_port: int, input_address: str, output_address: str, pipeline: str, subscribe_url: str, publish_url: str, params: dict):
-    handler = ZeroMQStreamer(input_address, output_address, pipeline, **params)
+    handler = ZeroMQStreamer(input_address, output_address, pipeline, **(params or {}))
     runner = None
     try:
         handler.start()
