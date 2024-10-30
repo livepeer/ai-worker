@@ -3,137 +3,136 @@
 package main
 
 import (
-    "context"
-    "flag"
+    "bytes"
+    "fmt"
+    "io"
     "log/slog"
+    "mime/multipart"
+    "net/http"
     "os"
     "path"
-    "path/filepath"
     "strconv"
-    "time"
-
-    "github.com/livepeer/ai-worker/worker"
-    "github.com/oapi-codegen/runtime/types"
 )
 
 func main() {
-    aiModelsDir := flag.String("aiModelsDir", "runner/models", "path to the models directory")
-    flag.Parse()
-
-    containerName := "inpainting"
-    baseOutputPath := "output"
-
-    containerImageID := "livepeer/ai-runner:inpainting"
-    gpus := []string{"0"}
-
-    modelsDir, err := filepath.Abs(*aiModelsDir)
-    if err != nil {
-        slog.Error("Error getting absolute path for 'aiModelsDir'", slog.String("error", err.Error()))
-        return
-    }
-
-    modelID := "stabilityai/stable-diffusion-2-inpainting"
-
-    w, err := worker.NewWorker(containerImageID, gpus, modelsDir)
-    if err != nil {
-        slog.Error("Error creating worker", slog.String("error", err.Error()))
-        return
-    }
-
-    slog.Info("Warming container")
-
-    ctx, cancel := context.WithCancel(context.Background())
-    defer cancel()
-
-    endpoint := worker.RunnerEndpoint{
-        Port: "8600",
-    }
-
-    if err := w.Warm(ctx, containerName, modelID, endpoint, worker.OptimizationFlags{}); err != nil {
-        slog.Error("Error warming container", slog.String("error", err.Error()))
-        return
-    }
-
-    slog.Info("Warm container is up")
-
-    args := os.Args[1:]
-    if len(args) < 4 {
+    if len(os.Args) < 4 {
         slog.Error("Usage: main <runs> <prompt> <image_path> <mask_path>")
         return
     }
 
-    runs, err := strconv.Atoi(args[0])
+    runs, err := strconv.Atoi(os.Args[1])
     if err != nil {
         slog.Error("Invalid runs arg", slog.String("error", err.Error()))
         return
     }
 
-    prompt := args[1]
-    imagePath := args[2]
-    maskPath := args[3]
-
-    // Read and prepare image file
-    imageBytes, err := os.ReadFile(imagePath)
-    if err != nil {
-        slog.Error("Error reading image", slog.String("imagePath", imagePath))
-        return
-    }
-    imageFile := types.File{}
-    imageFile.InitFromBytes(imageBytes, imagePath)
-
-    // Read and prepare mask file
-    maskBytes, err := os.ReadFile(maskPath)
-    if err != nil {
-        slog.Error("Error reading mask", slog.String("maskPath", maskPath))
-        return
-    }
-    maskFile := types.File{}
-    maskFile.InitFromBytes(maskBytes, maskPath)
-
-    // Prepare request
-    req := worker.GenInpaintingMultipartRequestBody{
-        Image:     imageFile,
-        MaskImage: maskFile,
-        ModelId:   &modelID,
-        Prompt:    prompt,
-        Strength:  worker.Float32(1.0),
-        GuidanceScale: worker.Float32(7.5),
-        NumInferenceSteps: worker.Int32(50),
-        SafetyCheck: worker.Bool(true),
-    }
+    prompt := os.Args[2]
+    imagePath := os.Args[3]
+    maskPath := os.Args[4]
 
     // Create output directory if it doesn't exist
-    if err := os.MkdirAll(baseOutputPath, 0755); err != nil {
+    outputDir := "output"
+    if err := os.MkdirAll(outputDir, 0755); err != nil {
         slog.Error("Error creating output directory", slog.String("error", err.Error()))
         return
     }
 
-    for i := 0; i < runs; i++ {
-        slog.Info("Running inpainting", slog.Int("num", i))
+    // Prepare request URL
+    url := "http://localhost:8600/inpainting"
 
-        resp, err := w.Inpainting(ctx, req)
-        if err != nil {
-            slog.Error("Error running inpainting", slog.String("error", err.Error()))
+    for i := 0; i < runs; i++ {
+        slog.Info("Running inpainting", slog.Int("run", i+1))
+
+        // Create multipart form data
+        var b bytes.Buffer
+        w := multipart.NewWriter(&b)
+
+        // Add prompt
+        if err := w.WriteField("prompt", prompt); err != nil {
+            slog.Error("Error writing prompt field", slog.String("error", err.Error()))
             return
         }
 
-        for j, media := range resp.Images {
-            outputPath := path.Join(baseOutputPath, strconv.Itoa(i)+"_"+strconv.Itoa(j)+".png")
-            if err := worker.SaveImageB64DataUrl(media.Url, outputPath); err != nil {
-                slog.Error("Error saving b64 data url as image", slog.String("error", err.Error()))
-                return
-            }
-
-            slog.Info("Output written", 
-                slog.String("outputPath", outputPath),
-                slog.Int("seed", media.Seed),
-                slog.Bool("nsfw", media.Nsfw),
-            )
+        // Add image file
+        imageFile, err := os.Open(imagePath)
+        if err != nil {
+            slog.Error("Error opening image file", slog.String("error", err.Error()))
+            return
         }
-    }
+        defer imageFile.Close()
 
-    slog.Info("Sleeping 2 seconds and then stopping container")
-    time.Sleep(2 * time.Second)
-    w.Stop(ctx)
-    time.Sleep(1 * time.Second)
+        fw, err := w.CreateFormFile("image", imagePath)
+        if err != nil {
+            slog.Error("Error creating form file", slog.String("error", err.Error()))
+            return
+        }
+        if _, err = io.Copy(fw, imageFile); err != nil {
+            slog.Error("Error copying image file", slog.String("error", err.Error()))
+            return
+        }
+
+        // Add mask file
+        maskFile, err := os.Open(maskPath)
+        if err != nil {
+            slog.Error("Error opening mask file", slog.String("error", err.Error()))
+            return
+        }
+        defer maskFile.Close()
+
+        fw, err = w.CreateFormFile("mask_image", maskPath)
+        if err != nil {
+            slog.Error("Error creating form file", slog.String("error", err.Error()))
+            return
+        }
+        if _, err = io.Copy(fw, maskFile); err != nil {
+            slog.Error("Error copying mask file", slog.String("error", err.Error()))
+            return
+        }
+
+        // Close the writer
+        w.Close()
+
+        // Create request
+        req, err := http.NewRequest("POST", url, &b)
+        if err != nil {
+            slog.Error("Error creating request", slog.String("error", err.Error()))
+            return
+        }
+        req.Header.Set("Content-Type", w.FormDataContentType())
+
+        // Send request
+        client := &http.Client{}
+        resp, err := client.Do(req)
+        if err != nil {
+            slog.Error("Error sending request", slog.String("error", err.Error()))
+            return
+        }
+        defer resp.Body.Close()
+
+        // Check response status
+        if resp.StatusCode != http.StatusOK {
+            body, _ := io.ReadAll(resp.Body)
+            slog.Error("Error response from server", 
+                slog.Int("status", resp.StatusCode),
+                slog.String("body", string(body)))
+            return
+        }
+
+        // Save response to file
+        outputPath := path.Join(outputDir, fmt.Sprintf("output_%d.json", i))
+        out, err := os.Create(outputPath)
+        if err != nil {
+            slog.Error("Error creating output file", slog.String("error", err.Error()))
+            return
+        }
+        defer out.Close()
+
+        _, err = io.Copy(out, resp.Body)
+        if err != nil {
+            slog.Error("Error saving response", slog.String("error", err.Error()))
+            return
+        }
+
+        slog.Info("Output written", slog.String("path", outputPath))
+    }
 }
