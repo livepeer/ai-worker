@@ -5,6 +5,7 @@ import logging
 import signal
 import sys
 import os
+import queue
 import traceback
 from typing import List
 
@@ -15,12 +16,25 @@ sys.path.insert(0, infer_root)
 from params_api import start_http_server
 from streamer.zeromq import ZeroMQStreamer
 
+import trickle
 
 async def main(http_port: int, input_address: str, output_address: str, pipeline: str, subscribe_url: str, publish_url: str, params: dict):
     handler = ZeroMQStreamer(input_address, output_address, pipeline, **(params or {}))
     runner = None
+    image_queue = queue.Queue()
+    def image_callback(image):
+        # TODO send image to inference
+        # For now just loop it back into the output
+        if image:
+            logging.info(f"Received JPEG of length {len(image)} bytes")
+        else:
+            logging.info("Empty image in queue, shutting down")
+        image_queue.put(image) # use None to signal shutdown
+
     try:
         handler.start()
+        subscribe_task = asyncio.create_task(trickle.run_subscribe(subscribe_url, image_callback))
+        publish_task = asyncio.create_task(trickle.run_publish(publish_url, image_queue))
         runner = await start_http_server(handler, http_port)
     except Exception as e:
         logging.error(f"Error starting socket handler or HTTP server: {e}")
@@ -29,6 +43,8 @@ async def main(http_port: int, input_address: str, output_address: str, pipeline
 
     await block_until_signal([signal.SIGINT, signal.SIGTERM])
     try:
+        await subscribe_task
+        await publish_task
         await runner.cleanup()
         await handler.stop()
     except Exception as e:
