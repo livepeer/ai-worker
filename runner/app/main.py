@@ -66,6 +66,10 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
             from app.pipelines.live_video_to_video import LiveVideoToVideoPipeline
 
             return LiveVideoToVideoPipeline(model_id)
+        case "inpainting":
+            from app.pipelines.inpainting import InpaintingPipeline
+
+            return InpaintingPipeline(model_id)
         case _:
             raise EnvironmentError(
                 f"{pipeline} is not a valid pipeline for model {model_id}"
@@ -112,6 +116,10 @@ def load_route(pipeline: str) -> any:
             from app.routes import live_video_to_video
 
             return live_video_to_video.router
+        case "inpainting":
+            from app.routes import inpainting
+            
+            return inpainting.router
         case _:
             raise EnvironmentError(f"{pipeline} is not a valid pipeline")
 
