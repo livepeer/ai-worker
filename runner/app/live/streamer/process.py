@@ -64,6 +64,7 @@ class PipelineProcess:
     async def recv_output(self) -> Image.Image | None:
         # we cannot do a long get with timeout as that would block the asyncio
         # event loop, so we loop with nowait and sleep async instead.
+        # TODO: use asyncio.to_thread instead
         while not self.is_done():
             try:
                 output = self.output_queue.get_nowait()

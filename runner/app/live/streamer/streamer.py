@@ -22,6 +22,9 @@ class PipelineStreamer(ABC):
         self.restart_count = 0
 
     def start(self):
+        if self.process:
+            raise RuntimeError("PipelineProcess already started")
+
         self.process = PipelineProcess.start(self.pipeline, **self.params)
         self.ingress_task = asyncio.create_task(self.run_ingress_loop(self.process.done))
         self.egress_task = asyncio.create_task(self.run_egress_loop(self.process.done))

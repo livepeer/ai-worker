@@ -6,21 +6,7 @@ from multiprocessing.synchronize import Event
 from typing import AsyncGenerator
 
 from .streamer import PipelineStreamer
-
-
-def to_jpeg_bytes(frame: Image.Image):
-    buffer = io.BytesIO()
-    frame.save(buffer, format="JPEG")
-    bytes = buffer.getvalue()
-    buffer.close()
-    return bytes
-
-
-def from_jpeg_bytes(frame_bytes: bytes):
-    image = Image.open(io.BytesIO(frame_bytes))
-    if image.mode != "RGBA":
-        image = image.convert("RGBA")
-    return image
+from .jpeg import to_jpeg_bytes, from_jpeg_bytes
 
 
 class ZeroMQStreamer(PipelineStreamer):
