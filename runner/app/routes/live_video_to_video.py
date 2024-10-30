@@ -30,11 +30,18 @@ PIPELINE_ERROR_CONFIG: Dict[str, Tuple[Union[str, None], int]] = {
 }
 
 class LiveVideoToVideoParams(BaseModel):
-    stream_url: Annotated[
+    subscribe_url: Annotated[
         str,
         Field(
             ...,
-            description="URL of the video stream to pull.",
+            description="Source URL of the incoming stream to subscribe to.",
+        ),
+    ]
+    publish_url: Annotated[
+        str,
+        Field(
+            ...,
+            description="Destination URL of the outgoing stream to publish.",
         ),
     ]
     model_id: Annotated[

@@ -16,7 +16,7 @@ from params_api import start_http_server
 from streamer.zeromq import ZeroMQStreamer
 
 
-async def main(http_port: int, input_address: str, output_address: str, pipeline: str, params: dict):
+async def main(http_port: int, input_address: str, output_address: str, pipeline: str, subscribe_url: str, publish_url: str, params: dict):
     handler = ZeroMQStreamer(input_address, output_address, pipeline, **params)
     runner = None
     try:
@@ -73,6 +73,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--initial-params", type=str, default="{}", help="Initial parameters for the pipeline"
     )
+    parser.add_argument(
+        "--subscribe-url", type=str, required=True, help="url to pull incoming streams"
+    )
+    parser.add_argument(
+        "--publish-url", type=str, required=True, help="url to push outgoing streams"
+    )
     args = parser.parse_args()
     try:
         params = json.loads(args.initial_params)
@@ -84,9 +90,10 @@ if __name__ == "__main__":
 
     try:
         asyncio.run(
-            main(args.http_port, args.input_address, args.output_address, args.pipeline, params)
+            main(args.http_port, args.input_address, args.output_address, args.pipeline, args.subscribe_url, args.publish_url, params)
         )
     except Exception as e:
         logging.error(f"Fatal error in main: {e}")
         logging.error(f"Traceback:\n{''.join(traceback.format_tb(e.__traceback__))}")
         sys.exit(1)
+
