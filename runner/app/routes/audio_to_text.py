@@ -106,6 +106,9 @@ async def audio_to_text(
             )
         ),
     ] = "true",
+    duration: float = Form(
+        None, description="Duration of the audio file in seconds."
+    ),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
     return_timestamps = parse_return_timestamps(return_timestamps)
@@ -134,7 +137,7 @@ async def audio_to_text(
         )
 
     try:
-        return pipeline(audio=audio, return_timestamps=return_timestamps)
+        return pipeline(audio=audio, return_timestamps=return_timestamps, duration=duration)
     except Exception as e:
         if isinstance(e, torch.cuda.OutOfMemoryError):
             torch.cuda.empty_cache()

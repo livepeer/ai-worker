@@ -245,6 +245,12 @@ func NewAudioToTextMultipartWriter(w io.Writer, req GenAudioToTextMultipartReque
 		}
 	}
 
+	if req.Duration != nil {
+		if err := mw.WriteField("duration", fmt.Sprintf("%f", *req.Duration)); err != nil {
+			return nil, err
+		}
+	}
+
 	if err := mw.Close(); err != nil {
 		return nil, err
 	}
