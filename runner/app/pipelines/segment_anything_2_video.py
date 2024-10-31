@@ -4,12 +4,13 @@ import shutil
 import tempfile
 from typing import List, Optional, Tuple
 
-from PIL import Image
 from fastapi import UploadFile
 import torch
 from app.pipelines.base import Pipeline
 from app.pipelines.utils import get_torch_device, get_model_dir
 from PIL import ImageFile
+
+from app.utils.errors import InferenceError
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 from sam2.sam2_video_predictor import SAM2VideoPredictor
@@ -37,9 +38,10 @@ class SegmentAnything2VideoPipeline(Pipeline):
                 "See e.g. https://github.com/pytorch/pytorch/issues/84936 for a discussion."
             )
         
-        self.tm_vid = SAM2VideoPredictor.from_pretrained(
+        self.tm = SAM2VideoPredictor.from_pretrained(
             model_id=model_id,
             device=torch_device,
+            **kwargs
         )
 
     def __call__(
@@ -73,11 +75,11 @@ class SegmentAnything2VideoPipeline(Pipeline):
             shutil.rmtree(temp_dir) 
 
             
-            inference_state = self.tm_vid.init_state(video_path=frame_dir)
+            inference_state = self.tm.init_state(video_path=frame_dir)
             shutil.rmtree(frame_dir)
 
             # TODO: Loop through the points and labels to generate object ids?
-            _, out_obj_ids, out_mask_logits = self.tm_vid.add_new_points_or_box(
+            _, _, _ = self.tm.add_new_points_or_box(
                 inference_state,
                 frame_idx=kwargs.get('frame_idx', None),
                 obj_id=1, #TODO: obj_id is hardcoded to 1, should support multiple objects
@@ -85,7 +87,7 @@ class SegmentAnything2VideoPipeline(Pipeline):
                 labels=kwargs.get('labels', None),
             )
             
-            return self.tm_vid.propagate_in_video(inference_state)
+            return self.tm.propagate_in_video(inference_state)
     
         except Exception as e:
             raise InferenceError(original_exception=e)
