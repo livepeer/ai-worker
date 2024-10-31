@@ -75,6 +75,7 @@ function download_all_models() {
     # Download live-video-to-video models.
     huggingface-cli download KBlueLeaf/kohaku-v2.1 --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
     huggingface-cli download KwaiVGI/LivePortrait --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
+    huggingface-cli download yuvraj108c/Depth-Anything-2-Onnx --include "*.onnx" "*.json" "*.txt" --cache-dir models
 }
 
 # Download models with a restrictive license.

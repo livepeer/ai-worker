@@ -1,0 +1,42 @@
+ARG BASE_IMAGE=livepeer/ai-runner:live-multimedia
+FROM ${BASE_IMAGE}
+
+ENV PIP_PREFER_BINARY=1
+
+# INSTALL COMFYUI --------------------------------------------------------------------------------------------------------
+# Install comfystream (which includes ComfyUI)
+RUN pip install --no-cache-dir git+https://github.com/yondonfu/comfystream.git && \
+    pip install torch==2.4.1+cu121 torchvision --index-url https://download.pytorch.org/whl/cu121
+
+# Create directory for ComfyUI custom nodes and models
+RUN mkdir -p /comfyui/custom_nodes && \
+    mkdir -p /comfyui/models/tensorrt/depth-anything
+
+# INSTALL CUSTOM NODES ---------------------------------------------------------------------------------------------------
+# Install tensor_utils custom node from comfystream
+RUN git clone https://github.com/yondonfu/comfystream.git && \
+    cp -r comfystream/nodes/tensor_utils /comfyui/custom_nodes/ && \
+    rm -rf comfystream
+
+# Install ComfyUI-Depth-Anything-Tensorrt Node (https://github.com/yuvraj108c/ComfyUI-Depth-Anything-Tensorrt)
+WORKDIR /comfyui/custom_nodes
+RUN git clone https://github.com/yuvraj108c/ComfyUI-Depth-Anything-Tensorrt.git && \
+    cd ComfyUI-Depth-Anything-Tensorrt && \
+    pip install -r requirements.txt
+
+# Download ONNX models and convert to TensorRT
+RUN pip install --no-cache-dir huggingface_hub[cli] hf_transfer && \
+    export HF_HUB_ENABLE_HF_TRANSFER=1 && \
+    cd /comfyui/custom_nodes/ComfyUI-Depth-Anything-Tensorrt && \
+    huggingface-cli download yuvraj108c/Depth-Anything-2-Onnx --include "*.onnx"
+    #  && \
+    #  python export_trt.py && \
+    #  mv *.engine /comfyui/models/tensorrt/depth-anything/
+
+# Set working directory back to root
+WORKDIR /
+# Set ComfyUI workspace environment variable
+ENV COMFY_WORKSPACE=/comfyui
+
+# The command to run ComfyUI server
+#CMD ["python", "-m", "comfystream.server.app", "--workspace", "/comfyui"]

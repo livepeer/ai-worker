@@ -3,11 +3,6 @@ FROM ${BASE_IMAGE}
 
 ENV PIP_PREFER_BINARY=1
 
-# Install NVIDIA Container Toolkit
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    nvidia-container-toolkit \
-    && rm -rf /var/lib/apt/lists/*
-
 # Install StreamDiffusion dependencies
 RUN pip install --no-cache-dir \
     torch==2.1.0 \
@@ -21,7 +16,3 @@ RUN pip install git+https://github.com/cumulo-autumn/StreamDiffusion.git@main#eg
 
 # Install TensorRT extension
 RUN python -m streamdiffusion.tools.install-tensorrt
-
-# Set environment variables for NVIDIA drivers
-ENV NVIDIA_VISIBLE_DEVICES all
-ENV NVIDIA_DRIVER_CAPABILITIES compute,utility,video
