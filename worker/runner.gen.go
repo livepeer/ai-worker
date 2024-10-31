@@ -244,8 +244,14 @@ type LiveVideoToVideoParams struct {
 	// ModelId Hugging Face model ID used for image generation.
 	ModelId *string `json:"model_id,omitempty"`
 
-	// StreamUrl URL of the video stream to pull.
-	StreamUrl string `json:"stream_url"`
+	// Params Initial parameters for the model.
+	Params *map[string]interface{} `json:"params,omitempty"`
+
+	// PublishUrl Destination URL of the outgoing stream to publish.
+	PublishUrl string `json:"publish_url"`
+
+	// SubscribeUrl Source URL of the incoming stream to subscribe to.
+	SubscribeUrl string `json:"subscribe_url"`
 }
 
 // MasksResponse Response model for object segmentation.
@@ -2648,7 +2654,6 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
-
 	"H4sIAAAAAAAC/+xce28jN5L/KkTfAfYAkiw7mczBwP7hmTzGODsZ2J6dBBNDoLpLLcZsspdkW9LO+bsf",
 	"WOwH+6WHYzu7s/rLlppkvVi/Khar9SUIZZJKAcLo4PRLoMM5JBT/Pftw/oNSUtn/I9ChYqlhUgSn9gkB",
 	"+4go0KkUGkgiI+CjYBCkSqagDANcI9Fxe/rNHPLpCWhNY7DzDDMcgtPgUsf20yq1H7RRTMTBw8MgUPCP",

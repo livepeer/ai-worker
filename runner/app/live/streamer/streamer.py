@@ -56,11 +56,11 @@ class PipelineStreamer(ABC):
             logging.error(f"Error restarting pipeline process: {e}")
             logging.error(f"Stack trace:\n{traceback.format_exc()}")
 
-    def update_params(self, params: dict):
+    def update_params(self, **params):
         self.params = params
         self.last_params_time = time.time()
         if self.process:
-            self.process.update_params(params)
+            self.process.update_params(**params)
 
     async def monitor_loop(self, done: Event):
         start_time = time.time()
