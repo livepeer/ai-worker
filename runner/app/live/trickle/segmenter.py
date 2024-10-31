@@ -11,7 +11,7 @@ import threading
 from datetime import datetime
 
 # Constants and initial values
-READ_TIMEOUT = 2
+READ_TIMEOUT = 20
 SLEEP_INTERVAL = 0.05
 
 # TODO make this better configurable
@@ -35,7 +35,7 @@ def remove_named_pipe(pipe_name):
         if e.errno != errno.ENOENT:
             raise
 
-def ffmpeg_cmd(in_pipe_fd, out_pattern):
+def ffmpeg_cmd(out_pattern):
 
     if GPU:
         cmd = [
@@ -43,7 +43,7 @@ def ffmpeg_cmd(in_pipe_fd, out_pattern):
 	    '-loglevel', 'warning',
         '-f', 'image2pipe',
         '-framerate', f"{FRAMERATE}",
-        '-i', f'pipe:{in_pipe_fd}',
+        '-i', 'pipe:0', # stdin
         '-c:v', 'h264_nvenc',
         '-bf', '0', # disable bframes for webrtc
         '-g', f'{GOP_SECS*FRAMERATE}',
@@ -55,11 +55,10 @@ def ffmpeg_cmd(in_pipe_fd, out_pattern):
     else:
         cmd = [
         'ffmpeg',
-	    '-loglevel', 'info',
+	    '-loglevel', 'warning',
         '-f', 'image2pipe',
         '-framerate', f"{FRAMERATE}",
-        '-i', f'pipe:{in_pipe_fd}',
-        #'-i', f'-', # stdin
+        '-i', 'pipe:0', # stdin
         '-c:v', 'libx264',
         '-bf', '0', # disable bframes for webrtc
         '-g', f'{GOP_SECS*FRAMERATE}',
@@ -115,7 +114,6 @@ def read_from_pipe(pipe_name, callback, ffmpeg_proc):
     return True
 
 def segment_reading_process(in_fd, callback):
-    logging.info("JOSH - in segment reading process")
     pipe_index = 0
     out_pattern = generate_random_string() + "-%d.ts"
 
@@ -125,19 +123,15 @@ def segment_reading_process(in_fd, callback):
 
     # Launch FFmpeg process with stdin, stdout, and stderr as pipes
     proc = subprocess.Popen(
-        ffmpeg_cmd(in_fd, out_pattern),
-        stdin=subprocess.PIPE,
-        #stdin=in_fd,
+        ffmpeg_cmd(out_pattern),
+        stdin=in_fd,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        pass_fds=(in_fd,),
+        stderr=subprocess.STDOUT,
     )
 
     # Create a thread to handle stderr redirection
-    thread = threading.Thread(target=print_proc, args=(proc.stderr,))
+    thread = threading.Thread(target=print_proc, args=(proc.stdout,))
     thread.start()
-    thread2 = threading.Thread(target=print_proc, args=(proc.stdout,))
-    thread2.start()
 
     try:
         while True:
@@ -158,17 +152,11 @@ def segment_reading_process(in_fd, callback):
 
     finally:
         os.close(in_fd)
-        #proc.stdin.close()
         logging.info("awaitng ffmpeg (output)")
         proc.wait()
         logging.info("proc complete ffmpeg (output)")
         thread.join()
-        thread2.join()
         logging.info("ffmpeg (output) complete")
-        #(stdout, stderr) = proc.communicate()
-        #logging.info("FFmpeg (output)")
-        #logging.info(stderr.decode())
-        #logging.info(stdout.decode())
 
         # Cleanup remaining pipes
         remove_named_pipe(current_pipe)

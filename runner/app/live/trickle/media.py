@@ -25,6 +25,7 @@ async def run_subscribe(subscribe_url: str, image_callback):
         subscribe_task = asyncio.create_task(subscribe(subscribe_url, ffmpeg.stdin))
         jpeg_task = asyncio.create_task(parse_jpegs(ffmpeg.stdout, image_callback))
         await asyncio.gather(ffmpeg.wait(), logging_task, subscribe_task, jpeg_task)
+        logging.info("run_subscribe complete")
     except Exception as e:
         logging.error(f"preprocess got error {e}", e)
         raise e
@@ -120,14 +121,13 @@ async def parse_jpegs(in_pipe, image_callback):
             parser.feed(chunk)
 
 def feed_ffmpeg(ffmpeg_fd, image_generator):
-    with os.fdopen(ffmpeg_fd, 'wb', buffering=0) as ffmpeg:
-        while True:
-            image = image_generator.get()
-            if image is None:
-                logging.info("Image generator empty, leaving feed_ffmpeg")
-                break
-            ffmpeg.write(image)
-            ffmpeg.flush()
+    while True:
+        image = image_generator.get()
+        if image is None:
+            logging.info("Image generator empty, leaving feed_ffmpeg")
+            break
+        os.write(ffmpeg_fd, image)
+    os.close(ffmpeg_fd)
 
 async def run_publish(publish_url: str, image_generator):
     try:
@@ -178,7 +178,7 @@ async def run_publish(publish_url: str, image_generator):
             segment_thread.join()
             ffmpeg_feeder.join()
         await asyncio.to_thread(joins)
-        logging.info("postprocess complete")
+        logging.info("run_publish complete")
 
     except Exception as e:
         logging.error(f"postprocess got error {e}", e)
