@@ -563,10 +563,11 @@ components:
             is ''true'' (''sentence''). ''false'' means no timestamps. ''word'' means
             word-based timestamps.'
           default: 'true'
-        duration:
-          type: number
-          title: Duration
-          description: Duration of the audio file in seconds.
+        job_info:
+          type: string
+          title: Job Info
+          description: Additional job information to be passed to the pipeline
+          default: '{}'
       type: object
       required:
       - audio

@@ -9,6 +9,8 @@ from app.routes.utils import (
     HTTPError,
     TextResponse,
     file_exceeds_max_size,
+    parse_key_from_job_info,
+    get_media_duration_ffmpeg,
     http_error,
     handle_pipeline_exception,
 )
@@ -106,9 +108,10 @@ async def audio_to_text(
             )
         ),
     ] = "true",
-    duration: float = Form(
-        None, description="Duration of the audio file in seconds."
-    ),
+    job_info: Annotated[
+        str,
+        Form(description="Additional job information to be passed to the pipeline"),
+    ] = "{}",
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
     return_timestamps = parse_return_timestamps(return_timestamps)
@@ -135,10 +138,26 @@ async def audio_to_text(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             content=http_error("File size exceeds limit."),
         )
-
+    
+    try:
+        duration = parse_key_from_job_info(job_info, "duration", str)
+        if duration:
+            duration = float(duration)
+        else:
+            logger.warning(f"duration not provided in request, calculating with ffprobe")
+            duration = get_media_duration_ffmpeg(audio.file.read())
+            audio.file.seek(0) # Reset file pointer
+    except Exception as e:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content=http_error("Unable to calculate duration of file"),
+        )
+    
     try:
         return pipeline(audio=audio, return_timestamps=return_timestamps, duration=duration)
     except Exception as e:
+        # Handle CUDA out of memory errors
+        # Note: This solution does not fully clear VRAM memory
         if isinstance(e, torch.cuda.OutOfMemoryError):
             torch.cuda.empty_cache()
         logger.error(f"AudioToText pipeline error: {e}")

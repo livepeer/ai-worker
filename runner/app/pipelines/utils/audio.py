@@ -67,35 +67,3 @@ class AudioConverter:
         output_buffer.seek(0)
         converted_bytes = output_buffer.read()
         return converted_bytes
-
-
-    @staticmethod
-    def get_media_duration_ffmpeg(bytes: bytes) -> float:
-        """Gets the duration of the media using ffprobe.
-
-        Args:
-            bytes: The media file as bytes.
-
-        Returns:
-            The duration of the media in seconds.
-        """
-        temp_file_path = None
-        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            temp_file.write(bytes)
-            temp_file_path = temp_file.name
-
-        try:
-            result = subprocess.run(
-                ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", temp_file_path],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-            duration = float(result.stdout.strip())
-        except Exception as e:
-            raise AudioConversionError(f"Failed to get duration with ffmpeg: {e}")
-        finally:
-            os.remove(temp_file_path)
-
-        print(f"Duration: {duration} seconds")
-        return duration

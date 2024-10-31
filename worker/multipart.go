@@ -214,6 +214,7 @@ func NewUpscaleMultipartWriter(w io.Writer, req GenUpscaleMultipartRequestBody) 
 
 	return mw, nil
 }
+
 func NewAudioToTextMultipartWriter(w io.Writer, req GenAudioToTextMultipartRequestBody) (*multipart.Writer, error) {
 	mw := multipart.NewWriter(w)
 	writer, err := mw.CreateFormFile("audio", req.Audio.Filename())
@@ -245,8 +246,8 @@ func NewAudioToTextMultipartWriter(w io.Writer, req GenAudioToTextMultipartReque
 		}
 	}
 
-	if req.Duration != nil {
-		if err := mw.WriteField("duration", fmt.Sprintf("%f", *req.Duration)); err != nil {
+	if req.JobInfo != nil {
+		if err := mw.WriteField("job_info", *req.JobInfo); err != nil {
 			return nil, err
 		}
 	}

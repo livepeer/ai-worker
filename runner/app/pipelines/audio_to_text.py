@@ -1,7 +1,6 @@
 from enum import Enum
 import logging
 import os
-import gc
 from typing import List
 
 import torch
@@ -60,7 +59,7 @@ class AudioToTextPipeline(Pipeline):
         # Retrieve torch_dtype from MODEL_OPT_DEFAULTS
         model_type = ModelName(model_id)
         kwargs["torch_dtype"] = MODEL_OPT_DEFAULTS[model_type]["torch_dtype"]
-        logger.info("AudioToText loading %s variant on device %s with %s precision", model_id, torch_device, kwargs["torch_dtype"])
+        logger.info("AudioToText loading %s on device %s with %s variant", model_id, torch_device, kwargs["torch_dtype"])
 
         model = AutoModelForSpeechSeq2Seq.from_pretrained(
             model_id,
@@ -79,6 +78,7 @@ class AudioToTextPipeline(Pipeline):
             tokenizer=processor.tokenizer,
             feature_extractor=processor.feature_extractor,
             max_new_tokens=128,
+            device=torch_device,
             **kwargs,
         )
 
@@ -95,32 +95,35 @@ class AudioToTextPipeline(Pipeline):
         ):
             audioBytes = self.audio_converter.convert(audioBytes, "mp3")
 
-        # Get media duration to optimize batch size (when not provided by gateway)
-        if duration is None:
-            try:
-                duration = self.audio_converter.get_media_duration_ffmpeg(audioBytes)
-            except Exception as e:
-                raise InferenceError("Unable to calculate duration of file")
-
         chunk_length_s = int(MODEL_OPT_DEFAULTS[model_type].get("chunk_length_s")) 
         batch_size = int(16)
-
-        # if duration is greater than a single chunk, then use sequential long-form chunking
-        if duration > chunk_length_s:
-            kwargs["batch_size"] = batch_size
-            kwargs["chunk_length_s"] = chunk_length_s
+        kwargs["batch_size"] = batch_size
+        kwargs["chunk_length_s"] = chunk_length_s
         
         # if word timestamps are requested, then reduce batch size to 4
         if (kwargs["return_timestamps"] == 'word'):
-            max_duration_for_word = 60 * 1000
-            if duration > max_duration_for_word: # Maximum 60 minute audio file length for return_timestamps='word'
-                raise InferenceError("Word timestamps are only supported for audio files up to %s minutes long for model %s" % (max_duration_for_word, self.model_id))
+            # Maximum 60 minute audio file length for return_timestamps='word'
+            word_timestamp_max_s = 3600
+            if duration > word_timestamp_max_s:
+                raise InferenceError("Word timestamps are only supported for audio files up to 60 minutes long for model %s" % (self.model_id))
             
-            if "batch_size" in kwargs:
-                if duration > max_duration_for_word:
-                    kwargs["batch_size"] = 4
+            #optimized defaults for word timestamps
+            if duration > 300:
+                kwargs["batch_size"] = 4
+
+        # if duration is short then use sequential inference
+        if duration <= chunk_length_s:
+            kwargs.pop("batch_size", None)
+            kwargs.pop("chunk_length_s", None)
 
         try:
+            logger.info(
+                "AudioToTextPipeline: Starting inference with batch_size=%s, chunk_length_s=%s, duration=%s",
+                kwargs.get("batch_size", "N/A"),
+                kwargs.get("chunk_length_s", "N/A"),
+                duration
+            )
+
             outputs = self.tm(audioBytes, **kwargs)
             outputs.setdefault("chunks", [])
 

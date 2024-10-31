@@ -2,6 +2,8 @@ import base64
 import io
 import json
 import os
+import subprocess
+import tempfile
 from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -218,7 +220,6 @@ ERROR_CONFIG: Dict[str, Tuple[Union[str, None], int]] = {
     "CUDA out of memory": ("GPU out of memory.", status.HTTP_500_INTERNAL_SERVER_ERROR),
 }
 
-
 def handle_pipeline_exception(
     e: object,
     default_error_message: Union[str, Dict[str, object]] = "Pipeline error.",
@@ -270,3 +271,57 @@ def handle_pipeline_exception(
         status_code=status_code,
         content=content,
     )
+
+def parse_key_from_job_info(job_info: str, key: str, expected_type: type) -> Union[Optional[Union[str, int, float, bool]]]:
+    """Parse a specific key from the job_info JSON string.
+
+    Args:
+        job_info: The job_info JSON string.
+        key: The key to parse from the job_info.
+        expected_type: The expected type of the key's value.
+
+    Returns:
+        The value of the key if it exists and is of the expected type, otherwise an Exception with an error message.
+    """
+    try:
+        job_info = json.loads(job_info)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON: {e}")
+
+    if key in job_info:
+        try:
+            value = expected_type(job_info[key])
+            return value
+        except (ValueError, TypeError):
+            raise TypeError(f"Invalid {key} value. Must be of type {expected_type.__name__}.")
+    else:
+        return None
+
+def get_media_duration_ffmpeg(bytes: bytes) -> float:
+    """Gets the duration of the media using ffprobe.
+
+    Args:
+        bytes: The media file as bytes.
+
+    Returns:
+        The duration of the media in seconds.
+    """
+    temp_file_path = None
+    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+        temp_file.write(bytes)
+        temp_file_path = temp_file.name
+
+    try:
+        result = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", temp_file_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        duration = float(result.stdout.strip())
+    except Exception as e:
+        raise Exception(f"Failed to get duration with ffmpeg: {e}")
+    finally:
+        os.remove(temp_file_path)
+
+    return duration
