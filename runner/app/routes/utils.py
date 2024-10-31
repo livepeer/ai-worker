@@ -69,6 +69,12 @@ class ImageToTextResponse(BaseModel):
 
     text: str = Field(..., description="The generated text.")
 
+class LiveVideoToVideoResponse(BaseModel):
+    """Response model for live video-to-video generation."""
+
+    subscribe_url: str = Field(..., description="Source URL of the incoming stream to subscribe to")
+    publish_url: str = Field(..., description="Destination URL of the outgoing stream to publish to")
+
 
 class APIError(BaseModel):
     """API error response model."""
