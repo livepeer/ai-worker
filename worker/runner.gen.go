@@ -32,6 +32,12 @@ type APIError struct {
 	Msg string `json:"msg"`
 }
 
+// AudioResponse Response model for audio generation.
+type AudioResponse struct {
+	// Audio The generated audio.
+	Audio MediaURL `json:"audio"`
+}
+
 // BodyGenAudioToText defines model for Body_genAudioToText.
 type BodyGenAudioToText struct {
 	// Audio Uploaded audio file to be transcribed.
@@ -272,6 +278,12 @@ type Media struct {
 	Url string `json:"url"`
 }
 
+// MediaURL A URL from which media can be accessed.
+type MediaURL struct {
+	// Url The URL where the media can be accessed.
+	Url string `json:"url"`
+}
+
 // TextResponse Response model for text generation.
 type TextResponse struct {
 	// Chunks The generated text chunks.
@@ -315,6 +327,18 @@ type TextToImageParams struct {
 
 	// Width The width in pixels of the generated image.
 	Width *int `json:"width,omitempty"`
+}
+
+// TextToSpeechParams defines model for TextToSpeechParams.
+type TextToSpeechParams struct {
+	// Description Description of speaker to steer text to speech generation.
+	Description *string `json:"description,omitempty"`
+
+	// ModelId Hugging Face model ID used for text to speech generation.
+	ModelId *string `json:"model_id,omitempty"`
+
+	// Text Text input for speech generation.
+	Text *string `json:"text,omitempty"`
 }
 
 // ValidationError defines model for ValidationError.
@@ -364,6 +388,9 @@ type GenSegmentAnything2MultipartRequestBody = BodyGenSegmentAnything2
 
 // GenTextToImageJSONRequestBody defines body for GenTextToImage for application/json ContentType.
 type GenTextToImageJSONRequestBody = TextToImageParams
+
+// GenTextToSpeechJSONRequestBody defines body for GenTextToSpeech for application/json ContentType.
+type GenTextToSpeechJSONRequestBody = TextToSpeechParams
 
 // GenUpscaleMultipartRequestBody defines body for GenUpscale for multipart/form-data ContentType.
 type GenUpscaleMultipartRequestBody = BodyGenUpscale
@@ -536,6 +563,11 @@ type ClientInterface interface {
 
 	GenTextToImage(ctx context.Context, body GenTextToImageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GenTextToSpeechWithBody request with any body
+	GenTextToSpeechWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	GenTextToSpeech(ctx context.Context, body GenTextToSpeechJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GenUpscaleWithBody request with any body
 	GenUpscaleWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
@@ -674,6 +706,30 @@ func (c *Client) GenTextToImageWithBody(ctx context.Context, contentType string,
 
 func (c *Client) GenTextToImage(ctx context.Context, body GenTextToImageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGenTextToImageRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GenTextToSpeechWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGenTextToSpeechRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GenTextToSpeech(ctx context.Context, body GenTextToSpeechJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGenTextToSpeechRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -988,6 +1044,46 @@ func NewGenTextToImageRequestWithBody(server string, contentType string, body io
 	return req, nil
 }
 
+// NewGenTextToSpeechRequest calls the generic GenTextToSpeech builder with application/json body
+func NewGenTextToSpeechRequest(server string, body GenTextToSpeechJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGenTextToSpeechRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewGenTextToSpeechRequestWithBody generates requests for GenTextToSpeech with any type of body
+func NewGenTextToSpeechRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/text-to-speech")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGenUpscaleRequestWithBody generates requests for GenUpscale with any type of body
 func NewGenUpscaleRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
@@ -1092,6 +1188,11 @@ type ClientWithResponsesInterface interface {
 	GenTextToImageWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenTextToImageResponse, error)
 
 	GenTextToImageWithResponse(ctx context.Context, body GenTextToImageJSONRequestBody, reqEditors ...RequestEditorFn) (*GenTextToImageResponse, error)
+
+	// GenTextToSpeechWithBodyWithResponse request with any body
+	GenTextToSpeechWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenTextToSpeechResponse, error)
+
+	GenTextToSpeechWithResponse(ctx context.Context, body GenTextToSpeechJSONRequestBody, reqEditors ...RequestEditorFn) (*GenTextToSpeechResponse, error)
 
 	// GenUpscaleWithBodyWithResponse request with any body
 	GenUpscaleWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenUpscaleResponse, error)
@@ -1330,6 +1431,32 @@ func (r GenTextToImageResponse) StatusCode() int {
 	return 0
 }
 
+type GenTextToSpeechResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *AudioResponse
+	JSON400      *HTTPError
+	JSON401      *HTTPError
+	JSON422      *HTTPValidationError
+	JSON500      *HTTPError
+}
+
+// Status returns HTTPResponse.Status
+func (r GenTextToSpeechResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GenTextToSpeechResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GenUpscaleResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -1459,6 +1586,23 @@ func (c *ClientWithResponses) GenTextToImageWithResponse(ctx context.Context, bo
 		return nil, err
 	}
 	return ParseGenTextToImageResponse(rsp)
+}
+
+// GenTextToSpeechWithBodyWithResponse request with arbitrary body returning *GenTextToSpeechResponse
+func (c *ClientWithResponses) GenTextToSpeechWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenTextToSpeechResponse, error) {
+	rsp, err := c.GenTextToSpeechWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGenTextToSpeechResponse(rsp)
+}
+
+func (c *ClientWithResponses) GenTextToSpeechWithResponse(ctx context.Context, body GenTextToSpeechJSONRequestBody, reqEditors ...RequestEditorFn) (*GenTextToSpeechResponse, error) {
+	rsp, err := c.GenTextToSpeech(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGenTextToSpeechResponse(rsp)
 }
 
 // GenUpscaleWithBodyWithResponse request with arbitrary body returning *GenUpscaleResponse
@@ -1949,6 +2093,60 @@ func ParseGenTextToImageResponse(rsp *http.Response) (*GenTextToImageResponse, e
 	return response, nil
 }
 
+// ParseGenTextToSpeechResponse parses an HTTP response from a GenTextToSpeechWithResponse call
+func ParseGenTextToSpeechResponse(rsp *http.Response) (*GenTextToSpeechResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GenTextToSpeechResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AudioResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest HTTPValidationError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGenUpscaleResponse parses an HTTP response from a GenUpscaleWithResponse call
 func ParseGenUpscaleResponse(rsp *http.Response) (*GenUpscaleResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -2032,6 +2230,9 @@ type ServerInterface interface {
 	// Text To Image
 	// (POST /text-to-image)
 	GenTextToImage(w http.ResponseWriter, r *http.Request)
+	// Text To Speech
+	// (POST /text-to-speech)
+	GenTextToSpeech(w http.ResponseWriter, r *http.Request)
 	// Upscale
 	// (POST /upscale)
 	GenUpscale(w http.ResponseWriter, r *http.Request)
@@ -2092,6 +2293,12 @@ func (_ Unimplemented) GenSegmentAnything2(w http.ResponseWriter, r *http.Reques
 // Text To Image
 // (POST /text-to-image)
 func (_ Unimplemented) GenTextToImage(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Text To Speech
+// (POST /text-to-speech)
+func (_ Unimplemented) GenTextToSpeech(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -2261,6 +2468,23 @@ func (siw *ServerInterfaceWrapper) GenTextToImage(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r.WithContext(ctx))
 }
 
+// GenTextToSpeech operation middleware
+func (siw *ServerInterfaceWrapper) GenTextToSpeech(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, HTTPBearerScopes, []string{})
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GenTextToSpeech(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
 // GenUpscale operation middleware
 func (siw *ServerInterfaceWrapper) GenUpscale(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -2419,6 +2643,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/text-to-image", wrapper.GenTextToImage)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/text-to-speech", wrapper.GenTextToSpeech)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/upscale", wrapper.GenUpscale)
 	})
 
@@ -2428,71 +2655,75 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"pbwPtw//HwAA///hR+/F4F4AAA==",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

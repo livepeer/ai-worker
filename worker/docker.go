@@ -38,11 +38,13 @@ var containerHostPorts = map[string]string{
 	"llm":                "8500",
 	"segment-anything-2": "8600",
 	"image-to-text":      "8700",
+	"text-to-speech":     "8800",
 }
 
 // Mapping for per pipeline container images.
 var pipelineToImage = map[string]string{
 	"segment-anything-2": "livepeer/ai-runner:segment-anything-2",
+	"text-to-speech":     "livepeer/ai-runner:text-to-speech",
 }
 
 type DockerManager struct {
