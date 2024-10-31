@@ -34,12 +34,12 @@ class LiveVideoToVideoPipeline(Pipeline):
                     input_address="tcp://localhost:5555",
                     output_address="tcp://localhost:5556",
                     http_port=8888,
-                    initial_params=json.dumps(kwargs),
+                    subscribe_url=kwargs["subscribe_url"],
+                    publish_url=kwargs["publish_url"],
+                    initial_params=json.dumps(kwargs["params"]),
                     # TODO: set torch device from self.torch_device
                 )
-            # TODO: start pulling the stream
-            stream_url = kwargs["stream_url"]
-            logger.info(f"Starting pulling stream, stream_url={stream_url}")
+            logger.info(f"Starting stream, subscribe={kwargs['subscribe_url']} publish={kwargs['publish_url']}")
             return
         except Exception as e:
             raise InferenceError(original_exception=e)
