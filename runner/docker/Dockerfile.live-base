@@ -10,6 +10,14 @@ RUN apt-get update && \
     xz-utils tk-dev libffi-dev liblzma-dev python3-openssl git runit libzmq3-dev && \
     rm -rf /var/lib/apt/lists/*
 
+# Install NVIDIA Container Toolkit
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    nvidia-container-toolkit \
+    && rm -rf /var/lib/apt/lists/*
+# Set environment variables for NVIDIA drivers
+ENV NVIDIA_VISIBLE_DEVICES all
+ENV NVIDIA_DRIVER_CAPABILITIES compute,utility,video
+
 # Install pyenv
 RUN curl https://pyenv.run | bash
 

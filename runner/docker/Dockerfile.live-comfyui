@@ -6,7 +6,8 @@ ENV PIP_PREFER_BINARY=1
 # INSTALL COMFYUI --------------------------------------------------------------------------------------------------------
 # Install comfystream (which includes ComfyUI)
 RUN pip install --no-cache-dir git+https://github.com/yondonfu/comfystream.git && \
-    pip install torch==2.4.1+cu121 torchvision --index-url https://download.pytorch.org/whl/cu121
+    pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu124
+#    pip install -U nvidia-cudnn-cu12==8.9.7.29
 
 # Create directory for ComfyUI custom nodes and models
 RUN mkdir -p /comfyui/custom_nodes && \
@@ -24,14 +25,20 @@ RUN git clone https://github.com/yuvraj108c/ComfyUI-Depth-Anything-Tensorrt.git 
     cd ComfyUI-Depth-Anything-Tensorrt && \
     pip install -r requirements.txt
 
-# Download ONNX models and convert to TensorRT
-RUN pip install --no-cache-dir huggingface_hub[cli] hf_transfer && \
-    export HF_HUB_ENABLE_HF_TRANSFER=1 && \
-    cd /comfyui/custom_nodes/ComfyUI-Depth-Anything-Tensorrt && \
-    huggingface-cli download yuvraj108c/Depth-Anything-2-Onnx --include "*.onnx"
-    #  && \
-    #  python export_trt.py && \
-    #  mv *.engine /comfyui/models/tensorrt/depth-anything/
+#RUN true
+# Copy ONNX models and conversion script
+COPY docker/utils/convert-onnx-tensorrt-depthanything.py /tmp/
+COPY models/models--yuvraj108c--Depth-Anything-2-Onnx /tmp/models/
+RUN cp ComfyUI-Depth-Anything-Tensorrt/utilities.py /tmp/
+
+# Convert ONNX models to TensorRT engines
+#RUN python /tmp/convert-onnx-tensorrt-depthanything.py && \
+#    rm -rf /tmp/models /tmp/utilities.py
+
+# Set environment vars required for ComfyUI
+ENV COMFY_WORKSPACE=/comfyui
+ENV PYTORCH_CUDA_ALLOC_CONF="backend:cudaMallocAsync"
+    
 
 # Set working directory back to root
 WORKDIR /
