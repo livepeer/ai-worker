@@ -9,6 +9,7 @@ from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.routes.utils import (
     HTTPError,
+    LiveVideoToVideoResponse,
     http_error,
     handle_pipeline_exception,
 )
@@ -53,7 +54,7 @@ class LiveVideoToVideoParams(BaseModel):
     params: Annotated[
         Dict,
         Field(
-            default=None,
+            default={},
             description="Initial parameters for the model."
         ),
     ]
@@ -75,6 +76,7 @@ RESPONSES = {
 
 @router.post(
     "/live-video-to-video",
+    response_model=LiveVideoToVideoResponse,
     responses=RESPONSES,
     description="Apply video-like transformations to a provided image.",
     operation_id="genLiveVideoToVideo",
@@ -84,6 +86,7 @@ RESPONSES = {
 )
 @router.post(
     "/live-video-to-video/",
+    response_model=LiveVideoToVideoResponse,
     responses=RESPONSES,
     include_in_schema=False,
 )
@@ -125,5 +128,6 @@ async def live_video_to_video(
             custom_error_config=PIPELINE_ERROR_CONFIG,
         )
 
-    return {}
+    # outputs unused for now; the orchestrator is setting these
+    return {'publish_url':"", 'subscribe_url': ""}
 

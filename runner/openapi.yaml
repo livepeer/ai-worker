@@ -441,6 +441,7 @@ paths:
           content:
             application/json:
               schema:
+                $ref: '#/components/schemas/LiveVideoToVideoResponse'
                 x-speakeasy-name-override: data
         '400':
           description: Bad Request
@@ -948,11 +949,28 @@ components:
           type: object
           title: Params
           description: Initial parameters for the model.
+          default: {}
       type: object
       required:
       - subscribe_url
       - publish_url
       title: LiveVideoToVideoParams
+    LiveVideoToVideoResponse:
+      properties:
+        subscribe_url:
+          type: string
+          title: Subscribe Url
+          description: Source URL of the incoming stream to subscribe to
+        publish_url:
+          type: string
+          title: Publish Url
+          description: Destination URL of the outgoing stream to publish to
+      type: object
+      required:
+      - subscribe_url
+      - publish_url
+      title: LiveVideoToVideoResponse
+      description: Response model for live video-to-video generation.
     MasksResponse:
       properties:
         masks:
