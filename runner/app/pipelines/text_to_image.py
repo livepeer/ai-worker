@@ -35,7 +35,7 @@ class ModelName(Enum):
     """Enumeration mapping model names to their corresponding IDs."""
 
     SDXL_LIGHTNING = "ByteDance/SDXL-Lightning"
-    SD3_MEDIUM = "stabilityai/stable-diffusion-3-medium-diffusers"
+    SD3 = "stabilityai/stable-diffusion-3"
     REALISTIC_VISION_V6 = "SG161222/Realistic_Vision_V6.0_B1_noVAE"
     FLUX_1_SCHNELL = "black-forest-labs/FLUX.1-schnell"
     FLUX_1_DEV = "black-forest-labs/FLUX.1-dev"
@@ -125,10 +125,11 @@ class TextToImagePipeline(Pipeline):
             self.ldm.scheduler = EulerDiscreteScheduler.from_config(
                 self.ldm.scheduler.config, timestep_spacing="trailing"
             )
-        elif ModelName.SD3_MEDIUM.value in model_id:
+        elif ModelName.SD3.value in model_id:
             self.ldm = StableDiffusion3Pipeline.from_pretrained(model_id, **kwargs).to(
                 torch_device
             )
+            kwargs["torch_dtype"] = torch.bfloat16
         elif (
             ModelName.FLUX_1_SCHNELL.value in model_id
             or ModelName.FLUX_1_DEV.value in model_id
