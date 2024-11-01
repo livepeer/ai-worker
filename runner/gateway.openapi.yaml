@@ -459,6 +459,55 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: liveVideoToVideo
+  /text-to-speech:
+    post:
+      tags:
+      - generate
+      summary: Text To Speech
+      description: Generate a text-to-speech audio file based on the provided text
+        input and speaker description.
+      operationId: genTextToSpeech
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TextToSpeechParams'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AudioResponse'
+                x-speakeasy-name-override: data
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+      x-speakeasy-name-override: textToSpeech
 components:
   schemas:
     APIError:
@@ -472,6 +521,17 @@ components:
       - msg
       title: APIError
       description: API error response model.
+    AudioResponse:
+      properties:
+        audio:
+          allOf:
+          - $ref: '#/components/schemas/MediaURL'
+          description: The generated audio.
+      type: object
+      required:
+      - audio
+      title: AudioResponse
+      description: Response model for audio generation.
     Body_genAudioToText:
       properties:
         audio:
@@ -942,6 +1002,17 @@ components:
       - nsfw
       title: Media
       description: A media object containing information about the generated media.
+    MediaURL:
+      properties:
+        url:
+          type: string
+          title: Url
+          description: The URL where the media can be accessed.
+      type: object
+      required:
+      - url
+      title: MediaURL
+      description: A URL from which media can be accessed.
     TextResponse:
       properties:
         text:
@@ -1027,6 +1098,28 @@ components:
       - prompt
       - model_id
       title: TextToImageParams
+    TextToSpeechParams:
+      properties:
+        model_id:
+          type: string
+          title: Model Id
+          description: Hugging Face model ID used for text to speech generation.
+          default: ''
+        text:
+          type: string
+          title: Text
+          description: Text input for speech generation.
+          default: ''
+        description:
+          type: string
+          title: Description
+          description: Description of speaker to steer text to speech generation.
+          default: A male speaker delivers a slightly expressive and animated speech
+            with a moderate speed and pitch.
+      type: object
+      title: TextToSpeechParams
+      required:
+      - model_id
     ValidationError:
       properties:
         loc:

@@ -2,7 +2,6 @@ import argparse
 import copy
 import json
 import logging
-import subprocess
 
 import yaml
 from app.main import app
@@ -10,13 +9,14 @@ from app.routes import (
     audio_to_text,
     health,
     image_to_image,
+    image_to_text,
     image_to_video,
+    live_video_to_video,
+    llm,
     segment_anything_2,
     text_to_image,
+    text_to_speech,
     upscale,
-    llm,
-    image_to_text,
-    live_video_to_video,
 )
 from fastapi.openapi.utils import get_openapi
 
@@ -73,6 +73,7 @@ def translate_to_gateway(openapi: dict) -> dict:
                         ref = content_details["schema"]["$ref"]
                         schema_name = ref.split("/")[-1]
                         schema = openapi["components"]["schemas"][schema_name]
+                        schema.setdefault("required", [])
                         if "model_id" in schema["properties"]:
                             schema["required"].append("model_id")
 
@@ -106,6 +107,7 @@ def write_openapi(fname: str, entrypoint: str = "runner"):
     app.include_router(llm.router)
     app.include_router(image_to_text.router)
     app.include_router(live_video_to_video.router)
+    app.include_router(text_to_speech.router)
 
     logger.info(f"Generating OpenAPI schema for '{entrypoint}' entrypoint...")
     openapi = get_openapi(
