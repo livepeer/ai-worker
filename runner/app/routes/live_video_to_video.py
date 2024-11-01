@@ -128,5 +128,6 @@ async def live_video_to_video(
             custom_error_config=PIPELINE_ERROR_CONFIG,
         )
 
-    return {}
+    # outputs unused for now; the orchestrator is setting these
+    return {'publish_url':"", 'subscribe_url': ""}
 
