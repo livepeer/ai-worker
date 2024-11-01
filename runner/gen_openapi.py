@@ -9,6 +9,7 @@ from fastapi.openapi.utils import get_openapi
 from app.main import app
 from app.routes import (
     audio_to_text,
+    hardware,
     health,
     image_to_image,
     image_to_text,
@@ -104,6 +105,7 @@ def write_openapi(fname: str, entrypoint: str = "runner"):
             'gateway' or 'runner'. Default is 'runner'.
     """
     app.include_router(health.router)
+    app.include_router(hardware.router)
     app.include_router(text_to_image.router)
     app.include_router(image_to_image.router)
     app.include_router(image_to_video.router)

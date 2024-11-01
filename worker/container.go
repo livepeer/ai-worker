@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/deepmap/oapi-codegen/v2/pkg/securityprovider"
@@ -17,8 +18,9 @@ const (
 
 type RunnerContainer struct {
 	RunnerContainerConfig
-	Name   string
-	Client *ClientWithResponses
+	Name     string
+	Client   *ClientWithResponses
+	Hardware *HardwareInformation
 }
 
 type RunnerEndpoint struct {
@@ -68,11 +70,21 @@ func NewRunnerContainer(ctx context.Context, cfg RunnerContainerConfig, name str
 		return nil, err
 	}
 	cancel()
+	var hardware *HardwareInformation
+	hctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	hdw, err := getRunnerHardware(hctx, client)
+	if err == nil {
+		hardware = hdw
+	} else {
+		hardware = &HardwareInformation{Pipeline: cfg.Pipeline, ModelId: cfg.ModelID, GpuInfo: nil}
+	}
+	cancel()
 
 	return &RunnerContainer{
 		RunnerContainerConfig: cfg,
 		Name:                  name,
 		Client:                client,
+		Hardware:              hardware,
 	}, nil
 }
 
@@ -93,4 +105,14 @@ tickerLoop:
 	}
 
 	return nil
+}
+
+func getRunnerHardware(ctx context.Context, client *ClientWithResponses) (*HardwareInformation, error) {
+	resp, err := client.HardwareInfoWithResponse(ctx)
+	if err != nil {
+		slog.Error("Error getting hardware info for runner", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	return resp.JSON200, nil
 }

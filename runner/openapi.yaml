@@ -21,6 +21,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HealthCheck'
+  /hardware/info:
+    get:
+      summary: Hardware Info
+      operationId: hardware_info
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HardwareInformation'
+  /hardware/stats:
+    get:
+      summary: Hardware Stats
+      operationId: hardware_stats
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HardwareStats'
   /text-to-image:
     post:
       tags:
@@ -887,6 +909,102 @@ components:
           title: Detail
       type: object
       title: HTTPValidationError
+    HardwareDetail:
+      properties:
+        id:
+          type: string
+          title: Id
+        name:
+          type: string
+          title: Name
+        memory_total:
+          type: integer
+          title: Memory Total
+        memory_free:
+          type: integer
+          title: Memory Free
+        major:
+          type: integer
+          title: Major
+        minor:
+          type: integer
+          title: Minor
+      type: object
+      required:
+      - id
+      - name
+      - memory_total
+      - memory_free
+      - major
+      - minor
+      title: HardwareDetail
+    HardwareInformation:
+      properties:
+        pipeline:
+          type: string
+          title: Pipeline
+        model_id:
+          type: string
+          title: Model Id
+        gpu_info:
+          additionalProperties:
+            $ref: '#/components/schemas/HardwareDetail'
+          type: object
+          title: Gpu Info
+      type: object
+      required:
+      - pipeline
+      - model_id
+      - gpu_info
+      title: HardwareInformation
+    HardwareStatDetail:
+      properties:
+        id:
+          type: string
+          title: Id
+        name:
+          type: string
+          title: Name
+        memory_free:
+          type: integer
+          title: Memory Free
+        memory_total:
+          type: integer
+          title: Memory Total
+        utilization_compute:
+          type: integer
+          title: Utilization Compute
+        utilization_memory:
+          type: integer
+          title: Utilization Memory
+      type: object
+      required:
+      - id
+      - name
+      - memory_free
+      - memory_total
+      - utilization_compute
+      - utilization_memory
+      title: HardwareStatDetail
+    HardwareStats:
+      properties:
+        pipeline:
+          type: string
+          title: Pipeline
+        model_id:
+          type: string
+          title: Model Id
+        gpu_stats:
+          additionalProperties:
+            $ref: '#/components/schemas/HardwareStatDetail'
+          type: object
+          title: Gpu Stats
+      type: object
+      required:
+      - pipeline
+      - model_id
+      - gpu_stats
+      title: HardwareStats
     HealthCheck:
       properties:
         status:

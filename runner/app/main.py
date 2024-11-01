@@ -2,10 +2,10 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
+from app.routes import health, hardware
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
-
-from app.routes import health
+from app.utils.hardware import get_cuda_devices
 
 logger = logging.getLogger(__name__)
 
@@ -15,12 +15,15 @@ async def lifespan(app: FastAPI):
     config_logging()
 
     app.include_router(health.router)
+    app.include_router(hardware.router)
 
     pipeline = os.environ["PIPELINE"]
     model_id = os.environ["MODEL_ID"]
 
     app.pipeline = load_pipeline(pipeline, model_id)
     app.include_router(load_route(pipeline))
+
+    print_cuda_devices()
 
     logger.info(f"Started up with pipeline {app.pipeline}")
     yield
@@ -132,6 +135,11 @@ def config_logging():
         force=True,
     )
 
+def print_cuda_devices():
+    devices = get_cuda_devices()
+    logger.info("cuda devices available:")
+    for device in devices:
+        logger.info(devices[device])
 
 def use_route_names_as_operation_ids(app: FastAPI) -> None:
     for route in app.routes:
