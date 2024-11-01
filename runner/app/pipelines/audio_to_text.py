@@ -108,7 +108,7 @@ class AudioToTextPipeline(Pipeline):
                 raise InferenceError("Word timestamps are only supported for audio files up to 60 minutes long for model %s" % (self.model_id))
             
             #optimized defaults for word timestamps
-            if duration > 300:
+            if duration > 200:
                 kwargs["batch_size"] = 4
 
         # if duration is short then use sequential inference
