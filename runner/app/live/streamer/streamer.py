@@ -82,8 +82,11 @@ class PipelineStreamer(ABC):
                 return
 
             current_time = time.time()
-            time_since_last_input = current_time - self.process.last_input_time
-            time_since_last_output = current_time - self.process.last_output_time
+            last_input_time = self.process.last_input_time or start_time
+            last_output_time = self.process.last_output_time or start_time
+
+            time_since_last_input = current_time - last_input_time
+            time_since_last_output = current_time - last_output_time
             time_since_start = current_time - start_time
             time_since_last_params = current_time - self.last_params_time
             time_since_reload = min(time_since_last_params, time_since_start)
