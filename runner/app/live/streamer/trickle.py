@@ -26,8 +26,11 @@ class TrickleStreamer(PipelineStreamer):
         self.publish_queue = queue.Queue[bytearray]()
 
     def start(self):
-        self.subscribe_task = asyncio.create_task(media.run_subscribe(self.subscribe_url, self.subscribe_queue.put))
-        self.publish_task = asyncio.create_task(media.run_publish(self.publish_url, self.publish_queue.get))
+        subscribe_put = lambda m: asyncio.to_thread(self.subscribe_queue.put, m)
+        publish_get = lambda: asyncio.to_thread(self.publish_queue.get)
+
+        self.subscribe_task = asyncio.create_task(media.run_subscribe(self.subscribe_url, subscribe_put))
+        self.publish_task = asyncio.create_task(media.run_publish(self.publish_url, publish_get))
         super().start()
 
     async def stop(self):
