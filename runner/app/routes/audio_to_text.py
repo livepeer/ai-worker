@@ -9,7 +9,7 @@ from app.routes.utils import (
     HTTPError,
     TextResponse,
     file_exceeds_max_size,
-    parse_key_from_job_info,
+    parse_key_from_job_metadata,
     get_media_duration_ffmpeg,
     http_error,
     handle_pipeline_exception,
@@ -108,7 +108,7 @@ async def audio_to_text(
             )
         ),
     ] = "true",
-    job_info: Annotated[
+    job_metadata: Annotated[
         str,
         Form(description="Additional job information to be passed to the pipeline"),
     ] = "{}",
@@ -140,7 +140,7 @@ async def audio_to_text(
         )
     
     try:
-        duration = parse_key_from_job_info(job_info, "duration", str)
+        duration = parse_key_from_job_metadata(job_metadata, "duration", str)
         if duration:
             duration = float(duration)
         else:
