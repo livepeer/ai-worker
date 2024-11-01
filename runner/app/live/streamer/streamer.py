@@ -76,20 +76,21 @@ class PipelineStreamer(ABC):
             time_since_last_params = current_time - self.last_params_time
             time_since_reload = min(time_since_last_params, time_since_start)
 
-            if time_since_last_input > 5:
+            gone_stale = (
+                time_since_last_output > time_since_last_input
+                and time_since_last_output > 60
+                and time_since_reload > 60
+            )
+            if time_since_last_input > 5 and not gone_stale:
                 # nothing to do if we're not sending inputs
                 continue
 
-            active_after_reload = (
-                time_since_last_output < (time_since_reload - 1)
-                or self.pipeline == "liveportrait"  # liveportrait gets stuck on load
-            )
+            active_after_reload = time_since_last_output < (time_since_reload - 1)
             stopped_recently = (
-                active_after_reload
-                and time_since_last_output > 5
-                and time_since_last_output < 60
+                time_since_last_output > 5
+                if self.pipeline == "liveportrait" # liveportrait loads very quick but gets stuck too often
+                else active_after_reload and time_since_last_output > 5 and time_since_last_output < 60
             )
-            gone_stale = time_since_last_output > 60 and time_since_reload > 60
             if stopped_recently or gone_stale:
                 logging.warning(
                     "No output received while inputs are being sent. Restarting process."
