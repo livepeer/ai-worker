@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import queue
 
 from PIL import Image
@@ -30,9 +31,26 @@ class TrickleStreamer(PipelineStreamer):
         super().start()
 
     async def stop(self):
-        await super().stop()
+        if not self.subscribe_task or not self.publish_task:
+            await super().stop()
+            return
+
+        # send sentinel None values to stop the trickle tasks
         self.subscribe_queue.put(None)
         self.publish_queue.put(None)
+
+        try:
+            await asyncio.wait([self.subscribe_task, self.publish_task], timeout=15.0)
+        except asyncio.TimeoutError:
+            self.subscribe_task.cancel()
+            self.publish_task.cancel()
+        except Exception:
+            logging.error("Error stopping trickle streamer", exc_info=True)
+
+        self.subscribe_task = None
+        self.publish_task = None
+
+        await super().stop()
 
     async def ingress_loop(self, done: Event) -> AsyncGenerator[Image.Image, None]:
         def dequeue_jpeg():

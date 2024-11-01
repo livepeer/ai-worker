@@ -116,19 +116,25 @@ class PipelineStreamer(ABC):
     async def run_ingress_loop(self, done: Event):
         frame_count = 0
         start_time = time.time()
-        async for frame in self.ingress_loop(done):
-            if done.is_set() or not self.process:
-                return
-            self.process.send_input(frame)
+        try:
+            async for frame in self.ingress_loop(done):
+                if done.is_set() or not self.process:
+                    return
+                self.process.send_input(frame)
 
-            # Increment frame count and measure FPS
-            frame_count += 1
-            elapsed_time = time.time() - start_time
-            if elapsed_time >= fps_log_interval:
-                fps = frame_count / elapsed_time
-                logging.info(f"Input FPS: {fps:.2f}")
-                frame_count = 0
-                start_time = time.time()
+                # Increment frame count and measure FPS
+                frame_count += 1
+                elapsed_time = time.time() - start_time
+                if elapsed_time >= fps_log_interval:
+                    fps = frame_count / elapsed_time
+                    logging.info(f"Input FPS: {fps:.2f}")
+                    frame_count = 0
+                    start_time = time.time()
+            # automatically stop the streamer when the ingress ends cleanly
+            await self.stop()
+        except Exception:
+            logging.error("Error running ingress loop", exc_info=True)
+            await self._restart()
 
     async def run_egress_loop(self, done: Event):
         async def gen_output_frames() -> AsyncGenerator[Image.Image, None]:
@@ -153,7 +159,13 @@ class PipelineStreamer(ABC):
                     frame_count = 0
                     start_time = time.time()
 
-        await self.egress_loop(gen_output_frames())
+        try:
+            await self.egress_loop(gen_output_frames())
+            # automatically stop the streamer when the egress ends cleanly
+            await self.stop()
+        except Exception:
+            logging.error("Error running egress loop", exc_info=True)
+            await self._restart()
 
     @abstractmethod
     async def ingress_loop(self, done: Event) -> AsyncGenerator[Image.Image, None]:
