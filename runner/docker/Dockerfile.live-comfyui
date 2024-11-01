@@ -6,7 +6,7 @@ ENV PIP_PREFER_BINARY=1
 # INSTALL COMFYUI --------------------------------------------------------------------------------------------------------
 # Install comfystream (which includes ComfyUI)
 RUN pip install --no-cache-dir git+https://github.com/yondonfu/comfystream.git && \
-    pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu124
+#    pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu124
 #    pip install -U nvidia-cudnn-cu12==8.9.7.29
 
 # Create directory for ComfyUI custom nodes and models
