@@ -122,7 +122,7 @@ async def parse_jpegs(in_pipe, image_callback):
 
 def feed_ffmpeg(ffmpeg_fd, image_generator):
     while True:
-        image = image_generator.get()
+        image = image_generator()
         if image is None:
             logging.info("Image generator empty, leaving feed_ffmpeg")
             break

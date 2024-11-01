@@ -26,7 +26,7 @@ class TrickleStreamer(PipelineStreamer):
 
     def start(self):
         self.subscribe_task = asyncio.create_task(media.run_subscribe(self.subscribe_url, self.subscribe_queue.put))
-        self.publish_task = asyncio.create_task(media.run_publish(self.publish_url, self.publish_queue))
+        self.publish_task = asyncio.create_task(media.run_publish(self.publish_url, self.publish_queue.get))
         super().start()
 
     async def stop(self):
