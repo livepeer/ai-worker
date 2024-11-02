@@ -25,7 +25,7 @@ class JPEGStreamParser:
         logging.info("Closing jpeg parser")
         self.callback(None)
 
-    def feed(self, data):
+    async def feed(self, data):
         """
         Feed incoming data into the parser.
         :param data: Incoming data bytes.

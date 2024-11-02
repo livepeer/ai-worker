@@ -84,6 +84,7 @@ class PipelineStreamer(ABC):
             current_time = time.time()
             last_input_time = self.process.last_input_time or start_time
             last_output_time = self.process.last_output_time or start_time
+            logging.debug(f"Monitoring process. last_input_time: {last_input_time}, last_output_time: {last_output_time} last_params_time: {self.last_params_time}")
 
             time_since_last_input = current_time - last_input_time
             time_since_last_output = current_time - last_output_time
@@ -120,6 +121,7 @@ class PipelineStreamer(ABC):
             async for frame in self.ingress_loop(done):
                 if done.is_set() or not self.process:
                     return
+                logging.debug(f"Sending input frame. width: {frame.width}, height: {frame.height}")
                 self.process.send_input(frame)
 
                 # Increment frame count and measure FPS

@@ -26,11 +26,8 @@ class TrickleStreamer(PipelineStreamer):
         self.publish_queue = queue.Queue[bytearray]()
 
     def start(self):
-        subscribe_put = lambda m: asyncio.to_thread(self.subscribe_queue.put, m)
-        publish_get = lambda: asyncio.to_thread(self.publish_queue.get)
-
-        self.subscribe_task = asyncio.create_task(media.run_subscribe(self.subscribe_url, subscribe_put))
-        self.publish_task = asyncio.create_task(media.run_publish(self.publish_url, publish_get))
+        self.subscribe_task = asyncio.create_task(media.run_subscribe(self.subscribe_url, self.subscribe_queue.put))
+        self.publish_task = asyncio.create_task(media.run_publish(self.publish_url, self.publish_queue.get))
         super().start()
 
     async def stop(self):
@@ -60,7 +57,11 @@ class TrickleStreamer(PipelineStreamer):
             jpeg_bytes = self.subscribe_queue.get()
             if not jpeg_bytes:
                 return None
-            return from_jpeg_bytes(jpeg_bytes)
+            try:
+                return from_jpeg_bytes(jpeg_bytes)
+            except Exception as e:
+                logging.error(f"Error decoding JPEG: {e}")
+                raise e
 
         while not done.is_set():
             image = await asyncio.to_thread(dequeue_jpeg)

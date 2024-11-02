@@ -79,6 +79,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--publish-url", type=str, required=True, help="url to push outgoing streams"
     )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Enable verbose (debug) logging"
+    )
     args = parser.parse_args()
     try:
         params = json.loads(args.initial_params)
@@ -86,10 +91,13 @@ if __name__ == "__main__":
         logging.error(f"Error parsing --initial-params: {e}")
         sys.exit(1)
 
+    log_level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(
         format='%(asctime)s %(levelname)-8s %(message)s',
-        level=logging.INFO,
+        level=log_level,
         datefmt='%Y-%m-%d %H:%M:%S')
+    if args.verbose:
+        os.environ['VERBOSE_LOGGING'] = '1' # enable verbose logging in subprocesses
 
     try:
         asyncio.run(

@@ -1,3 +1,4 @@
+import os
 import asyncio
 import logging
 import multiprocessing as mp
@@ -76,7 +77,12 @@ class PipelineProcess:
         return None
 
     def process_loop(self):
-        logging.basicConfig(level=logging.INFO)
+        level = logging.DEBUG if os.environ.get('VERBOSE_LOGGING') == '1' else logging.INFO
+        logging.basicConfig(
+            format='%(asctime)s %(levelname)-8s %(message)s',
+            level=level,
+            datefmt='%Y-%m-%d %H:%M:%S')
+
         try:
             params = {}
             try:
@@ -106,7 +112,6 @@ class PipelineProcess:
                 try:
                     input_image = self.input_queue.get(timeout=0.1)
                 except queue.Empty:
-                    logging.debug("Input queue empty")
                     continue
 
                 try:
