@@ -118,7 +118,7 @@ async def parse_jpegs(in_pipe, image_callback):
             chunk = await in_pipe.read(chunk_size)
             if not chunk:
                 break
-            parser.feed(chunk)
+            await parser.feed(chunk)
 
 def feed_ffmpeg(ffmpeg_fd, image_generator):
     while True:
@@ -173,6 +173,7 @@ async def run_publish(publish_url: str, image_generator):
         ffmpeg_feeder = threading.Thread(target=feed_ffmpeg, args=(ffmpeg_write_fd, image_generator))
         segment_thread.start()
         ffmpeg_feeder.start()
+        logging.debug("run_publish: ffmpeg feeder and segmenter threads started")
 
         def joins():
             segment_thread.join()

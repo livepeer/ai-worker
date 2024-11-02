@@ -40,7 +40,7 @@ class TrickleStreamer(PipelineStreamer):
         self.publish_queue.put(None)
 
         try:
-            await asyncio.wait([self.subscribe_task, self.publish_task], timeout=15.0)
+            await asyncio.wait([self.subscribe_task, self.publish_task], timeout=30.0)
         except asyncio.TimeoutError:
             self.subscribe_task.cancel()
             self.publish_task.cancel()

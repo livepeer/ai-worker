@@ -11,7 +11,7 @@ import threading
 from datetime import datetime
 
 # Constants and initial values
-READ_TIMEOUT = 20
+READ_TIMEOUT = 90
 SLEEP_INTERVAL = 0.05
 
 # TODO make this better configurable
@@ -128,6 +128,7 @@ def segment_reading_process(in_fd, callback):
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
+    logging.debug("segment_reading_process: ffmpeg started")
 
     # Create a thread to handle stderr redirection
     thread = threading.Thread(target=print_proc, args=(proc.stdout,))
