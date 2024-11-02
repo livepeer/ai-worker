@@ -66,6 +66,10 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
             from app.pipelines.live_video_to_video import LiveVideoToVideoPipeline
 
             return LiveVideoToVideoPipeline(model_id)
+        case "text-to-speech":
+            from app.pipelines.text_to_speech import TextToSpeechPipeline
+
+            return TextToSpeechPipeline(model_id)
         case "object-detection":
             from app.pipelines.object_detection import ObjectDetectionPipeline
 
@@ -116,6 +120,10 @@ def load_route(pipeline: str) -> any:
             from app.routes import live_video_to_video
 
             return live_video_to_video.router
+        case "text-to-speech":
+            from app.routes import text_to_speech
+
+            return text_to_speech.router
         case "object-detection":
             from app.routes import object_detection
             return object_detection.router

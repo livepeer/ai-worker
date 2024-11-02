@@ -1,3 +1,4 @@
+import os
 import asyncio
 import logging
 import multiprocessing as mp
@@ -64,6 +65,7 @@ class PipelineProcess:
     async def recv_output(self) -> Image.Image | None:
         # we cannot do a long get with timeout as that would block the asyncio
         # event loop, so we loop with nowait and sleep async instead.
+        # TODO: use asyncio.to_thread instead
         while not self.is_done():
             try:
                 output = self.output_queue.get_nowait()
@@ -75,7 +77,12 @@ class PipelineProcess:
         return None
 
     def process_loop(self):
-        logging.basicConfig(level=logging.INFO)
+        level = logging.DEBUG if os.environ.get('VERBOSE_LOGGING') == '1' else logging.INFO
+        logging.basicConfig(
+            format='%(asctime)s %(levelname)-8s %(message)s',
+            level=level,
+            datefmt='%Y-%m-%d %H:%M:%S')
+
         try:
             params = {}
             try:
@@ -105,7 +112,6 @@ class PipelineProcess:
                 try:
                     input_image = self.input_queue.get(timeout=0.1)
                 except queue.Empty:
-                    logging.debug("Input queue empty")
                     continue
 
                 try:

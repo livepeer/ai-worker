@@ -13,11 +13,11 @@ infer_root = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, infer_root)
 
 from params_api import start_http_server
-from streamer.zeromq import ZeroMQStreamer
+from streamer.trickle import TrickleStreamer
 
 
-async def main(http_port: int, input_address: str, output_address: str, pipeline: str, subscribe_url: str, publish_url: str, params: dict):
-    handler = ZeroMQStreamer(input_address, output_address, pipeline, **(params or {}))
+async def main(http_port: int, subscribe_url: str, publish_url: str, pipeline: str, params: dict):
+    handler = TrickleStreamer(subscribe_url, publish_url, pipeline, **(params or {}))
     runner = None
     try:
         handler.start()
@@ -79,6 +79,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--publish-url", type=str, required=True, help="url to push outgoing streams"
     )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Enable verbose (debug) logging"
+    )
     args = parser.parse_args()
     try:
         params = json.loads(args.initial_params)
@@ -86,11 +91,17 @@ if __name__ == "__main__":
         logging.error(f"Error parsing --initial-params: {e}")
         sys.exit(1)
 
-    logging.basicConfig(level=logging.INFO)
+    log_level = logging.DEBUG if args.verbose else logging.INFO
+    logging.basicConfig(
+        format='%(asctime)s %(levelname)-8s %(message)s',
+        level=log_level,
+        datefmt='%Y-%m-%d %H:%M:%S')
+    if args.verbose:
+        os.environ['VERBOSE_LOGGING'] = '1' # enable verbose logging in subprocesses
 
     try:
         asyncio.run(
-            main(args.http_port, args.input_address, args.output_address, args.pipeline, args.subscribe_url, args.publish_url, params)
+            main(args.http_port, args.subscribe_url, args.publish_url, args.pipeline, params)
         )
     except Exception as e:
         logging.error(f"Fatal error in main: {e}")

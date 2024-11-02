@@ -31,6 +31,7 @@ jobs:
       matrix:
         dockerfile: 
           - docker/Dockerfile.segment_anything_2
+          - docker/Dockerfile.text_to_speech
     steps:
       - name: Check out code
         uses: actions/checkout@v4.1.1

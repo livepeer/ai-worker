@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import subprocess
+import sys
 import threading
 import time
 from pathlib import Path
@@ -23,6 +24,7 @@ class LiveVideoToVideoPipeline(Pipeline):
         )
         self.process = None
         self.monitor_thread = None
+        self.log_thread = None
 
     def __call__(
         self, **kwargs
@@ -55,18 +57,19 @@ class LiveVideoToVideoPipeline(Pipeline):
                 cmd.extend([f"--{kebab_key}", f"{escaped_value}"])
             else:
                 cmd.extend([f"--{kebab_key}", f"{value}"])
-            
 
         env = os.environ.copy()
         env["HUGGINGFACE_HUB_CACHE"] = self.model_dir
 
         try:
             self.process = subprocess.Popen(
-                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env
             )
 
             self.monitor_thread = threading.Thread(target=self.monitor_process)
             self.monitor_thread.start()
+            self.log_thread = threading.Thread(target=log_output, args=(self.process.stdout,))
+            self.log_thread.start()
 
         except subprocess.CalledProcessError as e:
             raise InferenceError(f"Error starting infer.py: {e}")
@@ -91,6 +94,13 @@ class LiveVideoToVideoPipeline(Pipeline):
             self.process.terminate()
         if self.monitor_thread:
             self.monitor_thread.join()
+        if self.log_thread:
+            self.log_thread.join()
 
     def __str__(self) -> str:
         return f"VideoToVideoPipeline model_id={self.model_id}"
+
+
+def log_output(f):
+    for line in f:
+        sys.stderr.write(line)

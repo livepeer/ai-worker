@@ -5,7 +5,7 @@ FROM ${BASE_IMAGE}
 # Install necessary packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
     autoconf automake build-essential cmake git-core libtool pkg-config wget \
-    nasm yasm zlib1g-dev libpng-dev && \
+    nasm yasm zlib1g-dev libpng-dev libx264-dev && \
     rm -rf /var/lib/apt/lists/*
 
 # Set up environment variables
@@ -34,6 +34,8 @@ RUN cd ffmpeg && \
                 --enable-nvenc \
                 --enable-nvdec \
                 --enable-static \
+                --enable-gpl \
+                --enable-libx264 \
                 --disable-shared \
                 --disable-debug \
                 --disable-doc && \

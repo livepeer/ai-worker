@@ -1,17 +1,17 @@
 import logging
 import os
-import random
+import time
 from typing import Annotated, Dict, Tuple, Union
 
 import torch
-import traceback
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.routes.utils import (
+    AudioResponse,
     HTTPError,
-    LiveVideoToVideoResponse,
-    http_error,
+    audio_to_data_url,
     handle_pipeline_exception,
+    http_error,
 )
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
@@ -24,40 +24,38 @@ logger = logging.getLogger(__name__)
 
 # Pipeline specific error handling configuration.
 PIPELINE_ERROR_CONFIG: Dict[str, Tuple[Union[str, None], int]] = {
+    # Specific error types.
     "OutOfMemoryError": (
-        "Out of memory error. Try reducing input image resolution.",
+        "Out of memory error. Try reducing text input length.",
         status.HTTP_500_INTERNAL_SERVER_ERROR,
     )
 }
 
-class LiveVideoToVideoParams(BaseModel):
-    subscribe_url: Annotated[
-        str,
-        Field(
-            ...,
-            description="Source URL of the incoming stream to subscribe to.",
-        ),
-    ]
-    publish_url: Annotated[
-        str,
-        Field(
-            ...,
-            description="Destination URL of the outgoing stream to publish.",
-        ),
-    ]
+
+class TextToSpeechParams(BaseModel):
+    # TODO: Make model_id and other None properties optional once Go codegen tool
+    # supports OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
     model_id: Annotated[
         str,
         Field(
-            default="", description="Hugging Face model ID used for image generation."
+            default="",
+            description="Hugging Face model ID used for text to speech generation.",
         ),
     ]
-    params: Annotated[
-        Dict,
+    text: Annotated[
+        str, Field(default="", description=("Text input for speech generation."))
+    ]
+    description: Annotated[
+        str,
         Field(
-            default={},
-            description="Initial parameters for the model."
+            default=(
+                "A male speaker delivers a slightly expressive and animated speech "
+                "with a moderate speed and pitch."
+            ),
+            description=("Description of speaker to steer text to speech generation."),
         ),
     ]
+
 
 RESPONSES = {
     status.HTTP_200_OK: {
@@ -74,27 +72,40 @@ RESPONSES = {
     status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPError},
 }
 
+
 @router.post(
-    "/live-video-to-video",
-    response_model=LiveVideoToVideoResponse,
+    "/text-to-speech",
+    response_model=AudioResponse,
     responses=RESPONSES,
-    description="Apply video-like transformations to a provided image.",
-    operation_id="genLiveVideoToVideo",
-    summary="Video To Video",
+    description=(
+        "Generate a text-to-speech audio file based on the provided text input and "
+        "speaker description."
+    ),
+    operation_id="genTextToSpeech",
+    summary="Text To Speech",
     tags=["generate"],
-    openapi_extra={"x-speakeasy-name-override": "liveVideoToVideo"},
+    openapi_extra={"x-speakeasy-name-override": "textToSpeech"},
 )
 @router.post(
-    "/live-video-to-video/",
-    response_model=LiveVideoToVideoResponse,
+    "/text-to-speech/",
+    response_model=AudioResponse,
     responses=RESPONSES,
     include_in_schema=False,
 )
-async def live_video_to_video(
-    params: LiveVideoToVideoParams,
+async def text_to_speech(
+    params: TextToSpeechParams,
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
+    # Ensure required parameters are non-empty.
+    # TODO: Remove if go-livepeer validation is fixed. Was disabled due to optional
+    # params issue.
+    if not params.text:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content=http_error("Text input must be provided."),
+        )
+
     auth_token = os.environ.get("AUTH_TOKEN")
     if auth_token:
         if not token or token.credentials != auth_token:
@@ -109,25 +120,22 @@ async def live_video_to_video(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=http_error(
                 f"pipeline configured with {pipeline.model_id} but called with "
-                f"{params.model_id}."
+                f"{params.model_id}"
             ),
         )
 
-    seed = random.randint(0, 2**32 - 1)
-    kwargs = {k: v for k, v in params.model_dump().items()}
     try:
-        pipeline(**kwargs)
+        start = time.time()
+        out = pipeline(params)
+        logger.info(f"TextToSpeechPipeline took {time.time() - start} seconds.")
     except Exception as e:
         if isinstance(e, torch.cuda.OutOfMemoryError):
             torch.cuda.empty_cache()
-        logger.error(f"LiveVideoToVideoPipeline error: {e}")
-        logger.error(traceback.format_exc())
+        logger.error(f"TextToSpeechPipeline error: {e}")
         return handle_pipeline_exception(
             e,
-            default_error_message="live-video-to-video pipeline error.",
+            default_error_message="Text-to-speech pipeline error.",
             custom_error_config=PIPELINE_ERROR_CONFIG,
         )
 
-    # outputs unused for now; the orchestrator is setting these
-    return {'publish_url':"", 'subscribe_url': ""}
-
+    return {"audio": {"url": audio_to_data_url(out)}}
