@@ -427,7 +427,7 @@ func NewObjectDetectionMultipartWriter(w io.Writer, req GenObjectDetectionMultip
 	}
 
 	if req.ConfidenceThreshold != nil {
-		if err := mw.WriteField("confidence_threshold", *req.ConfidenceThreshold); err != nil {
+		if err := mw.WriteField("confidence_threshold", fmt.Sprintf("%f", *req.ConfidenceThreshold)); err != nil {
 			return nil, err
 		}
 	}
