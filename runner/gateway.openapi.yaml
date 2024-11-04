@@ -625,6 +625,12 @@ components:
           title: Num Images Per Prompt
           description: Number of images to generate per prompt.
           default: 1
+        scheduler:
+          type: string
+          title: Scheduler
+          description: Set scheduler for pipeline to use per documentation or presets
+            available
+          default: ''
       type: object
       required:
       - prompt
@@ -1093,6 +1099,12 @@ components:
           title: Num Images Per Prompt
           description: Number of images to generate per prompt.
           default: 1
+        scheduler:
+          type: string
+          title: Scheduler
+          description: Set scheduler for pipeline to use per documentation or presets
+            available
+          default: ''
       type: object
       required:
       - prompt

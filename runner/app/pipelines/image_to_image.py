@@ -2,6 +2,7 @@ import logging
 import os
 from enum import Enum
 from typing import List, Optional, Tuple
+from copy import deepcopy
 
 import PIL
 import torch
@@ -13,6 +14,8 @@ from app.pipelines.utils import (
     get_torch_device,
     is_lightning_model,
     is_turbo_model,
+    load_scheduler_presets,
+    create_scheduler
 )
 from app.utils.errors import InferenceError
 from diffusers import (
@@ -127,6 +130,12 @@ class ImageToImagePipeline(Pipeline):
                 model_id, **kwargs
             ).to(torch_device)
 
+        #save the default scheduler
+        self.default_scheduler = deepcopy(self.ldm.scheduler)
+        #load the scheduler presets
+        self.scheduler_presets = load_scheduler_presets(self.__class__.__name__)
+        logger.info(f"loaded scheduler presets for {self.__class__.__name__}")
+
         sfast_enabled = os.getenv("SFAST", "").strip().lower() == "true"
         deepcache_enabled = os.getenv("DEEPCACHE", "").strip().lower() == "true"
         if sfast_enabled and deepcache_enabled:
@@ -234,6 +243,17 @@ class ImageToImagePipeline(Pipeline):
                 # Default to 8step
                 kwargs["num_inference_steps"] = 8
 
+        set_scheduler = kwargs.pop("scheduler", None)
+        logger.info(f"setting pipeline scheduler to: {set_scheduler}")
+        if set_scheduler:
+            new_scheduler, args, error = create_scheduler(set_scheduler, self.scheduler_presets)
+            if new_scheduler:
+                self.ldm.scheduler = new_scheduler.from_config(self.default_scheduler.config, **args)
+            else:
+                raise ValueError(f"scheduler could not be created: {error}")
+        else:
+            self.ldm.scheduler = self.default_scheduler
+        
         try:
             outputs = self.ldm(prompt, image=image, **kwargs)
         except Exception as e:
