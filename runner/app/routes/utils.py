@@ -272,25 +272,25 @@ def handle_pipeline_exception(
         content=content,
     )
 
-def parse_key_from_job_metadata(job_metadata: str, key: str, expected_type: type) -> Union[Optional[Union[str, int, float, bool]]]:
-    """Parse a specific key from the job_metadata JSON string.
+def parse_key_from_metadata(metadata: str, key: str, expected_type: type) -> Union[Optional[Union[str, int, float, bool]]]:
+    """Parse a specific key from the metadata JSON string.
 
     Args:
-        job_metadata: The job_metadata JSON string.
-        key: The key to parse from the job_metadata.
+        metadata: The metadata JSON string.
+        key: The key to parse from the metadata.
         expected_type: The expected type of the key's value.
 
     Returns:
         The value of the key if it exists and is of the expected type, otherwise an Exception with an error message.
     """
     try:
-        job_metadata = json.loads(job_metadata)
+        metadata = json.loads(metadata)
     except json.JSONDecodeError as e:
         raise ValueError(f"Invalid JSON: {e}")
 
-    if key in job_metadata:
+    if key in metadata:
         try:
-            value = expected_type(job_metadata[key])
+            value = expected_type(metadata[key])
             return value
         except (ValueError, TypeError):
             raise TypeError(f"Invalid {key} value. Must be of type {expected_type.__name__}.")

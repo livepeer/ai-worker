@@ -246,8 +246,8 @@ func NewAudioToTextMultipartWriter(w io.Writer, req GenAudioToTextMultipartReque
 		}
 	}
 
-	if req.JobMetadata != nil {
-		if err := mw.WriteField("job_metadata", *req.JobMetadata); err != nil {
+	if req.Metadata != nil {
+		if err := mw.WriteField("metadata", *req.Metadata); err != nil {
 			return nil, err
 		}
 	}

@@ -563,9 +563,9 @@ components:
             is ''true'' (''sentence''). ''false'' means no timestamps. ''word'' means
             word-based timestamps.'
           default: 'true'
-        job_metadata:
+        metadata:
           type: string
-          title: Job Metadata
+          title: Metadata
           description: Additional job information to be passed to the pipeline
           default: '{}'
       type: object
