@@ -32,6 +32,12 @@ type APIError struct {
 	Msg string `json:"msg"`
 }
 
+// AudioResponse Response model for audio generation.
+type AudioResponse struct {
+	// Audio The generated audio.
+	Audio MediaURL `json:"audio"`
+}
+
 // BodyGenAudioToText defines model for Body_genAudioToText.
 type BodyGenAudioToText struct {
 	// Audio Uploaded audio file to be transcribed.
@@ -202,6 +208,15 @@ type BodyLivePortraitLivePortraitPost struct {
 	SourceImage openapi_types.File `json:"source_image"`
 }
 
+// Chunk A chunk of text with a timestamp.
+type Chunk struct {
+	// Text The text of the chunk.
+	Text string `json:"text"`
+
+	// Timestamp The timestamp of the chunk.
+	Timestamp []interface{} `json:"timestamp"`
+}
+
 // HTTPError HTTP error response model.
 type HTTPError struct {
 	// Detail API error response model.
@@ -236,6 +251,30 @@ type LLMResponse struct {
 	TokensUsed int    `json:"tokens_used"`
 }
 
+// LiveVideoToVideoParams defines model for LiveVideoToVideoParams.
+type LiveVideoToVideoParams struct {
+	// ModelId Hugging Face model ID used for image generation.
+	ModelId *string `json:"model_id,omitempty"`
+
+	// Params Initial parameters for the model.
+	Params *map[string]interface{} `json:"params,omitempty"`
+
+	// PublishUrl Destination URL of the outgoing stream to publish.
+	PublishUrl string `json:"publish_url"`
+
+	// SubscribeUrl Source URL of the incoming stream to subscribe to.
+	SubscribeUrl string `json:"subscribe_url"`
+}
+
+// LiveVideoToVideoResponse Response model for live video-to-video generation.
+type LiveVideoToVideoResponse struct {
+	// PublishUrl Destination URL of the outgoing stream to publish to
+	PublishUrl string `json:"publish_url"`
+
+	// SubscribeUrl Source URL of the incoming stream to subscribe to
+	SubscribeUrl string `json:"subscribe_url"`
+}
+
 // MasksResponse Response model for object segmentation.
 type MasksResponse struct {
 	// Logits The raw, unnormalized predictions (logits) for the masks.
@@ -256,6 +295,12 @@ type Media struct {
 	// Seed The seed used to generate the media.
 	Seed int `json:"seed"`
 
+	// Url The URL where the media can be accessed.
+	Url string `json:"url"`
+}
+
+// MediaURL A URL from which media can be accessed.
+type MediaURL struct {
 	// Url The URL where the media can be accessed.
 	Url string `json:"url"`
 }
@@ -305,6 +350,18 @@ type TextToImageParams struct {
 	Width *int `json:"width,omitempty"`
 }
 
+// TextToSpeechParams defines model for TextToSpeechParams.
+type TextToSpeechParams struct {
+	// Description Description of speaker to steer text to speech generation.
+	Description *string `json:"description,omitempty"`
+
+	// ModelId Hugging Face model ID used for text to speech generation.
+	ModelId *string `json:"model_id,omitempty"`
+
+	// Text Text input for speech generation.
+	Text *string `json:"text,omitempty"`
+}
+
 // ValidationError defines model for ValidationError.
 type ValidationError struct {
 	Loc  []ValidationError_Loc_Item `json:"loc"`
@@ -329,15 +386,6 @@ type VideoResponse struct {
 	Frames [][]Media `json:"frames"`
 }
 
-// Chunk A chunk of text with a timestamp.
-type Chunk struct {
-	// Text The text of the chunk.
-	Text string `json:"text"`
-
-	// Timestamp The timestamp of the chunk.
-	Timestamp []interface{} `json:"timestamp"`
-}
-
 // GenAudioToTextMultipartRequestBody defines body for GenAudioToText for multipart/form-data ContentType.
 type GenAudioToTextMultipartRequestBody = BodyGenAudioToText
 
@@ -353,6 +401,9 @@ type GenImageToVideoMultipartRequestBody = BodyGenImageToVideo
 // LivePortraitLivePortraitPostMultipartRequestBody defines body for LivePortraitLivePortraitPost for multipart/form-data ContentType.
 type LivePortraitLivePortraitPostMultipartRequestBody = BodyLivePortraitLivePortraitPost
 
+// GenLiveVideoToVideoJSONRequestBody defines body for GenLiveVideoToVideo for application/json ContentType.
+type GenLiveVideoToVideoJSONRequestBody = LiveVideoToVideoParams
+
 // GenLLMFormdataRequestBody defines body for GenLLM for application/x-www-form-urlencoded ContentType.
 type GenLLMFormdataRequestBody = BodyGenLLM
 
@@ -361,6 +412,9 @@ type GenSegmentAnything2MultipartRequestBody = BodyGenSegmentAnything2
 
 // GenTextToImageJSONRequestBody defines body for GenTextToImage for application/json ContentType.
 type GenTextToImageJSONRequestBody = TextToImageParams
+
+// GenTextToSpeechJSONRequestBody defines body for GenTextToSpeech for application/json ContentType.
+type GenTextToSpeechJSONRequestBody = TextToSpeechParams
 
 // GenUpscaleMultipartRequestBody defines body for GenUpscale for multipart/form-data ContentType.
 type GenUpscaleMultipartRequestBody = BodyGenUpscale
@@ -518,6 +572,11 @@ type ClientInterface interface {
 	// LivePortraitLivePortraitPostWithBody request with any body
 	LivePortraitLivePortraitPostWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GenLiveVideoToVideoWithBody request with any body
+	GenLiveVideoToVideoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	GenLiveVideoToVideo(ctx context.Context, body GenLiveVideoToVideoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GenLLMWithBody request with any body
 	GenLLMWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -530,6 +589,11 @@ type ClientInterface interface {
 	GenTextToImageWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	GenTextToImage(ctx context.Context, body GenTextToImageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GenTextToSpeechWithBody request with any body
+	GenTextToSpeechWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	GenTextToSpeech(ctx context.Context, body GenTextToSpeechJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GenUpscaleWithBody request with any body
 	GenUpscaleWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -607,6 +671,30 @@ func (c *Client) LivePortraitLivePortraitPostWithBody(ctx context.Context, conte
 	return c.Client.Do(req)
 }
 
+func (c *Client) GenLiveVideoToVideoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGenLiveVideoToVideoRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GenLiveVideoToVideo(ctx context.Context, body GenLiveVideoToVideoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGenLiveVideoToVideoRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) GenLLMWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGenLLMRequestWithBody(c.Server, contentType, body)
 	if err != nil {
@@ -657,6 +745,30 @@ func (c *Client) GenTextToImageWithBody(ctx context.Context, contentType string,
 
 func (c *Client) GenTextToImage(ctx context.Context, body GenTextToImageJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGenTextToImageRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GenTextToSpeechWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGenTextToSpeechRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GenTextToSpeech(ctx context.Context, body GenTextToSpeechJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGenTextToSpeechRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -851,6 +963,46 @@ func NewLivePortraitLivePortraitPostRequestWithBody(server string, contentType s
 	return req, nil
 }
 
+	// NewGenLiveVideoToVideoRequest calls the generic GenLiveVideoToVideo builder with application/json body
+func NewGenLiveVideoToVideoRequest(server string, body GenLiveVideoToVideoJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGenLiveVideoToVideoRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewGenLiveVideoToVideoRequestWithBody generates requests for GenLiveVideoToVideo with any type of body
+func NewGenLiveVideoToVideoRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/live-video-to-video")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGenLLMRequestWithFormdataBody calls the generic GenLLM builder with application/x-www-form-urlencoded body
 func NewGenLLMRequestWithFormdataBody(server string, body GenLLMFormdataRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -960,6 +1112,46 @@ func NewGenTextToImageRequestWithBody(server string, contentType string, body io
 	return req, nil
 }
 
+// NewGenTextToSpeechRequest calls the generic GenTextToSpeech builder with application/json body
+func NewGenTextToSpeechRequest(server string, body GenTextToSpeechJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGenTextToSpeechRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewGenTextToSpeechRequestWithBody generates requests for GenTextToSpeech with any type of body
+func NewGenTextToSpeechRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/text-to-speech")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGenUpscaleRequestWithBody generates requests for GenUpscale with any type of body
 func NewGenUpscaleRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
@@ -1050,6 +1242,11 @@ type ClientWithResponsesInterface interface {
 	// LivePortraitLivePortraitPostWithBodyWithResponse request with any body
 	LivePortraitLivePortraitPostWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LivePortraitLivePortraitPostResponse, error)
 
+	// GenLiveVideoToVideoWithBodyWithResponse request with any body
+	GenLiveVideoToVideoWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenLiveVideoToVideoResponse, error)
+
+	GenLiveVideoToVideoWithResponse(ctx context.Context, body GenLiveVideoToVideoJSONRequestBody, reqEditors ...RequestEditorFn) (*GenLiveVideoToVideoResponse, error)
+
 	// GenLLMWithBodyWithResponse request with any body
 	GenLLMWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenLLMResponse, error)
 
@@ -1062,6 +1259,11 @@ type ClientWithResponsesInterface interface {
 	GenTextToImageWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenTextToImageResponse, error)
 
 	GenTextToImageWithResponse(ctx context.Context, body GenTextToImageJSONRequestBody, reqEditors ...RequestEditorFn) (*GenTextToImageResponse, error)
+
+	// GenTextToSpeechWithBodyWithResponse request with any body
+	GenTextToSpeechWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenTextToSpeechResponse, error)
+
+	GenTextToSpeechWithResponse(ctx context.Context, body GenTextToSpeechJSONRequestBody, reqEditors ...RequestEditorFn) (*GenTextToSpeechResponse, error)
 
 	// GenUpscaleWithBodyWithResponse request with any body
 	GenUpscaleWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenUpscaleResponse, error)
@@ -1222,6 +1424,32 @@ func (r LivePortraitLivePortraitPostResponse) StatusCode() int {
 	return 0
 }
 
+type GenLiveVideoToVideoResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *LiveVideoToVideoResponse
+	JSON400      *HTTPError
+	JSON401      *HTTPError
+	JSON422      *HTTPValidationError
+	JSON500      *HTTPError
+}
+
+// Status returns HTTPResponse.Status
+func (r GenLiveVideoToVideoResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GenLiveVideoToVideoResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GenLLMResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -1294,6 +1522,32 @@ func (r GenTextToImageResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GenTextToImageResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GenTextToSpeechResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *AudioResponse
+	JSON400      *HTTPError
+	JSON401      *HTTPError
+	JSON422      *HTTPValidationError
+	JSON500      *HTTPError
+}
+
+// Status returns HTTPResponse.Status
+func (r GenTextToSpeechResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GenTextToSpeechResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1380,6 +1634,23 @@ func (c *ClientWithResponses) LivePortraitLivePortraitPostWithBodyWithResponse(c
 	return ParseLivePortraitLivePortraitPostResponse(rsp)
 }
 
+// GenLiveVideoToVideoWithBodyWithResponse request with arbitrary body returning *GenLiveVideoToVideoResponse
+func (c *ClientWithResponses) GenLiveVideoToVideoWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenLiveVideoToVideoResponse, error) {
+	rsp, err := c.GenLiveVideoToVideoWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGenLiveVideoToVideoResponse(rsp)
+}
+
+func (c *ClientWithResponses) GenLiveVideoToVideoWithResponse(ctx context.Context, body GenLiveVideoToVideoJSONRequestBody, reqEditors ...RequestEditorFn) (*GenLiveVideoToVideoResponse, error) {
+	rsp, err := c.GenLiveVideoToVideo(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGenLiveVideoToVideoResponse(rsp)
+}
+
 // GenLLMWithBodyWithResponse request with arbitrary body returning *GenLLMResponse
 func (c *ClientWithResponses) GenLLMWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenLLMResponse, error) {
 	rsp, err := c.GenLLMWithBody(ctx, contentType, body, reqEditors...)
@@ -1421,6 +1692,23 @@ func (c *ClientWithResponses) GenTextToImageWithResponse(ctx context.Context, bo
 		return nil, err
 	}
 	return ParseGenTextToImageResponse(rsp)
+}
+
+// GenTextToSpeechWithBodyWithResponse request with arbitrary body returning *GenTextToSpeechResponse
+func (c *ClientWithResponses) GenTextToSpeechWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenTextToSpeechResponse, error) {
+	rsp, err := c.GenTextToSpeechWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGenTextToSpeechResponse(rsp)
+}
+
+func (c *ClientWithResponses) GenTextToSpeechWithResponse(ctx context.Context, body GenTextToSpeechJSONRequestBody, reqEditors ...RequestEditorFn) (*GenTextToSpeechResponse, error) {
+	rsp, err := c.GenTextToSpeech(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGenTextToSpeechResponse(rsp)
 }
 
 // GenUpscaleWithBodyWithResponse request with arbitrary body returning *GenUpscaleResponse
@@ -1749,6 +2037,60 @@ func ParseLivePortraitLivePortraitPostResponse(rsp *http.Response) (*LivePortrai
 	return response, nil
 }
 
+// ParseGenLiveVideoToVideoResponse parses an HTTP response from a GenLiveVideoToVideoWithResponse call
+func ParseGenLiveVideoToVideoResponse(rsp *http.Response) (*GenLiveVideoToVideoResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GenLiveVideoToVideoResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest LiveVideoToVideoResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest HTTPValidationError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGenLLMResponse parses an HTTP response from a GenLLMWithResponse call
 func ParseGenLLMResponse(rsp *http.Response) (*GenLLMResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -1911,6 +2253,60 @@ func ParseGenTextToImageResponse(rsp *http.Response) (*GenTextToImageResponse, e
 	return response, nil
 }
 
+// ParseGenTextToSpeechResponse parses an HTTP response from a GenTextToSpeechWithResponse call
+func ParseGenTextToSpeechResponse(rsp *http.Response) (*GenTextToSpeechResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GenTextToSpeechResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest AudioResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest HTTPValidationError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGenUpscaleResponse parses an HTTP response from a GenUpscaleWithResponse call
 func ParseGenUpscaleResponse(rsp *http.Response) (*GenUpscaleResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -1985,6 +2381,9 @@ type ServerInterface interface {
 	// Live Portrait
 	// (POST /live-portrait)
 	LivePortraitLivePortraitPost(w http.ResponseWriter, r *http.Request)
+	// Video To Video
+	// (POST /live-video-to-video)
+	GenLiveVideoToVideo(w http.ResponseWriter, r *http.Request)
 	// LLM
 	// (POST /llm)
 	GenLLM(w http.ResponseWriter, r *http.Request)
@@ -1994,6 +2393,9 @@ type ServerInterface interface {
 	// Text To Image
 	// (POST /text-to-image)
 	GenTextToImage(w http.ResponseWriter, r *http.Request)
+	// Text To Speech
+	// (POST /text-to-speech)
+	GenTextToSpeech(w http.ResponseWriter, r *http.Request)
 	// Upscale
 	// (POST /upscale)
 	GenUpscale(w http.ResponseWriter, r *http.Request)
@@ -2039,6 +2441,12 @@ func (_ Unimplemented) LivePortraitLivePortraitPost(w http.ResponseWriter, r *ht
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// Video To Video
+// (POST /live-video-to-video)
+func (_ Unimplemented) GenLiveVideoToVideo(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // LLM
 // (POST /llm)
 func (_ Unimplemented) GenLLM(w http.ResponseWriter, r *http.Request) {
@@ -2054,6 +2462,12 @@ func (_ Unimplemented) GenSegmentAnything2(w http.ResponseWriter, r *http.Reques
 // Text To Image
 // (POST /text-to-image)
 func (_ Unimplemented) GenTextToImage(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Text To Speech
+// (POST /text-to-speech)
+func (_ Unimplemented) GenTextToSpeech(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -2172,6 +2586,23 @@ func (siw *ServerInterfaceWrapper) LivePortraitLivePortraitPost(w http.ResponseW
 	handler.ServeHTTP(w, r.WithContext(ctx))
 }
 
+// GenLiveVideoToVideo operation middleware
+func (siw *ServerInterfaceWrapper) GenLiveVideoToVideo(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, HTTPBearerScopes, []string{})
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GenLiveVideoToVideo(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
 // GenLLM operation middleware
 func (siw *ServerInterfaceWrapper) GenLLM(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -2214,6 +2645,23 @@ func (siw *ServerInterfaceWrapper) GenTextToImage(w http.ResponseWriter, r *http
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GenTextToImage(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// GenTextToSpeech operation middleware
+func (siw *ServerInterfaceWrapper) GenTextToSpeech(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, HTTPBearerScopes, []string{})
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GenTextToSpeech(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2372,6 +2820,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/live-portrait", wrapper.LivePortraitLivePortraitPost)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/live-video-to-video", wrapper.GenLiveVideoToVideo)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/llm", wrapper.GenLLM)
 	})
 	r.Group(func(r chi.Router) {
@@ -2379,6 +2830,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/text-to-image", wrapper.GenTextToImage)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/text-to-speech", wrapper.GenTextToSpeech)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/upscale", wrapper.GenUpscale)
@@ -2389,66 +2843,77 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
-	"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",
-	"+lYAAA==",
+
+	"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",
+	"aQAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

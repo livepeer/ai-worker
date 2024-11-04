@@ -60,11 +60,20 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
             return SegmentAnything2Pipeline(model_id)
         case "llm":
             from app.pipelines.llm import LLMPipeline
+
             return LLMPipeline(model_id)
         case "image-to-text":
             from app.pipelines.image_to_text import ImageToTextPipeline
 
             return ImageToTextPipeline(model_id)
+        case "live-video-to-video":
+            from app.pipelines.live_video_to_video import LiveVideoToVideoPipeline
+
+            return LiveVideoToVideoPipeline(model_id)
+        case "text-to-speech":
+            from app.pipelines.text_to_speech import TextToSpeechPipeline
+
+            return TextToSpeechPipeline(model_id)
         case _:
             raise EnvironmentError(
                 f"{pipeline} is not a valid pipeline for model {model_id}"
@@ -105,10 +114,20 @@ def load_route(pipeline: str) -> any:
             return segment_anything_2.router
         case "llm":
             from app.routes import llm
+
             return llm.router
         case "image-to-text":
             from app.routes import image_to_text
+
             return image_to_text.router
+        case "live-video-to-video":
+            from app.routes import live_video_to_video
+
+            return live_video_to_video.router
+        case "text-to-speech":
+            from app.routes import text_to_speech
+
+            return text_to_speech.router
         case _:
             raise EnvironmentError(f"{pipeline} is not a valid pipeline")
 

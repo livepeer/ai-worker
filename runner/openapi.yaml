@@ -466,6 +466,103 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: imageToText
+  /live-video-to-video:
+    post:
+      tags:
+      - generate
+      summary: Video To Video
+      description: Apply video-like transformations to a provided image.
+      operationId: genLiveVideoToVideo
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LiveVideoToVideoParams'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LiveVideoToVideoResponse'
+                x-speakeasy-name-override: data
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+      x-speakeasy-name-override: liveVideoToVideo
+  /text-to-speech:
+    post:
+      tags:
+      - generate
+      summary: Text To Speech
+      description: Generate a text-to-speech audio file based on the provided text
+        input and speaker description.
+      operationId: genTextToSpeech
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TextToSpeechParams'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AudioResponse'
+                x-speakeasy-name-override: data
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+      x-speakeasy-name-override: textToSpeech
 components:
   schemas:
     APIError:
@@ -479,6 +576,17 @@ components:
       - msg
       title: APIError
       description: API error response model.
+    AudioResponse:
+      properties:
+        audio:
+          allOf:
+          - $ref: '#/components/schemas/MediaURL'
+          description: The generated audio.
+      type: object
+      required:
+      - audio
+      title: AudioResponse
+      description: Response model for audio generation.
     Body_genAudioToText:
       properties:
         audio:
@@ -802,6 +910,27 @@ components:
       - source_image
       - driving_video
       title: Body_live_portrait_live_portrait_post
+    Chunk:
+      properties:
+        timestamp:
+          prefixItems:
+          - type: number
+          - type: number
+          type: array
+          maxItems: 2
+          minItems: 2
+          title: Timestamp
+          description: The timestamp of the chunk.
+        text:
+          type: string
+          title: Text
+          description: The text of the chunk.
+      type: object
+      required:
+      - timestamp
+      - text
+      title: Chunk
+      description: A chunk of text with a timestamp.
     HTTPError:
       properties:
         detail:
@@ -866,6 +995,47 @@ components:
       - response
       - tokens_used
       title: LLMResponse
+    LiveVideoToVideoParams:
+      properties:
+        subscribe_url:
+          type: string
+          title: Subscribe Url
+          description: Source URL of the incoming stream to subscribe to.
+        publish_url:
+          type: string
+          title: Publish Url
+          description: Destination URL of the outgoing stream to publish.
+        model_id:
+          type: string
+          title: Model Id
+          description: Hugging Face model ID used for image generation.
+          default: ''
+        params:
+          type: object
+          title: Params
+          description: Initial parameters for the model.
+          default: {}
+      type: object
+      required:
+      - subscribe_url
+      - publish_url
+      title: LiveVideoToVideoParams
+    LiveVideoToVideoResponse:
+      properties:
+        subscribe_url:
+          type: string
+          title: Subscribe Url
+          description: Source URL of the incoming stream to subscribe to
+        publish_url:
+          type: string
+          title: Publish Url
+          description: Destination URL of the outgoing stream to publish to
+      type: object
+      required:
+      - subscribe_url
+      - publish_url
+      title: LiveVideoToVideoResponse
+      description: Response model for live video-to-video generation.
     MasksResponse:
       properties:
         masks:
@@ -908,6 +1078,17 @@ components:
       - nsfw
       title: Media
       description: A media object containing information about the generated media.
+    MediaURL:
+      properties:
+        url:
+          type: string
+          title: Url
+          description: The URL where the media can be accessed.
+      type: object
+      required:
+      - url
+      title: MediaURL
+      description: A URL from which media can be accessed.
     TextResponse:
       properties:
         text:
@@ -916,7 +1097,7 @@ components:
           description: The generated text.
         chunks:
           items:
-            $ref: '#/components/schemas/chunk'
+            $ref: '#/components/schemas/Chunk'
           type: array
           title: Chunks
           description: The generated text chunks.
@@ -992,6 +1173,26 @@ components:
       required:
       - prompt
       title: TextToImageParams
+    TextToSpeechParams:
+      properties:
+        model_id:
+          type: string
+          title: Model Id
+          description: Hugging Face model ID used for text to speech generation.
+          default: ''
+        text:
+          type: string
+          title: Text
+          description: Text input for speech generation.
+          default: ''
+        description:
+          type: string
+          title: Description
+          description: Description of speaker to steer text to speech generation.
+          default: A male speaker delivers a slightly expressive and animated speech
+            with a moderate speed and pitch.
+      type: object
+      title: TextToSpeechParams
     ValidationError:
       properties:
         loc:
@@ -1028,23 +1229,6 @@ components:
       - frames
       title: VideoResponse
       description: Response model for video generation.
-    chunk:
-      properties:
-        timestamp:
-          items: {}
-          type: array
-          title: Timestamp
-          description: The timestamp of the chunk.
-        text:
-          type: string
-          title: Text
-          description: The text of the chunk.
-      type: object
-      required:
-      - timestamp
-      - text
-      title: chunk
-      description: A chunk of text with a timestamp.
   securitySchemes:
     HTTPBearer:
       type: http

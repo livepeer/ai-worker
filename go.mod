@@ -10,6 +10,7 @@ require (
 	github.com/getkin/kin-openapi v0.128.0
 	github.com/go-chi/chi/v5 v5.1.0
 	github.com/oapi-codegen/runtime v1.1.1
+	github.com/pebbe/zmq4 v1.2.11
 	github.com/vincent-petithory/dataurl v1.0.0
 )
 

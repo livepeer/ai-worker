@@ -11,10 +11,15 @@ from PIL import Image
 from pydantic import BaseModel, Field
 
 
-class Media(BaseModel):
-    """A media object containing information about the generated media."""
+class MediaURL(BaseModel):
+    """A URL from which media can be accessed."""
 
     url: str = Field(..., description="The URL where the media can be accessed.")
+
+
+class Media(MediaURL):
+    """A media object containing information about the generated media."""
+
     seed: int = Field(..., description="The seed used to generate the media.")
     # TODO: Make nsfw property optional once Go codegen tool supports
     # OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
@@ -33,6 +38,12 @@ class VideoResponse(BaseModel):
     frames: List[List[Media]] = Field(..., description="The generated video frames.")
 
 
+class AudioResponse(BaseModel):
+    """Response model for audio generation."""
+
+    audio: MediaURL = Field(..., description="The generated audio.")
+
+
 class MasksResponse(BaseModel):
     """Response model for object segmentation."""
 
@@ -45,10 +56,10 @@ class MasksResponse(BaseModel):
     )
 
 
-class chunk(BaseModel):
+class Chunk(BaseModel):
     """A chunk of text with a timestamp."""
 
-    timestamp: tuple = Field(..., description="The timestamp of the chunk.")
+    timestamp: Tuple[float, float] = Field(..., description="The timestamp of the chunk.")
     text: str = Field(..., description="The text of the chunk.")
 
 
@@ -56,7 +67,7 @@ class TextResponse(BaseModel):
     """Response model for text generation."""
 
     text: str = Field(..., description="The generated text.")
-    chunks: List[chunk] = Field(..., description="The generated text chunks.")
+    chunks: List[Chunk] = Field(..., description="The generated text chunks.")
 
 
 class LLMResponse(BaseModel):
@@ -68,6 +79,12 @@ class ImageToTextResponse(BaseModel):
     """Response model for text generation."""
 
     text: str = Field(..., description="The generated text.")
+
+class LiveVideoToVideoResponse(BaseModel):
+    """Response model for live video-to-video generation."""
+
+    subscribe_url: str = Field(..., description="Source URL of the incoming stream to subscribe to")
+    publish_url: str = Field(..., description="Destination URL of the outgoing stream to publish to")
 
 
 class APIError(BaseModel):
@@ -120,6 +137,20 @@ def image_to_data_url(img: Image, format: str = "png") -> str:
         The data URL for the image.
     """
     return "data:image/png;base64," + image_to_base64(img, format=format)
+
+
+def audio_to_data_url(buffer: io.BytesIO, format: str = "wav") -> str:
+    """Convert an audio buffer to a data URL.
+
+    Args:
+        buffer: The audio buffer to convert.
+        format: The audio format to use. Defaults to "wav".
+
+    Returns:
+        The data URL for the audio.
+    """
+    base64_audio = base64.b64encode(buffer.read()).decode("utf-8")
+    return f"data:audio/{format};base64,{base64_audio}"
 
 
 def file_exceeds_max_size(

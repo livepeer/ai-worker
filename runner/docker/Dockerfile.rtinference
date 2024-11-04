@@ -1,0 +1,42 @@
+ARG BASE_IMAGE=livepeer/ai-runner:base
+FROM ${BASE_IMAGE}
+
+ENV PIP_PREFER_BINARY=1
+
+# Install NVIDIA Container Toolkit
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    nvidia-container-toolkit \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install StreamDiffusion dependencies
+RUN pip install --no-cache-dir \
+    torch==2.1.0 \
+    torchvision==0.16.0 \
+    xformers \
+    --index-url https://download.pytorch.org/whl/cu118
+
+# Clone StreamDiffusion repository
+RUN git clone https://github.com/cumulo-autumn/StreamDiffusion.git /streamdiffusion
+WORKDIR /streamdiffusion
+
+# Install StreamDiffusion
+RUN python setup.py develop easy_install streamdiffusion[tensorrt]
+
+# Install TensorRT extension
+RUN python -m streamdiffusion.tools.install-tensorrt
+
+# Set working directory to /app
+WORKDIR /app
+
+# Copy entire StreamDiffusion directory to /app/streamdiffusion
+RUN cp -r /streamdiffusion /app/streamdiffusion
+
+# Add /app and /app/streamdiffusion to PYTHONPATH
+ENV PYTHONPATH="${PYTHONPATH}:/app:/app/streamdiffusion"
+
+# Set environment variables for NVIDIA drivers
+ENV NVIDIA_VISIBLE_DEVICES all
+ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
+
+# Overwrite the CMD to start a bash shell
+CMD ["/bin/bash"]
