@@ -62,7 +62,7 @@ class MasksResponse(BaseModel):
     )
 
 
-class chunk(BaseModel):
+class Chunk(BaseModel):
     """A chunk of text with a timestamp."""
 
     timestamp: Tuple[float, float] = Field(..., description="The timestamp of the chunk.")
