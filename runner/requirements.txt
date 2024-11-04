@@ -19,3 +19,4 @@ sentencepiece== 0.2.0
 protobuf==5.27.2
 bitsandbytes==0.43.3
 psutil==6.0.0
+zstd==1.5.5.1
