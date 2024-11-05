@@ -123,8 +123,9 @@ class AudioToTextPipeline(Pipeline):
             kwargs.pop("batch_size", None)
             kwargs.pop("chunk_length_s", None)
         logger.info(
-            f"AudioToTextPipeline: Starting inference with batch_size={kwargs.get('batch_size', 'N/A')}, "
-            f"chunk_length_s={kwargs.get('chunk_length_s', 'N/A')}, duration={duration}"
+            "AudioToTextPipeline: Starting inference with batch_size="
+            f"{kwargs.get('batch_size', 'default')}, chunk_length_s="
+            f"{kwargs.get('chunk_length_s', 'default')}, duration={duration}"
         )
 
         try:
