@@ -77,11 +77,10 @@ def translate_to_gateway(openapi: dict) -> dict:
                         schema.setdefault("required", [])
                         if "model_id" in schema["properties"]:
                             schema["required"].append("model_id")
-                        # Remove 'metadata' property if it exists
+
+                        # Remove 'metadata' property if it exists.
                         if "metadata" in schema["properties"]:
                             schema["properties"].pop("metadata")
-                            if "metadata" in schema["required"]:
-                                schema["required"].remove("metadata")
 
     # Update the 'VideoResponse' schema to match the Gateway's response.
     # NOTE: This is necessary because the Gateway transcodes the runner's response and

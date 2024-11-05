@@ -5,9 +5,6 @@ formats.
 from io import BytesIO
 
 import av
-import tempfile
-import os
-import subprocess
 
 
 class AudioConversionError(Exception):
@@ -20,10 +17,9 @@ class AudioConversionError(Exception):
 
 class AudioConverter:
     """Converts audio files to different formats."""
+
     @staticmethod
-    def convert(
-        input_bytes: bytes, output_extension: str, output_codec=None
-    ) -> bytes:
+    def convert(input_bytes: bytes, output_extension: str, output_codec=None) -> bytes:
         """Converts an audio file to a different format.
 
         Args:
