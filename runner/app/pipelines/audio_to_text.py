@@ -122,10 +122,11 @@ class AudioToTextPipeline(Pipeline):
         if duration <= kwargs["chunk_length_s"]:
             kwargs.pop("batch_size", None)
             kwargs.pop("chunk_length_s", None)
+            inference_mode = "sequential"
+        else: 
+            inference_mode = f"chunked (batch_size={kwargs['batch_size']}, chunk_length_s={kwargs['chunk_length_s']})"
         logger.info(
-            "AudioToTextPipeline: Starting inference with batch_size="
-            f"{kwargs.get('batch_size', 'default')}, chunk_length_s="
-            f"{kwargs.get('chunk_length_s', 'default')}, duration={duration}"
+            f"AudioToTextPipeline: Starting inference mode={inference_mode} with duration={duration}"
         )
 
         try:
