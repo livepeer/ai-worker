@@ -50,3 +50,12 @@ To build a pipeline-specific container, you need to build the base container fir
 
    curl --location -H "Content-Type: application/json" 'http://localhost:8000/live-video-to-video' -X POST -d '{"stream_url":"http://<url-to-trickle-pull>"}'
    ```
+
+   ### Yondon's ComfyUI integration
+
+   ```
+   docker build -t livepeer/ai-runner:live-comfyui -f docker/Dockerfile.live-comfyui .
+
+
+   docker run -it --rm --name video-to-video --gpus all -p 3389:3389 livepeer/ai-runner:live-comfyui
+   ```
