@@ -563,6 +563,11 @@ components:
             is ''true'' (''sentence''). ''false'' means no timestamps. ''word'' means
             word-based timestamps.'
           default: 'true'
+        metadata:
+          type: string
+          title: Metadata
+          description: Additional job information to be passed to the pipeline.
+          default: '{}'
       type: object
       required:
       - audio
@@ -848,8 +853,12 @@ components:
       properties:
         timestamp:
           prefixItems:
-          - type: number
-          - type: number
+          - anyOf:
+            - type: number
+            - type: 'null'
+          - anyOf:
+            - type: number
+            - type: 'null'
           type: array
           maxItems: 2
           minItems: 2

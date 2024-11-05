@@ -48,6 +48,7 @@ def translate_to_gateway(openapi: dict) -> dict:
         Differences between 'runner' and 'gateway' entrypoints:
         - 'health' endpoint is removed.
         - 'model_id' is enforced in all endpoints.
+        - 'metadata' property is removed from all schemas.
         - 'VideoResponse' schema is updated to match the Gateway's transcoded mp4
             response.
 
@@ -76,6 +77,10 @@ def translate_to_gateway(openapi: dict) -> dict:
                         schema.setdefault("required", [])
                         if "model_id" in schema["properties"]:
                             schema["required"].append("model_id")
+
+                        # Remove 'metadata' property if it exists.
+                        if "metadata" in schema["properties"]:
+                            schema["properties"].pop("metadata")
 
     # Update the 'VideoResponse' schema to match the Gateway's response.
     # NOTE: This is necessary because the Gateway transcodes the runner's response and

@@ -5,7 +5,6 @@ formats.
 from io import BytesIO
 
 import av
-from fastapi import UploadFile
 
 
 class AudioConversionError(Exception):
@@ -20,13 +19,11 @@ class AudioConverter:
     """Converts audio files to different formats."""
 
     @staticmethod
-    def convert(
-        upload_file: UploadFile, output_extension: str, output_codec=None
-    ) -> bytes:
+    def convert(input_bytes: bytes, output_extension: str, output_codec=None) -> bytes:
         """Converts an audio file to a different format.
 
         Args:
-            upload_file: The audio file to convert.
+            input_bytes: The audio file as bytes to convert.
             output_extension: The desired output format.
             output_codec: The desired output codec.
 
@@ -38,7 +35,8 @@ class AudioConverter:
 
         output_buffer = BytesIO()
 
-        input_container = av.open(upload_file.file)
+        input_buffer = BytesIO(input_bytes)
+        input_container = av.open(input_buffer)
         output_container = av.open(output_buffer, mode="w", format=output_extension)
 
         try:
@@ -65,15 +63,3 @@ class AudioConverter:
         output_buffer.seek(0)
         converted_bytes = output_buffer.read()
         return converted_bytes
-
-    @staticmethod
-    def write_bytes_to_file(bytes: bytes, upload_file: UploadFile):
-        """Writes bytes to a file.
-
-        Args:
-            bytes: The bytes to write.
-            upload_file: The file to write to.
-        """
-        upload_file.file.seek(0)
-        upload_file.file.write(bytes)
-        upload_file.file.seek(0)
