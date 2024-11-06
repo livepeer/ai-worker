@@ -2,12 +2,12 @@ import logging
 import os
 
 import torch
+from huggingface_hub import file_download
+from PIL import Image
+from transformers import BlipForConditionalGeneration, BlipProcessor
+
 from app.pipelines.base import Pipeline
 from app.pipelines.utils import get_model_dir, get_torch_device
-from huggingface_hub import file_download
-from transformers import BlipProcessor, BlipForConditionalGeneration
-from PIL import Image
-
 from app.utils.errors import InferenceError
 
 logger = logging.getLogger(__name__)

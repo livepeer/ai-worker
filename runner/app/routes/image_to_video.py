@@ -4,19 +4,20 @@ import random
 from typing import Annotated, Dict, Tuple, Union
 
 import torch
+from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from PIL import Image, ImageFile
+
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.routes.utils import (
     HTTPError,
     VideoResponse,
+    handle_pipeline_exception,
     http_error,
     image_to_data_url,
-    handle_pipeline_exception,
 )
-from fastapi import APIRouter, Depends, File, Form, UploadFile, status
-from fastapi.responses import JSONResponse
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from PIL import Image, ImageFile
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 

@@ -1,16 +1,17 @@
-from enum import Enum
 import logging
 import os
-from typing import List
 from dataclasses import dataclass
+from enum import Enum
+from typing import List
 
 import torch
+from fastapi import File, UploadFile
+from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
+
 from app.pipelines.base import Pipeline
 from app.pipelines.utils import get_model_dir, get_torch_device
 from app.pipelines.utils.audio import AudioConverter
 from app.utils.errors import InferenceError
-from fastapi import File, UploadFile
-from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 
 logger = logging.getLogger(__name__)
 

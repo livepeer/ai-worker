@@ -3,20 +3,21 @@ import os
 from typing import Annotated, Dict, Tuple, Union
 
 import torch
+from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.routes.utils import (
     HTTPError,
     TextResponse,
     file_exceeds_max_size,
-    parse_key_from_metadata,
     get_media_duration_ffmpeg,
-    http_error,
     handle_pipeline_exception,
+    http_error,
+    parse_key_from_metadata,
 )
-from fastapi import APIRouter, Depends, File, Form, UploadFile, status
-from fastapi.responses import JSONResponse
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 router = APIRouter()
 
