@@ -29,10 +29,11 @@ class ModelName(Enum):
         return [model.value for model in cls]
 
     @classmethod
-    def get(cls, model_id: str) -> Enum | None:
-        """Return the enum or None if the model ID is not found."""
+    def from_value(cls, value: str) -> Enum | None:
+        """Return the enum member corresponding to the given value, or None if not
+        found."""
         try:
-            return cls(model_id)
+            return cls(value)
         except ValueError:
             return None
 
@@ -45,6 +46,7 @@ class ModelConfig:
         torch.float16 if torch.cuda.is_available() else torch.float32
     )
     chunk_length_s: int = 30
+    batch_size: int = 16
 
 
 MODEL_CONFIGS = {
@@ -63,10 +65,8 @@ class AudioToTextPipeline(Pipeline):
         torch_device = get_torch_device()
 
         # Get model specific configuration parameters.
-        model_enum = ModelName.get(model_id)
-        self._model_cfg = (
-            ModelConfig() if model_enum is None else MODEL_CONFIGS[model_enum]
-        )
+        model_enum = ModelName.from_value(model_id)
+        self._model_cfg: ModelConfig = MODEL_CONFIGS.get(model_enum, ModelConfig())
         kwargs["torch_dtype"] = self._model_cfg.torch_dtype
         logger.info(
             "AudioToText loading '%s' on device '%s' with '%s' variant",
@@ -110,7 +110,7 @@ class AudioToTextPipeline(Pipeline):
 
         # Adjust batch size and chunk length based on timestamps and duration.
         # NOTE: Done to prevent CUDA OOM errors for large audio files.
-        kwargs["batch_size"] = 16
+        kwargs["batch_size"] = self._model_cfg.batch_size
         kwargs["chunk_length_s"] = self._model_cfg.chunk_length_s
         if kwargs["return_timestamps"] == "word":
             if duration > 3600:
@@ -123,7 +123,7 @@ class AudioToTextPipeline(Pipeline):
             kwargs.pop("batch_size", None)
             kwargs.pop("chunk_length_s", None)
             inference_mode = "sequential"
-        else: 
+        else:
             inference_mode = f"chunked (batch_size={kwargs['batch_size']}, chunk_length_s={kwargs['chunk_length_s']})"
         logger.info(
             f"AudioToTextPipeline: Starting inference mode={inference_mode} with duration={duration}"
