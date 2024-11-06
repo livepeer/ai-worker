@@ -3,11 +3,12 @@ from typing import List, Optional, Tuple
 
 import torch
 import PIL
+from PIL import ImageFile
+from sam2.sam2_image_predictor import SAM2ImagePredictor
+
 from app.pipelines.base import Pipeline
 from app.pipelines.utils import get_model_dir, get_torch_device
 from app.utils.errors import InferenceError
-from PIL import ImageFile
-from sam2.sam2_image_predictor import SAM2ImagePredictor
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 

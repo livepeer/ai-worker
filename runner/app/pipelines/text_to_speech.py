@@ -3,11 +3,12 @@ import logging
 
 import soundfile as sf
 import torch
-from app.utils.errors import InferenceError
-from app.pipelines.base import Pipeline
-from app.pipelines.utils import get_model_dir, get_torch_device
 from parler_tts import ParlerTTSForConditionalGeneration
 from transformers import AutoTokenizer
+
+from app.pipelines.base import Pipeline
+from app.pipelines.utils import get_model_dir, get_torch_device
+from app.utils.errors import InferenceError
 
 logger = logging.getLogger(__name__)
 

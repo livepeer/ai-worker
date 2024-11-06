@@ -4,6 +4,8 @@ import json
 import logging
 
 import yaml
+from fastapi.openapi.utils import get_openapi
+
 from app.main import app
 from app.routes import (
     audio_to_text,
@@ -18,7 +20,6 @@ from app.routes import (
     text_to_speech,
     upscale,
 )
-from fastapi.openapi.utils import get_openapi
 
 logging.basicConfig(
     level=logging.INFO,

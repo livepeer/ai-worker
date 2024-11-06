@@ -5,17 +5,6 @@ from typing import List, Optional, Tuple
 
 import PIL
 import torch
-from app.pipelines.base import Pipeline
-from app.pipelines.utils import (
-    LoraLoader,
-    SafetyChecker,
-    get_model_dir,
-    get_torch_device,
-    is_lightning_model,
-    is_turbo_model,
-    split_prompt,
-)
-from app.utils.errors import InferenceError
 from diffusers import (
     AutoPipelineForText2Image,
     EulerDiscreteScheduler,
@@ -27,6 +16,18 @@ from diffusers import (
 from diffusers.models import AutoencoderKL
 from huggingface_hub import file_download, hf_hub_download
 from safetensors.torch import load_file
+
+from app.pipelines.base import Pipeline
+from app.pipelines.utils import (
+    LoraLoader,
+    SafetyChecker,
+    get_model_dir,
+    get_torch_device,
+    is_lightning_model,
+    is_turbo_model,
+    split_prompt,
+)
+from app.utils.errors import InferenceError
 
 logger = logging.getLogger(__name__)
 

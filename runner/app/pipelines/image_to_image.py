@@ -5,16 +5,6 @@ from typing import List, Optional, Tuple
 
 import PIL
 import torch
-from app.pipelines.base import Pipeline
-from app.pipelines.utils import (
-    LoraLoader,
-    SafetyChecker,
-    get_model_dir,
-    get_torch_device,
-    is_lightning_model,
-    is_turbo_model,
-)
-from app.utils.errors import InferenceError
 from diffusers import (
     AutoPipelineForImage2Image,
     EulerAncestralDiscreteScheduler,
@@ -26,6 +16,17 @@ from diffusers import (
 from huggingface_hub import file_download, hf_hub_download
 from PIL import ImageFile
 from safetensors.torch import load_file
+
+from app.pipelines.base import Pipeline
+from app.pipelines.utils import (
+    LoraLoader,
+    SafetyChecker,
+    get_model_dir,
+    get_torch_device,
+    is_lightning_model,
+    is_turbo_model,
+)
+from app.utils.errors import InferenceError
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
