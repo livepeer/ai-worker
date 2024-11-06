@@ -61,9 +61,7 @@ class MasksResponse(BaseModel):
 class Chunk(BaseModel):
     """A chunk of text with a timestamp."""
 
-    timestamp: Tuple[Optional[float], Optional[float]] = Field(
-        ..., description="The timestamp of the chunk."
-    )
+    timestamp: Tuple = Field(..., description="The timestamp of the chunk.")
     text: str = Field(..., description="The text of the chunk.")
 
 
@@ -84,11 +82,16 @@ class ImageToTextResponse(BaseModel):
 
     text: str = Field(..., description="The generated text.")
 
+
 class LiveVideoToVideoResponse(BaseModel):
     """Response model for live video-to-video generation."""
 
-    subscribe_url: str = Field(..., description="Source URL of the incoming stream to subscribe to")
-    publish_url: str = Field(..., description="Destination URL of the outgoing stream to publish to")
+    subscribe_url: str = Field(
+        ..., description="Source URL of the incoming stream to subscribe to"
+    )
+    publish_url: str = Field(
+        ..., description="Destination URL of the outgoing stream to publish to"
+    )
 
 
 class APIError(BaseModel):
