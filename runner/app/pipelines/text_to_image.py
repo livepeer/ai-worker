@@ -43,7 +43,7 @@ class ModelName(Enum):
     @classmethod
     def list(cls):
         """Return a list of all model IDs."""
-        return list(map(lambda c: c.value, cls))
+        return [model.value for model in cls]
 
 
 class TextToImagePipeline(Pipeline):
