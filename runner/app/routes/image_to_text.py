@@ -108,6 +108,7 @@ async def image_to_text(
         return ImageToTextResponse(text=pipeline(prompt=prompt, image=image))
     except Exception as e:
         if isinstance(e, torch.cuda.OutOfMemoryError):
+            # TODO: Investigate why not all VRAM memory is cleared.
             torch.cuda.empty_cache()
         logger.error(f"ImageToTextPipeline error: {e}")
         return handle_pipeline_exception(

@@ -134,6 +134,7 @@ async def upscale(
         )
     except Exception as e:
         if isinstance(e, torch.cuda.OutOfMemoryError):
+            # TODO: Investigate why not all VRAM memory is cleared.
             torch.cuda.empty_cache()
         logger.error(f"TextToImage pipeline error: {e}")
         return handle_pipeline_exception(

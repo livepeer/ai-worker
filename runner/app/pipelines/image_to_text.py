@@ -59,6 +59,8 @@ class ImageToTextPipeline(Pipeline):
 
         try:
             return self.processor.decode(out[0], skip_special_tokens=True)
+        except torch.cuda.OutOfMemoryError as e:
+            raise e
         except Exception as e:
             raise InferenceError(original_exception=e)
 

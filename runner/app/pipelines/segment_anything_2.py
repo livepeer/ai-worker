@@ -1,6 +1,7 @@
 import logging
 from typing import List, Optional, Tuple
 
+import torch
 import PIL
 from app.pipelines.base import Pipeline
 from app.pipelines.utils import get_model_dir, get_torch_device
@@ -32,6 +33,8 @@ class SegmentAnything2Pipeline(Pipeline):
         try:
             self.tm.set_image(image)
             prediction = self.tm.predict(**kwargs)
+        except torch.cuda.OutOfMemoryError as e:
+            raise e
         except Exception as e:
             raise InferenceError(original_exception=e)
 

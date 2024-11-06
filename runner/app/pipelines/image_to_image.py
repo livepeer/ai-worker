@@ -236,6 +236,8 @@ class ImageToImagePipeline(Pipeline):
 
         try:
             outputs = self.ldm(prompt, image=image, **kwargs)
+        except torch.cuda.OutOfMemoryError as e:
+            raise e
         except Exception as e:
             raise InferenceError(original_exception=e)
 

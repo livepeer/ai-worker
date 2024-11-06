@@ -183,6 +183,7 @@ async def segment_anything_2(
         )
     except Exception as e:
         if isinstance(e, torch.cuda.OutOfMemoryError):
+            # TODO: Investigate why not all VRAM memory is cleared.
             torch.cuda.empty_cache()
         logger.error(f"SegmentAnything2 pipeline error: {e}")
         return handle_pipeline_exception(
