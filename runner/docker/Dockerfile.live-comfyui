@@ -23,6 +23,18 @@ WORKDIR /app/comfystream
 RUN mkdir -p /comfyui/custom_nodes && \
     cp -r /app/comfystream/nodes/tensor_utils /comfyui/custom_nodes/
 
+# Install ComfyUI-Depth-Anything-Tensorrt Node (https://github.com/yuvraj108c/ComfyUI-Depth-Anything-Tensorrt)
+RUN cd /comfyui/custom_nodes && \
+    git clone https://github.com/yuvraj108c/ComfyUI-Depth-Anything-Tensorrt.git && \
+    cd ComfyUI-Depth-Anything-Tensorrt && \
+    pip install -r requirements.txt
+
+# Install Depth Anything Model
+
+# RUN git clone https://github.com/yuvraj108c/ComfyUI-Depth-Anything-Tensorrt.git && \
+#     cd ComfyUI-Depth-Anything-Tensorrt && \
+#     pip install -r requirements.txt
+
 #     mkdir -p /comfyui/models/tensorrt/depth-anything
 
 
