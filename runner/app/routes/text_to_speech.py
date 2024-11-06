@@ -130,6 +130,7 @@ async def text_to_speech(
         logger.info(f"TextToSpeechPipeline took {time.time() - start} seconds.")
     except Exception as e:
         if isinstance(e, torch.cuda.OutOfMemoryError):
+            # TODO: Investigate why not all VRAM memory is cleared.
             torch.cuda.empty_cache()
         logger.error(f"TextToSpeechPipeline error: {e}")
         return handle_pipeline_exception(
