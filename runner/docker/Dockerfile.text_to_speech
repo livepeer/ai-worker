@@ -15,9 +15,10 @@ RUN pip install --no-cache-dir \
     flash_attn \
     git+https://github.com/huggingface/parler-tts.git@5d0aca9753ab74ded179732f5bd797f7a8c6f8ee
 
+# Override base working directory to ensure the correct working directory.
 WORKDIR /app
 
 # Copy app directory to avoid rebuilding the base image during development.
-COPY app app/
+COPY app/ /app/app
 
 CMD ["uvicorn", "app.main:app", "--log-config", "app/cfg/uvicorn_logging_config.json", "--host", "0.0.0.0", "--port", "8000"]

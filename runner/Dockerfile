@@ -35,7 +35,7 @@ RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools==69.5.1 
 
 WORKDIR /app
 
-COPY ./requirements.txt .
+COPY ./requirements.txt /app
 RUN pip install --no-cache-dir -r requirements.txt
 
 RUN pip install https://github.com/chengzeyi/stable-fast/releases/download/v1.0.3/stable_fast-1.0.3+torch211cu121-cp311-cp311-manylinux2014_x86_64.whl
@@ -50,9 +50,9 @@ ENV HUGGINGFACE_HUB_CACHE=/models
 ENV DIFFUSERS_CACHE=/models
 ENV MODEL_DIR=/models
 
-COPY app/ app/
-COPY images/ images/
-COPY bench.py .
-COPY example_data/ example_data/
+COPY app/ /app/app
+COPY images/ /app/images
+COPY bench.py /app/bench.py
+COPY example_data/ /app/example_data
 
 CMD ["uvicorn", "app.main:app", "--log-config", "app/cfg/uvicorn_logging_config.json", "--host", "0.0.0.0", "--port", "8000"]
