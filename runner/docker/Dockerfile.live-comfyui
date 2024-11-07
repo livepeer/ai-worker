@@ -3,25 +3,10 @@ FROM ${BASE_IMAGE}
 
 ENV PIP_PREFER_BINARY=1
 
-# INSTALL COMFYUI --------------------------------------------------------------------------------------------------------
-# Install comfystream (which includes ComfyUI)
-RUN pip install git+https://github.com/yondonfu/comfystream.git 
-#    pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu124
-#    pip install -U nvidia-cudnn-cu12==8.9.7.29
-
-
-# INSTALL CUSTOM NODES ---------------------------------------------------------------------------------------------------
-# Install tensor_utils custom node from comfystream
-RUN git clone https://github.com/yondonfu/comfystream.git && \
-    cd comfystream && \
-    pip install -r requirements.txt && \
-    cd ..
-
-WORKDIR /app/comfystream
+RUN apt update && apt install -y vim
 
 # Create directory for ComfyUI custom nodes and models
-RUN mkdir -p /comfyui/custom_nodes && \
-    cp -r /app/comfystream/nodes/tensor_utils /comfyui/custom_nodes/
+RUN mkdir -p /comfyui/custom_nodes
 
 # Install ComfyUI-Depth-Anything-Tensorrt Node (https://github.com/yuvraj108c/ComfyUI-Depth-Anything-Tensorrt)
 RUN cd /comfyui/custom_nodes && \
@@ -33,24 +18,26 @@ RUN cd /comfyui/custom_nodes && \
 RUN pip uninstall -y tensorrt && \ 
     pip install tensorrt==10.6.0
 
-RUN apt update && apt install -y vim
+WORKDIR /comfyui/custom_nodes
 
-# Install Depth Anything Model
+RUN pip install torch torchvision torchaudio tqdm
 
-# RUN git clone https://github.com/yuvraj108c/ComfyUI-Depth-Anything-x.git && \
-#     cd ComfyUI-Depth-Anything-Tensorrt && \
-#     pip install -r requirements.txt
+# INSTALL COMFYUI --------------------------------------------------------------------------------------------------------
+# Install comfystream (which includes ComfyUI)
+# RUN pip uninstall 
+# RUN pip install git+https://github.com/yondonfu/comfystream.git 
+#    pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu124
+#    pip install -U nvidia-cudnn-cu12==8.9.7.29
 
-#     mkdir -p /comfyui/models/tensorrt/depth-anything
 
+# INSTALL CUSTOM NODES ---------------------------------------------------------------------------------------------------
+# Install tensor_utils custom node from comfystream
+# RUN git clone https://github.com/yondonfu/comfystream.git && \
+#     cd comfystream && \
+#     pip install -r requirements.txt && \
+#     cd ..
 
-#     rm -rf comfystream
-
-# Install ComfyUI-Depth-Anything-Tensorrt Node (https://github.com/yuvraj108c/ComfyUI-Depth-Anything-Tensorrt)
-# WORKDIR /comfyui/custom_nodes
-# RUN git clone https://github.com/yuvraj108c/ComfyUI-Depth-Anything-Tensorrt.git && \
-#     cd ComfyUI-Depth-Anything-Tensorrt && \
-#     pip install -r requirements.txt
+# WORKDIR /app/comfystream
 
 #RUN true
 # Copy ONNX models and conversion script
