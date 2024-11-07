@@ -19,7 +19,7 @@ docker build -t livepeer/ai-runner:live-app-${PIPELINE} -f docker/Dockerfile.liv
 CONTAINER_NAME=live-video-to-video-${PIPELINE}
 docker run -it --rm --name ${CONTAINER_NAME} \
   -e PIPELINE=live-video-to-video \
-  -e MODEL_ID=streamdiffusion \
+  -e MODEL_ID=${PIPELINE} \
   --gpus all \
   -p ${PORT}:8000 \
   -v ./models:/models \
