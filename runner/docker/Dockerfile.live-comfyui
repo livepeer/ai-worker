@@ -18,14 +18,30 @@ RUN cd /comfyui/custom_nodes && \
 RUN pip uninstall -y tensorrt && \ 
     pip install tensorrt==10.6.0
 
-WORKDIR /comfyui/custom_nodes
+WORKDIR /app
 
 RUN pip install torch torchvision torchaudio tqdm
 
-# INSTALL COMFYUI --------------------------------------------------------------------------------------------------------
+# Temp install specific versions of opentelemetry package before they merge this PR: https://github.com/hiddenswitch/ComfyUI/pull/26
+RUN pip install opentelemetry-distro==0.48b0 && \
+    pip install opentelemetry-exporter-otlp==1.27.0 && \
+    pip install opentelemetry-propagator-jaeger==1.27.0 && \
+    pip install opentelemetry-instrumentation==0.48b0 && \
+    pip install opentelemetry-util-http==0.48b0 && \
+    pip install opentelemetry-instrumentation-aio-pika==0.48b0 && \
+    pip install opentelemetry-instrumentation-requests==0.48b0 && \
+    pip install opentelemetry-semantic-conventions==0.48b0
+
 # Install comfystream (which includes ComfyUI)
-# RUN pip uninstall 
-# RUN pip install git+https://github.com/yondonfu/comfystream.git 
+RUN pip install git+https://github.com/yondonfu/comfystream.git 
+
+RUN git clone https://github.com/yondonfu/comfystream.git && \
+    cd comfystream && \
+    pip install -r requirements.txt && \
+    cd ..
+
+WORKDIR /app/comfystream
+
 #    pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu124
 #    pip install -U nvidia-cudnn-cu12==8.9.7.29
 
