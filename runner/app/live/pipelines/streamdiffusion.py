@@ -8,7 +8,7 @@ from StreamDiffusionWrapper import StreamDiffusionWrapper
 from .interface import Pipeline
 
 
-class StreamKohakuParams(BaseModel):
+class StreamDiffusionParams(BaseModel):
     class Config:
         extra = "forbid"
 
@@ -34,7 +34,7 @@ class StreamKohakuParams(BaseModel):
             ]
 
 
-class StreamKohaku(Pipeline):
+class StreamDiffusion(Pipeline):
     def __init__(self, **params):
         super().__init__(**params)
         self.pipe: Optional[StreamDiffusionWrapper] = None
@@ -53,7 +53,7 @@ class StreamKohaku(Pipeline):
         return self.pipe(image=img_tensor)
 
     def update_params(self, **params):
-        new_params = StreamKohakuParams(**params)
+        new_params = StreamDiffusionParams(**params)
         if self.pipe is not None:
             # avoid resetting the pipe if only the prompt changed
             only_prompt = self.params.model_copy(update={"prompt": new_params.prompt})

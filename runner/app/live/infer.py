@@ -68,7 +68,7 @@ if __name__ == "__main__":
         help="Address for the output socket",
     )
     parser.add_argument(
-        "--pipeline", type=str, default="streamkohaku", help="Pipeline to use"
+        "--pipeline", type=str, default="streamdiffusion", help="Pipeline to use"
     )
     parser.add_argument(
         "--initial-params", type=str, default="{}", help="Initial parameters for the pipeline"
