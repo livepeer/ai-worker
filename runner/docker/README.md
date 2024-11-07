@@ -51,10 +51,28 @@ To build a pipeline-specific container, you need to build the base container fir
    curl --location -H "Content-Type: application/json" 'http://localhost:8000/live-video-to-video' -X POST -d '{"stream_url":"http://<url-to-trickle-pull>"}'
    ```
 
-   ### Yondon's ComfyUI integration
+   ### ComfyStream integration with Depth-Anything
+
+   1. Build Docker image
+   ```
+   docker build -t livepeer/ai-runner:live-comfyui -f docker/Dockerfile live-comfyui .
+   ```
+
+   2. Download Depth Anything model
+   ```
+   mkdir models
+   wget https://huggingface.co/yuvraj108c/Depth-Anything-Onnx/resolve/main/depth_anything_vitl14.onnx -P models
+   ```
+
+   3. Build Depth Anything Engine
+   ```
+   docker run -it --rm --name video-to-video --gpus all -v ./models:/models livepeer/ai-runner:live-comfyui /bin/bash -c "cd /models; python /comfyui/custom_nodes/ComfyUI-Depth-Anything-Tensorrt/export_trt.py"
+   mkdir -p ./models/tensorrt/depth-anything
+   mv ./models/*.engine ./models/tensorrt/depth-anything
+   ```
+
+   4. Start Docker container
 
    ```
-   docker build -t livepeer/ai-runner:live-comfyui -f docker/Dockerfile.live-comfyui .
-
-   docker run -it --rm --name video-to-video --gpus all -p 3389:3389 livepeer/ai-runner:live-comfyui
+   docker run -it --rm --name video-to-video --gpus all -p 3389:3389 -v ./models:/models livepeer/ai-runner:live-comfyui
    ```
