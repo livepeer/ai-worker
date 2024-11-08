@@ -29,7 +29,7 @@ RUN pip uninstall -y tensorrt && \
 
 WORKDIR /app
 
-RUN pip install torch torchvision torchaudio tqdm
+RUN pip install torch==2.5.1 torchvision torchaudio tqdm
 
 # Temp install specific versions of opentelemetry package before they merge this PR: https://github.com/hiddenswitch/ComfyUI/pull/26
 RUN pip install opentelemetry-distro==0.48b0 && \
@@ -42,13 +42,49 @@ RUN pip install opentelemetry-distro==0.48b0 && \
     pip install opentelemetry-semantic-conventions==0.48b0
 
 # Install comfystream (which includes ComfyUI)
-RUN pip install git+https://github.com/yondonfu/comfystream.git 
+RUN pip install git+https://github.com/yondonfu/comfystream.git
 
 RUN git clone https://github.com/yondonfu/comfystream.git && \
     cd comfystream && \
     pip install -r requirements.txt && \
+    cp -r nodes/tensor_utils /comfyui/custom_nodes/ && \
     cd ..
 
 WORKDIR /app/comfystream
+
+RUN apt-get update && apt-get install -y \
+    wget \
+    libcairo2-dev \
+    libgirepository1.0-dev \
+    pkg-config \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install any additional Python packages
+COPY requirements.live-ai.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
+# Set environment variables
+ENV MAX_WORKERS=1
+ENV HUGGINGFACE_HUB_CACHE=/models
+ENV DIFFUSERS_CACHE=/models
+ENV MODEL_DIR=/models
+
+# Copy application files
+COPY app/ /app/app
+COPY images/ /app/images
+COPY bench.py /app/bench.py
+
+# WORKDIR /app
+
+# Download default pipeline
+RUN mkdir -p /workflows && \
+    wget https://raw.githubusercontent.com/yondonfu/comfystream/refs/heads/main/workflows/tensor-utils-example-workflow.json -P /workflows
+ENV COMFY_UI_DEFAULT_WORKFLOW="/workflows/tensor-utils-example-workflow.json"
+
+ENV COMFY_UI_WORKSPACE="/comfyui"
+RUN ln -s /comfyui/models /models
+
+# check if this dependency mismatch causes any issues
+RUN pip install torch==2.5.1 || true
 
 CMD ["python", "server/app.py", "--workspace", "/comfyui", "--port", "3389", "--host", "0.0.0.0"]
