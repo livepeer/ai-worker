@@ -32,5 +32,5 @@ class ComfyPipeline(Pipeline):
 
   def update_params(self, **params):
     # Convert params into a Prompt type which describes the workflow
-    self.client.set_prompt(params["config"])
+    # self.client.set_prompt(params["config"])
   
