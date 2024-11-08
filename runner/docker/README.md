@@ -35,18 +35,28 @@ To build a pipeline-specific container, you need to build the base container fir
 
    This command builds the `segment-anything-2` pipeline-specific container using the Dockerfile located at [docker/Dockerfile.segment_anything_2](docker/Dockerfile.segment_anything_2) and tags it as `livepeer/ai-runner:segment-anything-2`.
 
-### Steps to Build a Realtime Video AI Container
+   ### ComfyStream integration with Depth-Anything
 
-   ```bash
-   docker build -t livepeer/ai-runner:live-base . -f docker/Dockerfile.live-base
-   docker build -t livepeer/ai-runner:live-multimedia -f docker/Dockerfile.live-multimedia .
-   docker build -t livepeer/ai-runner:live-stream-diffusion -f docker/Dockerfile.live-stream-diffusion .
-   docker build -t livepeer/ai-runner:live-apps -f docker/Dockerfile.live-apps .
+   1. Build Docker image
+   ```
+   docker build -t livepeer/ai-runner:live-base-comfyui -f docker/Dockerfile.live-base-comfyui .
    ```
 
-   Then, you can run and test the Live Container with the following commands:
-   ```bash
-   docker run -it --rm --name video-to-video -e PIPELINE=live-video-to-video -e MODEL_ID=KBlueLeaf/kohaku-v2.1 --gpus all -p 8000:8000 -v ./models:/models livepeer/ai-runner:live-apps
+   2. Download Depth Anything model
+   ```
+   mkdir models
+   wget https://huggingface.co/yuvraj108c/Depth-Anything-Onnx/resolve/main/depth_anything_vitl14.onnx -P models
+   ```
 
-   curl --location -H "Content-Type: application/json" 'http://localhost:8000/live-video-to-video' -X POST -d '{"stream_url":"http://<url-to-trickle-pull>"}'
+   3. Build Depth Anything Engine
+   ```
+   docker run -it --rm --name video-to-video --gpus all -v ./models:/models livepeer/ai-runner:live-base-comfyui /bin/bash -c "cd /models; python /comfyui/custom_nodes/ComfyUI-Depth-Anything-Tensorrt/export_trt.py"
+   mkdir -p ./models/tensorrt/depth-anything
+   mv ./models/*.engine ./models/tensorrt/depth-anything
+   ```
+
+   4. Start Docker container
+
+   ```
+   docker run -it --rm --name video-to-video --gpus all -p 3389:3389 -v ./models:/models livepeer/ai-runner:live-base-comfyui
    ```

@@ -1,0 +1,54 @@
+ARG BASE_IMAGE=livepeer/ai-runner:live-base
+FROM ${BASE_IMAGE}
+
+RUN apt update && apt install -y vim
+
+# Create directory for ComfyUI custom nodes and models
+RUN mkdir -p /comfyui/custom_nodes
+
+# Install required Python version
+ARG PYTHON_VERSION=3.10
+RUN pyenv install $PYTHON_VERSION && \
+    pyenv global $PYTHON_VERSION && \
+    pyenv rehash
+
+# Upgrade pip and install required packages
+ARG PIP_VERSION=23.3.2
+ENV PIP_PREFER_BINARY=1
+RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools==69.5.1 wheel==0.43.0
+
+# Install ComfyUI-Depth-Anything-Tensorrt Node (https://github.com/yuvraj108c/ComfyUI-Depth-Anything-Tensorrt)
+RUN cd /comfyui/custom_nodes && \
+    git clone https://github.com/yuvraj108c/ComfyUI-Depth-Anything-Tensorrt.git && \
+    cd ComfyUI-Depth-Anything-Tensorrt && \
+    pip install -r requirements.txt
+
+# Upgrade TensorRT to 10.6.0
+RUN pip uninstall -y tensorrt && \ 
+    pip install tensorrt==10.6.0
+
+WORKDIR /app
+
+RUN pip install torch torchvision torchaudio tqdm
+
+# Temp install specific versions of opentelemetry package before they merge this PR: https://github.com/hiddenswitch/ComfyUI/pull/26
+RUN pip install opentelemetry-distro==0.48b0 && \
+    pip install opentelemetry-exporter-otlp==1.27.0 && \
+    pip install opentelemetry-propagator-jaeger==1.27.0 && \
+    pip install opentelemetry-instrumentation==0.48b0 && \
+    pip install opentelemetry-util-http==0.48b0 && \
+    pip install opentelemetry-instrumentation-aio-pika==0.48b0 && \
+    pip install opentelemetry-instrumentation-requests==0.48b0 && \
+    pip install opentelemetry-semantic-conventions==0.48b0
+
+# Install comfystream (which includes ComfyUI)
+RUN pip install git+https://github.com/yondonfu/comfystream.git 
+
+RUN git clone https://github.com/yondonfu/comfystream.git && \
+    cd comfystream && \
+    pip install -r requirements.txt && \
+    cd ..
+
+WORKDIR /app/comfystream
+
+CMD ["python", "server/app.py", "--workspace", "/comfyui", "--port", "3389", "--host", "0.0.0.0"]
