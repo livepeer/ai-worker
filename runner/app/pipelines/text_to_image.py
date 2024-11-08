@@ -18,9 +18,9 @@ from huggingface_hub import file_download, hf_hub_download
 from safetensors.torch import load_file
 
 from app.pipelines.base import Pipeline
+from app.pipelines.diffusion_utils.loraloader import LoraLoader
+from app.pipelines.diffusion_utils.safetychecker import SafetyChecker
 from app.pipelines.utils import (
-    LoraLoader,
-    SafetyChecker,
     get_model_dir,
     get_torch_device,
     is_lightning_model,
