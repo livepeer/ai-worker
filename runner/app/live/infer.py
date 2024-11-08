@@ -17,13 +17,13 @@ from streamer.trickle import TrickleStreamer
 from streamer.zeromq import ZeroMQStreamer
 
 
-async def main(http_port: int, protocol: str, subscribe_url: str, publish_url: str, pipeline: str, params: dict):
-    if protocol == "trickle":
+async def main(http_port: int, stream_protocol: str, subscribe_url: str, publish_url: str, pipeline: str, params: dict):
+    if stream_protocol == "trickle":
         handler = TrickleStreamer(subscribe_url, publish_url, pipeline, **(params or {}))
-    elif protocol == "zeromq":
+    elif stream_protocol == "zeromq":
         handler = ZeroMQStreamer(subscribe_url, publish_url, pipeline, **(params or {}))
     else:
-        raise ValueError(f"Unsupported protocol: {protocol}")
+        raise ValueError(f"Unsupported protocol: {stream_protocol}")
 
     runner = None
     try:
@@ -69,17 +69,17 @@ if __name__ == "__main__":
         "--initial-params", type=str, default="{}", help="Initial parameters for the pipeline"
     )
     parser.add_argument(
-        "--protocol",
+        "--stream-protocol",
         type=str,
         choices=["trickle", "zeromq"],
         default="trickle",
-        help="Protocol to use for streaming in and out. One of: trickle, zeromq"
+        help="Protocol to use for streaming frames in and out. One of: trickle, zeromq"
     )
     parser.add_argument(
-        "--subscribe-url", type=str, required=True, help="URL to pull incoming streams. For trickle this is the pull URL, for zeromq this is the input socket address"
+        "--subscribe-url", type=str, required=True, help="URL to subscribe for the input frames (trickle). For zeromq this is the input socket address"
     )
     parser.add_argument(
-        "--publish-url", type=str, required=True, help="URL to push outgoing streams. For trickle this is the push URL, for zeromq this is the output socket address"
+        "--publish-url", type=str, required=True, help="URL to publish output frames (trickle). For zeromq this is the output socket address"
     )
     parser.add_argument(
         "-v", "--verbose",
@@ -103,7 +103,7 @@ if __name__ == "__main__":
 
     try:
         asyncio.run(
-            main(args.http_port, args.protocol, args.subscribe_url, args.publish_url, args.pipeline, params)
+            main(args.http_port, args.stream_protocol, args.subscribe_url, args.publish_url, args.pipeline, params)
         )
     except Exception as e:
         logging.error(f"Fatal error in main: {e}")
