@@ -9,8 +9,8 @@ from huggingface_hub import file_download
 from PIL import ImageFile
 
 from app.pipelines.base import Pipeline
-from app.pipelines.diffusion_utils.safetychecker import SafetyChecker
 from app.pipelines.utils import (
+    SafetyChecker,
     get_model_dir,
     get_torch_device,
     is_lightning_model,

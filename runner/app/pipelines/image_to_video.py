@@ -10,8 +10,7 @@ from huggingface_hub import file_download
 from PIL import ImageFile
 
 from app.pipelines.base import Pipeline
-from app.pipelines.diffusion_utils.safetychecker import SafetyChecker
-from app.pipelines.utils import get_model_dir, get_torch_device
+from app.pipelines.utils import SafetyChecker, get_model_dir, get_torch_device
 from app.utils.errors import InferenceError
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
