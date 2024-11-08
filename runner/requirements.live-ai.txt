@@ -7,7 +7,6 @@ Pillow==10.3.0
 python-multipart==0.0.9
 uvicorn==0.30.0
 huggingface_hub==0.23.2
-xformers==0.0.23
 triton>=2.1.0
 peft==0.11.1
 deepcache==0.1.1

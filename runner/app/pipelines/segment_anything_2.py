@@ -1,4 +1,5 @@
 import logging
+from tkinter import Image
 from typing import List, Optional, Tuple
 
 import torch
@@ -29,8 +30,8 @@ class SegmentAnything2Pipeline(Pipeline):
         )
 
     def __call__(
-        self, image: PIL.Image, **kwargs
-    ) -> Tuple[List[PIL.Image], List[Optional[bool]]]:
+        self, image: Image.Image, **kwargs
+    ) -> Tuple[List[Image.Image], List[Optional[bool]]]:
         try:
             self.tm.set_image(image)
             prediction = self.tm.predict(**kwargs)
