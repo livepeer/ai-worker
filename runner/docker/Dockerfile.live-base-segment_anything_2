@@ -20,17 +20,16 @@ ENV CXX=/usr/bin/g++-11
 
 # Install Sam2 dependencies
 RUN pip install --no-cache-dir --no-build-isolation \
-    torch==2.5.0 \
+    torch==2.3.1 \
     torchvision>=0.18.1 \
-    --index-url https://download.pytorch.org/whl/cu124
+    --index-url https://download.pytorch.org/whl/cu121
 RUN pip install huggingface-hub==0.23.2 ninja
 
 # Set TORCH_CUDA_ARCH_LIST environment variable, fixes build error in segment-anything-2-real-time
 ENV TORCH_CUDA_ARCH_LIST="6.0 7.0 7.5 8.0 8.6+PTX"
 
 RUN pip install --no-cache-dir --no-build-isolation \
-    git+https://github.com/eliteprox/segment-anything-2-real-time@main
-    # https://github.com/pschroedl/segment-anything-2-real-time@notebook_test
+    git+https://github.com/pschroedl/segment-anything-2-real-time@notebook_test
 
 # Set environment variables for NVIDIA drivers
 ENV NVIDIA_VISIBLE_DEVICES all

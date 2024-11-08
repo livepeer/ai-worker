@@ -7,6 +7,7 @@ Pillow==10.3.0
 python-multipart==0.0.9
 uvicorn==0.30.0
 huggingface_hub==0.23.2
+xformers==0.0.23
 triton>=2.1.0
 peft==0.11.1
 deepcache==0.1.1
@@ -24,4 +25,3 @@ PyGObject==3.50.0
 onnxruntime==1.19.2
 watchdog==5.0.2
 aiohttp==3.10.9
-ninja
