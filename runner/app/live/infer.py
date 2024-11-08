@@ -14,10 +14,17 @@ sys.path.insert(0, infer_root)
 
 from params_api import start_http_server
 from streamer.trickle import TrickleStreamer
+from streamer.zeromq import ZeroMQStreamer
 
 
-async def main(http_port: int, subscribe_url: str, publish_url: str, pipeline: str, params: dict):
-    handler = TrickleStreamer(subscribe_url, publish_url, pipeline, **(params or {}))
+async def main(http_port: int, protocol: str, subscribe_url: str, publish_url: str, pipeline: str, params: dict):
+    if protocol == "trickle":
+        handler = TrickleStreamer(subscribe_url, publish_url, pipeline, **(params or {}))
+    elif protocol == "zeromq":
+        handler = ZeroMQStreamer(subscribe_url, publish_url, pipeline, **(params or {}))
+    else:
+        raise ValueError(f"Unsupported protocol: {protocol}")
+
     runner = None
     try:
         handler.start()
@@ -96,7 +103,7 @@ if __name__ == "__main__":
 
     try:
         asyncio.run(
-            main(args.http_port, args.subscribe_url, args.publish_url, args.pipeline, params)
+            main(args.http_port, args.protocol, args.subscribe_url, args.publish_url, args.pipeline, params)
         )
     except Exception as e:
         logging.error(f"Fatal error in main: {e}")
