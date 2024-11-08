@@ -56,28 +56,23 @@ if __name__ == "__main__":
         "--http-port", type=int, default=8888, help="Port for the HTTP server"
     )
     parser.add_argument(
-        "--input-address",
-        type=str,
-        default="tcp://localhost:5555",
-        help="Address for the input socket",
-    )
-    parser.add_argument(
-        "--output-address",
-        type=str,
-        default="tcp://localhost:5556",
-        help="Address for the output socket",
-    )
-    parser.add_argument(
         "--pipeline", type=str, default="streamdiffusion", help="Pipeline to use"
     )
     parser.add_argument(
         "--initial-params", type=str, default="{}", help="Initial parameters for the pipeline"
     )
     parser.add_argument(
-        "--subscribe-url", type=str, required=True, help="url to pull incoming streams"
+        "--protocol",
+        type=str,
+        choices=["trickle", "zeromq"],
+        default="trickle",
+        help="Protocol to use for streaming in and out. One of: trickle, zeromq"
     )
     parser.add_argument(
-        "--publish-url", type=str, required=True, help="url to push outgoing streams"
+        "--subscribe-url", type=str, required=True, help="URL to pull incoming streams. For trickle this is the pull URL, for zeromq this is the input socket address"
+    )
+    parser.add_argument(
+        "--publish-url", type=str, required=True, help="URL to push outgoing streams. For trickle this is the push URL, for zeromq this is the output socket address"
     )
     parser.add_argument(
         "-v", "--verbose",
