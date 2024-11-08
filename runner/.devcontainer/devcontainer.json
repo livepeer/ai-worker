@@ -4,7 +4,11 @@
 	"name": "ai-runner",
 	// Image to use for the dev container. More info: https://containers.dev/guide/dockerfile.
 	"build": {
-		"dockerfile": "../Dockerfile.live-base-segment_anything_2"
+		// "dockerfile": "../Dockerfile.live-base-segment_anything_2"
+		"dockerfile": "../Dockerfile.live-app__PIPELINE__",
+		"args": {
+			"PIPELINE": "segment_anything_2"
+		}
 	},
 	"runArgs": [
 		"--gpus=all"
