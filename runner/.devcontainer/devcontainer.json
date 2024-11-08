@@ -4,9 +4,7 @@
 	"name": "ai-runner",
 	// Image to use for the dev container. More info: https://containers.dev/guide/dockerfile.
 	"build": {
-		"dockerfile": "../Dockerfile",
-		// "dockerfile": "../docker/Dockerfile.text_to_speech",
-		"context": ".."
+		"dockerfile": "../Dockerfile.live-base-segment_anything_2"
 	},
 	"runArgs": [
 		"--gpus=all"
