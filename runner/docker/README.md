@@ -40,6 +40,7 @@ To build a pipeline-specific container, you need to build the base container fir
    1. Build Docker image
    ```
    docker build -t livepeer/ai-runner:live-base-comfyui -f docker/Dockerfile.live-base-comfyui .
+   docker build -t livepeer/ai-runner:live-base-comfyui -f docker/Dockerfile.live-app-comfyui .
    ```
 
    2. Download Depth Anything model
@@ -50,7 +51,7 @@ To build a pipeline-specific container, you need to build the base container fir
 
    3. Build Depth Anything Engine
    ```
-   docker run -it --rm --name video-to-video --gpus all -v ./models:/models livepeer/ai-runner:live-base-comfyui /bin/bash -c "cd /models; python /comfyui/custom_nodes/ComfyUI-Depth-Anything-Tensorrt/export_trt.py"
+   docker run -it --rm --name video-to-video --gpus all -v ./models:/models livepeer/ai-runner:live-app-comfyui /bin/bash -c "cd /models; python /comfyui/custom_nodes/ComfyUI-Depth-Anything-Tensorrt/export_trt.py"
    mkdir -p ./models/tensorrt/depth-anything
    mv ./models/*.engine ./models/tensorrt/depth-anything
    ```
@@ -58,5 +59,5 @@ To build a pipeline-specific container, you need to build the base container fir
    4. Start Docker container
 
    ```
-   docker run -it --rm --name video-to-video --gpus all -p 3389:3389 -v ./models:/models livepeer/ai-runner:live-base-comfyui
+   docker run -it --rm --name video-to-video --gpus all -p 3389:3389 -v ./models:/models livepeer/ai-runner:live-app-comfyui
    ```

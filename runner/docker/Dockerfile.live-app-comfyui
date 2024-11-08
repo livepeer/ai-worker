@@ -1,0 +1,34 @@
+ARG PIPELINE=comfyui
+ARG BASE_IMAGE=livepeer/ai-runner:live-base-${PIPELINE}
+FROM ${BASE_IMAGE}
+
+WORKDIR /app/comfystream
+
+RUN apt-get update && apt-get install -y \
+    wget \
+    libcairo2-dev \
+    libgirepository1.0-dev \
+    pkg-config \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install any additional Python packages
+COPY requirements.live-ai.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
+# Set environment variables
+ENV MAX_WORKERS=1
+ENV HUGGINGFACE_HUB_CACHE=/models
+ENV DIFFUSERS_CACHE=/models
+ENV MODEL_DIR=/models
+
+# Copy application files
+COPY app/ /app/app
+COPY images/ /app/images
+COPY bench.py /app/bench.py
+
+WORKDIR /app
+
+# check if this dependency mismatch causes any issues
+RUN pip install torch==2.5.1 || true
+
+CMD ["python", "server/app.py", "--workspace", "/comfyui", "--port", "3389", "--host", "0.0.0.0"]
