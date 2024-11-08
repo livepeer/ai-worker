@@ -5,12 +5,12 @@ import logging
 import os
 import traceback
 from pathlib import Path
-from typing import Dict, List, Literal, Optional, Union, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 import torch
 from PIL import Image
-from sam2.sam2_image_predictor import SAM2ImagePredictor
+# from sam2.sam2_image_predictor import SAM2ImagePredictor
 
 class Sam2Wrapper:
     def __init__(
@@ -24,11 +24,11 @@ class Sam2Wrapper:
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
             
-        self.predictor = SAM2ImagePredictor.from_pretrained(
-            model_id=model_id_or_path,
-            device=device,
-            **kwargs
-        )
+        # self.predictor = SAM2ImagePredictor.from_pretrained(
+        #     model_id=model_id_or_path,
+        #     device=device,
+        #     **kwargs
+        # )
   
     def __call__(
         self, 
@@ -36,9 +36,14 @@ class Sam2Wrapper:
         **kwargs
     ) -> Tuple[List[Image.Image], List[Optional[bool]]]:
         try:
-            self.predictor.set_image(image)
-            prediction = self.predictor.predict(**kwargs)
-            return prediction
+            # self.predictor.set_image(image)
+            # prediction = self.predictor.predict(**kwargs)
+            # return prediction
+
+            # Create a blank image with the same size as the input frame
+            blank_image = Image.new("RGB", image.size, (255, 255, 255))
+            return List[blank_image]
+
         except Exception as e:
             traceback.print_exc()
             raise e

@@ -45,13 +45,6 @@ class LiveVideoToVideoParams(BaseModel):
             description="Destination URL of the outgoing stream to publish.",
         ),
     ]
-    stream_protocol: Annotated[
-        str,
-        Field(
-            default="trickle",
-            description="Stream protocol to use for the stream.",
-        ),
-    ]
     model_id: Annotated[
         str,
         Field(

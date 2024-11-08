@@ -26,11 +26,11 @@ RUN pip install huggingface-hub==0.23.2 ninja
 # Set TORCH_CUDA_ARCH_LIST environment variable, fixes build error in segment-anything-2-real-time
 ENV TORCH_CUDA_ARCH_LIST="6.0 7.0 7.5 8.0 8.6+PTX"
 
- RUN pip install --no-cache-dir --no-build-isolation git+https://github.com/facebookresearch/sam2.git@0f6515ae853c40420ea8e3dd250f8031bbf03023#egg=sam-2
+#RUN pip install --no-cache-dir --no-build-isolation git+https://github.com/facebookresearch/sam2.git@0f6515ae853c40420ea8e3dd250f8031bbf03023#egg=sam-2
 
 
-# RUN pip install --no-cache-dir --no-build-isolation \
-#    git+https://github.com/eliteprox/segment-anything-2-real-time@main
+RUN pip install --no-cache-dir --no-build-isolation \
+    git+https://github.com/eliteprox/segment-anything-2-real-time@main
     # git+https://github.com/pschroedl/segment-anything-2-real-time@notebook_test
 
 # Fix the torch versions after installing segment-anything-2-real-time
