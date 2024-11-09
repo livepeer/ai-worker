@@ -10,7 +10,7 @@ class TricklePublisher:
         self.idx = 0  # Start index for POSTs
         self.next_writer = None
         self.lock = asyncio.Lock()  # Lock to manage concurrent access
-        self.session = aiohttp.ClientSession()
+        self.session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=False))
 
     async def __aenter__(self):
         """Enter context manager."""
