@@ -14,6 +14,10 @@ from huggingface_hub import hf_hub_download, snapshot_download
 from typing import Optional, Dict
 
 MODEL_MAPPING = {
+    "facebook/sam2-hiera-tiny": {
+        "config": "sam2_hiera_t.yaml",
+        "checkpoint": "sam2_hiera_tiny.pt"
+    },
     "facebook/sam2-hiera-small": {
         "config": "sam2_hiera_s.yaml",
         "checkpoint": "sam2_hiera_small.pt"
@@ -38,8 +42,8 @@ if GlobalHydra.instance().is_initialized():
     GlobalHydra.instance().clear()
     
 config_path = "/workspaces/ai-worker/runner/models/sam2_configs"
-sam2_checkpoint = "/models/checkpoints/sam2_hiera_small.pt"
-model_cfg = "sam2_hiera_s.yaml"
+sam2_checkpoint = "/models/checkpoints/sam2_hiera_tiny.pt"
+model_cfg = "sam2_hiera_t.yaml"
 
 class Sam2Wrapper:
     def __init__(
