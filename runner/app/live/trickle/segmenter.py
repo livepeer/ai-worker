@@ -41,12 +41,12 @@ def ffmpeg_cmd(out_pattern):
         cmd = [
         'ffmpeg',
 	    '-loglevel', 'warning',
+        '-use_wallclock_as_timestamps', '1',
         '-f', 'image2pipe',
-        '-framerate', f"{FRAMERATE}",
         '-i', 'pipe:0', # stdin
         '-c:v', 'h264_nvenc',
         '-bf', '0', # disable bframes for webrtc
-        '-g', f'{GOP_SECS*FRAMERATE}',
+        '-force_key_frames', f'expr:gte(t,n_forced*{GOP_SECS})',
         '-preset', 'p1',
         '-tune', 'ull',
         '-f', 'segment',
@@ -56,19 +56,19 @@ def ffmpeg_cmd(out_pattern):
         cmd = [
         'ffmpeg',
 	    '-loglevel', 'warning',
+        '-use_wallclock_as_timestamps', '1',
         '-f', 'image2pipe',
-        '-framerate', f"{FRAMERATE}",
         '-i', 'pipe:0', # stdin
         '-c:v', 'libx264',
         '-bf', '0', # disable bframes for webrtc
-        '-g', f'{GOP_SECS*FRAMERATE}',
+        '-force_key_frames', f'expr:gte(t,n_forced*{GOP_SECS})',
         '-preset', 'superfast',
         '-tune', 'zerolatency',
         '-f', 'segment',
         out_pattern
         ]
 
-    logging.info(f"JOSH - ffmpeg (output) {cmd}")
+    logging.info(f"ffmpeg (output) {cmd}")
     return cmd
 
 
