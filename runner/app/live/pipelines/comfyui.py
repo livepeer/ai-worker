@@ -3,12 +3,9 @@ from comfystream.client import ComfyStreamClient
 import os
 import json
 import torch
-import torch.nn as nn
-from torchvision import transforms
 from PIL import Image
 import asyncio
 import numpy as np
-from torchvision.transforms import ToPILImage
 
 from .interface import Pipeline
 
