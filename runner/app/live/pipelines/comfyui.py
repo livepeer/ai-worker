@@ -49,8 +49,8 @@ class ComfyUI(Pipeline):
     comfy_ui_workspace = os.getenv(COMFY_UI_WORKSPACE_ENV)
     self.client = ComfyStreamClient(cwd=comfy_ui_workspace)
 
-    prompt = json.loads(DEFAULT_WORKFLOW_JSON)
-    self.update_params(**prompt)
+    params = {'prompt': json.loads(DEFAULT_WORKFLOW_JSON)}
+    self.update_params(**params)
 
     # Comfy will cache nodes that only need to be run once (i.e. a node that loads model weights)
     # We can run the prompt once before actual inputs come in to "warmup"
@@ -76,4 +76,4 @@ class ComfyUI(Pipeline):
 
   def update_params(self, **params):
     # params is the JSON string with the ComfyUI workflow
-    self.client.set_prompt(params)
+    self.client.set_prompt(params['prompt'])
