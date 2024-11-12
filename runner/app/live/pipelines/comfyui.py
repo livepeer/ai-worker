@@ -1,5 +1,3 @@
-from comfystream.client import ComfyStreamClient
-
 import os
 import json
 import torch
@@ -8,6 +6,7 @@ import asyncio
 import numpy as np
 
 from .interface import Pipeline
+from comfystream.client import ComfyStreamClient
 
 COMFY_UI_WORKSPACE_ENV = "COMFY_UI_WORKSPACE"
 DEFAULT_WORKFLOW_JSON = '''
