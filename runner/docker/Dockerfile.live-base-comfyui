@@ -27,8 +27,6 @@ RUN cd /comfyui/custom_nodes && \
 RUN pip uninstall -y tensorrt && \ 
     pip install tensorrt==10.6.0
 
-WORKDIR /app
-
 RUN pip install torch==2.5.1 torchvision torchaudio tqdm
 
 # Temp install specific versions of opentelemetry package before they merge this PR: https://github.com/hiddenswitch/ComfyUI/pull/26

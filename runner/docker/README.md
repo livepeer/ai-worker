@@ -40,7 +40,7 @@ To build a pipeline-specific container, you need to build the base container fir
    1. Build Docker image
    ```
    docker build -t livepeer/ai-runner:live-base-comfyui -f docker/Dockerfile.live-base-comfyui .
-   docker build -t livepeer/ai-runner:live-base-comfyui -f docker/Dockerfile.live-app-comfyui .
+   docker build -t livepeer/ai-runner:live-base-comfyui -f docker/Dockerfile.live-base-comfyui .
    ```
 
    2. Download Depth Anything model
