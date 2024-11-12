@@ -121,7 +121,17 @@ class PipelineStreamer(ABC):
             async for frame in self.ingress_loop(done):
                 if done.is_set() or not self.process:
                     return
-                logging.debug(f"Sending input frame. width: {frame.width}, height: {frame.height}")
+
+                # crop the max square from the center of the image and scale to 512x512
+                # most models expect this size especially when using tensorrt
+                if frame.width != frame.height:
+                    width, height = frame.size
+                    square_size = min(width, height)
+                    frame = frame.crop((width // 2 - square_size // 2, height // 2 - square_size // 2, width // 2 + square_size // 2, height // 2 + square_size // 2))
+                if frame.size != (512, 512):
+                    frame = frame.resize((512, 512))
+
+                logging.debug(f"Sending input frame. Scaled from {width}x{height} to 512x512")
                 self.process.send_input(frame)
 
                 # Increment frame count and measure FPS
