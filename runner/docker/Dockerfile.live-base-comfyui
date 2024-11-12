@@ -49,11 +49,6 @@ RUN git clone https://github.com/yondonfu/comfystream.git && \
     cp -r nodes/tensor_utils /comfyui/custom_nodes/ && \
     cd ..
 
-# Download default pipeline
-RUN mkdir -p /workflows && \
-    wget https://raw.githubusercontent.com/yondonfu/comfystream/refs/heads/main/workflows/tensor-utils-example-workflow.json -P /workflows
-ENV COMFY_UI_DEFAULT_WORKFLOW="/workflows/tensor-utils-example-workflow.json"
-
 # Set up ComfyUI workspace
 ENV COMFY_UI_WORKSPACE="/comfyui"
 RUN ln -s /comfyui/models /models
