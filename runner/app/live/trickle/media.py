@@ -12,7 +12,6 @@ from . import segmenter
 
 # target framerate
 FRAMERATE=segmenter.FRAMERATE
-GOP_SECS=segmenter.GOP_SECS
 
 # TODO make this better configurable
 GPU=segmenter.GPU
@@ -32,7 +31,7 @@ async def run_subscribe(subscribe_url: str, image_callback):
 
 async def subscribe(subscribe_url, out_pipe):
     subscriber = TrickleSubscriber(url=subscribe_url)
-    logging.info(f"JOSH - launching subscribe loop for {subscribe_url}")
+    logging.info(f"launching subscribe loop for {subscribe_url}")
     while True:
         segment = None
         try:
