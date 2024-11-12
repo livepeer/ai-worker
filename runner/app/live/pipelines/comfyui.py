@@ -75,5 +75,5 @@ class ComfyUI(Pipeline):
     return result_image
 
   def update_params(self, **params):
-    # params is the JSON string with the ComfyUI workflow
+    # params['prompt'] is the JSON string with the ComfyUI workflow
     self.client.set_prompt(params['prompt'])
