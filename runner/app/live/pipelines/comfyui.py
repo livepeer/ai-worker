@@ -7,6 +7,8 @@ import torch.nn as nn
 from torchvision import transforms
 from PIL import Image
 import asyncio
+import numpy as np
+from torchvision.transforms import ToPILImage
 
 from .interface import Pipeline
 
@@ -31,31 +33,28 @@ class ComfyUI(Pipeline):
     # self.update_params(**params)
 
   def process_frame(self, image: Image.Image) -> Image.Image:
-    # transform = transforms.ToTensor()
-    transform = transforms.Compose([
-      transforms.Resize((512, 512)),  # Resize the image to 512x512
-      transforms.ToTensor(),          # Convert the image to a tensor
-      transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalize the image
-    ])
+    # Normalize by dividing by 255 to ensure the tensor values are between 0 and 1
+    image_np = np.array(image.convert("RGB")).astype(np.float32) / 255.0
+    # Convert from numpy to torch.Tensor
+    # Initially, the torch.Tensor will have shape HWC but we want BHWC
+    # unsqueeze(0) will add a batch dimension at the beginning of 1 which means we just have 1 image
+    image_tensor = torch.tensor(image_np).unsqueeze(0)
 
-    # Apply the transformation to convert to torch.Tensor
-    if image.mode != 'RGB':
-      image = image.convert('RGB')
-    tensor = transform(image)
-    if tensor.dim() == 3:  # If there's no batch dimension
-      tensor = tensor.unsqueeze(0)
-    conv_layer = nn.Conv2d(3, 512, kernel_size=1)
-    extended_tensor = conv_layer(tensor) 
+
+    # print("#######")
+    # print(image_tensor)
+    # # This works fine
+    # input = torch.randn(1, 512, 512, 3)
+    # print("#######")
+    # print(input)
+
     loop = asyncio.get_event_loop()
-    result = loop.run_until_complete(self.client.queue_prompt(extended_tensor))
+    result_tensor = loop.run_until_complete(self.client.queue_prompt(image_tensor))
 
-    # to_pil = transforms.ToPILImage()
-    # result_image = to_pil(result)
-    # preprocess image into a torch.Tensor
-    # output = self.client.queue_prompt(input)
-    # postprocess output into a Image.Image
-    # return output
-    return image.convert("RGB")
+    result_tensor = result_tensor.squeeze(0)
+    result_image_np = (result_tensor * 255).byte()
+    result_image = Image.fromarray(result_image_np.cpu().numpy())
+    return result_image
 
   def update_params(self, **params):
     # Convert params into a Prompt type which describes the workflow
