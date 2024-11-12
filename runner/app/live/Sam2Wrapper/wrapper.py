@@ -10,7 +10,6 @@ from hydra import initialize_config_dir, compose
 from hydra.core.global_hydra import GlobalHydra
 
 from PIL import Image
-from huggingface_hub import hf_hub_download, snapshot_download
 from typing import Optional, Dict
 
 MODEL_MAPPING = {
@@ -89,13 +88,6 @@ class Sam2Wrapper:
         **kwargs
     ) -> Tuple[List[Image.Image], List[Optional[bool]]]:
         pass
-        # try:
-        #     # Create a blank image with the same size as the input frame
-        #     blank_image = Image.new("RGB", image.size, (255, 255, 255))
-        #     return List[blank_image]
-        # except Exception as e:
-        #     traceback.print_exc()
-        #     raise e
 
     def __str__(self) -> str:
         return f"Sam2Wrapper model_id={self.model_id}"
