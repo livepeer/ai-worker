@@ -47,11 +47,11 @@ class TrickleSubscriber:
                 self.pending_get = await self.preconnect()
 
             # Extract the current connection to use for reading
-            conn = self.pending_get
+            resp = self.pending_get
             self.pending_get = None
 
             # Extract and set the next index from the response headers
-            segment = Segment(conn)
+            segment = Segment(resp)
 
             if segment.eos():
                 return None
