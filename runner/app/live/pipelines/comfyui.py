@@ -40,17 +40,11 @@ class ComfyUI(Pipeline):
     # unsqueeze(0) will add a batch dimension at the beginning of 1 which means we just have 1 image
     image_tensor = torch.tensor(image_np).unsqueeze(0)
 
-
-    # print("#######")
-    # print(image_tensor)
-    # # This works fine
-    # input = torch.randn(1, 512, 512, 3)
-    # print("#######")
-    # print(input)
-
+    # Process using ComfyUI pipeline
     loop = asyncio.get_event_loop()
     result_tensor = loop.run_until_complete(self.client.queue_prompt(image_tensor))
 
+    # Convert back from Tensor to PIL.Image
     result_tensor = result_tensor.squeeze(0)
     result_image_np = (result_tensor * 255).byte()
     result_image = Image.fromarray(result_image_np.cpu().numpy())
