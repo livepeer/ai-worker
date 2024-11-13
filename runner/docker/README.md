@@ -40,7 +40,7 @@ To build a pipeline-specific container, you need to build the base container fir
 1. Build Docker image
 ```
 export PIPELINE=comfyui
-docker build -t livepeer/ai-runner:live-base-comfyui -f docker/Dockerfile.live-base-comfyui .
+docker build -t livepeer/ai-runner:live-base-${PIPELINE} -f docker/Dockerfile.live-base-${PIPELINE} .
 docker build -t livepeer/ai-runner:live-app-${PIPELINE} -f docker/Dockerfile.live-app__PIPELINE__ --build-arg PIPELINE=${PIPELINE} .
 ```
 
