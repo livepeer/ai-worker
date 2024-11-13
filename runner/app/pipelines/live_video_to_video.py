@@ -26,20 +26,21 @@ class LiveVideoToVideoPipeline(Pipeline):
         self.monitor_thread = None
         self.log_thread = None
 
-    def __call__(
-        self, **kwargs
+
+    def __call__(  # type: ignore
+        self, *, subscribe_url: str, publish_url: str, params: dict, **kwargs
     ):
         try:
             if not self.process:
                 self.start_process(
                     pipeline=self.model_id,  # we use the model_id as the pipeline name for now
                     http_port=8888,
-                    subscribe_url=kwargs["subscribe_url"],
-                    publish_url=kwargs["publish_url"],
-                    initial_params=json.dumps(kwargs["params"]),
+                    subscribe_url=subscribe_url,
+                    publish_url=publish_url,
+                    initial_params=json.dumps(params),
                     # TODO: set torch device from self.torch_device
                 )
-            logger.info(f"Starting stream, subscribe={kwargs['subscribe_url']} publish={kwargs['publish_url']}")
+            logger.info(f"Starting stream, subscribe={subscribe_url} publish={publish_url}")
             return
         except Exception as e:
             raise InferenceError(original_exception=e)

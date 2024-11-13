@@ -1,7 +1,6 @@
 import logging
 import os
-import random
-from typing import Annotated, Dict, Tuple, Union
+from typing import Annotated, Any, Dict, Tuple, Union
 
 import torch
 import traceback
@@ -59,7 +58,7 @@ class LiveVideoToVideoParams(BaseModel):
         ),
     ]
 
-RESPONSES = {
+RESPONSES: dict[int | str, dict[str, Any]]= {
     status.HTTP_200_OK: {
         "content": {
             "application/json": {
