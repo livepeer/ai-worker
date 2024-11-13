@@ -30,21 +30,28 @@ const containerCreator = "ai-worker"
 // This only works right now on a single GPU because if there is another container
 // using the GPU we stop it so we don't have to worry about having enough ports
 var containerHostPorts = map[string]string{
-	"text-to-image":      "8000",
-	"image-to-image":     "8100",
-	"image-to-video":     "8200",
-	"upscale":            "8300",
-	"audio-to-text":      "8400",
-	"llm":                "8500",
-	"segment-anything-2": "8600",
-	"image-to-text":      "8700",
-	"text-to-speech":     "8800",
+	"text-to-image":       "8000",
+	"image-to-image":      "8100",
+	"image-to-video":      "8200",
+	"upscale":             "8300",
+	"audio-to-text":       "8400",
+	"llm":                 "8500",
+	"segment-anything-2":  "8600",
+	"image-to-text":       "8700",
+	"text-to-speech":      "8800",
+	"live-video-to-video": "8900",
 }
 
 // Mapping for per pipeline container images.
 var pipelineToImage = map[string]string{
 	"segment-anything-2": "livepeer/ai-runner:segment-anything-2",
 	"text-to-speech":     "livepeer/ai-runner:text-to-speech",
+}
+
+var livePipelineToImage = map[string]string{
+	"streamdiffusion": "livepeer/ai-runner:live-app-streamdiffusion",
+	"liveportrait":    "livepeer/ai-runner:live-app-liveportrait",
+	"comfyui":         "livepeer/ai-runner:live-app-comfyui",
 }
 
 type DockerManager struct {
@@ -174,6 +181,12 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	containerImage := m.defaultImage
 	if pipelineSpecificImage, ok := pipelineToImage[pipeline]; ok {
 		containerImage = pipelineSpecificImage
+	} else if pipeline == "live-video-to-video" {
+		// We currently use the model ID as the live pipeline name for legacy reasons
+		containerImage = livePipelineToImage[modelID]
+		if containerImage == "" {
+			return nil, fmt.Errorf("no container image found for live pipeline %s", modelID)
+		}
 	}
 
 	slog.Info("Starting managed container", slog.String("gpu", gpu), slog.String("name", containerName), slog.String("modelID", modelID), slog.String("containerImage", containerImage))

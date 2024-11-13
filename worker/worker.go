@@ -567,6 +567,57 @@ func (w *Worker) TextToSpeech(ctx context.Context, req GenTextToSpeechJSONReques
 	return resp.JSON200, nil
 }
 
+func (w *Worker) LiveVideoToVideo(ctx context.Context, req GenLiveVideoToVideoJSONRequestBody) (*LiveVideoToVideoResponse, error) {
+	c, err := w.borrowContainer(ctx, "live-video-to-video", *req.ModelId)
+	if err != nil {
+		return nil, err
+	}
+	defer w.returnContainer(c)
+
+	resp, err := c.Client.GenLiveVideoToVideoWithResponse(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.JSON400 != nil {
+		val, err := json.Marshal(resp.JSON400)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("live-video-to-video container returned 400", slog.String("err", string(val)))
+		return nil, errors.New("live-video-to-video container returned 400: " + resp.JSON400.Detail.Msg)
+	}
+
+	if resp.JSON401 != nil {
+		val, err := json.Marshal(resp.JSON401)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("live-video-to-video container returned 401", slog.String("err", string(val)))
+		return nil, errors.New("live-video-to-video container returned 401: " + resp.JSON401.Detail.Msg)
+	}
+
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("live-video-to-video container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("live-video-to-video container returned 422: " + string(val))
+	}
+
+	if resp.JSON500 != nil {
+		val, err := json.Marshal(resp.JSON500)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("live-video-to-video container returned 500", slog.String("err", string(val)))
+		return nil, errors.New("live-video-to-video container returned 500: " + resp.JSON500.Detail.Msg)
+	}
+
+	return resp.JSON200, nil
+}
+
 func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endpoint RunnerEndpoint, optimizationFlags OptimizationFlags) error {
 	if endpoint.URL == "" {
 		return w.manager.Warm(ctx, pipeline, modelID, optimizationFlags)
