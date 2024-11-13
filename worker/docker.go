@@ -27,6 +27,7 @@ const optFlagsContainerTimeout = 5 * time.Minute
 const containerRemoveTimeout = 30 * time.Second
 const containerCreatorLabel = "creator"
 const containerCreator = "ai-worker"
+const containerWatchInterval = 10 * time.Second
 
 // This only works right now on a single GPU because if there is another container
 // using the GPU we stop it so we don't have to worry about having enough ports
@@ -284,6 +285,8 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	m.containers[containerName] = rc
 	m.gpuContainers[gpu] = containerName
 
+	go m.watchContainer(ctx, rc)
+
 	return rc, nil
 }
 
@@ -331,6 +334,40 @@ func (m *DockerManager) destroyContainer(rc *RunnerContainer) error {
 	}
 
 	return nil
+}
+
+// watchContainer monitors a container's running state and automatically cleans
+// up when the container stops or the context is cancelled. The cleanup is done
+// by making sure to remove the container and update the internal state.
+func (m *DockerManager) watchContainer(ctx context.Context, rc *RunnerContainer) {
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Error("Panic in container watch routine",
+				slog.String("container", rc.Name),
+				slog.Any("panic", r))
+		}
+	}()
+	defer func() {
+		m.mu.Lock()
+		m.destroyContainer(rc)
+		m.mu.Unlock()
+	}()
+
+	ticker := time.NewTicker(containerWatchInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			break
+		case <-ticker.C:
+			container, err := m.dockerClient.ContainerInspect(ctx, rc.ID)
+			if err != nil || !container.State.Running {
+				break
+			}
+			continue
+		}
+	}
 }
 
 func removeExistingContainers(ctx context.Context, client *docker.Client) error {
