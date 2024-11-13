@@ -13,7 +13,8 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/mount"
-	"github.com/docker/docker/client"
+	docker "github.com/docker/docker/client"
+	"github.com/docker/docker/errdefs"
 	"github.com/docker/go-connections/nat"
 )
 
@@ -59,7 +60,7 @@ type DockerManager struct {
 	gpus         []string
 	modelDir     string
 
-	dockerClient *client.Client
+	dockerClient *docker.Client
 	// gpu ID => container name
 	gpuContainers map[string]string
 	// container name => container
@@ -68,7 +69,7 @@ type DockerManager struct {
 }
 
 func NewDockerManager(defaultImage string, gpus []string, modelDir string) (*DockerManager, error) {
-	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	dockerClient, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, err
 	}
@@ -236,6 +237,7 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 				},
 			},
 		},
+		AutoRemove: true,
 	}
 
 	resp, err := m.dockerClient.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, containerName)
@@ -322,7 +324,7 @@ func (m *DockerManager) allocGPU(ctx context.Context) (string, error) {
 	return "", errors.New("insufficient capacity")
 }
 
-func removeExistingContainers(ctx context.Context, client *client.Client) error {
+func removeExistingContainers(ctx context.Context, client *docker.Client) error {
 	filters := filters.NewArgs(filters.Arg("label", containerCreatorLabel+"="+containerCreator))
 	containers, err := client.ContainerList(ctx, container.ListOptions{All: true, Filters: filters})
 	if err != nil {
@@ -348,20 +350,25 @@ func dockerContainerName(pipeline string, modelID string, suffix ...string) stri
 	return fmt.Sprintf("%s_%s", pipeline, sanitizedModelID)
 }
 
-func dockerRemoveContainer(client *client.Client, containerID string) error {
+func dockerRemoveContainer(client *docker.Client, containerID string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), containerRemoveTimeout)
-	if err := client.ContainerStop(ctx, containerID, container.StopOptions{}); err != nil {
-		cancel()
+	err := client.ContainerStop(ctx, containerID, container.StopOptions{})
+	cancel()
+	// Ignore "not found" or "already stopped" errors
+	if err != nil && !docker.IsErrNotFound(err) && !errdefs.IsNotModified(err) {
 		return err
 	}
-	cancel()
 
 	ctx, cancel = context.WithTimeout(context.Background(), containerRemoveTimeout)
-	defer cancel()
-	return client.ContainerRemove(ctx, containerID, container.RemoveOptions{})
+	err = client.ContainerRemove(ctx, containerID, container.RemoveOptions{})
+	cancel()
+	if err != nil && !docker.IsErrNotFound(err) {
+		return err
+	}
+	return nil
 }
 
-func dockerWaitUntilRunning(ctx context.Context, client *client.Client, containerID string, pollingInterval time.Duration) error {
+func dockerWaitUntilRunning(ctx context.Context, client *docker.Client, containerID string, pollingInterval time.Duration) error {
 	ticker := time.NewTicker(pollingInterval)
 	defer ticker.Stop()
 

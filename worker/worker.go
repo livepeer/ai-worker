@@ -573,7 +573,7 @@ func (w *Worker) LiveVideoToVideo(ctx context.Context, req GenLiveVideoToVideoJS
 		return nil, err
 	}
 	// Live video containers keep running after the initial request, so we don't return them after the request
-	// TODO: Make sure we remove the stopped container after it
+	// TODO: Make sure we release the allocated GPU after the container stops
 
 	resp, err := c.Client.GenLiveVideoToVideoWithResponse(ctx, req)
 	if err != nil {
