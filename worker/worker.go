@@ -568,11 +568,12 @@ func (w *Worker) TextToSpeech(ctx context.Context, req GenTextToSpeechJSONReques
 }
 
 func (w *Worker) LiveVideoToVideo(ctx context.Context, req GenLiveVideoToVideoJSONRequestBody) (*LiveVideoToVideoResponse, error) {
-	c, err := w.borrowContainer(ctx, "live-video-to-video", *req.ModelId)
+	c, err := w.borrowContainer(context.Background(), "live-video-to-video", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
-	defer w.returnContainer(c)
+	// Live video containers keep running after the initial request, so we don't return them after the request
+	// TODO: Make sure we remove the stopped container after it
 
 	resp, err := c.Client.GenLiveVideoToVideoWithResponse(ctx, req)
 	if err != nil {
