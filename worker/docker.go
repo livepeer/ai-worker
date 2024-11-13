@@ -105,21 +105,15 @@ func (m *DockerManager) Stop(ctx context.Context) error {
 	defer m.mu.Unlock()
 
 	var stopContainerWg sync.WaitGroup
-	for name, rc := range m.containers {
+	for _, rc := range m.containers {
 		stopContainerWg.Add(1)
-		go func(containerID string) {
+		go func(container *RunnerContainer) {
 			defer stopContainerWg.Done()
-			if err := dockerRemoveContainer(m.dockerClient, containerID); err != nil {
-				slog.Error("Error removing managed container", slog.String("name", name), slog.String("id", containerID))
-			}
-		}(rc.ID)
-
-		delete(m.gpuContainers, rc.GPU)
-		delete(m.containers, name)
+			m.destroyContainer(container)
+		}(rc)
 	}
 
 	stopContainerWg.Wait()
-
 	return nil
 }
 
@@ -308,20 +302,35 @@ func (m *DockerManager) allocGPU(ctx context.Context) (string, error) {
 		// If the container exists in this map then it is idle and if it not marked as keep warm we remove it
 		rc, ok := m.containers[containerName]
 		if ok && !rc.KeepWarm {
-			slog.Info("Removing managed container", slog.String("gpu", gpu), slog.String("name", containerName), slog.String("modelID", rc.ModelID))
-
-			delete(m.gpuContainers, gpu)
-			delete(m.containers, containerName)
-
-			if err := dockerRemoveContainer(m.dockerClient, rc.ID); err != nil {
+			if err := m.destroyContainer(rc); err != nil {
 				return "", err
 			}
-
 			return gpu, nil
 		}
 	}
 
 	return "", errors.New("insufficient capacity")
+}
+
+func (m *DockerManager) destroyContainer(rc *RunnerContainer) error {
+	slog.Info("Removing managed container",
+		slog.String("gpu", rc.GPU),
+		slog.String("name", rc.Name),
+		slog.String("modelID", rc.ModelID))
+
+	delete(m.gpuContainers, rc.GPU)
+	delete(m.containers, rc.Name)
+
+	if err := dockerRemoveContainer(m.dockerClient, rc.ID); err != nil {
+		slog.Error("Error removing managed container",
+			slog.String("gpu", rc.GPU),
+			slog.String("name", rc.Name),
+			slog.String("modelID", rc.ModelID),
+			slog.String("error", err.Error()))
+		return fmt.Errorf("failed to remove container %s: %w", rc.Name, err)
+	}
+
+	return nil
 }
 
 func removeExistingContainers(ctx context.Context, client *docker.Client) error {
