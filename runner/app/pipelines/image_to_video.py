@@ -5,8 +5,6 @@ from typing import List, Optional, Tuple
 
 import PIL
 import torch
-from app.pipelines.base import Pipeline
-from app.utils.errors import InferenceError
 from diffusers import StableVideoDiffusionPipeline
 from huggingface_hub import file_download
 from PIL import ImageFile
@@ -15,6 +13,10 @@ from app.pipelines.utils import (
     get_model_dir,
     get_torch_device
 )
+
+from app.pipelines.base import Pipeline
+from app.pipelines.utils import SafetyChecker, get_model_dir, get_torch_device
+from app.utils.errors import InferenceError
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -142,6 +144,8 @@ class ImageToVideoPipeline(Pipeline):
 
         try:
             outputs = self.ldm(image, **kwargs)
+        except torch.cuda.OutOfMemoryError as e:
+            raise e
         except Exception as e:
             raise InferenceError(original_exception=e)
 

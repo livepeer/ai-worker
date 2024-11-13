@@ -48,3 +48,14 @@ func SaveImageB64DataUrl(url, outputPath string) error {
 
 	return ReadImageB64DataUrl(url, file)
 }
+
+func ReadAudioB64DataUrl(url string, w io.Writer) error {
+	dataURL, err := dataurl.DecodeString(url)
+	if err != nil {
+		return err
+	}
+
+	w.Write(dataURL.Data)
+
+	return nil
+}

@@ -37,14 +37,16 @@ var containerHostPorts = map[string]string{
 	"audio-to-text":       "8400",
 	"llm":                 "8500",
 	"segment-anything-2":  "8600",
-  "frame-interpolation": "8700",
- 	"image-to-text":       "8900",
+	"image-to-text":       "8700",
+	"text-to-speech":      "8800",
+	"frame-interpolation": "8900",
 }
 
 // Mapping for per pipeline container images.
 var pipelineToImage = map[string]string{
-	"segment-anything-2":  "livepeer/ai-runner:segment-anything-2",
-	"frame-interpolation": "livepeer/ai-runner:frame-interpolation",
+	"segment-anything-2": "livepeer/ai-runner:segment-anything-2",
+	"text-to-speech":     "livepeer/ai-runner:text-to-speech",
+	"frame-interpolation": "livepeer/ai-runner:frame-interpolation",	
 }
 
 type DockerManager struct {

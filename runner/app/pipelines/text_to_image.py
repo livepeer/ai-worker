@@ -5,17 +5,6 @@ from typing import List, Optional, Tuple
 
 import PIL
 import torch
-from app.pipelines.base import Pipeline
-from app.pipelines.utils import (
-    LoraLoader,
-    SafetyChecker,
-    get_model_dir,
-    get_torch_device,
-    is_lightning_model,
-    is_turbo_model,
-    split_prompt,
-)
-from app.utils.errors import InferenceError
 from diffusers import (
     AutoPipelineForText2Image,
     EulerDiscreteScheduler,
@@ -28,6 +17,18 @@ from diffusers.models import AutoencoderKL
 from huggingface_hub import file_download, hf_hub_download
 from safetensors.torch import load_file
 
+from app.pipelines.base import Pipeline
+from app.pipelines.utils import (
+    LoraLoader,
+    SafetyChecker,
+    get_model_dir,
+    get_torch_device,
+    is_lightning_model,
+    is_turbo_model,
+    split_prompt,
+)
+from app.utils.errors import InferenceError
+
 logger = logging.getLogger(__name__)
 
 
@@ -35,7 +36,7 @@ class ModelName(Enum):
     """Enumeration mapping model names to their corresponding IDs."""
 
     SDXL_LIGHTNING = "ByteDance/SDXL-Lightning"
-    SD3_MEDIUM = "stabilityai/stable-diffusion-3-medium-diffusers"
+    SD3 = "stabilityai/stable-diffusion-3"
     REALISTIC_VISION_V6 = "SG161222/Realistic_Vision_V6.0_B1_noVAE"
     FLUX_1_SCHNELL = "black-forest-labs/FLUX.1-schnell"
     FLUX_1_DEV = "black-forest-labs/FLUX.1-dev"
@@ -43,7 +44,7 @@ class ModelName(Enum):
     @classmethod
     def list(cls):
         """Return a list of all model IDs."""
-        return list(map(lambda c: c.value, cls))
+        return [model.value for model in cls]
 
 
 class TextToImagePipeline(Pipeline):
@@ -125,10 +126,11 @@ class TextToImagePipeline(Pipeline):
             self.ldm.scheduler = EulerDiscreteScheduler.from_config(
                 self.ldm.scheduler.config, timestep_spacing="trailing"
             )
-        elif ModelName.SD3_MEDIUM.value in model_id:
+        elif ModelName.SD3.value in model_id:
             self.ldm = StableDiffusion3Pipeline.from_pretrained(model_id, **kwargs).to(
                 torch_device
             )
+            kwargs["torch_dtype"] = torch.bfloat16
         elif (
             ModelName.FLUX_1_SCHNELL.value in model_id
             or ModelName.FLUX_1_DEV.value in model_id
@@ -277,6 +279,8 @@ class TextToImagePipeline(Pipeline):
 
         try:
             outputs = self.ldm(prompt=prompt, **kwargs)
+        except torch.cuda.OutOfMemoryError as e:
+            raise e
         except Exception as e:
             raise InferenceError(original_exception=e)
 

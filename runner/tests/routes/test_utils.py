@@ -1,10 +1,12 @@
+import json
+
 import pytest
-from app.routes.utils import handle_pipeline_exception
-from app.pipelines.utils import LoraLoadingError
 import torch
 from fastapi import status
 from fastapi.responses import JSONResponse
-import json
+
+from app.pipelines.utils import LoraLoadingError
+from app.routes.utils import handle_pipeline_exception
 
 
 class TestHandlePipelineException:

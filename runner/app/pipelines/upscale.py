@@ -4,6 +4,10 @@ from typing import List, Optional, Tuple
 
 import PIL
 import torch
+from diffusers import StableDiffusionUpscalePipeline
+from huggingface_hub import file_download
+from PIL import ImageFile
+
 from app.pipelines.base import Pipeline
 from app.pipelines.utils import (
     SafetyChecker,
@@ -13,9 +17,6 @@ from app.pipelines.utils import (
     is_turbo_model,
 )
 from app.utils.errors import InferenceError
-from diffusers import StableDiffusionUpscalePipeline
-from huggingface_hub import file_download
-from PIL import ImageFile
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 

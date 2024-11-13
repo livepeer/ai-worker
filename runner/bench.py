@@ -3,17 +3,18 @@
 
 import argparse
 import os
+from pathlib import Path
 from time import time
-from typing import List, Any
+from typing import Any, List
 
 import numpy as np
 import torch
-from app.main import load_pipeline
-from app.pipelines.base import Pipeline
 from PIL import Image
 from pydantic import BaseModel
-from pathlib import Path
 from starlette.datastructures import UploadFile
+
+from app.main import load_pipeline
+from app.pipelines.base import Pipeline
 
 CURRENT_DIR = Path(__file__).parent
 

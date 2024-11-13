@@ -154,6 +154,54 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: imageToVideo
+  /upscale:
+    post:
+      tags:
+      - generate
+      summary: Upscale
+      description: Upscale an image by increasing its resolution.
+      operationId: genUpscale
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_genUpscale'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageResponse'
+                x-speakeasy-name-override: data
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+      x-speakeasy-name-override: upscale
   /audio-to-text:
     post:
       tags:
@@ -193,98 +241,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HTTPError'
-        '500':
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPError'
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-      security:
-      - HTTPBearer: []
-      x-speakeasy-name-override: audioToText
-  /frame-interpolation:
-    post:
-      summary: Frame Interpolation
-      operationId: frame_interpolation_frame_interpolation_post
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              allOf:
-              - $ref: '#/components/schemas/Body_frame_interpolation_frame_interpolation_post'
-              title: Body
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/VideoResponse'
-        '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPError'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPError'
-        '500':
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPError'
-        '422':
-          description: Validation Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPValidationError'
-      security:
-      - HTTPBearer: []
-  /upscale:
-    post:
-      tags:
-      - generate
-      summary: Upscale
-      description: Upscale an image by increasing its resolution.
-      operationId: genUpscale
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/Body_genUpscale'
-        required: true
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ImageResponse'
-                x-speakeasy-name-override: data
-        '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPError'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HTTPError'
         '415':
           description: Unsupported Media Type
           content:
@@ -305,7 +261,7 @@ paths:
                 $ref: '#/components/schemas/HTTPValidationError'
       security:
       - HTTPBearer: []
-      x-speakeasy-name-override: upscale
+      x-speakeasy-name-override: audioToText
   /segment-anything-2:
     post:
       tags:
@@ -455,6 +411,103 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: imageToText
+  /live-video-to-video:
+    post:
+      tags:
+      - generate
+      summary: Video To Video
+      description: Apply video-like transformations to a provided image.
+      operationId: genLiveVideoToVideo
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LiveVideoToVideoParams'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LiveVideoToVideoResponse'
+                x-speakeasy-name-override: data
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+      x-speakeasy-name-override: liveVideoToVideo
+  /text-to-speech:
+    post:
+      tags:
+      - generate
+      summary: Text To Speech
+      description: Generate a text-to-speech audio file based on the provided text
+        input and speaker description.
+      operationId: genTextToSpeech
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TextToSpeechParams'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AudioResponse'
+                x-speakeasy-name-override: data
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+      x-speakeasy-name-override: textToSpeech
 components:
   schemas:
     APIError:
@@ -468,25 +521,17 @@ components:
       - msg
       title: APIError
       description: API error response model.
-    Body_frame_interpolation_frame_interpolation_post:
+    AudioResponse:
       properties:
-        model_id:
-          type: string
-          title: Model Id
-          description: Currently there is only one model used `film_net_fp16.pt`.
-          default: ''
-        video:
-          type: string
-          format: binary
-          title: Video
-          description: Video file of any arbitrary length.
-        inter_frames:
-          type: integer
-          title: Inter Frames
-          description: Number of frames to create as the intermediate frames.
-          default: 2
+        audio:
+          allOf:
+          - $ref: '#/components/schemas/MediaURL'
+          description: The generated audio.
       type: object
-      title: Body_frame_interpolation_frame_interpolation_post
+      required:
+      - audio
+      title: AudioResponse
+      description: Response model for audio generation.
     Body_genAudioToText:
       properties:
         audio:
@@ -795,6 +840,23 @@ components:
       - image
       - model_id
       title: Body_genUpscale
+    Chunk:
+      properties:
+        timestamp:
+          items: {}
+          type: array
+          title: Timestamp
+          description: The timestamp of the chunk.
+        text:
+          type: string
+          title: Text
+          description: The text of the chunk.
+      type: object
+      required:
+      - timestamp
+      - text
+      title: Chunk
+      description: A chunk of text with a timestamp.
     HTTPError:
       properties:
         detail:
@@ -852,6 +914,48 @@ components:
       - response
       - tokens_used
       title: LLMResponse
+    LiveVideoToVideoParams:
+      properties:
+        subscribe_url:
+          type: string
+          title: Subscribe Url
+          description: Source URL of the incoming stream to subscribe to.
+        publish_url:
+          type: string
+          title: Publish Url
+          description: Destination URL of the outgoing stream to publish.
+        model_id:
+          type: string
+          title: Model Id
+          description: Hugging Face model ID used for image generation.
+          default: ''
+        params:
+          type: object
+          title: Params
+          description: Initial parameters for the model.
+          default: {}
+      type: object
+      required:
+      - subscribe_url
+      - publish_url
+      - model_id
+      title: LiveVideoToVideoParams
+    LiveVideoToVideoResponse:
+      properties:
+        subscribe_url:
+          type: string
+          title: Subscribe Url
+          description: Source URL of the incoming stream to subscribe to
+        publish_url:
+          type: string
+          title: Publish Url
+          description: Destination URL of the outgoing stream to publish to
+      type: object
+      required:
+      - subscribe_url
+      - publish_url
+      title: LiveVideoToVideoResponse
+      description: Response model for live video-to-video generation.
     MasksResponse:
       properties:
         masks:
@@ -894,6 +998,17 @@ components:
       - nsfw
       title: Media
       description: A media object containing information about the generated media.
+    MediaURL:
+      properties:
+        url:
+          type: string
+          title: Url
+          description: The URL where the media can be accessed.
+      type: object
+      required:
+      - url
+      title: MediaURL
+      description: A URL from which media can be accessed.
     TextResponse:
       properties:
         text:
@@ -902,7 +1017,7 @@ components:
           description: The generated text.
         chunks:
           items:
-            $ref: '#/components/schemas/chunk'
+            $ref: '#/components/schemas/Chunk'
           type: array
           title: Chunks
           description: The generated text chunks.
@@ -979,6 +1094,28 @@ components:
       - prompt
       - model_id
       title: TextToImageParams
+    TextToSpeechParams:
+      properties:
+        model_id:
+          type: string
+          title: Model Id
+          description: Hugging Face model ID used for text to speech generation.
+          default: ''
+        text:
+          type: string
+          title: Text
+          description: Text input for speech generation.
+          default: ''
+        description:
+          type: string
+          title: Description
+          description: Description of speaker to steer text to speech generation.
+          default: A male speaker delivers a slightly expressive and animated speech
+            with a moderate speed and pitch.
+      type: object
+      title: TextToSpeechParams
+      required:
+      - model_id
     ValidationError:
       properties:
         loc:
@@ -1013,23 +1150,6 @@ components:
       - images
       title: VideoResponse
       description: Response model for image generation.
-    chunk:
-      properties:
-        timestamp:
-          items: {}
-          type: array
-          title: Timestamp
-          description: The timestamp of the chunk.
-        text:
-          type: string
-          title: Text
-          description: The text of the chunk.
-      type: object
-      required:
-      - timestamp
-      - text
-      title: chunk
-      description: A chunk of text with a timestamp.
   securitySchemes:
     HTTPBearer:
       type: http

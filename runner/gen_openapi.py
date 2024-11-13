@@ -2,23 +2,24 @@ import argparse
 import copy
 import json
 import logging
-import subprocess
 
 import yaml
+from fastapi.openapi.utils import get_openapi
+
 from app.main import app
 from app.routes import (
     audio_to_text,
     health,
     image_to_image,
+    image_to_text,
     image_to_video,
+    live_video_to_video,
+    llm,
     segment_anything_2,
     text_to_image,
-    frame_interpolation,
+    text_to_speech,
     upscale,
-    llm,
-    image_to_text,
 )
-from fastapi.openapi.utils import get_openapi
 
 logging.basicConfig(
     level=logging.INFO,
@@ -48,6 +49,7 @@ def translate_to_gateway(openapi: dict) -> dict:
         Differences between 'runner' and 'gateway' entrypoints:
         - 'health' endpoint is removed.
         - 'model_id' is enforced in all endpoints.
+        - 'metadata' property is removed from all schemas.
         - 'VideoResponse' schema is updated to match the Gateway's transcoded mp4
             response.
 
@@ -73,8 +75,13 @@ def translate_to_gateway(openapi: dict) -> dict:
                         ref = content_details["schema"]["$ref"]
                         schema_name = ref.split("/")[-1]
                         schema = openapi["components"]["schemas"][schema_name]
+                        schema.setdefault("required", [])
                         if "model_id" in schema["properties"]:
                             schema["required"].append("model_id")
+
+                        # Remove 'metadata' property if it exists.
+                        if "metadata" in schema["properties"]:
+                            schema["properties"].pop("metadata")
 
     # Update the 'VideoResponse' schema to match the Gateway's response.
     # NOTE: This is necessary because the Gateway transcodes the runner's response and
@@ -100,12 +107,13 @@ def write_openapi(fname: str, entrypoint: str = "runner"):
     app.include_router(text_to_image.router)
     app.include_router(image_to_image.router)
     app.include_router(image_to_video.router)
-    app.include_router(audio_to_text.router)
-    app.include_router(frame_interpolation.router)
     app.include_router(upscale.router)
+    app.include_router(audio_to_text.router)
     app.include_router(segment_anything_2.router)
     app.include_router(llm.router)
     app.include_router(image_to_text.router)
+    app.include_router(live_video_to_video.router)
+    app.include_router(text_to_speech.router)
 
     logger.info(f"Generating OpenAPI schema for '{entrypoint}' entrypoint...")
     openapi = get_openapi(

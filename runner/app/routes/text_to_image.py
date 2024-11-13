@@ -4,19 +4,20 @@ import random
 from typing import Annotated, Dict, Tuple, Union
 
 import torch
+from fastapi import APIRouter, Depends, status
+from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel, Field
+
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.routes.utils import (
     HTTPError,
     ImageResponse,
+    handle_pipeline_exception,
     http_error,
     image_to_data_url,
-    handle_pipeline_exception,
 )
-from fastapi import APIRouter, Depends, status
-from fastapi.responses import JSONResponse
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, Field
 
 router = APIRouter()
 
@@ -156,6 +157,15 @@ async def text_to_image(
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
+    # Ensure required parameters are non-empty.
+    # TODO: Remove if go-livepeer validation is fixed. Was disabled due to optional
+    # params issue.
+    if not params.prompt:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content=http_error("Prompt must be provided."),
+        )
+
     auth_token = os.environ.get("AUTH_TOKEN")
     if auth_token:
         if not token or token.credentials != auth_token:
@@ -189,6 +199,7 @@ async def text_to_image(
             imgs, nsfw_check = pipeline(**kwargs)
         except Exception as e:
             if isinstance(e, torch.cuda.OutOfMemoryError):
+                # TODO: Investigate why not all VRAM memory is cleared.
                 torch.cuda.empty_cache()
             logger.error(f"TextToImage pipeline error: {e}")
             return handle_pipeline_exception(

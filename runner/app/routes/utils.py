@@ -2,6 +2,8 @@ import base64
 import io
 import json
 import os
+import subprocess
+import tempfile
 from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -11,10 +13,15 @@ from PIL import Image
 from pydantic import BaseModel, Field
 
 
-class Media(BaseModel):
-    """A media object containing information about the generated media."""
+class MediaURL(BaseModel):
+    """A URL from which media can be accessed."""
 
     url: str = Field(..., description="The URL where the media can be accessed.")
+
+
+class Media(MediaURL):
+    """A media object containing information about the generated media."""
+
     seed: int = Field(..., description="The seed used to generate the media.")
     # TODO: Make nsfw property optional once Go codegen tool supports
     # OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
@@ -33,6 +40,12 @@ class VideoResponse(BaseModel):
     frames: List[List[Media]] = Field(..., description="The generated video frames.")
 
 
+class AudioResponse(BaseModel):
+    """Response model for audio generation."""
+
+    audio: MediaURL = Field(..., description="The generated audio.")
+
+
 class MasksResponse(BaseModel):
     """Response model for object segmentation."""
 
@@ -45,10 +58,10 @@ class MasksResponse(BaseModel):
     )
 
 
-class chunk(BaseModel):
+class Chunk(BaseModel):
     """A chunk of text with a timestamp."""
 
-    timestamp: tuple = Field(..., description="The timestamp of the chunk.")
+    timestamp: Tuple = Field(..., description="The timestamp of the chunk.")
     text: str = Field(..., description="The text of the chunk.")
 
 
@@ -56,7 +69,7 @@ class TextResponse(BaseModel):
     """Response model for text generation."""
 
     text: str = Field(..., description="The generated text.")
-    chunks: List[chunk] = Field(..., description="The generated text chunks.")
+    chunks: List[Chunk] = Field(..., description="The generated text chunks.")
 
 
 class LLMResponse(BaseModel):
@@ -68,6 +81,17 @@ class ImageToTextResponse(BaseModel):
     """Response model for text generation."""
 
     text: str = Field(..., description="The generated text.")
+
+
+class LiveVideoToVideoResponse(BaseModel):
+    """Response model for live video-to-video generation."""
+
+    subscribe_url: str = Field(
+        ..., description="Source URL of the incoming stream to subscribe to"
+    )
+    publish_url: str = Field(
+        ..., description="Destination URL of the outgoing stream to publish to"
+    )
 
 
 class APIError(BaseModel):
@@ -120,6 +144,20 @@ def image_to_data_url(img: Image, format: str = "png") -> str:
         The data URL for the image.
     """
     return "data:image/png;base64," + image_to_base64(img, format=format)
+
+
+def audio_to_data_url(buffer: io.BytesIO, format: str = "wav") -> str:
+    """Convert an audio buffer to a data URL.
+
+    Args:
+        buffer: The audio buffer to convert.
+        format: The audio format to use. Defaults to "wav".
+
+    Returns:
+        The data URL for the audio.
+    """
+    base64_audio = base64.b64encode(buffer.read()).decode("utf-8")
+    return f"data:audio/{format};base64,{base64_audio}"
 
 
 def file_exceeds_max_size(
@@ -239,3 +277,76 @@ def handle_pipeline_exception(
         status_code=status_code,
         content=content,
     )
+
+
+def parse_key_from_metadata(
+    metadata: str, key: str, expected_type: type
+) -> Union[Optional[Union[str, int, float, bool]]]:
+    """Parse a specific key from the metadata JSON string.
+
+    Args:
+        metadata: The metadata JSON string.
+        key: The key to parse from the metadata.
+        expected_type: The expected type of the key's value.
+
+     Returns:
+        The value of the key if it exists and is of the expected type, otherwise None.
+
+    Raises:
+        ValueError: If the metadata is not valid JSON.
+        TypeError: If the value is not of the expected type.
+    """
+    try:
+        metadata_dict = json.loads(metadata)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON: {e}")
+
+    value = metadata_dict.get(key)
+    if value is not None:
+        if isinstance(value, expected_type):
+            return value
+        try:
+            return expected_type(value)
+        except (ValueError, TypeError):
+            raise TypeError(
+                f"Invalid {key} value. Must be of type {expected_type.__name__}."
+            )
+    return None
+
+
+def get_media_duration_ffmpeg(bytes: bytes) -> float:
+    """Gets the duration of the media using ffprobe.
+
+    Args:
+        bytes: The media file as bytes.
+
+    Returns:
+        The duration of the media in seconds.
+    """
+    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+        temp_file.write(bytes)
+        temp_file_path = temp_file.name
+
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                temp_file_path,
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        duration = float(result.stdout.strip())
+    except Exception as e:
+        raise Exception(f"Failed to get duration with ffmpeg: {e}")
+    finally:
+        os.remove(temp_file_path)
+
+    return duration

@@ -3,18 +3,21 @@ import os
 from typing import Annotated, Dict, Tuple, Union
 
 import torch
+from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.routes.utils import (
     HTTPError,
     TextResponse,
     file_exceeds_max_size,
-    http_error,
+    get_media_duration_ffmpeg,
     handle_pipeline_exception,
+    http_error,
+    parse_key_from_metadata,
 )
-from fastapi import APIRouter, Depends, File, Form, UploadFile, status
-from fastapi.responses import JSONResponse
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 router = APIRouter()
 
@@ -106,6 +109,10 @@ async def audio_to_text(
             )
         ),
     ] = "true",
+    metadata: Annotated[
+        str,
+        Form(description="Additional job information to be passed to the pipeline."),
+    ] = "{}",
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
     return_timestamps = parse_return_timestamps(return_timestamps)
@@ -134,9 +141,26 @@ async def audio_to_text(
         )
 
     try:
-        return pipeline(audio=audio, return_timestamps=return_timestamps)
+        duration = parse_key_from_metadata(metadata, "duration", float)
+        if duration is None:
+            logger.warning(
+                f"duration not provided in request, calculating with ffprobe"
+            )
+            duration = get_media_duration_ffmpeg(audio.file.read())
+            audio.file.seek(0)  # Reset file pointer
+    except Exception as e:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content=http_error("Unable to calculate duration of file"),
+        )
+
+    try:
+        return pipeline(
+            audio=audio, return_timestamps=return_timestamps, duration=duration
+        )
     except Exception as e:
         if isinstance(e, torch.cuda.OutOfMemoryError):
+            # TODO: Investigate why not all VRAM memory is cleared.
             torch.cuda.empty_cache()
         logger.error(f"AudioToText pipeline error: {e}")
         return handle_pipeline_exception(

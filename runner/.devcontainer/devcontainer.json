@@ -2,20 +2,19 @@
 // README at: https://github.com/devcontainers/templates/tree/main/src/ubuntu
 {
 	"name": "ai-runner",
-
 	// Image to use for the dev container. More info: https://containers.dev/guide/dockerfile.
 	"build": {
-		"dockerfile": "../Dockerfile"
+		"dockerfile": "../Dockerfile",
+		// "dockerfile": "../docker/Dockerfile.text_to_speech",
+		"context": ".."
 	},
 	"runArgs": [
 		"--gpus=all"
 	],
-
 	// Features to add to the dev container. More info: https://containers.dev/features.
-
 	// Configure tool-specific properties.
 	"customizations": {
-		"vscode":{
+		"vscode": {
 			"settings": {},
 			"extensions": [
 				"ms-python.python",
@@ -23,15 +22,13 @@
 			]
 		}
 	},
-
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	"forwardPorts": [
 		8000
 	],
-
 	// Use 'mounts' to make a list of local folders available inside the container.
 	"mounts": [
 		// "source=${localWorkspaceFolder}/models,target=/models,type=bind"
 		"source=${localEnv:HOME}/.lpData/models,target=/models,type=bind"
-    ]
+	]
 }
