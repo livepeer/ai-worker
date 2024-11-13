@@ -60,5 +60,5 @@ mv ./models/*.engine ./models/tensorrt/depth-anything
 4. Start Docker container
 
 ```
-docker run -it --rm --name video-to-video --gpus all -p 3389:3389 -v ./models:/models livepeer/ai-runner:live-app-comfyui
+docker run -it --rm --name video-to-video --gpus all -p 8000:8000 -v ./models:/models -e PIPELINE=live-video-to-video -e MODEL_ID=comfyui livepeer/ai-runner:live-app-comfyui
 ```
