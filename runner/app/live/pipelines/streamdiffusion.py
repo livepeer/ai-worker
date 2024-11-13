@@ -8,7 +8,7 @@ from StreamDiffusionWrapper import StreamDiffusionWrapper
 from .interface import Pipeline
 
 
-class StreamKohakuParams(BaseModel):
+class StreamDiffusionParams(BaseModel):
     class Config:
         extra = "forbid"
 
@@ -16,6 +16,7 @@ class StreamKohakuParams(BaseModel):
     model_id: str = "KBlueLeaf/kohaku-v2.1"
     lora_dict: Optional[Dict[str, float]] = None
     use_lcm_lora: bool = True
+    lcm_lora_id: str = "latent-consistency/lcm-lora-sdv1-5"
     num_inference_steps: int = 50
     t_index_list: Optional[List[int]] = None
     t_index_ratio_list: Optional[List[float]] = [0.75, 0.9, 0.975]
@@ -25,6 +26,8 @@ class StreamKohakuParams(BaseModel):
     enable_similar_image_filter: bool = False
     seed: int = 2
     guidance_scale: float = 1.2
+    do_add_noise: bool = False
+    similar_image_filter_threshold: float = 0.98
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -34,7 +37,7 @@ class StreamKohakuParams(BaseModel):
             ]
 
 
-class StreamKohaku(Pipeline):
+class StreamDiffusion(Pipeline):
     def __init__(self, **params):
         super().__init__(**params)
         self.pipe: Optional[StreamDiffusionWrapper] = None
@@ -53,7 +56,7 @@ class StreamKohaku(Pipeline):
         return self.pipe(image=img_tensor)
 
     def update_params(self, **params):
-        new_params = StreamKohakuParams(**params)
+        new_params = StreamDiffusionParams(**params)
         if self.pipe is not None:
             # avoid resetting the pipe if only the prompt changed
             only_prompt = self.params.model_copy(update={"prompt": new_params.prompt})
@@ -68,17 +71,18 @@ class StreamKohaku(Pipeline):
             model_id_or_path=new_params.model_id,
             lora_dict=new_params.lora_dict,
             use_lcm_lora=new_params.use_lcm_lora,
+            lcm_lora_id=new_params.lcm_lora_id,
             t_index_list=new_params.t_index_list,
             frame_buffer_size=1,
             width=512,
             height=512,
             warmup=10,
             acceleration=new_params.acceleration,
-            do_add_noise=False,
+            do_add_noise=new_params.do_add_noise,
             mode="img2img",
             # output_type="pt",
             enable_similar_image_filter=new_params.enable_similar_image_filter,
-            similar_image_filter_threshold=0.98,
+            similar_image_filter_threshold=new_params.similar_image_filter_threshold,
             use_denoising_batch=new_params.use_denoising_batch,
             seed=new_params.seed,
         )

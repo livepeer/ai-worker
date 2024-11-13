@@ -33,8 +33,6 @@ class LiveVideoToVideoPipeline(Pipeline):
             if not self.process:
                 self.start_process(
                     pipeline=self.model_id,  # we use the model_id as the pipeline name for now
-                    input_address="tcp://localhost:5555",
-                    output_address="tcp://localhost:5556",
                     http_port=8888,
                     subscribe_url=kwargs["subscribe_url"],
                     publish_url=kwargs["publish_url"],

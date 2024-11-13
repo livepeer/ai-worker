@@ -4,6 +4,8 @@ import json
 import logging
 
 import yaml
+from fastapi.openapi.utils import get_openapi
+
 from app.main import app
 from app.routes import (
     audio_to_text,
@@ -21,7 +23,6 @@ from app.routes import (
     llm,
     image_to_text,
 )
-from fastapi.openapi.utils import get_openapi
 
 logging.basicConfig(
     level=logging.INFO,
@@ -51,6 +52,7 @@ def translate_to_gateway(openapi: dict) -> dict:
         Differences between 'runner' and 'gateway' entrypoints:
         - 'health' endpoint is removed.
         - 'model_id' is enforced in all endpoints.
+        - 'metadata' property is removed from all schemas.
         - 'VideoResponse' schema is updated to match the Gateway's transcoded mp4
             response.
 
@@ -79,6 +81,10 @@ def translate_to_gateway(openapi: dict) -> dict:
                         schema.setdefault("required", [])
                         if "model_id" in schema["properties"]:
                             schema["required"].append("model_id")
+
+                        # Remove 'metadata' property if it exists.
+                        if "metadata" in schema["properties"]:
+                            schema["properties"].pop("metadata")
 
     # Update the 'VideoResponse' schema to match the Gateway's response.
     # NOTE: This is necessary because the Gateway transcodes the runner's response and

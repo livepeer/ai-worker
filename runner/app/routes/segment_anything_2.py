@@ -4,19 +4,20 @@ from typing import Annotated, Dict, Tuple, Union
 
 import numpy as np
 import torch
+from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from PIL import Image, ImageFile
+
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.routes.utils import (
     HTTPError,
     MasksResponse,
+    handle_pipeline_exception,
     http_error,
     json_str_to_np_array,
-    handle_pipeline_exception,
 )
-from fastapi import APIRouter, Depends, File, Form, UploadFile, status
-from fastapi.responses import JSONResponse
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from PIL import Image, ImageFile
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -183,6 +184,7 @@ async def segment_anything_2(
         )
     except Exception as e:
         if isinstance(e, torch.cuda.OutOfMemoryError):
+            # TODO: Investigate why not all VRAM memory is cleared.
             torch.cuda.empty_cache()
         logger.error(f"SegmentAnything2 pipeline error: {e}")
         return handle_pipeline_exception(

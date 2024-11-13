@@ -4,6 +4,11 @@ import time
 from typing import Annotated, Dict, Tuple, Union
 
 import torch
+from fastapi import APIRouter, Depends, status
+from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel, Field
+
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.routes.utils import (
@@ -13,10 +18,6 @@ from app.routes.utils import (
     handle_pipeline_exception,
     http_error,
 )
-from fastapi import APIRouter, Depends, status
-from fastapi.responses import JSONResponse
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, Field
 
 router = APIRouter()
 
@@ -130,6 +131,7 @@ async def text_to_speech(
         logger.info(f"TextToSpeechPipeline took {time.time() - start} seconds.")
     except Exception as e:
         if isinstance(e, torch.cuda.OutOfMemoryError):
+            # TODO: Investigate why not all VRAM memory is cleared.
             torch.cuda.empty_cache()
         logger.error(f"TextToSpeechPipeline error: {e}")
         return handle_pipeline_exception(

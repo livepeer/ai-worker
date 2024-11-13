@@ -3,10 +3,12 @@ import logging
 
 import soundfile as sf
 import torch
-from app.pipelines.base import Pipeline
-from app.pipelines.utils import get_model_dir, get_torch_device
 from parler_tts import ParlerTTSForConditionalGeneration
 from transformers import AutoTokenizer
+
+from app.pipelines.base import Pipeline
+from app.pipelines.utils import get_model_dir, get_torch_device
+from app.utils.errors import InferenceError
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +63,14 @@ class TextToSpeechPipeline(Pipeline):
         return buffer
 
     def __call__(self, params) -> io.BytesIO:
-        return self._generate_speech(params.text, params.description)
+        try:
+            output = self._generate_speech(params.text, params.description)
+        except torch.cuda.OutOfMemoryError as e:
+            raise e
+        except Exception as e:
+            raise InferenceError(original_exception=e)
+
+        return output
 
     def __str__(self) -> str:
         return f"TextToSpeechPipeline model_id={self.model_id}"
