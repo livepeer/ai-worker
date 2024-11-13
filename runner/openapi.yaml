@@ -426,8 +426,9 @@ paths:
     post:
       tags:
       - generate
-      summary: Video To Video
-      description: Apply video-like transformations to a provided image.
+      summary: Live Video To Video
+      description: Apply transformations to a live video streamed to the returned
+        endpoints.
       operationId: genLiveVideoToVideo
       requestBody:
         content:
@@ -944,12 +945,16 @@ components:
         model_id:
           type: string
           title: Model Id
-          description: Hugging Face model ID used for image generation.
+          description: Name of the pipeline to run in the live video to video job.
+            Notice that this is named model_id for consistency with other routes,
+            but it does not refer to a Hugging Face model ID. The exact model depends
+            on the pipeline implementation and might be configurable via the `params`
+            argument.
           default: ''
         params:
           type: object
           title: Params
-          description: Initial parameters for the model.
+          description: Initial parameters for the pipeline.
           default: {}
       type: object
       required:
