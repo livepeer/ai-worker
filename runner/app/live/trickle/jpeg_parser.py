@@ -16,7 +16,6 @@ class JPEGStreamParser:
         return self
 
     def __exit__(self, exec_type, exec_val, exec_tb):
-        logging.info("JOSH closing jpeg parser via exit")
         self.close()
 
     def close(self):

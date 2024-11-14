@@ -214,6 +214,7 @@ func NewUpscaleMultipartWriter(w io.Writer, req GenUpscaleMultipartRequestBody) 
 
 	return mw, nil
 }
+
 func NewAudioToTextMultipartWriter(w io.Writer, req GenAudioToTextMultipartRequestBody) (*multipart.Writer, error) {
 	mw := multipart.NewWriter(w)
 	writer, err := mw.CreateFormFile("audio", req.Audio.Filename())
@@ -241,6 +242,12 @@ func NewAudioToTextMultipartWriter(w io.Writer, req GenAudioToTextMultipartReque
 
 	if req.ReturnTimestamps != nil {
 		if err := mw.WriteField("return_timestamps", *req.ReturnTimestamps); err != nil {
+			return nil, err
+		}
+	}
+
+	if req.Metadata != nil {
+		if err := mw.WriteField("metadata", *req.Metadata); err != nil {
 			return nil, err
 		}
 	}

@@ -34,6 +34,7 @@ RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools==69.5.1 
   pip install --no-cache-dir torch==2.1.1 torchvision==0.16.1 torchaudio==2.1.1
 
 WORKDIR /app
+
 COPY ./requirements.txt /app
 RUN pip install --no-cache-dir -r requirements.txt
 

@@ -34,6 +34,8 @@ function download_beta_models() {
 
     # Download audio-to-text models.
     huggingface-cli download openai/whisper-large-v3 --include "*.safetensors" "*.json" --cache-dir models
+    huggingface-cli download distil-whisper/distil-large-v3 --include "*.safetensors" "*.json" --cache-dir models
+    huggingface-cli download openai/whisper-medium --include "*.safetensors" "*.json" --cache-dir models
 
     # Download custom pipeline models.
     huggingface-cli download facebook/sam2-hiera-large --include "*.pt" "*.yaml" --cache-dir models

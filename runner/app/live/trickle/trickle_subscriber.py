@@ -9,19 +9,8 @@ class TrickleSubscriber:
         self.idx = -1  # Start with -1 for 'latest' index
         self.pending_get = None  # Pre-initialized GET request
         self.lock = asyncio.Lock()  # Lock to manage concurrent access
-        self.session = aiohttp.ClientSession()
+        self.session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=False))
         self.errored = False
-
-    async def get_index(self, resp):
-        """Extract the index from the response headers."""
-        if resp is None:
-            return -1
-        idx_str = resp.headers.get("Lp-Trickle-Idx")
-        try:
-            idx = int(idx_str)
-        except (TypeError, ValueError):
-            return -1
-        return idx
 
     async def preconnect(self):
         """Preconnect to the server by making a GET request to fetch the next segment."""
@@ -58,18 +47,23 @@ class TrickleSubscriber:
                 self.pending_get = await self.preconnect()
 
             # Extract the current connection to use for reading
-            conn = self.pending_get
+            resp = self.pending_get
             self.pending_get = None
 
             # Extract and set the next index from the response headers
-            idx = await self.get_index(conn)
-            if idx != -1:
+            segment = Segment(resp)
+
+            if segment.eos():
+                return None
+
+            idx = segment.seq()
+            if idx >= 0:
                 self.idx = idx + 1
 
             # Set up the next connection in the background
             asyncio.create_task(self._preconnect_next_segment())
 
-        return Segment(conn)
+        return segment
 
     async def _preconnect_next_segment(self):
         """Preconnect to the next segment in the background."""
@@ -80,13 +74,22 @@ class TrickleSubscriber:
             next_conn = await self.preconnect()
             if next_conn:
                 self.pending_get = next_conn
-                next_idx = await self.get_index(next_conn)
-                if next_idx != -1:
-                    self.idx = next_idx + 1
 
 class Segment:
     def __init__(self, response):
         self.response = response
+
+    def seq(self):
+        """Extract the sequence number from the response headers."""
+        seq_str = self.response.headers.get('Lp-Trickle-Seq')
+        try:
+            seq = int(seq_str)
+        except (TypeError, ValueError):
+            return -1
+        return seq
+
+    def eos(self):
+        return self.response.headers.get('Lp-Trickle-Closed') != None
 
     async def read(self, chunk_size=32 * 1024):
         """Read the next chunk of the segment."""
