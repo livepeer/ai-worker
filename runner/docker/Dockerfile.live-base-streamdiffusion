@@ -16,7 +16,10 @@ RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools==69.5.1 
 RUN pip install --no-cache-dir \
     torch==2.1.0 \
     torchvision==0.16.0 \
+    diffusers==0.30.0 \
+    
     xformers \
+    protobuf==5.27.2 \
     --index-url https://download.pytorch.org/whl/cu121
 RUN pip install huggingface-hub==0.23.2
 
