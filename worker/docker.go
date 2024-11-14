@@ -97,8 +97,15 @@ func (m *DockerManager) Warm(ctx context.Context, pipeline string, modelID strin
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	_, err := m.createContainer(ctx, pipeline, modelID, true, optimizationFlags)
-	return err
+	rc, err := m.createContainer(ctx, pipeline, modelID, true, optimizationFlags)
+	if err != nil {
+		return err
+	}
+
+	// Watch with a background context since we're not borrowing the container.
+	go m.watchContainer(rc, context.Background())
+
+	return nil
 }
 
 func (m *DockerManager) Stop(ctx context.Context) error {
@@ -139,10 +146,14 @@ func (m *DockerManager) Borrow(ctx context.Context, pipeline, modelID string) (*
 
 	// Remove container so it is unavailable until Return() is called
 	delete(m.containers, rc.Name)
+	go m.watchContainer(rc, ctx)
+
 	return rc, nil
 }
 
-func (m *DockerManager) Return(rc *RunnerContainer) {
+// returnContainer returns a container to the pool so it can be reused. It is called automatically by watchContainer
+// when the context used to borrow the container is done.
+func (m *DockerManager) returnContainer(rc *RunnerContainer) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.containers[rc.Name] = rc
@@ -285,8 +296,6 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	m.containers[containerName] = rc
 	m.gpuContainers[gpu] = containerName
 
-	go m.watchContainer(ctx, rc)
-
 	return rc, nil
 }
 
@@ -337,9 +346,9 @@ func (m *DockerManager) destroyContainer(rc *RunnerContainer) error {
 }
 
 // watchContainer monitors a container's running state and automatically cleans
-// up when the container stops or the context is cancelled. The cleanup is done
-// by making sure to remove the container and update the internal state.
-func (m *DockerManager) watchContainer(ctx context.Context, rc *RunnerContainer) {
+// up the internal state when the container stops. It will also monitor the
+// borrowCtx to return the container to the pool when it is done.
+func (m *DockerManager) watchContainer(rc *RunnerContainer, borrowCtx context.Context) {
 	defer func() {
 		if r := recover(); r != nil {
 			slog.Error("Panic in container watch routine",
@@ -347,25 +356,32 @@ func (m *DockerManager) watchContainer(ctx context.Context, rc *RunnerContainer)
 				slog.Any("panic", r))
 		}
 	}()
-	defer func() {
-		m.mu.Lock()
-		m.destroyContainer(rc)
-		m.mu.Unlock()
-	}()
 
 	ticker := time.NewTicker(containerWatchInterval)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-ctx.Done():
-			break
+		case <-borrowCtx.Done():
+			m.returnContainer(rc)
+			return
 		case <-ticker.C:
+			ctx, cancel := context.WithTimeout(context.Background(), containerWatchInterval)
 			container, err := m.dockerClient.ContainerInspect(ctx, rc.ID)
-			if err != nil || !container.State.Running {
-				break
+			cancel()
+			if err != nil {
+				slog.Error("Error inspecting container",
+					slog.String("container", rc.Name),
+					slog.String("error", err.Error()))
+				continue
+			} else if container.State.Running {
+				continue
 			}
-			continue
+
+			m.mu.Lock()
+			defer m.mu.Unlock()
+			m.destroyContainer(rc)
+			return
 		}
 	}
 }
