@@ -1,19 +1,37 @@
 import logging
 import os
 import random
-from typing import Annotated
+from typing import Annotated, Dict, Tuple, Union
 
-from app.dependencies import get_pipeline
-from app.pipelines.base import Pipeline
-from app.routes.util import HTTPError, ImageResponse, http_error, image_to_data_url
+import torch
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
+from app.dependencies import get_pipeline
+from app.pipelines.base import Pipeline
+from app.routes.utils import (
+    HTTPError,
+    ImageResponse,
+    handle_pipeline_exception,
+    http_error,
+    image_to_data_url,
+)
+
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
+
+
+# Pipeline specific error handling configuration.
+PIPELINE_ERROR_CONFIG: Dict[str, Tuple[Union[str, None], int]] = {
+    # Specific error types.
+    "OutOfMemoryError": (
+        "Out of memory error. Try reducing output image resolution.",
+        status.HTTP_500_INTERNAL_SERVER_ERROR,
+    )
+}
 
 
 class TextToImageParams(BaseModel):
@@ -23,6 +41,17 @@ class TextToImageParams(BaseModel):
         str,
         Field(
             default="", description="Hugging Face model ID used for image generation."
+        ),
+    ]
+    loras: Annotated[
+        str,
+        Field(
+            default="",
+            description=(
+                "A LoRA (Low-Rank Adaptation) model and its corresponding weight for "
+                'image generation. Example: { "latent-consistency/lcm-lora-sdxl": '
+                '1.0, "nerijs/pixel-art-xl": 1.2}.'
+            ),
         ),
     ]
     prompt: Annotated[
@@ -128,13 +157,22 @@ async def text_to_image(
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
+    # Ensure required parameters are non-empty.
+    # TODO: Remove if go-livepeer validation is fixed. Was disabled due to optional
+    # params issue.
+    if not params.prompt:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content=http_error("Prompt must be provided."),
+        )
+
     auth_token = os.environ.get("AUTH_TOKEN")
     if auth_token:
         if not token or token.credentials != auth_token:
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 headers={"WWW-Authenticate": "Bearer"},
-                content=http_error("Invalid bearer token"),
+                content=http_error("Invalid bearer token."),
             )
 
     if params.model_id != "" and params.model_id != pipeline.model_id:
@@ -142,7 +180,7 @@ async def text_to_image(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=http_error(
                 f"pipeline configured with {pipeline.model_id} but called with "
-                f"{params.model_id}"
+                f"{params.model_id}."
             ),
         )
 
@@ -155,19 +193,22 @@ async def text_to_image(
     has_nsfw_concept = []
     params.num_images_per_prompt = 1
     for seed in seeds:
+        params.seed = seed
+        kwargs = {k: v for k, v in params.model_dump().items() if k != "model_id"}
         try:
-            params.seed = seed
-            kwargs = {k: v for k, v in params.model_dump().items() if k != "model_id"}
             imgs, nsfw_check = pipeline(**kwargs)
-            images.extend(imgs)
-            has_nsfw_concept.extend(nsfw_check)
         except Exception as e:
-            logger.error(f"TextToImagePipeline error: {e}")
-            logger.exception(e)
-            return JSONResponse(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content=http_error("TextToImagePipeline error"),
+            if isinstance(e, torch.cuda.OutOfMemoryError):
+                # TODO: Investigate why not all VRAM memory is cleared.
+                torch.cuda.empty_cache()
+            logger.error(f"TextToImage pipeline error: {e}")
+            return handle_pipeline_exception(
+                e,
+                default_error_message="Text-to-image pipeline error.",
+                custom_error_config=PIPELINE_ERROR_CONFIG,
             )
+        images.extend(imgs)
+        has_nsfw_concept.extend(nsfw_check)
 
     # TODO: Return None once Go codegen tool supports optional properties
     # OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373

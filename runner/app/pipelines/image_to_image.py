@@ -5,14 +5,6 @@ from typing import List, Optional, Tuple
 
 import PIL
 import torch
-from app.pipelines.base import Pipeline
-from app.pipelines.utils import (
-    SafetyChecker,
-    get_model_dir,
-    get_torch_device,
-    is_lightning_model,
-    is_turbo_model,
-)
 from diffusers import (
     AutoPipelineForImage2Image,
     EulerAncestralDiscreteScheduler,
@@ -24,6 +16,17 @@ from diffusers import (
 from huggingface_hub import file_download, hf_hub_download
 from PIL import ImageFile
 from safetensors.torch import load_file
+
+from app.pipelines.base import Pipeline
+from app.pipelines.utils import (
+    LoraLoader,
+    SafetyChecker,
+    get_model_dir,
+    get_torch_device,
+    is_lightning_model,
+    is_turbo_model,
+)
+from app.utils.errors import InferenceError
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -39,7 +42,7 @@ class ModelName(Enum):
     @classmethod
     def list(cls):
         """Return a list of all model IDs."""
-        return list(map(lambda c: c.value, cls))
+        return [model.value for model in cls]
 
 
 class ImageToImagePipeline(Pipeline):
@@ -63,7 +66,7 @@ class ImageToImagePipeline(Pipeline):
             )
             or ModelName.SDXL_LIGHTNING.value in model_id
         )
-        if torch_device != "cpu" and has_fp16_variant:
+        if torch_device.type != "cpu" and has_fp16_variant:
             logger.info("ImageToImagePipeline loading fp16 variant for %s", model_id)
 
             kwargs["torch_dtype"] = torch.float16
@@ -172,11 +175,14 @@ class ImageToImagePipeline(Pipeline):
         safety_checker_device = os.getenv("SAFETY_CHECKER_DEVICE", "cuda").lower()
         self._safety_checker = SafetyChecker(device=safety_checker_device)
 
+        self._lora_loader = LoraLoader(self.ldm)
+
     def __call__(
         self, prompt: str, image: PIL.Image, **kwargs
     ) -> Tuple[List[PIL.Image], List[Optional[bool]]]:
         seed = kwargs.pop("seed", None)
         safety_check = kwargs.pop("safety_check", True)
+        loras_json = kwargs.pop("loras", "")
 
         if seed is not None:
             if isinstance(seed, int):
@@ -187,6 +193,12 @@ class ImageToImagePipeline(Pipeline):
                 kwargs["generator"] = [
                     torch.Generator(get_torch_device()).manual_seed(s) for s in seed
                 ]
+
+        # Dynamically (un)load LoRas.
+        if not loras_json:
+            self._lora_loader.disable_loras()
+        else:
+            self._lora_loader.load_loras(loras_json)
 
         if "num_inference_steps" in kwargs and (
             kwargs["num_inference_steps"] is None or kwargs["num_inference_steps"] < 1
@@ -223,14 +235,19 @@ class ImageToImagePipeline(Pipeline):
                 # Default to 8step
                 kwargs["num_inference_steps"] = 8
 
-        output = self.ldm(prompt, image=image, **kwargs)
+        try:
+            outputs = self.ldm(prompt, image=image, **kwargs)
+        except torch.cuda.OutOfMemoryError as e:
+            raise e
+        except Exception as e:
+            raise InferenceError(original_exception=e)
 
         if safety_check:
-            _, has_nsfw_concept = self._safety_checker.check_nsfw_images(output.images)
+            _, has_nsfw_concept = self._safety_checker.check_nsfw_images(outputs.images)
         else:
-            has_nsfw_concept = [None] * len(output.images)
+            has_nsfw_concept = [None] * len(outputs.images)
 
-        return output.images, has_nsfw_concept
+        return outputs.images, has_nsfw_concept
 
     def __str__(self) -> str:
         return f"ImageToImagePipeline model_id={self.model_id}"

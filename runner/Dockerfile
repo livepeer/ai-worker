@@ -34,6 +34,7 @@ RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools==69.5.1 
   pip install --no-cache-dir torch==2.1.1 torchvision==0.16.1 torchaudio==2.1.1
 
 WORKDIR /app
+
 COPY ./requirements.txt /app
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -52,5 +53,6 @@ ENV MODEL_DIR=/models
 COPY app/ /app/app
 COPY images/ /app/images
 COPY bench.py /app/bench.py
+COPY example_data/ /app/example_data
 
 CMD ["uvicorn", "app.main:app", "--log-config", "app/cfg/uvicorn_logging_config.json", "--host", "0.0.0.0", "--port", "8000"]

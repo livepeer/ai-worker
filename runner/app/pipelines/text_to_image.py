@@ -5,15 +5,6 @@ from typing import List, Optional, Tuple
 
 import PIL
 import torch
-from app.pipelines.base import Pipeline
-from app.pipelines.utils import (
-    SafetyChecker,
-    get_model_dir,
-    get_torch_device,
-    is_lightning_model,
-    is_turbo_model,
-    split_prompt,
-)
 from diffusers import (
     AutoPipelineForText2Image,
     EulerDiscreteScheduler,
@@ -26,6 +17,18 @@ from diffusers.models import AutoencoderKL
 from huggingface_hub import file_download, hf_hub_download
 from safetensors.torch import load_file
 
+from app.pipelines.base import Pipeline
+from app.pipelines.utils import (
+    LoraLoader,
+    SafetyChecker,
+    get_model_dir,
+    get_torch_device,
+    is_lightning_model,
+    is_turbo_model,
+    split_prompt,
+)
+from app.utils.errors import InferenceError
+
 logger = logging.getLogger(__name__)
 
 
@@ -33,7 +36,7 @@ class ModelName(Enum):
     """Enumeration mapping model names to their corresponding IDs."""
 
     SDXL_LIGHTNING = "ByteDance/SDXL-Lightning"
-    SD3_MEDIUM = "stabilityai/stable-diffusion-3-medium-diffusers"
+    SD3 = "stabilityai/stable-diffusion-3"
     REALISTIC_VISION_V6 = "SG161222/Realistic_Vision_V6.0_B1_noVAE"
     FLUX_1_SCHNELL = "black-forest-labs/FLUX.1-schnell"
     FLUX_1_DEV = "black-forest-labs/FLUX.1-dev"
@@ -41,7 +44,7 @@ class ModelName(Enum):
     @classmethod
     def list(cls):
         """Return a list of all model IDs."""
-        return list(map(lambda c: c.value, cls))
+        return [model.value for model in cls]
 
 
 class TextToImagePipeline(Pipeline):
@@ -65,7 +68,7 @@ class TextToImagePipeline(Pipeline):
             )
             or ModelName.SDXL_LIGHTNING.value in model_id
         )
-        if torch_device != "cpu" and has_fp16_variant:
+        if torch_device.type != "cpu" and has_fp16_variant:
             logger.info("TextToImagePipeline loading fp16 variant for %s", model_id)
 
             kwargs["torch_dtype"] = torch.float16
@@ -123,10 +126,11 @@ class TextToImagePipeline(Pipeline):
             self.ldm.scheduler = EulerDiscreteScheduler.from_config(
                 self.ldm.scheduler.config, timestep_spacing="trailing"
             )
-        elif ModelName.SD3_MEDIUM.value in model_id:
+        elif ModelName.SD3.value in model_id:
             self.ldm = StableDiffusion3Pipeline.from_pretrained(model_id, **kwargs).to(
                 torch_device
             )
+            kwargs["torch_dtype"] = torch.bfloat16
         elif (
             ModelName.FLUX_1_SCHNELL.value in model_id
             or ModelName.FLUX_1_DEV.value in model_id
@@ -202,11 +206,14 @@ class TextToImagePipeline(Pipeline):
         safety_checker_device = os.getenv("SAFETY_CHECKER_DEVICE", "cuda").lower()
         self._safety_checker = SafetyChecker(device=safety_checker_device)
 
+        self._lora_loader = LoraLoader(self.ldm)
+
     def __call__(
         self, prompt: str, **kwargs
     ) -> Tuple[List[PIL.Image], List[Optional[bool]]]:
         seed = kwargs.pop("seed", None)
         safety_check = kwargs.pop("safety_check", True)
+        loras_json = kwargs.pop("loras", "")
 
         if seed is not None:
             if isinstance(seed, int):
@@ -217,6 +224,12 @@ class TextToImagePipeline(Pipeline):
                 kwargs["generator"] = [
                     torch.Generator(get_torch_device()).manual_seed(s) for s in seed
                 ]
+
+        # Dynamically (un)load LoRas.
+        if not loras_json:
+            self._lora_loader.disable_loras()
+        else:
+            self._lora_loader.load_loras(loras_json)
 
         if "num_inference_steps" in kwargs and (
             kwargs["num_inference_steps"] is None or kwargs["num_inference_steps"] < 1
@@ -264,14 +277,19 @@ class TextToImagePipeline(Pipeline):
         )
         kwargs.update(neg_prompts)
 
-        output = self.ldm(prompt=prompt, **kwargs)
+        try:
+            outputs = self.ldm(prompt=prompt, **kwargs)
+        except torch.cuda.OutOfMemoryError as e:
+            raise e
+        except Exception as e:
+            raise InferenceError(original_exception=e)
 
         if safety_check:
-            _, has_nsfw_concept = self._safety_checker.check_nsfw_images(output.images)
+            _, has_nsfw_concept = self._safety_checker.check_nsfw_images(outputs.images)
         else:
-            has_nsfw_concept = [None] * len(output.images)
+            has_nsfw_concept = [None] * len(outputs.images)
 
-        return output.images, has_nsfw_concept
+        return outputs.images, has_nsfw_concept
 
     def __str__(self) -> str:
         return f"TextToImagePipeline model_id={self.model_id}"
