@@ -941,6 +941,10 @@ components:
           type: string
           title: Publish Url
           description: Destination URL of the outgoing stream to publish.
+        control_url:
+          type: string
+          title: Control API Url
+          description: URL for updating the live video-to-video generation.
         model_id:
           type: string
           title: Model Id
