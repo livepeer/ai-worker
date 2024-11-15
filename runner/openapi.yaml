@@ -970,6 +970,10 @@ components:
           type: string
           title: Publish Url
           description: Destination URL of the outgoing stream to publish to
+        control_url:
+          type: string
+          title: Control API Url
+          description: URL for updating the live video-to-video generation.
       type: object
       required:
       - subscribe_url
