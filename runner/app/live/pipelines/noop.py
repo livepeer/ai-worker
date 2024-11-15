@@ -1,4 +1,5 @@
 from PIL import Image
+import logging
 
 from .interface import Pipeline
 
@@ -10,4 +11,4 @@ class Noop(Pipeline):
     return image.convert("RGB")
 
   def update_params(self, **params):
-    pass
+    logging.info(f"Updating params: {params}")
