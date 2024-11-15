@@ -7,6 +7,10 @@ import sys
 import os
 import traceback
 from typing import List
+import logging
+
+from streamer import PipelineStreamer
+from trickle import TrickleSubscriber
 
 # loads neighbouring modules with absolute paths
 infer_root = os.path.abspath(os.path.dirname(__file__))
@@ -17,7 +21,7 @@ from streamer.trickle import TrickleStreamer
 from streamer.zeromq import ZeroMQStreamer
 
 
-async def main(http_port: int, stream_protocol: str, subscribe_url: str, publish_url: str, pipeline: str, params: dict):
+async def main(http_port: int, stream_protocol: str, subscribe_url: str, publish_url: str, control_url: str, pipeline: str, params: dict):
     if stream_protocol == "trickle":
         handler = TrickleStreamer(subscribe_url, publish_url, pipeline, **(params or {}))
     elif stream_protocol == "zeromq":
@@ -29,6 +33,7 @@ async def main(http_port: int, stream_protocol: str, subscribe_url: str, publish
     try:
         handler.start()
         runner = await start_http_server(handler, http_port)
+        asyncio.create_task(start_control_subscriber(handler, control_url))
     except Exception as e:
         logging.error(f"Error starting socket handler or HTTP server: {e}")
         logging.error(f"Stack trace:\n{traceback.format_exc()}")
@@ -56,6 +61,19 @@ async def block_until_signal(sigs: List[signal.Signals]):
         signal.signal(sig, signal_handler)
     return await future
 
+async def start_control_subscriber(handler: PipelineStreamer, control_url: str):
+    if control_url is None:
+        logging.warning("No control-url provided, inference won't get updates from the control trickle subscription")
+        return
+    logging.info("Starting Control subscriber at %s", control_url)
+    subscriber = TrickleSubscriber(url=control_url)
+    while True:
+        segment = await subscriber.next()
+        if segment.eos():
+            return
+        params = await segment.read()
+        logging.info("Received control message, updating model with params: %s", params)
+        handler.update_params(**json.loads(params))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Infer process to run the AI pipeline")
@@ -82,6 +100,9 @@ if __name__ == "__main__":
         "--publish-url", type=str, required=True, help="URL to publish output frames (trickle). For zeromq this is the output socket address"
     )
     parser.add_argument(
+        "--control-url", type=str, help="URL to subscribe for Control API JSON messages"
+    )
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help="Enable verbose (debug) logging"
@@ -103,7 +124,7 @@ if __name__ == "__main__":
 
     try:
         asyncio.run(
-            main(args.http_port, args.stream_protocol, args.subscribe_url, args.publish_url, args.pipeline, params)
+            main(args.http_port, args.stream_protocol, args.subscribe_url, args.publish_url, args.control_url, args.pipeline, params)
         )
     except Exception as e:
         logging.error(f"Fatal error in main: {e}")
