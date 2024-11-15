@@ -978,6 +978,7 @@ components:
       required:
       - subscribe_url
       - publish_url
+      - control_url
       title: LiveVideoToVideoResponse
       description: Response model for live video-to-video generation.
     MasksResponse:
