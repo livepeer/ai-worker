@@ -4,7 +4,7 @@ import json
 import os
 import subprocess
 import tempfile
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 from fastapi import UploadFile, status
@@ -70,6 +70,15 @@ class TextResponse(BaseModel):
 
     text: str = Field(..., description="The generated text.")
     chunks: List[Chunk] = Field(..., description="The generated text chunks.")
+
+
+class LabelScore(BaseModel):
+    label: Literal["negative", "neutral", "positive"]
+    score: float
+
+
+class TextSentimentAnalysisResponse(BaseModel):
+    results: list[LabelScore]
 
 
 class LLMResponse(BaseModel):
