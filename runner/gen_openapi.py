@@ -16,6 +16,7 @@ from app.routes import (
     live_video_to_video,
     llm,
     segment_anything_2,
+    text_sentiment_analysis,
     text_to_image,
     text_to_speech,
     upscale,
@@ -110,6 +111,7 @@ def write_openapi(fname: str, entrypoint: str = "runner"):
     app.include_router(upscale.router)
     app.include_router(audio_to_text.router)
     app.include_router(segment_anything_2.router)
+    app.include_router(text_sentiment_analysis.router)
     app.include_router(llm.router)
     app.include_router(image_to_text.router)
     app.include_router(live_video_to_video.router)
