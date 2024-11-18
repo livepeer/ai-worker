@@ -88,7 +88,6 @@ function build_tensorrt_models() {
 
     printf "\nBuilding TensorRT models...\n"
 
-    mkdir -p models/StreamDiffusion--engines
     BUILD_TRT='python app/live/StreamDiffusionWrapper/build_tensorrt.py'
     docker run --rm -it -v ./models:/models --gpus all \
         livepeer/ai-runner:live-app-streamdiffusion \
@@ -164,6 +163,7 @@ done
 echo "Starting livepeer AI subnet model downloader..."
 echo "Creating 'models' directory in the current working directory..."
 mkdir -p models
+mkdir -p models/StreamDiffusion--engines models/FasterLivePortrait--checkpoints
 
 # Ensure 'huggingface-cli' is installed.
 echo "Checking if 'huggingface-cli' is installed..."
