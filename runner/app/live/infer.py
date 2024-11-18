@@ -62,7 +62,7 @@ async def block_until_signal(sigs: List[signal.Signals]):
     return await future
 
 async def start_control_subscriber(handler: PipelineStreamer, control_url: str):
-    if control_url is None and control_url.strip() == "":
+    if control_url is None or control_url.strip() == "":
         logging.warning("No control-url provided, inference won't get updates from the control trickle subscription")
         return
     logging.info("Starting Control subscriber at %s", control_url)
