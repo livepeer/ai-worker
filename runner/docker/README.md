@@ -40,6 +40,7 @@ To build a pipeline-specific container, you need to build the base container fir
 1. Build Docker image
 ```
 export PIPELINE=comfyui
+docker build -t livepeer/ai-runner:live-base -f docker/Dockerfile.live-base .
 docker build -t livepeer/ai-runner:live-base-${PIPELINE} -f docker/Dockerfile.live-base-${PIPELINE} .
 docker build -t livepeer/ai-runner:live-app-${PIPELINE} -f docker/Dockerfile.live-app__PIPELINE__ --build-arg PIPELINE=${PIPELINE} .
 ```
@@ -61,4 +62,18 @@ mv ./models/*.engine ./models/tensorrt/depth-anything
 
 ```
 docker run -it --rm --name video-to-video --gpus all -p 8000:8000 -v ./models:/models -e PIPELINE=live-video-to-video -e MODEL_ID=comfyui livepeer/ai-runner:live-app-comfyui
+```
+
+### Noop pipeline for local testing (works on Darwin as well)
+
+1. Build Docker images
+```
+export PIPELINE=noop
+docker build -t livepeer/ai-runner:live-base -f docker/Dockerfile.live-base .
+docker build -t livepeer/ai-runner:live-app-${PIPELINE} -f docker/Dockerfile.live-app-noop .
+```
+
+2. Start Docker container
+```
+docker run -it --rm --name video-to-video -p 8000:8000 -e PIPELINE=live-video-to-video -e MODEL_ID=noop livepeer/ai-runner:live-app-noop
 ```
