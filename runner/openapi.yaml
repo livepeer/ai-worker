@@ -535,8 +535,7 @@ components:
     AudioResponse:
       properties:
         audio:
-          allOf:
-          - $ref: '#/components/schemas/MediaURL'
+          $ref: '#/components/schemas/MediaURL'
           description: The generated audio.
       type: object
       required:
@@ -869,8 +868,7 @@ components:
     HTTPError:
       properties:
         detail:
-          allOf:
-          - $ref: '#/components/schemas/APIError'
+          $ref: '#/components/schemas/APIError'
           description: Detailed error information.
       type: object
       required:
@@ -944,7 +942,8 @@ components:
         control_url:
           type: string
           title: Control Url
-          description: URL for updating the live video-to-video generation.
+          description: URL for subscribing via Trickle protocol for updates in the
+            live video-to-video generation params.
           default: ''
         model_id:
           type: string
