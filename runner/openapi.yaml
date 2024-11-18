@@ -535,8 +535,9 @@ components:
     AudioResponse:
       properties:
         audio:
-          allOf:  
+          allOf:
           - $ref: '#/components/schemas/MediaURL'
+          description: The generated audio.
       type: object
       required:
       - audio
