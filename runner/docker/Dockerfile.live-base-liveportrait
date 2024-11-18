@@ -48,6 +48,12 @@ RUN mkdir -p /app/app/live && \
 
 WORKDIR /app/app/live/FasterLivePortrait
 
+COPY images/flame-serious.jpg \
+    images/flame-smile.jpg \
+    images/heart.jpg \
+    images/pirate.jpg \
+    ./assets/examples/source/
+
 # FasterLivePortrait doesn't pin versions so we use a custom requirements.txt
 COPY requirements-liveportrait.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
