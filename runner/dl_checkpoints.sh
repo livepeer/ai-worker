@@ -83,6 +83,39 @@ function download_all_models() {
     huggingface-cli download warmshao/FasterLivePortrait --local-dir models/FasterLivePortrait--checkpoints
 }
 
+function build_tensorrt_models() {
+    download_all_models
+
+    printf "\nBuilding TensorRT models...\n"
+
+    mkdir -p models/StreamDiffusion--engines
+    BUILD_TRT='python app/live/StreamDiffusionWrapper/build_tensorrt.py'
+    docker run --rm -it -v ./models:/models --gpus all \
+        livepeer/ai-runner:live-app-streamdiffusion \
+        bash -c "for model in 'stabilityai/sd-turbo' 'KBlueLeaf/kohaku-v2.1'; do
+                    for timesteps in 3 4; do
+                        echo \"Building TensorRT engines for \$model (\$timesteps timesteps)...\" && \
+                        $BUILD_TRT --model-id \$model --timesteps \$timesteps
+                    done
+                done"
+
+    docker run --rm -it -v ./models:/models --gpus all \
+        livepeer/ai-runner:live-app-liveportrait \
+        bash -c "cd /app/app/live/FasterLivePortrait && \
+                    if [ ! -f '/models/FasterLivePortrait--checkpoints/liveportrait_onnx/stitching_lip.trt' ]; then
+                        echo 'Building TensorRT engines for LivePortrait models (regular)...'
+                        sh scripts/all_onnx2trt.sh
+                    else
+                        echo 'Regular LivePortrait TensorRT engines already exist, skipping build'
+                    fi && \
+                    if [ ! -f '/models/FasterLivePortrait--checkpoints/liveportrait_animal_onnx/stitching_lip.trt' ]; then
+                        echo 'Building TensorRT engines for LivePortrait models (animal)...'
+                        sh scripts/all_onnx2trt_animal.sh
+                    else
+                        echo 'Animal LivePortrait TensorRT engines already exist, skipping build'
+                    fi"
+}
+
 # Download models with a restrictive license.
 function download_restricted_models() {
     printf "\nDownloading restricted models...\n"
@@ -114,6 +147,10 @@ do
             MODE="restricted"
             shift
         ;;
+        --tensorrt)
+            MODE="tensorrt"
+            shift
+        ;;
         --help)
             display_help
             exit 0
@@ -139,6 +176,8 @@ if [ "$MODE" = "beta" ]; then
     download_beta_models
 elif [ "$MODE" = "restricted" ]; then
     download_restricted_models
+elif [ "$MODE" = "tensorrt" ]; then
+    build_tensorrt_models
 else
     download_all_models
 fi
