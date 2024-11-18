@@ -943,8 +943,9 @@ components:
           description: Destination URL of the outgoing stream to publish.
         control_url:
           type: string
-          title: Control API Url
+          title: Control Url
           description: URL for updating the live video-to-video generation.
+          default: ''
         model_id:
           type: string
           title: Model Id
@@ -972,8 +973,8 @@ components:
           description: Destination URL of the outgoing stream to publish to
         control_url:
           type: string
-          title: Control API Url
-          description: URL for updating the live video-to-video generation.
+          title: Control Url
+          description: URL for updating the live video-to-video generation
       type: object
       required:
       - subscribe_url

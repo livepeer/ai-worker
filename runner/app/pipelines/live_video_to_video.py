@@ -31,15 +31,17 @@ class LiveVideoToVideoPipeline(Pipeline):
     ):
         try:
             if not self.process:
+                logger.info(f"Starting stream, subscribe={kwargs['subscribe_url']} publish={kwargs['publish_url']}, control={kwargs['control_url']}")    
                 self.start_process(
                     pipeline=self.model_id,  # we use the model_id as the pipeline name for now
                     http_port=8888,
                     subscribe_url=kwargs["subscribe_url"],
                     publish_url=kwargs["publish_url"],
+                    control_url=kwargs["control_url"],
                     initial_params=json.dumps(kwargs["params"]),
                     # TODO: set torch device from self.torch_device
                 )
-            logger.info(f"Starting stream, subscribe={kwargs['subscribe_url']} publish={kwargs['publish_url']}")
+            logger.info(f"Starting stream, subscribe={kwargs['subscribe_url']} publish={kwargs['publish_url']}, control={kwargs['control_url']}")
             return
         except Exception as e:
             raise InferenceError(original_exception=e)
