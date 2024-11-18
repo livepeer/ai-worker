@@ -79,7 +79,8 @@ function download_all_models() {
 
     # Download live-video-to-video models.
     huggingface-cli download KBlueLeaf/kohaku-v2.1 --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
-    huggingface-cli download KwaiVGI/LivePortrait --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
+    huggingface-cli download stabilityai/sd-turbo --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
+    huggingface-cli download warmshao/FasterLivePortrait --local-dir models/FasterLivePortrait--checkpoints
 }
 
 # Download models with a restrictive license.
@@ -112,7 +113,7 @@ do
         --restricted)
             MODE="restricted"
             shift
-        ;;  
+        ;;
         --help)
             display_help
             exit 0

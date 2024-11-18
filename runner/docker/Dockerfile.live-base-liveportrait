@@ -59,3 +59,9 @@ COPY requirements-liveportrait.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # TODO: Setup dependencies for animal models
+
+WORKDIR /app
+
+# Create symlinks for checkpoints as FasterLivePortrait relies heavily on relative paths
+RUN ln -s /models/FasterLivePortrait--checkpoints /app/app/live/FasterLivePortrait/checkpoints
+RUN ln -s /models/FasterLivePortrait--checkpoints ./checkpoints
