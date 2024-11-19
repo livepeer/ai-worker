@@ -1,16 +1,12 @@
-# Copied from StreamDiffusion/utils/wrapper.py
 import logging
-from typing import List, Optional, Tuple
-
+from typing import List, Optional, Tuple, Dict
+from PIL import Image
 import torch
-from sam2.build_sam import build_sam2_camera_predictor
+from sam2.build_sam import build_sam2_camera_predictor #import required by hydra even if it appears unused
 from omegaconf import OmegaConf
 from hydra.utils import instantiate
 from hydra import initialize_config_dir, compose
 from hydra.core.global_hydra import GlobalHydra
-
-from PIL import Image
-from typing import Optional, Dict
 
 MODEL_MAPPING = {
     "facebook/sam2-hiera-tiny": {
