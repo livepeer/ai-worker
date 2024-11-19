@@ -109,15 +109,12 @@ func (m *DockerManager) Warm(ctx context.Context, pipeline string, modelID strin
 }
 
 func (m *DockerManager) Stop(ctx context.Context) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	var stopContainerWg sync.WaitGroup
 	for _, rc := range m.containers {
 		stopContainerWg.Add(1)
 		go func(container *RunnerContainer) {
 			defer stopContainerWg.Done()
-			m.destroyContainer(container)
+			m.destroyContainer(container, false)
 		}(rc)
 	}
 
@@ -314,7 +311,7 @@ func (m *DockerManager) allocGPU(ctx context.Context) (string, error) {
 		// If the container exists in this map then it is idle and if it not marked as keep warm we remove it
 		rc, ok := m.containers[containerName]
 		if ok && !rc.KeepWarm {
-			if err := m.destroyContainer(rc); err != nil {
+			if err := m.destroyContainer(rc, true); err != nil {
 				return "", err
 			}
 			return gpu, nil
@@ -324,14 +321,14 @@ func (m *DockerManager) allocGPU(ctx context.Context) (string, error) {
 	return "", errors.New("insufficient capacity")
 }
 
-func (m *DockerManager) destroyContainer(rc *RunnerContainer) error {
+// destroyContainer stops the container on docker and removes it from the
+// internal state. If locked is true then the mutex is not re-locked, otherwise
+// it is done automatically only when updating the internal state.
+func (m *DockerManager) destroyContainer(rc *RunnerContainer, locked bool) error {
 	slog.Info("Removing managed container",
 		slog.String("gpu", rc.GPU),
 		slog.String("name", rc.Name),
 		slog.String("modelID", rc.ModelID))
-
-	delete(m.gpuContainers, rc.GPU)
-	delete(m.containers, rc.Name)
 
 	if err := dockerRemoveContainer(m.dockerClient, rc.ID); err != nil {
 		slog.Error("Error removing managed container",
@@ -342,6 +339,12 @@ func (m *DockerManager) destroyContainer(rc *RunnerContainer) error {
 		return fmt.Errorf("failed to remove container %s: %w", rc.Name, err)
 	}
 
+	if !locked {
+		m.mu.Lock()
+		defer m.mu.Unlock()
+	}
+	delete(m.gpuContainers, rc.GPU)
+	delete(m.containers, rc.Name)
 	return nil
 }
 
@@ -377,10 +380,7 @@ func (m *DockerManager) watchContainer(rc *RunnerContainer, borrowCtx context.Co
 			} else if container.State.Running {
 				continue
 			}
-
-			m.mu.Lock()
-			defer m.mu.Unlock()
-			m.destroyContainer(rc)
+			m.destroyContainer(rc, false)
 			return
 		}
 	}

@@ -102,8 +102,8 @@ class PipelineStreamer(ABC):
             time_since_last_params = current_time - self.last_params_time
             time_since_reload = min(time_since_last_params, time_since_start)
 
-            if self.input_timeout > 0 and time_since_last_input >= self.input_timeout:
-                logging.info(f"Input stream stopped for {self.input_timeout} seconds. Shutting down...")
+            if self.input_timeout > 0 and time_since_last_input > self.input_timeout:
+                logging.info(f"Input stream stopped for {time_since_last_input} seconds. Shutting down...")
                 await self.stop()
                 return
 
