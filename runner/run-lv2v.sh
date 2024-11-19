@@ -1,7 +1,7 @@
 #!/bin/bash
 set -ex
 
-if [ $# -ne 2 ]; then
+if [ $# -lt 2 ]; then
     echo "Usage: $0 <input_room> <output_room>"
     exit 1
 fi
