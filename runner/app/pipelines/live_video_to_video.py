@@ -28,21 +28,25 @@ class LiveVideoToVideoPipeline(Pipeline):
 
 
     def __call__(  # type: ignore
-        self, *, subscribe_url: str, publish_url: str, params: dict, **kwargs
+        self, *, subscribe_url: str, publish_url: str, control_url: str, params: dict, **kwargs
     ):
         if self.process:
             raise RuntimeError("Pipeline already running")
 
         try:
-            logger.info(f"Starting stream, subscribe={subscribe_url} publish={publish_url}")
-            self.start_process(
-                pipeline=self.model_id,  # we use the model_id as the pipeline name for now
-                http_port=8888,
-                subscribe_url=subscribe_url,
-                publish_url=publish_url,
-                initial_params=json.dumps(params),
-                # TODO: set torch device from self.torch_device
-            )
+            if not self.process:
+                logger.info(f"Starting stream, subscribe={subscribe_url} publish={publish_url}, control={control_url}")
+                self.start_process(
+                    pipeline=self.model_id,  # we use the model_id as the pipeline name for now
+                    http_port=8888,
+                    subscribe_url=subscribe_url,
+                    publish_url=publish_url,
+                    control_url=control_url,
+                    initial_params=json.dumps(params),
+                    # TODO: set torch device from self.torch_device
+                )
+            logger.info(f"Starting stream, subscribe={subscribe_url} publish={publish_url}, control={control_url}")
+            return
         except Exception as e:
             raise InferenceError(original_exception=e)
 
