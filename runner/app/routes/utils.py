@@ -92,7 +92,9 @@ class LiveVideoToVideoResponse(BaseModel):
     publish_url: str = Field(
         ..., description="Destination URL of the outgoing stream to publish to"
     )
-
+    control_url: str = Field(
+        ..., description="URL for updating the live video-to-video generation"
+    )
 
 class APIError(BaseModel):
     """API error response model."""

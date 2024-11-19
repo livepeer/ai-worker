@@ -45,6 +45,12 @@ class LiveVideoToVideoParams(BaseModel):
             description="Destination URL of the outgoing stream to publish.",
         ),
     ]
+    control_url: Annotated[
+        str,
+        Field(
+            default="",description="URL for subscribing via Trickle protocol for updates in the live video-to-video generation params.",
+        ),
+    ]
     model_id: Annotated[
         str,
         Field(
@@ -129,5 +135,5 @@ async def live_video_to_video(
         )
 
     # outputs unused for now; the orchestrator is setting these
-    return {'publish_url':"", 'subscribe_url': ""}
+    return {'publish_url':"", 'subscribe_url': "", 'control_url': ""}
 
