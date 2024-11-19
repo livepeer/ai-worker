@@ -2,6 +2,8 @@
 FROM nvidia/cuda:12.2.2-cudnn8-devel-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
 
 # Install prerequisites
 RUN apt-get update && \
