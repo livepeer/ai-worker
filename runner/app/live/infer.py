@@ -21,11 +21,11 @@ from streamer.trickle import TrickleStreamer
 from streamer.zeromq import ZeroMQStreamer
 
 
-async def main(http_port: int, stream_protocol: str, subscribe_url: str, publish_url: str, control_url: str, pipeline: str, params: dict):
+async def main(http_port: int, stream_protocol: str, subscribe_url: str, publish_url: str, control_url: str, pipeline: str, params: dict, input_timeout: int):
     if stream_protocol == "trickle":
-        handler = TrickleStreamer(subscribe_url, publish_url, pipeline, **(params or {}))
+        handler = TrickleStreamer(subscribe_url, publish_url, pipeline, input_timeout, params or {})
     elif stream_protocol == "zeromq":
-        handler = ZeroMQStreamer(subscribe_url, publish_url, pipeline, **(params or {}))
+        handler = ZeroMQStreamer(subscribe_url, publish_url, pipeline, input_timeout, params or {})
     else:
         raise ValueError(f"Unsupported protocol: {stream_protocol}")
 
@@ -39,14 +39,14 @@ async def main(http_port: int, stream_protocol: str, subscribe_url: str, publish
         logging.error(f"Stack trace:\n{traceback.format_exc()}")
         raise e
 
-    await block_until_signal([signal.SIGINT, signal.SIGTERM])
     try:
+        await asyncio.wait(
+            [block_until_signal([signal.SIGINT, signal.SIGTERM]), handler.wait()],
+            return_when=asyncio.FIRST_COMPLETED
+        )
+    finally:
         await runner.cleanup()
         await handler.stop()
-    except Exception as e:
-        logging.error(f"Error stopping room handler: {e}")
-        logging.error(f"Stack trace:\n{traceback.format_exc()}")
-        raise e
 
 
 async def block_until_signal(sigs: List[signal.Signals]):
@@ -103,6 +103,12 @@ if __name__ == "__main__":
         "--control-url", type=str, help="URL to subscribe for Control API JSON messages"
     )
     parser.add_argument(
+        "--input-timeout",
+        type=int,
+        default=60,
+        help="Timeout in seconds to wait after input frames stop before shutting down. Set to 0 to disable."
+    )
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help="Enable verbose (debug) logging"
@@ -124,7 +130,7 @@ if __name__ == "__main__":
 
     try:
         asyncio.run(
-            main(args.http_port, args.stream_protocol, args.subscribe_url, args.publish_url, args.control_url, args.pipeline, params)
+            main(args.http_port, args.stream_protocol, args.subscribe_url, args.publish_url, args.control_url, args.pipeline, params, args.input_timeout)
         )
     except Exception as e:
         logging.error(f"Fatal error in main: {e}")

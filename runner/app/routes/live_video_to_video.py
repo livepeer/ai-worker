@@ -1,7 +1,6 @@
 import logging
 import os
-import random
-from typing import Annotated, Dict, Tuple, Union
+from typing import Annotated, Any, Dict, Tuple, Union
 
 import torch
 import traceback
@@ -54,18 +53,18 @@ class LiveVideoToVideoParams(BaseModel):
     model_id: Annotated[
         str,
         Field(
-            default="", description="Hugging Face model ID used for image generation."
+            default="", description="Name of the pipeline to run in the live video to video job. Notice that this is named model_id for consistency with other routes, but it does not refer to a Hugging Face model ID. The exact model(s) depends on the pipeline implementation and might be configurable via the `params` argument."
         ),
     ]
     params: Annotated[
         Dict,
         Field(
             default={},
-            description="Initial parameters for the model."
+            description="Initial parameters for the pipeline."
         ),
     ]
 
-RESPONSES = {
+RESPONSES: dict[int | str, dict[str, Any]]= {
     status.HTTP_200_OK: {
         "content": {
             "application/json": {
@@ -84,9 +83,9 @@ RESPONSES = {
     "/live-video-to-video",
     response_model=LiveVideoToVideoResponse,
     responses=RESPONSES,
-    description="Apply video-like transformations to a provided image.",
+    description="Apply transformations to a live video streamed to the returned endpoints.",
     operation_id="genLiveVideoToVideo",
-    summary="Video To Video",
+    summary="Live Video To Video",
     tags=["generate"],
     openapi_extra={"x-speakeasy-name-override": "liveVideoToVideo"},
 )
@@ -119,10 +118,8 @@ async def live_video_to_video(
             ),
         )
 
-    seed = random.randint(0, 2**32 - 1)
-    kwargs = {k: v for k, v in params.model_dump().items()}
     try:
-        pipeline(**kwargs)
+        pipeline(**params.model_dump())
     except Exception as e:
         if isinstance(e, torch.cuda.OutOfMemoryError):
             torch.cuda.empty_cache()

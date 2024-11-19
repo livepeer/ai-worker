@@ -15,18 +15,28 @@ fps_log_interval = 10
 
 
 class PipelineStreamer(ABC):
-    def __init__(self, pipeline: str, **params):
+    def __init__(self, pipeline: str, input_timeout: int, params: dict):
         self.pipeline = pipeline
         self.params = params
         self.process = None
         self.last_params_time = 0.0
         self.restart_count = 0
+        self.input_timeout = input_timeout  # 0 means disabled
+        self.done_future = None
 
     def start(self):
+        self.done_future = asyncio.get_running_loop().create_future()
         self._start_process()
+
+    async def wait(self):
+        if not self.done_future:
+            raise RuntimeError("Streamer not started")
+        return await self.done_future
 
     async def stop(self):
         await self._stop_process()
+        if self.done_future and not self.done_future.done():
+            self.done_future.set_result(None)
 
     def _start_process(self):
         if self.process:
@@ -68,7 +78,7 @@ class PipelineStreamer(ABC):
             logging.error(f"Stack trace:\n{traceback.format_exc()}")
             os._exit(1)
 
-    def update_params(self, **params):
+    def update_params(self, params: dict):
         self.params = params
         self.last_params_time = time.time()
         if self.process:
@@ -91,6 +101,11 @@ class PipelineStreamer(ABC):
             time_since_start = current_time - start_time
             time_since_last_params = current_time - self.last_params_time
             time_since_reload = min(time_since_last_params, time_since_start)
+
+            if self.input_timeout > 0 and time_since_last_input > self.input_timeout:
+                logging.info(f"Input stream stopped for {time_since_last_input} seconds. Shutting down...")
+                await self.stop()
+                return
 
             gone_stale = (
                 time_since_last_output > time_since_last_input
