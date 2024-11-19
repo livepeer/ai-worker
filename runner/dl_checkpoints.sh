@@ -88,13 +88,15 @@ function build_tensorrt_models() {
 
     printf "\nBuilding TensorRT models...\n"
 
-    BUILD_TRT='python app/live/StreamDiffusionWrapper/build_tensorrt.py'
+    # Matrix of models and timesteps to compile StreamDiffusion TensorRT engines for.
+    MODELS="stabilityai/sd-turbo KBlueLeaf/kohaku-v2.1"
+    TIMESTEPS="3 4" # This is basically the supported sizes for the t_index_list
     docker run --rm -it -v ./models:/models --gpus all \
         livepeer/ai-runner:live-app-streamdiffusion \
-        bash -c "for model in 'stabilityai/sd-turbo' 'KBlueLeaf/kohaku-v2.1'; do
-                    for timesteps in 3 4; do
-                        echo \"Building TensorRT engines for \$model (\$timesteps timesteps)...\" && \
-                        $BUILD_TRT --model-id \$model --timesteps \$timesteps
+        bash -c "for model in $MODELS; do
+                    for timestep in $TIMESTEPS; do
+                        echo \"Building TensorRT engines for model=\$model timestep=\$timestep...\" && \
+                        python app/live/StreamDiffusionWrapper/build_tensorrt.py --model-id \$model --timesteps \$timestep
                     done
                 done"
 
