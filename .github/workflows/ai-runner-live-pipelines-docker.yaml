@@ -34,6 +34,18 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
 
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v45
+        with:
+          files: |
+            runner/docker/Dockerfile.live-base
+
+      - name: Debug file check
+        run: |
+          echo "Base Dockerfile changed: ${{ steps.changed-files.outputs.any_changed }}"
+          echo "Changed files: ${{ steps.changed-files.outputs.any_changed_files }}"
+
       - name: Check if build needed
         id: check_build
         if: |
@@ -42,7 +54,7 @@ jobs:
           (
             github.event_name == 'pull_request' &&
             github.event.pull_request.head.repo.full_name == github.repository &&
-            contains(github.event.pull_request.files.*.filename, 'runner/docker/Dockerfile.live-base')
+            steps.changed-files.outputs.any_changed == 'true'
           )
         run: echo "should_build=true" >> $GITHUB_OUTPUT
 
@@ -88,12 +100,23 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
 
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v45
+        with:
+          files_yaml: |
+            dockerfile:
+              - runner/docker/Dockerfile.live-base-${{ matrix.pipeline }}
+            liveportrait:
+              - runner/images/**
+              - runner/requirements-liveportrait.txt
+
       - name: Debug file check
         run: |
           echo "Pipeline: ${{ matrix.pipeline }}"
           echo "Looking for: runner/docker/Dockerfile.live-base-${{ matrix.pipeline }}"
-          echo "Files changed:"
-          echo "${{ toJSON(github.event.pull_request.files.*.filename) }}"
+          echo "Dockerfile changes: ${{ steps.changed-files.outputs.dockerfile_any_changed_files }}"
+          echo "Liveportrait-specific changes: ${{ steps.changed-files.outputs.liveportrait_any_changed_files }}"
 
       - name: Cleanup hosted runner
         uses: ./.github/actions/cleanup-runner
@@ -116,13 +139,10 @@ jobs:
             github.event_name == 'pull_request' &&
             github.event.pull_request.head.repo.full_name == github.repository &&
             (
-              contains(github.event.pull_request.files.*.filename, format('runner/docker/Dockerfile.live-base-{0}', matrix.pipeline)) ||
+              steps.changed-files.outputs.dockerfile_any_changed == 'true' ||
               (
                 matrix.pipeline == 'liveportrait' &&
-                (
-                  contains(github.event.pull_request.files.*.filename, 'runner/images/') ||
-                  contains(github.event.pull_request.files.*.filename, 'runner/requirements-liveportrait.txt')
-                )
+                steps.changed-files.outputs.liveportrait_any_changed == 'true'
               )
             )
           )
