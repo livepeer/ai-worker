@@ -31,7 +31,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4.1.1
         with:
-          fetch-depth: 0
+          fetch-depth: 50
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Get changed files
@@ -97,7 +97,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4.1.1
         with:
-          fetch-depth: 0
+          fetch-depth: 50
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Get changed files
@@ -203,7 +203,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4.1.1
         with:
-          fetch-depth: 0
+          fetch-depth: 50
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Cleanup hosted runner
