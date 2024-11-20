@@ -1,0 +1,170 @@
+name: Build ai-runner live Docker images
+
+on:
+  pull_request:
+    paths:
+      - "runner/docker/Dockerfile.live-*"
+      - "runner/app/**"
+      - "runner/images/**"
+  push:
+    branches:
+      - main
+    tags:
+      - '*'
+    paths:
+      - "runner/docker/Dockerfile.live-*"
+      - "runner/app/**"
+      - "runner/images/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  build-common-base:
+    name: Build common live base image
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'workflow_dispatch'
+    permissions:
+      packages: write
+      contents: read
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Cleanup hosted runner
+        run: |
+          sudo apt purge -yqq dotnet-* mono-* llvm-* libllvm* powershell* openjdk-* \
+          temurin-* mongodb-* firefox mysql-* \
+          hhvm google-chrome-stable \
+          libgl1-mesa-dri microsoft-edge-stable azure-cli || true
+          sudo apt autoremove -y
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.CI_DOCKERHUB_USERNAME }}
+          password: ${{ secrets.CI_DOCKERHUB_TOKEN }}
+
+      - name: Build and push live-base image
+        uses: docker/build-push-action@v5
+        with:
+          context: "{{defaultContext}}:runner"
+          platforms: linux/amd64
+          push: true
+          tags: livepeer/ai-runner:live-base
+          file: docker/Dockerfile.live-base
+          cache-from: type=registry,ref=livepeerci/build:cache
+          cache-to: type=registry,ref=livepeerci/build:cache,mode=max
+
+  build-pipeline-images:
+    name: Build pipeline images
+    needs: build-common-base
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        pipeline: [streamdiffusion, comfyui, liveportrait]
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.CI_DOCKERHUB_USERNAME }}
+          password: ${{ secrets.CI_DOCKERHUB_TOKEN }}
+
+      - name: Build and push pipeline base image
+        uses: docker/build-push-action@v5
+        with:
+          context: "{{defaultContext}}:runner"
+          platforms: linux/amd64
+          push: true
+          tags: livepeer/ai-runner:live-base-${{ matrix.pipeline }}
+          file: docker/Dockerfile.live-base-${{ matrix.pipeline }}
+          build-args: |
+            PIPELINE=${{ matrix.pipeline }}
+          cache-from: type=registry,ref=livepeerci/build:cache
+          cache-to: type=registry,ref=livepeerci/build:cache,mode=max
+
+      - name: Extract metadata for app image
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: livepeer/ai-runner
+          tags: |
+            type=raw,value=live-app-${{ matrix.pipeline }}
+            type=sha,prefix=live-app-${{ matrix.pipeline }}-
+            type=ref,event=pr,prefix=live-app-${{ matrix.pipeline }}-
+            type=ref,event=tag,prefix=live-app-${{ matrix.pipeline }}-
+            type=raw,value=latest,enable={{is_default_branch}},prefix=live-app-${{ matrix.pipeline }}-
+
+      - name: Build and push pipeline app image
+        uses: docker/build-push-action@v5
+        with:
+          context: "{{defaultContext}}:runner"
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          file: docker/Dockerfile.live-app__PIPELINE__
+          build-args: |
+            PIPELINE=${{ matrix.pipeline }}
+          cache-from: type=registry,ref=livepeerci/build:cache
+          cache-to: type=registry,ref=livepeerci/build:cache,mode=max
+
+  build-noop:
+    name: Build noop pipeline image
+    needs: build-common-base
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.CI_DOCKERHUB_USERNAME }}
+          password: ${{ secrets.CI_DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: livepeer/ai-runner
+          tags: |
+            type=raw,value=live-app-noop
+            type=sha,prefix=live-app-noop-
+            type=ref,event=pr,prefix=live-app-noop-
+            type=ref,event=tag,prefix=live-app-noop-
+            type=raw,value=latest,enable={{is_default_branch}},prefix=live-app-noop-
+
+      - name: Build and push noop image
+        uses: docker/build-push-action@v5
+        with:
+          context: "{{defaultContext}}:runner"
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          file: docker/Dockerfile.live-app-noop
+          cache-from: type=registry,ref=livepeerci/build:cache
+          cache-to: type=registry,ref=livepeerci/build:cache,mode=max
