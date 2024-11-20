@@ -17,7 +17,7 @@ RUN pyenv install $PYTHON_VERSION && \
 # Upgrade pip and install required packages
 ARG PIP_VERSION=23.3.2
 
-# Install the minimal Python packages for the noop pipeline
+# Install any additional Python packages
 RUN pip install uvicorn==0.30.0 fastapi==0.111.0 numpy==1.26.4 torch==2.5.1 diffusers==0.30.0 transformers==4.43.3 aiohttp==3.10.9 pyzmq==26.2.0
 
 # Set environment variables
