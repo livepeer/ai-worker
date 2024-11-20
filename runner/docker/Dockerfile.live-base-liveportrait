@@ -58,7 +58,7 @@ COPY images/flame-serious.jpg \
 COPY requirements-liveportrait.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# TODO: Setup dependencies for animal models
+# TODO: Setup dependencies for animal models (needs some custom deps detected on runtime which are not on pypi)
 
 WORKDIR /app
 
