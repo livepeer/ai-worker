@@ -81,6 +81,13 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
 
+      - name: Debug file check
+        run: |
+          echo "Pipeline: ${{ matrix.pipeline }}"
+          echo "Looking for: runner/docker/Dockerfile.live-base-${{ matrix.pipeline }}"
+          echo "Files changed:"
+          echo "${{ toJSON(github.event.pull_request.files.*.filename) }}"
+
       - name: Cleanup hosted runner
         uses: ./.github/actions/cleanup-runner
 
@@ -105,8 +112,10 @@ jobs:
               contains(github.event.pull_request.files.*.filename, format('runner/docker/Dockerfile.live-base-{0}', matrix.pipeline)) ||
               (
                 matrix.pipeline == 'liveportrait' &&
-                contains(github.event.pull_request.files.*.filename, 'runner/images/') &&
-                contains(github.event.pull_request.files.*.filename, 'runner/requirements-liveportrait.txt')
+                (
+                  contains(github.event.pull_request.files.*.filename, 'runner/images/') ||
+                  contains(github.event.pull_request.files.*.filename, 'runner/requirements-liveportrait.txt')
+                )
               )
             )
           )
