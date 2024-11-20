@@ -41,11 +41,6 @@ jobs:
           files: |
             runner/docker/Dockerfile.live-base
 
-      - name: Debug file check
-        run: |
-          echo "Base Dockerfile changed: ${{ steps.changed-files.outputs.any_changed }}"
-          echo "Changed files: ${{ steps.changed-files.outputs.any_changed }}"
-
       - name: Check if build needed
         id: check_build
         if: |
@@ -110,13 +105,6 @@ jobs:
             liveportrait:
               - runner/images/**
               - runner/requirements-liveportrait.txt
-
-      - name: Debug file check
-        run: |
-          echo "Pipeline: ${{ matrix.pipeline }}"
-          echo "Looking for: runner/docker/Dockerfile.live-base-${{ matrix.pipeline }}"
-          echo "Dockerfile changes: ${{ steps.changed-files.outputs.dockerfile_any_changed }}"
-          echo "Liveportrait-specific changes: ${{ steps.changed-files.outputs.liveportrait_any_changed }}"
 
       - name: Cleanup hosted runner
         uses: ./.github/actions/cleanup-runner
