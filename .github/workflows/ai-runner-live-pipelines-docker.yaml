@@ -162,6 +162,17 @@ jobs:
     name: Build pipeline image (noop)
     needs: build-common-base
     runs-on: ubuntu-20.04
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
+      (
+        github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        (
+          contains(github.event.pull_request.files.*.filename, 'runner/docker/Dockerfile.live-app-noop') ||
+          contains(github.event.pull_request.files.*.filename, 'runner/app/')
+        )
+      )
     steps:
       - name: Check out code
         uses: actions/checkout@v4.1.1
