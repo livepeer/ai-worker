@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        dockerfile: 
+        dockerfile:
           - docker/Dockerfile.segment_anything_2
           - docker/Dockerfile.text_to_speech
     steps:

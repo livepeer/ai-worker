@@ -24,7 +24,14 @@ concurrency:
 jobs:
   build-common-base:
     name: Build common live base image
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'workflow_dispatch'
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
+      (
+        github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        contains(github.event.pull_request.files.*.filename, 'runner/docker/Dockerfile.live-base')
+      )
     permissions:
       packages: write
       contents: read
@@ -59,7 +66,7 @@ jobs:
         with:
           context: "{{defaultContext}}:runner"
           platforms: linux/amd64
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           tags: livepeer/ai-runner:live-base
           file: docker/Dockerfile.live-base
           cache-from: type=registry,ref=livepeerci/build:cache
@@ -100,10 +107,25 @@ jobs:
 
       - name: Build and push pipeline base image
         uses: docker/build-push-action@v5
+        if: |
+          github.event_name == 'workflow_dispatch' ||
+          github.event_name == 'push' ||
+          (
+            github.event_name == 'pull_request' &&
+            github.event.pull_request.head.repo.full_name == github.repository &&
+            (
+              contains(github.event.pull_request.files.*.filename, format('runner/docker/Dockerfile.live-base-{0}', matrix.pipeline)) ||
+              (
+                matrix.pipeline == 'liveportrait' &&
+                contains(github.event.pull_request.files.*.filename, 'runner/images/') &&
+                contains(github.event.pull_request.files.*.filename, 'runner/requirements-liveportrait.txt')
+              )
+            )
+          )
         with:
           context: "{{defaultContext}}:runner"
           platforms: linux/amd64
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           tags: livepeer/ai-runner:live-base-${{ matrix.pipeline }}
           file: docker/Dockerfile.live-base-${{ matrix.pipeline }}
           build-args: |
@@ -128,7 +150,7 @@ jobs:
         with:
           context: "{{defaultContext}}:runner"
           platforms: linux/amd64
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           file: docker/Dockerfile.live-app__PIPELINE__
           build-args: |
@@ -182,7 +204,7 @@ jobs:
         with:
           context: "{{defaultContext}}:runner"
           platforms: linux/amd64
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           file: docker/Dockerfile.live-app-noop
           cache-from: type=registry,ref=livepeerci/build:cache
