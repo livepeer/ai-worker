@@ -25,8 +25,7 @@ jobs:
   build-common-base:
     name: Build common live base image
     permissions:
-      packages: write
-      contents: read
+      pull-requests: read
     runs-on: ubuntu-20.04
     steps:
       - name: Check out code
@@ -70,6 +69,8 @@ jobs:
     name: Build pipeline images
     needs: build-common-base
     runs-on: ubuntu-20.04
+    permissions:
+      pull-requests: read
     strategy:
       matrix:
         pipeline: [streamdiffusion, comfyui, liveportrait]
@@ -159,6 +160,8 @@ jobs:
     name: Build pipeline image (noop)
     needs: build-common-base
     runs-on: ubuntu-20.04
+    permissions:
+      pull-requests: read
     if: |
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'push' ||
