@@ -100,7 +100,7 @@ jobs:
         uses: tj-actions/changed-files@v45
         with:
           files_yaml: |
-            dockerfile:
+            base_dockerfile:
               - runner/docker/Dockerfile.live-base-${{ matrix.pipeline }}
             liveportrait:
               - runner/images/**
@@ -127,7 +127,7 @@ jobs:
             github.event_name == 'pull_request' &&
             github.event.pull_request.head.repo.full_name == github.repository &&
             (
-              steps.changed-files.outputs.dockerfile_any_changed == 'true' ||
+              steps.changed-files.outputs.base_dockerfile_any_changed == 'true' ||
               (
                 matrix.pipeline == 'liveportrait' &&
                 steps.changed-files.outputs.liveportrait_any_changed == 'true'
