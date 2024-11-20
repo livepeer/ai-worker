@@ -100,7 +100,7 @@ if __name__ == "__main__":
         "--publish-url", type=str, required=True, help="URL to publish output frames (trickle). For zeromq this is the output socket address"
     )
     parser.add_argument(
-        "--control-url", type=str, help="URL to subscribe for Control API JSON messages"
+        "--control-url", type=str, help="URL to subscribe for Control API JSON messages to update inference params"
     )
     parser.add_argument(
         "--input-timeout",
