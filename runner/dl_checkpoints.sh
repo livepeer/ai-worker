@@ -81,6 +81,7 @@ function download_all_models() {
     huggingface-cli download KBlueLeaf/kohaku-v2.1 --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
     huggingface-cli download stabilityai/sd-turbo --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
     huggingface-cli download warmshao/FasterLivePortrait --local-dir models/FasterLivePortrait--checkpoints
+    huggingface-cli download yuvraj108c/Depth-Anything-Onnx --include depth_anything_vitl14.onnx --local-dir models/ComfyUI--models/Depth-Anything-Onnx
 }
 
 function build_tensorrt_models() {
@@ -88,7 +89,7 @@ function build_tensorrt_models() {
 
     printf "\nBuilding TensorRT models...\n"
 
-    # Matrix of models and timesteps to compile StreamDiffusion TensorRT engines for.
+    # StreamDiffusion (compile a matrix of models and timesteps)
     MODELS="stabilityai/sd-turbo KBlueLeaf/kohaku-v2.1"
     TIMESTEPS="3 4" # This is basically the supported sizes for the t_index_list
     docker run --rm -it -v ./models:/models --gpus all \
@@ -100,6 +101,7 @@ function build_tensorrt_models() {
                     done
                 done"
 
+    # FasterLivePortrait
     docker run --rm -it -v ./models:/models --gpus all \
         livepeer/ai-runner:live-app-liveportrait \
         bash -c "cd /app/app/live/FasterLivePortrait && \
@@ -115,6 +117,14 @@ function build_tensorrt_models() {
                     else
                         echo 'Animal LivePortrait TensorRT engines already exist, skipping build'
                     fi"
+
+    # ComfyUI (only DepthAnything for now)
+    docker run --rm -it -v ./models:/models --gpus all \
+        livepeer/ai-runner:live-app-comfyui \
+        bash -c "cd /comfyui/models/Depth-Anything-Onnx && \
+                    python /comfyui/custom_nodes/ComfyUI-Depth-Anything-Tensorrt/export_trt.py && \
+                    mkdir -p /comfyui/models/tensorrt/depth-anything && \
+                    mv *.engine /comfyui/models/tensorrt/depth-anything"
 }
 
 # Download models with a restrictive license.
@@ -165,7 +175,7 @@ done
 echo "Starting livepeer AI subnet model downloader..."
 echo "Creating 'models' directory in the current working directory..."
 mkdir -p models
-mkdir -p models/StreamDiffusion--engines models/FasterLivePortrait--checkpoints
+mkdir -p models/StreamDiffusion--engines models/FasterLivePortrait--checkpoints models/ComfyUI--models
 
 # Ensure 'huggingface-cli' is installed.
 echo "Checking if 'huggingface-cli' is installed..."
