@@ -77,7 +77,11 @@ function download_all_models() {
     # Custom pipeline models.
     huggingface-cli download facebook/sam2-hiera-large --include "*.pt" "*.yaml" --cache-dir models
 
-    # Download live-video-to-video models.
+    download_live_models
+}
+
+# Download models only for the live-video-to-video pipeline.
+function download_live_models() {
     huggingface-cli download KBlueLeaf/kohaku-v2.1 --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
     huggingface-cli download stabilityai/sd-turbo --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
     huggingface-cli download warmshao/FasterLivePortrait --local-dir models/FasterLivePortrait--checkpoints
@@ -85,7 +89,7 @@ function download_all_models() {
 }
 
 function build_tensorrt_models() {
-    download_all_models
+    download_live_models
 
     printf "\nBuilding TensorRT models...\n"
 
@@ -158,6 +162,10 @@ do
             MODE="restricted"
             shift
         ;;
+        --live)
+            MODE="live"
+            shift
+        ;;
         --tensorrt)
             MODE="tensorrt"
             shift
@@ -188,6 +196,8 @@ if [ "$MODE" = "beta" ]; then
     download_beta_models
 elif [ "$MODE" = "restricted" ]; then
     download_restricted_models
+elif [ "$MODE" = "live" ]; then
+    download_live_models
 elif [ "$MODE" = "tensorrt" ]; then
     build_tensorrt_models
 else
