@@ -25,6 +25,8 @@ func main() {
 	// modelID = "streamdiffusion"
 	// modelID = "comfyui"
 	defaultImageID := "livepeer/ai-runner:latest"
+	subscribeUrl := "https://wwgcyxykwg9dys.transfix.ai/trickle/varb-noop-inp"
+	publishUrl := "https://wwgcyxykwg9dys.transfix.ai/trickle/varb-noop-out"
 	gpus := []string{"0"}
 
 	modelsDir, err := filepath.Abs(*aiModelsDir)
@@ -62,6 +64,8 @@ func main() {
 
 	req := worker.GenLiveVideoToVideoJSONRequestBody{
 		ModelId: &modelID,
+		SubscribeUrl: subscribeUrl,
+		PublishUrl: publishUrl,
 	}
 
 	slog.Info("Running live-video-to-video")
