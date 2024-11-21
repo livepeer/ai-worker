@@ -1,77 +1,114 @@
+"""Contains utility functions for hardware information."""
 
-from typing import Dict
+from typing import Dict, Any
 from pydantic import BaseModel
-import torch
-import pynvml
 import logging
+import pynvml
+from app.utils.nvml_manager import nvml_manager
 
 logger = logging.getLogger(__name__)
 
-class HardwareDetail(BaseModel):
+
+class BaseHardwareDetail(BaseModel):
+    """Base model for GPU information."""
+
     id: str
     name: str
     memory_total: int
     memory_free: int
+
+
+class HardwareDetail(BaseHardwareDetail):
+    """Model for GPU information."""
+
     major: int
     minor: int
 
-class HardwareStatDetail(BaseModel):
-    id: str
-    name: str
-    memory_free: int
-    memory_total: int
+
+class HardwareStatDetail(BaseHardwareDetail):
+    """Model for real-time GPU statistics."""
+
     utilization_compute: int
     utilization_memory: int
 
-def get_cuda_devices() -> Dict[int, HardwareDetail]:
-    devices = {}
-    try:
-        pynvml.nvmlInit()
-        for i in range(pynvml.nvmlDeviceGetCount()):
-            handle = pynvml.nvmlDeviceGetHandleByIndex(i)
-            uuid = pynvml.nvmlDeviceGetUUID(handle)
-            name = pynvml.nvmlDeviceGetName(handle)
-            major, minor = pynvml.nvmlDeviceGetCudaComputeCapability(handle)
-            memory_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
 
-            devices[i] = HardwareDetail(
-                id=uuid,
-                name=name,
-                memory_total=memory_info.total,
-                memory_free=memory_info.free,
-                major=major,
-                minor=minor
-            )
-    except BaseException as e:
-        logger.info(f"Error getting cuda devices: error={e}")
-    finally:
-        pynvml.nvmlShutdown()
-    
+def retrieve_cuda_info(
+    cuda_version: bool = False, utilization: bool = False
+) -> Dict[int, Dict[str, Any]]:
+    """Retrieve CUDA information.
+
+    Args:
+        cuda_version: Whether to retrieve CUDA version information.
+        utilization: Whether to retrieve GPU utilization information.
+
+    Returns:
+        CUDA information.
+    """
+    nvml_manager.initialize()
+    devices = {}
+    for i in range(pynvml.nvmlDeviceGetCount()):
+        handle = pynvml.nvmlDeviceGetHandleByIndex(i)
+        uuid = pynvml.nvmlDeviceGetUUID(handle)
+        name = pynvml.nvmlDeviceGetName(handle)
+        memory_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+
+        device_info = {
+            "id": uuid,
+            "name": name,
+            "memory_total": memory_info.total,
+            "memory_free": memory_info.free,
+        }
+
+        if cuda_version:
+            major, minor = pynvml.nvmlDeviceGetCudaComputeCapability(handle)
+            device_info["major"] = major
+            device_info["minor"] = minor
+
+        if utilization:
+            utilization_rates = pynvml.nvmlDeviceGetUtilizationRates(handle)
+            device_info["utilization_compute"] = utilization_rates.gpu
+            device_info["utilization_memory"] = utilization_rates.memory
+
+        devices[i] = device_info
+
     return devices
 
-def get_cuda_stats() -> Dict[int, HardwareStatDetail]:
-    stats = {}
-    try:
-        pynvml.nvmlInit()
-        
-        for i in range(pynvml.nvmlDeviceGetCount()):
-            handle = pynvml.nvmlDeviceGetHandleByIndex(i)
-            uuid = pynvml.nvmlDeviceGetUUID(handle)
-            name = pynvml.nvmlDeviceGetName(handle)
-            memory_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
-            utilization = pynvml.nvmlDeviceGetUtilizationRates(handle)
-            
-            stats[i] = HardwareStatDetail(
-                id=uuid,
-                name=name,
-                memory_free=memory_info.free,
-                memory_total=memory_info.total,
-                utilization_compute=utilization.gpu,
-                utilization_memory=utilization.memory
-            )
-    except BaseException as e:
-        logger.info(f"Error getting cuda devices: error={e}")
-    finally:
-        pynvml.nvmlShutdown()
 
-    return stats
+def get_gpu_info() -> Dict[int, HardwareDetail]:
+    """Get GPU information.
+
+    Returns:
+        The GPU information.
+    """
+    basic_info = retrieve_cuda_info(cuda_version=True)
+    return {
+        i: HardwareDetail(
+            id=info["id"],
+            name=info["name"],
+            memory_total=info["memory_total"],
+            memory_free=info["memory_free"],
+            major=info["major"],
+            minor=info["minor"],
+        )
+        for i, info in basic_info.items()
+    }
+
+
+def get_gpu_stats() -> Dict[int, HardwareStatDetail]:
+    """Get real-time GPU statistics.
+
+    Returns:
+        The real-time GPU statistics.
+    """
+    basic_info = retrieve_cuda_info(utilization=True)
+    return {
+        i: HardwareStatDetail(
+            id=info["id"],
+            name=info["name"],
+            memory_total=info["memory_total"],
+            memory_free=info["memory_free"],
+            utilization_compute=info["utilization_compute"],
+            utilization_memory=info["utilization_memory"],
+        )
+        for i, info in basic_info.items()
+    }

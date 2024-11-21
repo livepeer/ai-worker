@@ -48,7 +48,6 @@ def translate_to_gateway(openapi: dict) -> dict:
 
     .. note::
         Differences between 'runner' and 'gateway' entrypoints:
-        - 'health' endpoint is removed.
         - 'model_id' is enforced in all endpoints.
         - 'metadata' property is removed from all schemas.
         - 'VideoResponse' schema is updated to match the Gateway's transcoded mp4
@@ -60,11 +59,8 @@ def translate_to_gateway(openapi: dict) -> dict:
     Returns:
         The translated OpenAPI schema.
     """
-    # Remove 'health' related endpoints and schemas.
-    openapi["paths"].pop("/health")
-    openapi["components"]["schemas"].pop("HealthCheck")
-
     # Enforce 'model_id' in all endpoints
+    logger.debug("Enforcing 'model_id' in all endpoints...")
     for _, methods in openapi["paths"].items():
         for _, details in methods.items():
             if "requestBody" in details:
@@ -87,6 +83,7 @@ def translate_to_gateway(openapi: dict) -> dict:
     # Update the 'VideoResponse' schema to match the Gateway's response.
     # NOTE: This is necessary because the Gateway transcodes the runner's response and
     # returns an mp4 file.
+    logger.debug("Updating 'VideoResponse' schema...")
     openapi["components"]["schemas"]["VideoResponse"] = copy.deepcopy(
         openapi["components"]["schemas"]["ImageResponse"]
     )
@@ -104,8 +101,9 @@ def write_openapi(fname: str, entrypoint: str = "runner"):
         entrypoint: The entrypoint to generate the OpenAPI schema for, either
             'gateway' or 'runner'. Default is 'runner'.
     """
-    app.include_router(health.router)
-    app.include_router(hardware.router)
+    if entrypoint != "gateway":
+        app.include_router(health.router)
+        app.include_router(hardware.router)
     app.include_router(text_to_image.router)
     app.include_router(image_to_image.router)
     app.include_router(image_to_video.router)
@@ -166,8 +164,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--entrypoint",
         type=str,
-        choices=["runner", "gateway"],
-        default=["runner", "gateway"],
+        choices=["gateway","runner"],
+        default=["gateway","runner"],
         nargs="+",
         help=(
             "The entrypoint to generate the OpenAPI schema for, options are 'runner' "
@@ -178,5 +176,6 @@ if __name__ == "__main__":
 
     # Generate orchestrator and Gateway facing OpenAPI schemas.
     logger.info("Generating OpenAPI schema.")
-    for entrypoint in args.entrypoint:
+    entrypoints = sorted(args.entrypoint, key=lambda x: x != "gateway")
+    for entrypoint in entrypoints:
         write_openapi(f"openapi.{args.type.lower()}", entrypoint=entrypoint)

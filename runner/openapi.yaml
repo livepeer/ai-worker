@@ -10,39 +10,6 @@ servers:
 - url: https://livepeer.studio/api/beta/generate
   description: Livepeer Studio Gateway
 paths:
-  /health:
-    get:
-      summary: Health
-      operationId: health
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HealthCheck'
-  /hardware/info:
-    get:
-      summary: Hardware Info
-      operationId: hardware_info
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HardwareInformation'
-  /hardware/stats:
-    get:
-      summary: Hardware Stats
-      operationId: hardware_stats
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HardwareStats'
   /text-to-image:
     post:
       tags:
@@ -542,6 +509,39 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: textToSpeech
+  /health:
+    get:
+      summary: Health
+      operationId: health
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheck'
+  /hardware/info:
+    get:
+      summary: Hardware Info
+      operationId: hardware_info
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HardwareInformation'
+  /hardware/stats:
+    get:
+      summary: Hardware Stats
+      operationId: hardware_stats
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HardwareStats'
 components:
   schemas:
     APIError:
@@ -938,6 +938,7 @@ components:
       - major
       - minor
       title: HardwareDetail
+      description: Model for GPU information.
     HardwareInformation:
       properties:
         pipeline:
@@ -957,6 +958,7 @@ components:
       - model_id
       - gpu_info
       title: HardwareInformation
+      description: Response model for GPU information.
     HardwareStatDetail:
       properties:
         id:
@@ -965,12 +967,12 @@ components:
         name:
           type: string
           title: Name
-        memory_free:
-          type: integer
-          title: Memory Free
         memory_total:
           type: integer
           title: Memory Total
+        memory_free:
+          type: integer
+          title: Memory Free
         utilization_compute:
           type: integer
           title: Utilization Compute
@@ -981,11 +983,12 @@ components:
       required:
       - id
       - name
-      - memory_free
       - memory_total
+      - memory_free
       - utilization_compute
       - utilization_memory
       title: HardwareStatDetail
+      description: Model for real-time GPU statistics.
     HardwareStats:
       properties:
         pipeline:
@@ -1005,6 +1008,7 @@ components:
       - model_id
       - gpu_stats
       title: HardwareStats
+      description: Response model for real-time GPU statistics.
     HealthCheck:
       properties:
         status:
