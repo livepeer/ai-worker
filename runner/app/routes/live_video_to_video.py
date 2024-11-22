@@ -47,7 +47,7 @@ class LiveVideoToVideoParams(BaseModel):
     control_url: Annotated[
         str,
         Field(
-            default="",description="URL for subscribing via Trickle protocol for updates in the live video-to-video generation params.",
+            description="URL for subscribing via Trickle protocol for updates in the live video-to-video generation params.",
         ),
     ]
     model_id: Annotated[

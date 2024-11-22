@@ -930,7 +930,6 @@ components:
           title: Control Url
           description: URL for subscribing via Trickle protocol for updates in the
             live video-to-video generation params.
-          default: ''
         model_id:
           type: string
           title: Model Id
@@ -949,6 +948,7 @@ components:
       required:
       - subscribe_url
       - publish_url
+      - control_url
       - model_id
       title: LiveVideoToVideoParams
     LiveVideoToVideoResponse:
