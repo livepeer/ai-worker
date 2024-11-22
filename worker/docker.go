@@ -14,6 +14,7 @@ import (
 	"github.com/docker/cli/opts"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"
 	docker "github.com/docker/docker/client"
 	"github.com/docker/docker/errdefs"
@@ -68,8 +69,9 @@ type DockerManager struct {
 	// gpu ID => container name
 	gpuContainers map[string]string
 	// container name => container
-	containers map[string]*RunnerContainer
-	mu         *sync.Mutex
+	containers      map[string]*RunnerContainer
+	imagePullStatus *sync.Map
+	mu              *sync.Mutex
 }
 
 func NewDockerManager(defaultImage string, gpus []string, modelDir string) (*DockerManager, error) {
@@ -85,15 +87,20 @@ func NewDockerManager(defaultImage string, gpus []string, modelDir string) (*Doc
 	}
 	cancel()
 
-	return &DockerManager{
-		defaultImage:  defaultImage,
-		gpus:          gpus,
-		modelDir:      modelDir,
-		dockerClient:  dockerClient,
-		gpuContainers: make(map[string]string),
-		containers:    make(map[string]*RunnerContainer),
-		mu:            &sync.Mutex{},
-	}, nil
+	manager := &DockerManager{
+		defaultImage:    defaultImage,
+		gpus:            gpus,
+		modelDir:        modelDir,
+		dockerClient:    dockerClient,
+		gpuContainers:   make(map[string]string),
+		containers:      make(map[string]*RunnerContainer),
+		imagePullStatus: &sync.Map{},
+		mu:              &sync.Mutex{},
+	}
+
+	go manager.pullImagesAtStartup(ctx)
+
+	return manager, nil
 }
 
 func (m *DockerManager) Warm(ctx context.Context, pipeline string, modelID string, optimizationFlags OptimizationFlags) error {
@@ -159,6 +166,30 @@ func (m *DockerManager) returnContainer(rc *RunnerContainer) {
 	m.containers[rc.Name] = rc
 }
 
+// getContainerImage returns the image for the given pipeline and model ID.
+// Returns an error if the image is not found for "live-video-to-video".
+func (m *DockerManager) getContainerImage(pipeline, modelID string) (string, error) {
+	if pipeline == "live-video-to-video" {
+		// We currently use the model ID as the live pipeline name for legacy reasons.
+		if image, ok := livePipelineToImage[modelID]; ok {
+			return image, nil
+		}
+		return "", fmt.Errorf("no container image found for live pipeline %s", modelID)
+	}
+
+	if image, ok := pipelineToImage[pipeline]; ok {
+		return image, nil
+	}
+
+	return m.defaultImage, nil
+}
+
+// isImageBeingPulled checks if the specified image is currently being pulled.
+func (m *DockerManager) isImageBeingPulled(imageName string) bool {
+	_, loaded := m.imagePullStatus.Load(imageName)
+	return loaded
+}
+
 // HasCapacity checks if an unused managed container exists or if a GPU is available for a new container.
 func (m *DockerManager) HasCapacity(ctx context.Context, pipeline, modelID string) bool {
 	m.mu.Lock()
@@ -171,14 +202,57 @@ func (m *DockerManager) HasCapacity(ctx context.Context, pipeline, modelID strin
 		}
 	}
 
+	// Check if the container image is being pulled.
+	if containerImage, err := m.getContainerImage(pipeline, modelID); err != nil || m.isImageBeingPulled(containerImage) {
+		return false
+	}
+
 	// Check for available GPU to allocate for a new container for the requested model.
 	_, err := m.allocGPU(ctx)
 	return err == nil
 }
 
+// isImageAvailable checks if the specified image is available locally.
+func (m *DockerManager) isImageAvailable(ctx context.Context, imageName string) bool {
+	_, _, err := m.dockerClient.ImageInspectWithRaw(ctx, imageName)
+	return err == nil
+}
+
+// pullImageAsync pulls the specified image from the registry asynchronously.
+func (m *DockerManager) pullImageAsync(ctx context.Context, imageName string) {
+	if m.isImageAvailable(ctx, imageName) {
+		slog.Info("Image %s is already available locally", imageName)
+		return
+	}
+
+	// Check if the image is already being pulled.
+	if m.isImageBeingPulled(imageName) {
+		return
+	}
+
+	// Mark the image as being pulled.
+	m.imagePullStatus.Store(imageName, true)
+	defer m.imagePullStatus.Delete(imageName)
+
+	slog.Info("Pulling container image: %s", imageName)
+	if err := m.pullImage(ctx, imageName); err != nil {
+		slog.Error("Error pulling container image", slog.String("image", imageName), slog.Any("error", err))
+	}
+}
+
+// pullImagesAtStartup pulls all runner images at startup asynchronously.
+func (m *DockerManager) pullImagesAtStartup(ctx context.Context) {
+	for _, image := range pipelineToImage {
+		go m.pullImageAsync(ctx, image)
+	}
+	for _, image := range livePipelineToImage {
+		go m.pullImageAsync(ctx, image)
+	}
+}
+
 // pullImage pulls the specified image from the registry.
 func (m *DockerManager) pullImage(ctx context.Context, imageName string) error {
-	reader, err := m.dockerClient.ImagePull(ctx, imageName, types.ImagePullOptions{})
+	reader, err := m.dockerClient.ImagePull(ctx, imageName, image.PullOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to pull image: %w", err)
 	}
@@ -211,15 +285,9 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	// NOTE: We currently allow only one container per GPU for each pipeline.
 	containerHostPort := containerHostPorts[pipeline][:3] + gpu
 	containerName := dockerContainerName(pipeline, modelID, containerHostPort)
-	containerImage := m.defaultImage
-	if pipelineSpecificImage, ok := pipelineToImage[pipeline]; ok {
-		containerImage = pipelineSpecificImage
-	} else if pipeline == "live-video-to-video" {
-		// We currently use the model ID as the live pipeline name for legacy reasons
-		containerImage = livePipelineToImage[modelID]
-		if containerImage == "" {
-			return nil, fmt.Errorf("no container image found for live pipeline %s", modelID)
-		}
+	containerImage, err := m.getContainerImage(pipeline, modelID)
+	if err != nil {
+		return nil, err
 	}
 
 	slog.Info("Starting managed container", slog.String("gpu", gpu), slog.String("name", containerName), slog.String("modelID", modelID), slog.String("containerImage", containerImage))
@@ -459,6 +527,7 @@ func dockerRemoveContainer(client *docker.Client, containerID string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), containerRemoveTimeout)
 	err := client.ContainerStop(ctx, containerID, container.StopOptions{})
 	cancel()
+
 	// Ignore "not found" or "already stopped" errors
 	if err != nil && !docker.IsErrNotFound(err) && !errdefs.IsNotModified(err) {
 		return err
