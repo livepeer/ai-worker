@@ -17,9 +17,10 @@ class TrickleStreamer(PipelineStreamer):
         subscribe_url: str,
         publish_url: str,
         pipeline: str,
-        **params,
+        input_timeout: int,
+        params: dict,
     ):
-        super().__init__(pipeline, **params)
+        super().__init__(pipeline, input_timeout, params)
         self.subscribe_url = subscribe_url
         self.publish_url = publish_url
         self.subscribe_queue = queue.Queue[bytearray]()

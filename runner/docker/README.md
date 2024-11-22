@@ -40,25 +40,37 @@ To build a pipeline-specific container, you need to build the base container fir
 1. Build Docker image
 ```
 export PIPELINE=comfyui
+docker build -t livepeer/ai-runner:live-base -f docker/Dockerfile.live-base .
 docker build -t livepeer/ai-runner:live-base-${PIPELINE} -f docker/Dockerfile.live-base-${PIPELINE} .
 docker build -t livepeer/ai-runner:live-app-${PIPELINE} -f docker/Dockerfile.live-app__PIPELINE__ --build-arg PIPELINE=${PIPELINE} .
 ```
 
 2. Download Depth Anything model
 ```
-mkdir models
-wget https://huggingface.co/yuvraj108c/Depth-Anything-Onnx/resolve/main/depth_anything_vitl14.onnx -P models
+./dl_checkpoints --live
 ```
 
 3. Build Depth Anything Engine
 ```
-docker run -it --rm --name video-to-video --gpus all -v ./models:/models livepeer/ai-runner:live-app-comfyui /bin/bash -c "cd /models; python /comfyui/custom_nodes/ComfyUI-Depth-Anything-Tensorrt/export_trt.py"
-mkdir -p ./models/tensorrt/depth-anything
-mv ./models/*.engine ./models/tensorrt/depth-anything
+./dl_checkpoints --tensorrt
 ```
 
 4. Start Docker container
 
 ```
 docker run -it --rm --name video-to-video --gpus all -p 8000:8000 -v ./models:/models -e PIPELINE=live-video-to-video -e MODEL_ID=comfyui livepeer/ai-runner:live-app-comfyui
+```
+
+### Noop pipeline for local testing (works on Darwin as well)
+
+1. Build Docker images
+```
+export PIPELINE=noop
+docker build -t livepeer/ai-runner:live-base -f docker/Dockerfile.live-base .
+docker build -t livepeer/ai-runner:live-app-${PIPELINE} -f docker/Dockerfile.live-app-noop .
+```
+
+2. Start Docker container
+```
+docker run -it --rm --name video-to-video -p 8000:8000 -e PIPELINE=live-video-to-video -e MODEL_ID=noop livepeer/ai-runner:live-app-noop
 ```

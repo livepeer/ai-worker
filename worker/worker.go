@@ -63,11 +63,12 @@ func NewWorker(defaultImage string, gpus []string, modelDir string) (*Worker, er
 }
 
 func (w *Worker) TextToImage(ctx context.Context, req GenTextToImageJSONRequestBody) (*ImageResponse, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	c, err := w.borrowContainer(ctx, "text-to-image", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
-	defer w.returnContainer(c)
 
 	resp, err := c.Client.GenTextToImageWithResponse(ctx, req)
 	if err != nil {
@@ -114,11 +115,12 @@ func (w *Worker) TextToImage(ctx context.Context, req GenTextToImageJSONRequestB
 }
 
 func (w *Worker) ImageToImage(ctx context.Context, req GenImageToImageMultipartRequestBody) (*ImageResponse, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	c, err := w.borrowContainer(ctx, "image-to-image", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
-	defer w.returnContainer(c)
 
 	var buf bytes.Buffer
 	mw, err := NewImageToImageMultipartWriter(&buf, req)
@@ -171,11 +173,12 @@ func (w *Worker) ImageToImage(ctx context.Context, req GenImageToImageMultipartR
 }
 
 func (w *Worker) ImageToVideo(ctx context.Context, req GenImageToVideoMultipartRequestBody) (*VideoResponse, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	c, err := w.borrowContainer(ctx, "image-to-video", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
-	defer w.returnContainer(c)
 
 	var buf bytes.Buffer
 	mw, err := NewImageToVideoMultipartWriter(&buf, req)
@@ -233,11 +236,12 @@ func (w *Worker) ImageToVideo(ctx context.Context, req GenImageToVideoMultipartR
 }
 
 func (w *Worker) Upscale(ctx context.Context, req GenUpscaleMultipartRequestBody) (*ImageResponse, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	c, err := w.borrowContainer(ctx, "upscale", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
-	defer w.returnContainer(c)
 
 	var buf bytes.Buffer
 	mw, err := NewUpscaleMultipartWriter(&buf, req)
@@ -290,11 +294,12 @@ func (w *Worker) Upscale(ctx context.Context, req GenUpscaleMultipartRequestBody
 }
 
 func (w *Worker) AudioToText(ctx context.Context, req GenAudioToTextMultipartRequestBody) (*TextResponse, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	c, err := w.borrowContainer(ctx, "audio-to-text", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
-	defer w.returnContainer(c)
 
 	var buf bytes.Buffer
 	mw, err := NewAudioToTextMultipartWriter(&buf, req)
@@ -362,7 +367,9 @@ func (w *Worker) AudioToText(ctx context.Context, req GenAudioToTextMultipartReq
 }
 
 func (w *Worker) LLM(ctx context.Context, req GenLLMFormdataRequestBody) (interface{}, error) {
-	c, err := w.borrowContainer(ctx, "llm", *req.ModelId)
+	isStreaming := req.Stream != nil && *req.Stream
+	borrowCtx, cancel := context.WithCancel(context.Background())
+	c, err := w.borrowContainer(borrowCtx, "llm", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
@@ -378,16 +385,19 @@ func (w *Worker) LLM(ctx context.Context, req GenLLMFormdataRequestBody) (interf
 	var buf bytes.Buffer
 	mw, err := NewLLMMultipartWriter(&buf, req)
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 
-	if req.Stream != nil && *req.Stream {
+	if isStreaming {
 		resp, err := c.Client.GenLLMWithBody(ctx, mw.FormDataContentType(), &buf)
 		if err != nil {
+			cancel()
 			return nil, err
 		}
-		return w.handleStreamingResponse(ctx, c, resp)
+		return w.handleStreamingResponse(ctx, c, resp, cancel)
 	}
+	defer cancel()
 
 	resp, err := c.Client.GenLLMWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
 	if err != nil {
@@ -397,11 +407,12 @@ func (w *Worker) LLM(ctx context.Context, req GenLLMFormdataRequestBody) (interf
 }
 
 func (w *Worker) SegmentAnything2(ctx context.Context, req GenSegmentAnything2MultipartRequestBody) (*MasksResponse, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	c, err := w.borrowContainer(ctx, "segment-anything-2", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
-	defer w.returnContainer(c)
 
 	var buf bytes.Buffer
 	mw, err := NewSegmentAnything2MultipartWriter(&buf, req)
@@ -454,11 +465,12 @@ func (w *Worker) SegmentAnything2(ctx context.Context, req GenSegmentAnything2Mu
 }
 
 func (w *Worker) ImageToText(ctx context.Context, req GenImageToTextMultipartRequestBody) (*ImageToTextResponse, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	c, err := w.borrowContainer(ctx, "image-to-text", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
-	defer w.returnContainer(c)
 
 	var buf bytes.Buffer
 	mw, err := NewImageToTextMultipartWriter(&buf, req)
@@ -517,11 +529,12 @@ func (w *Worker) ImageToText(ctx context.Context, req GenImageToTextMultipartReq
 }
 
 func (w *Worker) TextToSpeech(ctx context.Context, req GenTextToSpeechJSONRequestBody) (*AudioResponse, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	c, err := w.borrowContainer(ctx, "text-to-speech", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
-	defer w.returnContainer(c)
 
 	resp, err := c.Client.GenTextToSpeechWithResponse(ctx, req)
 	if err != nil {
@@ -562,6 +575,57 @@ func (w *Worker) TextToSpeech(ctx context.Context, req GenTextToSpeechJSONReques
 		}
 		slog.Error("text-to-speech container returned 500", slog.String("err", string(val)))
 		return nil, errors.New("text-to-speech container returned 500: " + resp.JSON500.Detail.Msg)
+	}
+
+	return resp.JSON200, nil
+}
+
+func (w *Worker) LiveVideoToVideo(ctx context.Context, req GenLiveVideoToVideoJSONRequestBody) (*LiveVideoToVideoResponse, error) {
+	// Live video containers keep running after the initial request, so we use a background context to borrow the container.
+	c, err := w.borrowContainer(context.Background(), "live-video-to-video", *req.ModelId)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.Client.GenLiveVideoToVideoWithResponse(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.JSON400 != nil {
+		val, err := json.Marshal(resp.JSON400)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("live-video-to-video container returned 400", slog.String("err", string(val)))
+		return nil, errors.New("live-video-to-video container returned 400: " + resp.JSON400.Detail.Msg)
+	}
+
+	if resp.JSON401 != nil {
+		val, err := json.Marshal(resp.JSON401)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("live-video-to-video container returned 401", slog.String("err", string(val)))
+		return nil, errors.New("live-video-to-video container returned 401: " + resp.JSON401.Detail.Msg)
+	}
+
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("live-video-to-video container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("live-video-to-video container returned 422: " + string(val))
+	}
+
+	if resp.JSON500 != nil {
+		val, err := json.Marshal(resp.JSON500)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("live-video-to-video container returned 500", slog.String("err", string(val)))
+		return nil, errors.New("live-video-to-video container returned 500: " + resp.JSON500.Detail.Msg)
 	}
 
 	return resp.JSON200, nil
@@ -704,17 +768,7 @@ func (w *Worker) borrowContainer(ctx context.Context, pipeline, modelID string) 
 	return w.manager.Borrow(ctx, pipeline, modelID)
 }
 
-func (w *Worker) returnContainer(rc *RunnerContainer) {
-	switch rc.Type {
-	case Managed:
-		w.manager.Return(rc)
-	case External:
-		// Noop because we allow concurrent in-flight requests for external containers
-	}
-}
-
 func (w *Worker) handleNonStreamingResponse(c *RunnerContainer, resp *GenLLMResponse) (*LLMResponse, error) {
-	defer w.returnContainer(c)
 	if resp.JSON400 != nil {
 		val, err := json.Marshal(resp.JSON400)
 		if err != nil {
@@ -751,7 +805,7 @@ type LlmStreamChunk struct {
 	Done       bool   `json:"done,omitempty"`
 }
 
-func (w *Worker) handleStreamingResponse(ctx context.Context, c *RunnerContainer, resp *http.Response) (<-chan LlmStreamChunk, error) {
+func (w *Worker) handleStreamingResponse(ctx context.Context, c *RunnerContainer, resp *http.Response, returnContainer func()) (<-chan LlmStreamChunk, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
@@ -760,7 +814,7 @@ func (w *Worker) handleStreamingResponse(ctx context.Context, c *RunnerContainer
 
 	go func() {
 		defer close(outputChan)
-		defer w.returnContainer(c)
+		defer returnContainer()
 
 		scanner := bufio.NewScanner(resp.Body)
 		totalTokens := 0

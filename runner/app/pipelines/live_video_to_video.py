@@ -26,20 +26,26 @@ class LiveVideoToVideoPipeline(Pipeline):
         self.monitor_thread = None
         self.log_thread = None
 
-    def __call__(
-        self, **kwargs
+
+    def __call__(  # type: ignore
+        self, *, subscribe_url: str, publish_url: str, control_url: str, params: dict, **kwargs
     ):
+        if self.process:
+            raise RuntimeError("Pipeline already running")
+
         try:
             if not self.process:
+                logger.info(f"Starting stream, subscribe={subscribe_url} publish={publish_url}, control={control_url}")
                 self.start_process(
                     pipeline=self.model_id,  # we use the model_id as the pipeline name for now
                     http_port=8888,
-                    subscribe_url=kwargs["subscribe_url"],
-                    publish_url=kwargs["publish_url"],
-                    initial_params=json.dumps(kwargs["params"]),
+                    subscribe_url=subscribe_url,
+                    publish_url=publish_url,
+                    control_url=control_url,
+                    initial_params=json.dumps(params),
                     # TODO: set torch device from self.torch_device
                 )
-            logger.info(f"Starting stream, subscribe={kwargs['subscribe_url']} publish={kwargs['publish_url']}")
+            logger.info(f"Starting stream, subscribe={subscribe_url} publish={publish_url}, control={control_url}")
             return
         except Exception as e:
             raise InferenceError(original_exception=e)
@@ -82,6 +88,10 @@ class LiveVideoToVideoPipeline(Pipeline):
                     logger.error(
                         f"infer.py process failed with return code {return_code}. Error: {stderr}"
                     )
+                else:
+                    # If process exited cleanly (return code 0) and exit the main process
+                    logger.info("infer.py process exited cleanly, shutting down...")
+                    sys.exit(0)
                 break
 
             logger.info("infer.py process is running...")

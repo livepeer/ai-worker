@@ -59,7 +59,7 @@ async def handle_params_update(request):
             raise ValueError(f"Unknown content type: {request.content_type}")
 
         handler = cast(PipelineStreamer, request.app["handler"])
-        handler.update_params(**params)
+        handler.update_params(params)
 
         return web.Response(text="Params updated successfully")
     except Exception as e:

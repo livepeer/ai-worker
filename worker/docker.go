@@ -13,7 +13,8 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/mount"
-	"github.com/docker/docker/client"
+	docker "github.com/docker/docker/client"
+	"github.com/docker/docker/errdefs"
 	"github.com/docker/go-connections/nat"
 )
 
@@ -26,20 +27,22 @@ const optFlagsContainerTimeout = 5 * time.Minute
 const containerRemoveTimeout = 30 * time.Second
 const containerCreatorLabel = "creator"
 const containerCreator = "ai-worker"
+const containerWatchInterval = 10 * time.Second
 
 // This only works right now on a single GPU because if there is another container
 // using the GPU we stop it so we don't have to worry about having enough ports
 var containerHostPorts = map[string]string{
-	"text-to-image":      "8000",
-	"image-to-image":     "8100",
-	"image-to-video":     "8200",
-	"upscale":            "8300",
-	"audio-to-text":      "8400",
-	"llm":                "8500",
-	"segment-anything-2": "8600",
-	"image-to-text":      "8700",
-	"text-to-speech":     "8800",
-	"object-detection":   "8900",
+	"text-to-image":       "8000",
+	"image-to-image":      "8100",
+	"image-to-video":      "8200",
+	"upscale":             "8300",
+	"audio-to-text":       "8400",
+	"llm":                 "8500",
+	"segment-anything-2":  "8600",
+	"image-to-text":       "8700",
+	"text-to-speech":      "8800",
+	"live-video-to-video": "8900",
+	"object-detection":    "9000",
 }
 
 // Mapping for per pipeline container images.
@@ -48,12 +51,18 @@ var pipelineToImage = map[string]string{
 	"text-to-speech":     "livepeer/ai-runner:text-to-speech",
 }
 
+var livePipelineToImage = map[string]string{
+	"streamdiffusion": "livepeer/ai-runner:live-app-streamdiffusion",
+	"liveportrait":    "livepeer/ai-runner:live-app-liveportrait",
+	"comfyui":         "livepeer/ai-runner:live-app-comfyui",
+}
+
 type DockerManager struct {
 	defaultImage string
 	gpus         []string
 	modelDir     string
 
-	dockerClient *client.Client
+	dockerClient *docker.Client
 	// gpu ID => container name
 	gpuContainers map[string]string
 	// container name => container
@@ -62,7 +71,7 @@ type DockerManager struct {
 }
 
 func NewDockerManager(defaultImage string, gpus []string, modelDir string) (*DockerManager, error) {
-	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	dockerClient, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, err
 	}
@@ -89,30 +98,28 @@ func (m *DockerManager) Warm(ctx context.Context, pipeline string, modelID strin
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	_, err := m.createContainer(ctx, pipeline, modelID, true, optimizationFlags)
-	return err
+	rc, err := m.createContainer(ctx, pipeline, modelID, true, optimizationFlags)
+	if err != nil {
+		return err
+	}
+
+	// Watch with a background context since we're not borrowing the container.
+	go m.watchContainer(rc, context.Background())
+
+	return nil
 }
 
 func (m *DockerManager) Stop(ctx context.Context) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	var stopContainerWg sync.WaitGroup
-	for name, rc := range m.containers {
+	for _, rc := range m.containers {
 		stopContainerWg.Add(1)
-		go func(containerID string) {
+		go func(container *RunnerContainer) {
 			defer stopContainerWg.Done()
-			if err := dockerRemoveContainer(m.dockerClient, containerID); err != nil {
-				slog.Error("Error removing managed container", slog.String("name", name), slog.String("id", containerID))
-			}
-		}(rc.ID)
-
-		delete(m.gpuContainers, rc.GPU)
-		delete(m.containers, name)
+			m.destroyContainer(container, false)
+		}(rc)
 	}
 
 	stopContainerWg.Wait()
-
 	return nil
 }
 
@@ -137,10 +144,14 @@ func (m *DockerManager) Borrow(ctx context.Context, pipeline, modelID string) (*
 
 	// Remove container so it is unavailable until Return() is called
 	delete(m.containers, rc.Name)
+	go m.watchContainer(rc, ctx)
+
 	return rc, nil
 }
 
-func (m *DockerManager) Return(rc *RunnerContainer) {
+// returnContainer returns a container to the pool so it can be reused. It is called automatically by watchContainer
+// when the context used to borrow the container is done.
+func (m *DockerManager) returnContainer(rc *RunnerContainer) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.containers[rc.Name] = rc
@@ -175,6 +186,12 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	containerImage := m.defaultImage
 	if pipelineSpecificImage, ok := pipelineToImage[pipeline]; ok {
 		containerImage = pipelineSpecificImage
+	} else if pipeline == "live-video-to-video" {
+		// We currently use the model ID as the live pipeline name for legacy reasons
+		containerImage = livePipelineToImage[modelID]
+		if containerImage == "" {
+			return nil, fmt.Errorf("no container image found for live pipeline %s", modelID)
+		}
 	}
 
 	slog.Info("Starting managed container", slog.String("gpu", gpu), slog.String("name", containerName), slog.String("modelID", modelID), slog.String("containerImage", containerImage))
@@ -224,6 +241,7 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 				},
 			},
 		},
+		AutoRemove: true,
 	}
 
 	resp, err := m.dockerClient.ContainerCreate(ctx, containerConfig, hostConfig, nil, nil, containerName)
@@ -294,15 +312,9 @@ func (m *DockerManager) allocGPU(ctx context.Context) (string, error) {
 		// If the container exists in this map then it is idle and if it not marked as keep warm we remove it
 		rc, ok := m.containers[containerName]
 		if ok && !rc.KeepWarm {
-			slog.Info("Removing managed container", slog.String("gpu", gpu), slog.String("name", containerName), slog.String("modelID", rc.ModelID))
-
-			delete(m.gpuContainers, gpu)
-			delete(m.containers, containerName)
-
-			if err := dockerRemoveContainer(m.dockerClient, rc.ID); err != nil {
+			if err := m.destroyContainer(rc, true); err != nil {
 				return "", err
 			}
-
 			return gpu, nil
 		}
 	}
@@ -310,7 +322,72 @@ func (m *DockerManager) allocGPU(ctx context.Context) (string, error) {
 	return "", errors.New("insufficient capacity")
 }
 
-func removeExistingContainers(ctx context.Context, client *client.Client) error {
+// destroyContainer stops the container on docker and removes it from the
+// internal state. If locked is true then the mutex is not re-locked, otherwise
+// it is done automatically only when updating the internal state.
+func (m *DockerManager) destroyContainer(rc *RunnerContainer, locked bool) error {
+	slog.Info("Removing managed container",
+		slog.String("gpu", rc.GPU),
+		slog.String("name", rc.Name),
+		slog.String("modelID", rc.ModelID))
+
+	if err := dockerRemoveContainer(m.dockerClient, rc.ID); err != nil {
+		slog.Error("Error removing managed container",
+			slog.String("gpu", rc.GPU),
+			slog.String("name", rc.Name),
+			slog.String("modelID", rc.ModelID),
+			slog.String("error", err.Error()))
+		return fmt.Errorf("failed to remove container %s: %w", rc.Name, err)
+	}
+
+	if !locked {
+		m.mu.Lock()
+		defer m.mu.Unlock()
+	}
+	delete(m.gpuContainers, rc.GPU)
+	delete(m.containers, rc.Name)
+	return nil
+}
+
+// watchContainer monitors a container's running state and automatically cleans
+// up the internal state when the container stops. It will also monitor the
+// borrowCtx to return the container to the pool when it is done.
+func (m *DockerManager) watchContainer(rc *RunnerContainer, borrowCtx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Error("Panic in container watch routine",
+				slog.String("container", rc.Name),
+				slog.Any("panic", r))
+		}
+	}()
+
+	ticker := time.NewTicker(containerWatchInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-borrowCtx.Done():
+			m.returnContainer(rc)
+			return
+		case <-ticker.C:
+			ctx, cancel := context.WithTimeout(context.Background(), containerWatchInterval)
+			container, err := m.dockerClient.ContainerInspect(ctx, rc.ID)
+			cancel()
+			if err != nil {
+				slog.Error("Error inspecting container",
+					slog.String("container", rc.Name),
+					slog.String("error", err.Error()))
+				continue
+			} else if container.State.Running {
+				continue
+			}
+			m.destroyContainer(rc, false)
+			return
+		}
+	}
+}
+
+func removeExistingContainers(ctx context.Context, client *docker.Client) error {
 	filters := filters.NewArgs(filters.Arg("label", containerCreatorLabel+"="+containerCreator))
 	containers, err := client.ContainerList(ctx, container.ListOptions{All: true, Filters: filters})
 	if err != nil {
@@ -336,20 +413,25 @@ func dockerContainerName(pipeline string, modelID string, suffix ...string) stri
 	return fmt.Sprintf("%s_%s", pipeline, sanitizedModelID)
 }
 
-func dockerRemoveContainer(client *client.Client, containerID string) error {
+func dockerRemoveContainer(client *docker.Client, containerID string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), containerRemoveTimeout)
-	if err := client.ContainerStop(ctx, containerID, container.StopOptions{}); err != nil {
-		cancel()
+	err := client.ContainerStop(ctx, containerID, container.StopOptions{})
+	cancel()
+	// Ignore "not found" or "already stopped" errors
+	if err != nil && !docker.IsErrNotFound(err) && !errdefs.IsNotModified(err) {
 		return err
 	}
-	cancel()
 
 	ctx, cancel = context.WithTimeout(context.Background(), containerRemoveTimeout)
-	defer cancel()
-	return client.ContainerRemove(ctx, containerID, container.RemoveOptions{})
+	err = client.ContainerRemove(ctx, containerID, container.RemoveOptions{})
+	cancel()
+	if err != nil && !docker.IsErrNotFound(err) {
+		return err
+	}
+	return nil
 }
 
-func dockerWaitUntilRunning(ctx context.Context, client *client.Client, containerID string, pollingInterval time.Duration) error {
+func dockerWaitUntilRunning(ctx context.Context, client *docker.Client, containerID string, pollingInterval time.Duration) error {
 	ticker := time.NewTicker(pollingInterval)
 	defer ticker.Stop()
 
