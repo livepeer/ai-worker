@@ -2,6 +2,7 @@ import av
 import logging
 import os
 from typing import Annotated, Dict, Tuple, Union
+import time
 
 import torch
 
@@ -107,18 +108,22 @@ async def object_detection(
         )
 
     frames = []
-    container = av.open(video.file)
-
-    for frame in container.decode(video=0):  # Decode video frames
-        frames.append(frame.to_image())  # Convert each frame to PIL image and add to list
-
-    container.close()
-
     try:
+        container = av.open(video.file)
+
+        start = time.time()
+        for frame in container.decode(video=0):  # Decode video frames
+            frames.append(frame.to_image())  # Convert each frame to PIL image and add to list
+
+        container.close()
+        logger.info(f"Decoded video in {time.time() - start:.2f} seconds")
+    
+        start = time.time()
         annotated_frames, confidence_scores_all_frames, labels_all_frames = pipeline(
             frames=frames,
             confidence_threshold=confidence_threshold,
         )
+        logger.info(f"Detections processed in {time.time() - start:.2f} seconds")
     except Exception as e:
         if isinstance(e, torch.cuda.OutOfMemoryError):
             torch.cuda.empty_cache()
@@ -128,21 +133,22 @@ async def object_detection(
             default_error_message="Object-detection pipeline error.",
             custom_error_config=PIPELINE_ERROR_CONFIG,
         )
-
+    start = time.time()
     output_frames = []
     for frame in annotated_frames:
         output_frames.append(
-            [
-                {
-                    "url": image_to_data_url(frame),
-                    "seed": 0,
-                    "nsfw": False,
-                }
-            ]
+            {
+                "url": image_to_data_url(frame),
+                "seed": 0,
+                "nsfw": False,
+            }
         )
-
+    
+    logger.info(f"Annotated frames converted to data URLs in {time.time() - start:.2f} seconds, frame count: {len(output_frames)}")
+    frames = []
+    frames.append(output_frames)
     return {
-        "frames": output_frames,
+        "frames": frames,
         "confidence_scores": str(confidence_scores_all_frames),
         "labels": str(labels_all_frames),
     }
