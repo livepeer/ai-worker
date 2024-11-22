@@ -11,6 +11,7 @@ require (
 	github.com/go-chi/chi/v5 v5.1.0
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/vincent-petithory/dataurl v1.0.0
+	trickle v0.0.0-20241120082738-d168ca53a1f5
 )
 
 require (
@@ -48,3 +49,5 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
 )
+
+replace trickle => github.com/j0sh/http-trickle v0.0.0-20241120082738-d168ca53a1f5

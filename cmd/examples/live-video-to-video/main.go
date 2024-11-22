@@ -25,8 +25,8 @@ func main() {
 	// modelID = "streamdiffusion"
 	// modelID = "comfyui"
 	defaultImageID := "livepeer/ai-runner:latest"
-	subscribeUrl := "https://wwgcyxykwg9dys.transfix.ai/trickle/varb-noop-inp"
-	publishUrl := "https://wwgcyxykwg9dys.transfix.ai/trickle/varb-noop-out"
+	subscribeUrl := "http://localhost:2865/image-send"
+	publishUrl := "http://localhost:2865/image-recv"
 	gpus := []string{"0"}
 
 	modelsDir, err := filepath.Abs(*aiModelsDir)
