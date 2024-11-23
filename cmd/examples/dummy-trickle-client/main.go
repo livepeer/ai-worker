@@ -26,6 +26,7 @@ type ImageSubscriber struct {
 }
 
 func (ip *ImagePublisher) publishImages(ctx context.Context, wg *sync.WaitGroup) {
+	wg.Add(1)
 	defer wg.Done()
 
 	// Read image file
@@ -56,6 +57,7 @@ func (ip *ImagePublisher) publishImages(ctx context.Context, wg *sync.WaitGroup)
 }
 
 func (is *ImageSubscriber) subscribe(ctx context.Context, wg *sync.WaitGroup) {
+	wg.Add(1)
 	defer wg.Done()
 
 	is.startTime = time.Now()
@@ -67,6 +69,7 @@ func (is *ImageSubscriber) subscribe(ctx context.Context, wg *sync.WaitGroup) {
 			resp, err := is.subscriber.Read()
 			if err != nil {
 				slog.Error("Failed to read segment", "error", err)
+				time.Sleep(1 * time.Second)
 				continue
 			}
 
@@ -98,16 +101,17 @@ func main() {
 		os.Exit(1)
 	}
 
+	slog.Info("running", "pub", *publishURL, "sub", *subscribeURL, "fps", *fps, "image", *imagePath)
+
 	// Create publisher
 	pub, err := trickle.NewTricklePublisher(*publishURL)
 	if err != nil {
 		slog.Error("Failed to create publisher", "error", err)
 		os.Exit(1)
 	}
+	pub.Create()
 	defer pub.Close()
 
-	// Create subscriber
-	sub := trickle.NewTrickleSubscriber(*subscribeURL)
 
 	imagePublisher := &ImagePublisher{
 		publisher: pub,
@@ -115,6 +119,9 @@ func main() {
 		fps:       *fps,
 	}
 
+
+	// Create subscriber
+	sub := trickle.NewTrickleSubscriber(*subscribeURL)
 	imageSubscriber := &ImageSubscriber{
 		subscriber: sub,
 	}
@@ -125,7 +132,6 @@ func main() {
 
 	// Create WaitGroup for goroutines
 	var wg sync.WaitGroup
-	wg.Add(2)
 
 	// Start publisher goroutine
 	go imagePublisher.publishImages(ctx, &wg)
