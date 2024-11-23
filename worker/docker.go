@@ -241,6 +241,7 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 				},
 			},
 		},
+		NetworkMode: "host",
 		AutoRemove: true,
 	}
 
