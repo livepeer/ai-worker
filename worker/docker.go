@@ -63,7 +63,7 @@ var livePipelineToImage = map[string]string{
 	"comfyui":         "livepeer/ai-runner:live-app-comfyui",
 }
 
-type DockerIface interface {
+type DockerClient interface {
 	ImagePull(ctx context.Context, ref string, options image.PullOptions) (io.ReadCloser, error)
 	ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error)
 	ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, platform *ocispec.Platform, containerName string) (container.CreateResponse, error)
@@ -79,7 +79,7 @@ type DockerManager struct {
 	gpus         []string
 	modelDir     string
 
-	dockerClient DockerIface
+	dockerClient DockerClient
 	// gpu ID => container name
 	gpuContainers map[string]string
 	// container name => container
@@ -88,7 +88,7 @@ type DockerManager struct {
 	mu              *sync.Mutex
 }
 
-func NewDockerManager(defaultImage string, gpus []string, modelDir string, client DockerIface) (*DockerManager, error) {
+func NewDockerManager(defaultImage string, gpus []string, modelDir string, client DockerClient) (*DockerManager, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), containerTimeout)
 	if err := removeExistingContainers(ctx, client); err != nil {
 		cancel()
@@ -505,7 +505,7 @@ func (m *DockerManager) watchContainer(rc *RunnerContainer, borrowCtx context.Co
 	}
 }
 
-func removeExistingContainers(ctx context.Context, client DockerIface) error {
+func removeExistingContainers(ctx context.Context, client DockerClient) error {
 	filters := filters.NewArgs(filters.Arg("label", containerCreatorLabel+"="+containerCreator))
 	containers, err := client.ContainerList(ctx, container.ListOptions{All: true, Filters: filters})
 	if err != nil {
@@ -531,7 +531,7 @@ func dockerContainerName(pipeline string, modelID string, suffix ...string) stri
 	return fmt.Sprintf("%s_%s", pipeline, sanitizedModelID)
 }
 
-func dockerRemoveContainer(client DockerIface, containerID string) error {
+func dockerRemoveContainer(client DockerClient, containerID string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), containerRemoveTimeout)
 	err := client.ContainerStop(ctx, containerID, container.StopOptions{})
 	cancel()
@@ -550,7 +550,7 @@ func dockerRemoveContainer(client DockerIface, containerID string) error {
 	return nil
 }
 
-func dockerWaitUntilRunning(ctx context.Context, client DockerIface, containerID string, pollingInterval time.Duration) error {
+func dockerWaitUntilRunning(ctx context.Context, client DockerClient, containerID string, pollingInterval time.Duration) error {
 	ticker := time.NewTicker(pollingInterval)
 	defer ticker.Stop()
 
