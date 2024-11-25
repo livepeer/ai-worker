@@ -4,10 +4,17 @@
 	"name": "ai-runner",
 	// Image to use for the dev container. More info: https://containers.dev/guide/dockerfile.
 	"build": {
-		"dockerfile": "../Dockerfile",
-		// "dockerfile": "../docker/Dockerfile.text_to_speech",
-		"context": ".."
+		"dockerfile": "../Dockerfile.live-app__PIPELINE__",
+		"args": {
+			"PIPELINE": "comfyui-sam2"
+		}
 	},
+	// "build": {
+		
+	// 	"dockerfile": "../Dockerfile",
+	// 	// "dockerfile": "../docker/Dockerfile.text_to_speech",
+	// 	"context": ".."
+	// },
 	"runArgs": [
 		"--gpus=all"
 	],
@@ -29,6 +36,7 @@
 	// Use 'mounts' to make a list of local folders available inside the container.
 	"mounts": [
 		// "source=${localWorkspaceFolder}/models,target=/models,type=bind"
-		"source=${localEnv:HOME}/.lpData/models,target=/models,type=bind"
+		"source=${localEnv:HOME}/.lpData/models,target=/models,type=bind",
+		"source=${localEnv:HOME}/ComfyUI-SAM2-Realtime,target=/comfyui/custom_nodes/ComfyUI-SAM2-Realtime,type=bind"
 	]
 }
