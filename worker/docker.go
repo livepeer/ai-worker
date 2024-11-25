@@ -54,6 +54,7 @@ var livePipelineToImage = map[string]string{
 	"streamdiffusion": "livepeer/ai-runner:live-app-streamdiffusion",
 	"liveportrait":    "livepeer/ai-runner:live-app-liveportrait",
 	"comfyui":         "livepeer/ai-runner:live-app-comfyui",
+	"noop":            "livepeer/ai-runner:live-app-noop",
 }
 
 type DockerManager struct {
