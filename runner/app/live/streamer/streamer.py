@@ -104,7 +104,7 @@ class PipelineStreamer(ABC):
 
             if self.input_timeout > 0 and time_since_last_input > self.input_timeout:
                 logging.info(f"Input stream stopped for {time_since_last_input} seconds. Shutting down...")
-                await self.stop()
+                await asyncio.create_task(self.stop())
                 return
 
             gone_stale = (

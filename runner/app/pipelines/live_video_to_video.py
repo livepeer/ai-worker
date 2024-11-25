@@ -91,7 +91,7 @@ class LiveVideoToVideoPipeline(Pipeline):
                 else:
                     # If process exited cleanly (return code 0) and exit the main process
                     logger.info("infer.py process exited cleanly, shutting down...")
-                    sys.exit(0)
+                    os._exit(0)
                 break
 
             logger.info("infer.py process is running...")
