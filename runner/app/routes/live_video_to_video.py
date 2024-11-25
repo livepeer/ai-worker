@@ -12,7 +12,7 @@ from app.routes.utils import (
     http_error,
     handle_pipeline_exception,
 )
-from fastapi import APIRouter, Depends, status, Request
+from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
@@ -96,7 +96,6 @@ RESPONSES: dict[int | str, dict[str, Any]]= {
     include_in_schema=False,
 )
 async def live_video_to_video(
-    request: Request,
     params: LiveVideoToVideoParams,
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
