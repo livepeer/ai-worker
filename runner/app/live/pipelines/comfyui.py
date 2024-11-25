@@ -18,7 +18,7 @@ DEFAULT_WORKFLOW_JSON = '''
       "device": "cuda",
       "precision": "fp16"
     },
-    "class_type": "DownloadAndLoadSAM2Model",
+    "class_type": "DownloadAndLoadSAM2RealtimeModel",
     "_meta": {
       "title": "(Down)Load SAM2Model"
     }
@@ -38,9 +38,9 @@ DEFAULT_WORKFLOW_JSON = '''
         0
       ]
     },
-    "class_type": "Sam2CameraSegmentation",
+    "class_type": "Sam2RealtimeSegmentation",
     "_meta": {
-      "title": "Sam2CameraSegmentation"
+      "title": "Sam2RealtimeSegmentation"
     }
   },
   "3": {
