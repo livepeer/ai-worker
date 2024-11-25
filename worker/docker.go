@@ -63,16 +63,24 @@ var livePipelineToImage = map[string]string{
 	"comfyui":         "livepeer/ai-runner:live-app-comfyui",
 }
 
+// DockerClient is an interface for the Docker client, allowing for mocking in tests.
+// NOTE: ensure any docker.Client methods used in this package are added.
 type DockerClient interface {
-	ImagePull(ctx context.Context, ref string, options image.PullOptions) (io.ReadCloser, error)
-	ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error)
 	ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, platform *ocispec.Platform, containerName string) (container.CreateResponse, error)
-	ContainerStart(ctx context.Context, containerID string, options container.StartOptions) error
 	ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error)
 	ContainerList(ctx context.Context, options container.ListOptions) ([]types.Container, error)
-	ContainerStop(ctx context.Context, containerID string, options container.StopOptions) error
 	ContainerRemove(ctx context.Context, containerID string, options container.RemoveOptions) error
+	ContainerStart(ctx context.Context, containerID string, options container.StartOptions) error
+	ContainerStop(ctx context.Context, containerID string, options container.StopOptions) error
+	ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error)
+	ImagePull(ctx context.Context, ref string, options image.PullOptions) (io.ReadCloser, error)
 }
+
+// Compile-time assertion to ensure docker.Client implements DockerClient.
+var _ DockerClient = (*docker.Client)(nil)
+
+// Create global references to functions to allow for mocking in tests.
+var dockerWaitUntilRunningFunc = dockerWaitUntilRunning
 
 type DockerManager struct {
 	defaultImage string
@@ -376,7 +384,7 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	cancel()
 
 	cctx, cancel = context.WithTimeout(ctx, containerTimeout)
-	if err := dockerWaitUntilRunning(cctx, m.dockerClient, resp.ID, pollingInterval); err != nil {
+	if err := dockerWaitUntilRunningFunc(cctx, m.dockerClient, resp.ID, pollingInterval); err != nil {
 		cancel()
 		dockerRemoveContainer(m.dockerClient, resp.ID)
 		return nil, err
