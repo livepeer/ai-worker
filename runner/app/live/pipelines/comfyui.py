@@ -11,32 +11,61 @@ from comfystream.client import ComfyStreamClient
 COMFY_UI_WORKSPACE_ENV = "COMFY_UI_WORKSPACE"
 DEFAULT_WORKFLOW_JSON = '''
 {
-    "1": {
-        "inputs": {
-            "images": ["2", 0]
-        },
-        "class_type": "SaveTensor",
-        "_meta": {
-            "title": "SaveTensor"
-        }
+  "1": {
+    "inputs": {
+      "model": "sam2_hiera_tiny.safetensors",
+      "segmentor": "realtime",
+      "device": "cuda",
+      "precision": "fp16"
     },
-    "2": {
-        "inputs": {
-            "engine": "depth_anything_vitl14-fp16.engine",
-            "images": ["3", 0]
-        },
-        "class_type": "DepthAnythingTensorrt",
-        "_meta": {
-            "title": "Depth Anything Tensorrt"
-        }
-    },
-    "3": {
-        "inputs": {},
-        "class_type": "LoadTensor",
-        "_meta": {
-            "title": "LoadTensor"
-        }
+    "class_type": "DownloadAndLoadSAM2Model",
+    "_meta": {
+      "title": "(Down)Load SAM2Model"
     }
+  },
+  "2": {
+    "inputs": {
+      "keep_model_loaded": true,
+      "coordinates_positive": "[384,384]",
+      "coordinates_negative": "",
+      "individual_objects": false,
+      "images": [
+        "3",
+        0
+      ],
+      "sam2_model": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "Sam2CameraSegmentation",
+    "_meta": {
+      "title": "Sam2CameraSegmentation"
+    }
+  },
+  "3": {
+    "inputs": {
+      "image": "headroom.jpeg",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "4": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "2",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  }
 }
 '''
 
