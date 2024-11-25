@@ -16,7 +16,6 @@ from fastapi import APIRouter, Depends, status, Request
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
-from urllib.parse import urlparse
 
 router = APIRouter()
 
@@ -119,13 +118,6 @@ async def live_video_to_video(
                 f"{params.model_id}."
             ),
         )
-
-    if "trickle_port" in params.params:
-        trickle_port = params.params["trickle_port"]
-        params.subscribe_url = urlparse(params.subscribe_url)._replace(scheme="https", netloc=f"{request.client.host}:{trickle_port}").geturl()
-        params.publish_url = urlparse(params.publish_url)._replace(scheme="https", netloc=f"{request.client.host}:{trickle_port}").geturl()
-        params.control_url = urlparse(params.control_url)._replace(scheme="https", netloc=f"{request.client.host}:{trickle_port}").geturl()
-        del params.params["trickle_port"]
 
     try:
         pipeline(**params.model_dump())
