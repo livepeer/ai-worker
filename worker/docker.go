@@ -12,14 +12,17 @@ import (
 	"time"
 
 	"github.com/docker/cli/opts"
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"
+	"github.com/docker/docker/api/types/network"
 	docker "github.com/docker/docker/client"
 	"github.com/docker/docker/errdefs"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/go-connections/nat"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 const containerModelDir = "/models"
@@ -60,12 +63,31 @@ var livePipelineToImage = map[string]string{
 	"comfyui":         "livepeer/ai-runner:live-app-comfyui",
 }
 
+// DockerClient is an interface for the Docker client, allowing for mocking in tests.
+// NOTE: ensure any docker.Client methods used in this package are added.
+type DockerClient interface {
+	ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, platform *ocispec.Platform, containerName string) (container.CreateResponse, error)
+	ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error)
+	ContainerList(ctx context.Context, options container.ListOptions) ([]types.Container, error)
+	ContainerRemove(ctx context.Context, containerID string, options container.RemoveOptions) error
+	ContainerStart(ctx context.Context, containerID string, options container.StartOptions) error
+	ContainerStop(ctx context.Context, containerID string, options container.StopOptions) error
+	ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error)
+	ImagePull(ctx context.Context, ref string, options image.PullOptions) (io.ReadCloser, error)
+}
+
+// Compile-time assertion to ensure docker.Client implements DockerClient.
+var _ DockerClient = (*docker.Client)(nil)
+
+// Create global references to functions to allow for mocking in tests.
+var dockerWaitUntilRunningFunc = dockerWaitUntilRunning
+
 type DockerManager struct {
 	defaultImage string
 	gpus         []string
 	modelDir     string
 
-	dockerClient *docker.Client
+	dockerClient DockerClient
 	// gpu ID => container name
 	gpuContainers map[string]string
 	// container name => container
@@ -74,14 +96,9 @@ type DockerManager struct {
 	mu              *sync.Mutex
 }
 
-func NewDockerManager(defaultImage string, gpus []string, modelDir string) (*DockerManager, error) {
-	dockerClient, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithAPIVersionNegotiation())
-	if err != nil {
-		return nil, err
-	}
-
+func NewDockerManager(defaultImage string, gpus []string, modelDir string, client DockerClient) (*DockerManager, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), containerTimeout)
-	if err := removeExistingContainers(ctx, dockerClient); err != nil {
+	if err := removeExistingContainers(ctx, client); err != nil {
 		cancel()
 		return nil, err
 	}
@@ -91,7 +108,7 @@ func NewDockerManager(defaultImage string, gpus []string, modelDir string) (*Doc
 		defaultImage:    defaultImage,
 		gpus:            gpus,
 		modelDir:        modelDir,
-		dockerClient:    dockerClient,
+		dockerClient:    client,
 		gpuContainers:   make(map[string]string),
 		containers:      make(map[string]*RunnerContainer),
 		imagePullStatus: &sync.Map{},
@@ -367,7 +384,7 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	cancel()
 
 	cctx, cancel = context.WithTimeout(ctx, containerTimeout)
-	if err := dockerWaitUntilRunning(cctx, m.dockerClient, resp.ID, pollingInterval); err != nil {
+	if err := dockerWaitUntilRunningFunc(cctx, m.dockerClient, resp.ID, pollingInterval); err != nil {
 		cancel()
 		dockerRemoveContainer(m.dockerClient, resp.ID)
 		return nil, err
@@ -496,7 +513,7 @@ func (m *DockerManager) watchContainer(rc *RunnerContainer, borrowCtx context.Co
 	}
 }
 
-func removeExistingContainers(ctx context.Context, client *docker.Client) error {
+func removeExistingContainers(ctx context.Context, client DockerClient) error {
 	filters := filters.NewArgs(filters.Arg("label", containerCreatorLabel+"="+containerCreator))
 	containers, err := client.ContainerList(ctx, container.ListOptions{All: true, Filters: filters})
 	if err != nil {
@@ -522,7 +539,7 @@ func dockerContainerName(pipeline string, modelID string, suffix ...string) stri
 	return fmt.Sprintf("%s_%s", pipeline, sanitizedModelID)
 }
 
-func dockerRemoveContainer(client *docker.Client, containerID string) error {
+func dockerRemoveContainer(client DockerClient, containerID string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), containerRemoveTimeout)
 	err := client.ContainerStop(ctx, containerID, container.StopOptions{})
 	cancel()
@@ -541,7 +558,7 @@ func dockerRemoveContainer(client *docker.Client, containerID string) error {
 	return nil
 }
 
-func dockerWaitUntilRunning(ctx context.Context, client *docker.Client, containerID string, pollingInterval time.Duration) error {
+func dockerWaitUntilRunning(ctx context.Context, client DockerClient, containerID string, pollingInterval time.Duration) error {
 	ticker := time.NewTicker(pollingInterval)
 	defer ticker.Stop()
 

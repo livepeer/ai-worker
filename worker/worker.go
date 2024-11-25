@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	docker "github.com/docker/docker/client"
 )
 
 // EnvValue unmarshals JSON booleans as strings for compatibility with env variables.
@@ -50,7 +52,12 @@ type Worker struct {
 }
 
 func NewWorker(defaultImage string, gpus []string, modelDir string) (*Worker, error) {
-	manager, err := NewDockerManager(defaultImage, gpus, modelDir)
+	dockerClient, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithAPIVersionNegotiation())
+	if err != nil {
+		return nil, err
+	}
+
+	manager, err := NewDockerManager(defaultImage, gpus, modelDir, dockerClient)
 	if err != nil {
 		return nil, err
 	}
