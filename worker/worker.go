@@ -638,6 +638,10 @@ func (w *Worker) LiveVideoToVideo(ctx context.Context, req GenLiveVideoToVideoJS
 	return resp.JSON200, nil
 }
 
+func (w *Worker) EnsureImageAvailable(ctx context.Context, pipeline string, modelID string) error {
+	return w.manager.EnsureImageAvailable(ctx, pipeline, modelID)
+}
+
 func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endpoint RunnerEndpoint, optimizationFlags OptimizationFlags) error {
 	if endpoint.URL == "" {
 		return w.manager.Warm(ctx, pipeline, modelID, optimizationFlags)

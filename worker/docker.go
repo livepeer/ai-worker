@@ -91,9 +91,8 @@ type DockerManager struct {
 	// gpu ID => container name
 	gpuContainers map[string]string
 	// container name => container
-	containers      map[string]*RunnerContainer
-	imagePullStatus *sync.Map
-	mu              *sync.Mutex
+	containers map[string]*RunnerContainer
+	mu         *sync.Mutex
 }
 
 func NewDockerManager(defaultImage string, gpus []string, modelDir string, client DockerClient) (*DockerManager, error) {
@@ -105,31 +104,40 @@ func NewDockerManager(defaultImage string, gpus []string, modelDir string, clien
 	cancel()
 
 	manager := &DockerManager{
-		defaultImage:    defaultImage,
-		gpus:            gpus,
-		modelDir:        modelDir,
-		dockerClient:    client,
-		gpuContainers:   make(map[string]string),
-		containers:      make(map[string]*RunnerContainer),
-		imagePullStatus: &sync.Map{},
-		mu:              &sync.Mutex{},
+		defaultImage:  defaultImage,
+		gpus:          gpus,
+		modelDir:      modelDir,
+		dockerClient:  client,
+		gpuContainers: make(map[string]string),
+		containers:    make(map[string]*RunnerContainer),
+		mu:            &sync.Mutex{},
 	}
 
 	return manager, nil
 }
 
-func (m *DockerManager) Warm(ctx context.Context, pipeline string, modelID string, optimizationFlags OptimizationFlags) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	// Pull the image if it is not available locally.
-	containerImage, err := m.getContainerImageName(pipeline, modelID)
+// EnsureImageAvailable ensures the container image is available locally for the given pipeline and model ID.
+func (m *DockerManager) EnsureImageAvailable(ctx context.Context, pipeline string, modelID string) error {
+	imageName, err := m.getContainerImageName(pipeline, modelID)
 	if err != nil {
 		return err
 	}
-	if err := m.ensureImageAvailable(ctx, containerImage); err != nil {
-		return err
+
+	// Pull the image if it is not available locally.
+	if !m.isImageAvailable(ctx, pipeline, modelID) {
+		slog.Info(fmt.Sprintf("Pulling image for pipeline %s and modelID %s: %s", pipeline, modelID, imageName))
+		err = m.pullImage(ctx, imageName)
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
+}
+
+func (m *DockerManager) Warm(ctx context.Context, pipeline string, modelID string, optimizationFlags OptimizationFlags) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	rc, err := m.createContainer(ctx, pipeline, modelID, true, optimizationFlags)
 	if err != nil {
@@ -208,12 +216,6 @@ func (m *DockerManager) getContainerImageName(pipeline, modelID string) (string,
 	return m.defaultImage, nil
 }
 
-// isImageBeingPulled checks if the specified image is currently being pulled.
-func (m *DockerManager) isImageBeingPulled(imageName string) bool {
-	_, loaded := m.imagePullStatus.Load(imageName)
-	return loaded
-}
-
 // HasCapacity checks if an unused managed container exists or if a GPU is available for a new container.
 func (m *DockerManager) HasCapacity(ctx context.Context, pipeline, modelID string) bool {
 	m.mu.Lock()
@@ -226,54 +228,30 @@ func (m *DockerManager) HasCapacity(ctx context.Context, pipeline, modelID strin
 		}
 	}
 
-	// Check if the container image is available locally and pull it if necessary in the background.
-	containerImage, err := m.getContainerImageName(pipeline, modelID)
-	if err != nil {
-		slog.Error(err.Error())
-		return false
-	}
-	if !m.isImageAvailable(ctx, containerImage) {
-		if !m.isImageBeingPulled(containerImage) {
-			go m.pullImageAsync(ctx, containerImage)
-		}
+	// TODO: This can be removed if we optimize the selection algorithm.
+	// Currently, using CreateContainer errors only can cause orchestrator reselection.
+	if !m.isImageAvailable(ctx, pipeline, modelID) {
 		return false
 	}
 
 	// Check for available GPU to allocate for a new container for the requested model.
-	_, err = m.allocGPU(ctx)
+	_, err := m.allocGPU(ctx)
 	return err == nil
 }
 
 // isImageAvailable checks if the specified image is available locally.
-func (m *DockerManager) isImageAvailable(ctx context.Context, imageName string) bool {
-	_, _, err := m.dockerClient.ImageInspectWithRaw(ctx, imageName)
+func (m *DockerManager) isImageAvailable(ctx context.Context, pipeline string, modelID string) bool {
+	imageName, err := m.getContainerImageName(pipeline, modelID)
+	if err != nil {
+		slog.Error(err.Error())
+		return false
+	}
+
+	_, _, err = m.dockerClient.ImageInspectWithRaw(ctx, imageName)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Image for pipeline %s and modelID %s is not available locally: %s", pipeline, modelID, imageName))
+	}
 	return err == nil
-}
-
-// ensureImageAvailable checks if the image is available locally and pulls it if necessary.
-func (m *DockerManager) ensureImageAvailable(ctx context.Context, imageName string) error {
-	if m.isImageAvailable(ctx, imageName) {
-		slog.Info("Image is already available locally", slog.String("image", imageName))
-		return nil
-	}
-
-	slog.Info("Pulling container image", slog.String("image", imageName))
-	if err := m.pullImage(ctx, imageName); err != nil {
-		slog.Error("Error pulling container image", slog.String("image", imageName), slog.Any("error", err))
-		return fmt.Errorf("failed to pull image: %w", err)
-	}
-
-	return nil
-}
-
-// pullImageAsync pulls the specified image from the registry asynchronously.
-func (m *DockerManager) pullImageAsync(ctx context.Context, imageName string) {
-	asyncCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	if err := m.ensureImageAvailable(asyncCtx, imageName); err != nil {
-		slog.Error("Error ensuring image is available", slog.String("image", imageName), slog.Any("error", err))
-	}
 }
 
 // pullImage pulls the specified image from the registry.
@@ -283,10 +261,6 @@ func (m *DockerManager) pullImage(ctx context.Context, imageName string) error {
 		return fmt.Errorf("failed to pull image: %w", err)
 	}
 	defer reader.Close()
-
-	// Mark the image as being pulled.
-	m.imagePullStatus.Store(imageName, true)
-	defer m.imagePullStatus.Delete(imageName)
 
 	// Show progress.
 	decoder := json.NewDecoder(reader)

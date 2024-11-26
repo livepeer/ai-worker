@@ -2,7 +2,6 @@ package worker
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -63,16 +62,16 @@ func (m *MockDockerClient) ContainerRemove(ctx context.Context, containerID stri
 	return args.Error(0)
 }
 
+// createDockerManager creates a DockerManager with a mock DockerClient.
 func createDockerManager(mockDockerClient *MockDockerClient) *DockerManager {
 	return &DockerManager{
-		defaultImage:    "default-image",
-		gpus:            []string{"gpu0"},
-		modelDir:        "/models",
-		dockerClient:    mockDockerClient,
-		gpuContainers:   make(map[string]string),
-		containers:      make(map[string]*RunnerContainer),
-		imagePullStatus: &sync.Map{},
-		mu:              &sync.Mutex{},
+		defaultImage:  "default-image",
+		gpus:          []string{"gpu0"},
+		modelDir:      "/models",
+		dockerClient:  mockDockerClient,
+		gpuContainers: make(map[string]string),
+		containers:    make(map[string]*RunnerContainer),
+		mu:            &sync.Mutex{},
 	}
 }
 
@@ -120,179 +119,130 @@ func TestNewDockerManager(t *testing.T) {
 	})
 }
 
-func TestDockerManager_Warm(t *testing.T) {
-	ctx := context.Background()
-	pipeline := "text-to-image"
-	modelID := "test-model"
-	optimizationFlags := OptimizationFlags{}
-
-	t.Run("ImageNotAvailable", func(t *testing.T) {
-		mockDockerClient := new(MockDockerClient)
-		dockerManager := createDockerManager(mockDockerClient)
-
-		// Mock client methods to simulate the pulling of the image and creation of the container.
-		mockDockerClient.On("ImageInspectWithRaw", mock.Anything, "default-image").Return(types.ImageInspect{}, []byte{}, errors.New("not found"))
-		mockDockerClient.On("ImagePull", mock.Anything, "default-image", mock.Anything).Return(io.NopCloser(strings.NewReader("")), nil)
-		mockDockerClient.On("ContainerCreate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(container.CreateResponse{ID: "container1"}, nil)
-		mockDockerClient.On("ContainerStart", mock.Anything, "container1", mock.Anything).Return(nil)
-
-		originalFunc := dockerWaitUntilRunningFunc
-		dockerWaitUntilRunningFunc = func(ctx context.Context, client DockerClient, containerID string, pollingInterval time.Duration) error {
-			return nil
-		}
-		defer func() { dockerWaitUntilRunningFunc = originalFunc }()
-
-		originalFunc2 := runnerWaitUntilReadyFunc
-		runnerWaitUntilReadyFunc = func(ctx context.Context, client *ClientWithResponses, pollingInterval time.Duration) error {
-			return nil
-		}
-		defer func() { runnerWaitUntilReadyFunc = originalFunc2 }()
-
-		err := dockerManager.Warm(ctx, pipeline, modelID, optimizationFlags)
-		require.NoError(t, err)
-
-		// Verify that the image was pulled and the container was created and started.
-		mockDockerClient.AssertCalled(t, "ImagePull", mock.Anything, "default-image", mock.Anything)
-		mockDockerClient.AssertCalled(t, "ContainerCreate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-		mockDockerClient.AssertCalled(t, "ContainerStart", mock.Anything, "container1", mock.Anything)
-		mockDockerClient.AssertExpectations(t)
-	})
-
-	t.Run("ImageAvailable", func(t *testing.T) {
-		mockDockerClient := new(MockDockerClient)
-		dockerManager := createDockerManager(mockDockerClient)
-
-		// Mock client methods to simulate the image being available locally and creation of the container.
-		mockDockerClient.On("ImageInspectWithRaw", mock.Anything, "default-image").Return(types.ImageInspect{}, []byte{}, nil)
-		mockDockerClient.On("ContainerCreate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(container.CreateResponse{ID: "container1"}, nil)
-		mockDockerClient.On("ContainerStart", mock.Anything, "container1", mock.Anything).Return(nil)
-
-		originalFunc := dockerWaitUntilRunningFunc
-		dockerWaitUntilRunningFunc = func(ctx context.Context, client DockerClient, containerID string, pollingInterval time.Duration) error {
-			return nil
-		}
-		defer func() { dockerWaitUntilRunningFunc = originalFunc }()
-
-		originalFunc2 := runnerWaitUntilReadyFunc
-		runnerWaitUntilReadyFunc = func(ctx context.Context, client *ClientWithResponses, pollingInterval time.Duration) error {
-			return nil
-		}
-		defer func() { runnerWaitUntilReadyFunc = originalFunc2 }()
-
-		err := dockerManager.Warm(ctx, pipeline, modelID, optimizationFlags)
-		require.NoError(t, err)
-
-		// Verify that the image was not pulled and the container was created and started.
-		mockDockerClient.AssertNotCalled(t, "ImagePull", mock.Anything, "default-image", mock.Anything)
-		mockDockerClient.AssertCalled(t, "ContainerCreate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-		mockDockerClient.AssertCalled(t, "ContainerStart", mock.Anything, "container1", mock.Anything)
-		mockDockerClient.AssertExpectations(t)
-	})
-}
-
-func TestGetContainerImage(t *testing.T) {
+func TestDockerManager_EnsureImageAvailable(t *testing.T) {
 	mockDockerClient := new(MockDockerClient)
 	dockerManager := createDockerManager(mockDockerClient)
 
-	tests := []struct {
-		pipeline string
-		modelID  string
-		expected string
-		err      bool
-	}{
-		{"segment-anything-2", "", "livepeer/ai-runner:segment-anything-2", false},
-		{"text-to-speech", "", "livepeer/ai-runner:text-to-speech", false},
-		{"live-video-to-video", "streamdiffusion", "livepeer/ai-runner:live-app-streamdiffusion", false},
-		{"live-video-to-video", "unknown-model", "", true},
-		{"unknown-pipeline", "", "default-image", false},
-	}
-
-	for _, tt := range tests {
-		image, err := dockerManager.getContainerImageName(tt.pipeline, tt.modelID)
-		if tt.err {
-			require.Error(t, err)
-		} else {
-			require.NoError(t, err)
-			require.Equal(t, tt.expected, image)
-		}
-	}
-}
-
-func TestDockerManager_HasCapacity(t *testing.T) {
 	ctx := context.Background()
 	pipeline := "text-to-image"
 	modelID := "test-model"
 
 	tests := []struct {
-		name                string
-		setup               func(*DockerManager, *MockDockerClient)
-		expectedHasCapacity bool
+		name         string
+		setup        func(*DockerManager, *MockDockerClient)
+		expectedPull bool
 	}{
 		{
-			name: "UnusedManagedContainerExists",
+			name: "ImageAvailable",
 			setup: func(dockerManager *DockerManager, mockDockerClient *MockDockerClient) {
-				// Add an unused managed container
-				dockerManager.containers["container1"] = &RunnerContainer{
-					RunnerContainerConfig: RunnerContainerConfig{
-						Pipeline: pipeline,
-						ModelID:  modelID,
-					}}
+				// Mock client methods to simulate the image being available locally.
+				mockDockerClient.On("ImageInspectWithRaw", mock.Anything, "default-image").Return(types.ImageInspect{}, []byte{}, nil).Once()
 			},
-			expectedHasCapacity: true,
+			expectedPull: false,
 		},
 		{
 			name: "ImageNotAvailable",
 			setup: func(dockerManager *DockerManager, mockDockerClient *MockDockerClient) {
 				// Mock client methods to simulate the image not being available locally.
-				mockDockerClient.On("ImageInspectWithRaw", mock.Anything, "default-image").Return(types.ImageInspect{}, []byte{}, errors.New("not found"))
+				mockDockerClient.On("ImageInspectWithRaw", mock.Anything, "default-image").Return(types.ImageInspect{}, []byte{}, fmt.Errorf("image not found")).Once()
 			},
-			expectedHasCapacity: false,
-		},
-		{
-			name: "ImageBeingPulled",
-			setup: func(dockerManager *DockerManager, mockDockerClient *MockDockerClient) {
-				// Mock client methods to simulate the image not being available locally.
-				mockDockerClient.On("ImageInspectWithRaw", mock.Anything, "default-image").Return(types.ImageInspect{}, []byte{}, errors.New("not found"))
-				// Mark the image as being pulled.
-				dockerManager.imagePullStatus.Store("default-image", true)
-			},
-			expectedHasCapacity: false,
-		},
-		{
-			name: "GPUAvailable",
-			setup: func(dockerManager *DockerManager, mockDockerClient *MockDockerClient) {
-				// Mock client methods to simulate the image being available locally.
-				mockDockerClient.On("ImageInspectWithRaw", mock.Anything, "default-image").Return(types.ImageInspect{}, []byte{}, nil)
-				// Ensure that the GPU is available by not setting any container for the GPU.
-				dockerManager.gpuContainers = make(map[string]string)
-			},
-			expectedHasCapacity: true,
-		},
-		{
-			name: "GPUNotAvailable",
-			setup: func(dockerManager *DockerManager, mockDockerClient *MockDockerClient) {
-				// Mock client methods to simulate the image being available locally.
-				mockDockerClient.On("ImageInspectWithRaw", mock.Anything, "default-image").Return(types.ImageInspect{}, []byte{}, nil)
-				// Ensure that the GPU is not available by setting a container for the GPU.
-				dockerManager.gpuContainers["gpu0"] = "container1"
-			},
-			expectedHasCapacity: false,
+			expectedPull: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockDockerClient := new(MockDockerClient)
-			dockerManager := createDockerManager(mockDockerClient)
-
 			tt.setup(dockerManager, mockDockerClient)
 
-			hasCapacity := dockerManager.HasCapacity(ctx, pipeline, modelID)
-			require.Equal(t, tt.expectedHasCapacity, hasCapacity)
+			if tt.expectedPull {
+				mockDockerClient.On("ImagePull", mock.Anything, "default-image", mock.Anything).Return(io.NopCloser(strings.NewReader("")), nil).Once()
+			}
+
+			err := dockerManager.EnsureImageAvailable(ctx, pipeline, modelID)
+			require.NoError(t, err)
 
 			mockDockerClient.AssertExpectations(t)
 		})
 	}
+}
+
+func TestDockerManager_Warm(t *testing.T) {
+	mockDockerClient := new(MockDockerClient)
+	dockerManager := createDockerManager(mockDockerClient)
+
+	ctx := context.Background()
+	pipeline := "text-to-image"
+	modelID := "test-model"
+	containerID := "container1"
+	optimizationFlags := OptimizationFlags{}
+
+	// Mock nested functions.
+	originalFunc := dockerWaitUntilRunningFunc
+	dockerWaitUntilRunningFunc = func(ctx context.Context, client DockerClient, containerID string, pollingInterval time.Duration) error {
+		return nil
+	}
+	defer func() { dockerWaitUntilRunningFunc = originalFunc }()
+	originalFunc2 := runnerWaitUntilReadyFunc
+	runnerWaitUntilReadyFunc = func(ctx context.Context, client *ClientWithResponses, pollingInterval time.Duration) error {
+		return nil
+	}
+	defer func() { runnerWaitUntilReadyFunc = originalFunc2 }()
+
+	mockDockerClient.On("ContainerCreate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(container.CreateResponse{ID: containerID}, nil)
+	mockDockerClient.On("ContainerStart", mock.Anything, containerID, mock.Anything).Return(nil)
+	err := dockerManager.Warm(ctx, pipeline, modelID, optimizationFlags)
+	require.NoError(t, err)
+	mockDockerClient.AssertExpectations(t)
+}
+
+func TestDockerManager_Stop(t *testing.T) {
+	MockDockerClient := new(MockDockerClient)
+	dockerManager := createDockerManager(MockDockerClient)
+
+	ctx, cancel := context.WithTimeout(context.Background(), containerRemoveTimeout)
+	defer cancel()
+	containerID := "container1"
+	dockerManager.containers[containerID] = &RunnerContainer{
+		RunnerContainerConfig: RunnerContainerConfig{
+			ID: containerID,
+		},
+	}
+
+	MockDockerClient.On("ContainerStop", mock.Anything, containerID, container.StopOptions{Timeout: nil}).Return(nil)
+	MockDockerClient.On("ContainerRemove", mock.Anything, containerID, container.RemoveOptions{}).Return(nil)
+	err := dockerManager.Stop(ctx)
+	require.NoError(t, err)
+	MockDockerClient.AssertExpectations(t)
+}
+
+func TestDockerManager_Borrow(t *testing.T) {
+	mockDockerClient := new(MockDockerClient)
+	dockerManager := createDockerManager(mockDockerClient)
+
+	ctx := context.Background()
+	pipeline := "text-to-image"
+	modelID := "model"
+	containerID, _ := dockerManager.getContainerImageName(pipeline, modelID)
+
+	// Mock nested functions.
+	originalFunc := dockerWaitUntilRunningFunc
+	dockerWaitUntilRunningFunc = func(ctx context.Context, client DockerClient, containerID string, pollingInterval time.Duration) error {
+		return nil
+	}
+	defer func() { dockerWaitUntilRunningFunc = originalFunc }()
+	originalFunc2 := runnerWaitUntilReadyFunc
+	runnerWaitUntilReadyFunc = func(ctx context.Context, client *ClientWithResponses, pollingInterval time.Duration) error {
+		return nil
+	}
+	defer func() { runnerWaitUntilReadyFunc = originalFunc2 }()
+
+	mockDockerClient.On("ContainerCreate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(container.CreateResponse{ID: containerID}, nil)
+	mockDockerClient.On("ContainerStart", mock.Anything, containerID, mock.Anything).Return(nil)
+	rc, err := dockerManager.Borrow(ctx, pipeline, modelID)
+	require.NoError(t, err)
+	require.NotNil(t, rc)
+	require.Empty(t, dockerManager.containers, "containers map should be empty")
+	mockDockerClient.AssertExpectations(t)
 }
 
 func TestDockerManager_getContainerImageName(t *testing.T) {
@@ -349,6 +299,324 @@ func TestDockerManager_getContainerImageName(t *testing.T) {
 	}
 }
 
+func TestDockerManager_HasCapacity(t *testing.T) {
+	ctx := context.Background()
+	pipeline := "text-to-image"
+	modelID := "test-model"
+
+	tests := []struct {
+		name                string
+		setup               func(*DockerManager, *MockDockerClient)
+		expectedHasCapacity bool
+	}{
+		{
+			name: "UnusedManagedContainerExists",
+			setup: func(dockerManager *DockerManager, mockDockerClient *MockDockerClient) {
+				// Add an unused managed container.
+				dockerManager.containers["container1"] = &RunnerContainer{
+					RunnerContainerConfig: RunnerContainerConfig{
+						Pipeline: pipeline,
+						ModelID:  modelID,
+					}}
+			},
+			expectedHasCapacity: true,
+		},
+		{
+			name: "ImageNotAvailable",
+			setup: func(dockerManager *DockerManager, mockDockerClient *MockDockerClient) {
+				// Mock client methods to simulate the image not being available locally.
+				mockDockerClient.On("ImageInspectWithRaw", mock.Anything, "default-image").Return(types.ImageInspect{}, []byte{}, fmt.Errorf("image not found"))
+			},
+			expectedHasCapacity: false,
+		},
+		{
+			name: "GPUAvailable",
+			setup: func(dockerManager *DockerManager, mockDockerClient *MockDockerClient) {
+				// Mock client methods to simulate the image being available locally.
+				mockDockerClient.On("ImageInspectWithRaw", mock.Anything, "default-image").Return(types.ImageInspect{}, []byte{}, nil)
+				// Ensure that the GPU is available by not setting any container for the GPU.
+				dockerManager.gpuContainers = make(map[string]string)
+			},
+			expectedHasCapacity: true,
+		},
+		{
+			name: "GPUUnavailable",
+			setup: func(dockerManager *DockerManager, mockDockerClient *MockDockerClient) {
+				// Mock client methods to simulate the image being available locally.
+				mockDockerClient.On("ImageInspectWithRaw", mock.Anything, "default-image").Return(types.ImageInspect{}, []byte{}, nil)
+				// Ensure that the GPU is not available by setting a container for the GPU.
+				dockerManager.gpuContainers["gpu0"] = "container1"
+			},
+			expectedHasCapacity: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockDockerClient := new(MockDockerClient)
+			dockerManager := createDockerManager(mockDockerClient)
+
+			tt.setup(dockerManager, mockDockerClient)
+
+			hasCapacity := dockerManager.HasCapacity(ctx, pipeline, modelID)
+			require.Equal(t, tt.expectedHasCapacity, hasCapacity)
+
+			mockDockerClient.AssertExpectations(t)
+		})
+	}
+}
+
+func TestDockerManager_pullImage(t *testing.T) {
+	mockDockerClient := new(MockDockerClient)
+	dockerManager := createDockerManager(mockDockerClient)
+
+	ctx := context.Background()
+	imageName := "default-image"
+
+	t.Run("ImagePullError", func(t *testing.T) {
+		mockDockerClient.On("ImagePull", mock.Anything, imageName, mock.Anything).Return(io.NopCloser(strings.NewReader("")), fmt.Errorf("failed to pull image: pull error")).Once()
+
+		err := dockerManager.pullImage(ctx, imageName)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "failed to pull image: pull error")
+		mockDockerClient.AssertExpectations(t)
+	})
+
+	t.Run("ImagePullSuccess", func(t *testing.T) {
+		mockDockerClient.On("ImagePull", mock.Anything, imageName, mock.Anything).Return(io.NopCloser(strings.NewReader("")), nil).Once()
+
+		err := dockerManager.pullImage(ctx, imageName)
+		require.NoError(t, err)
+		mockDockerClient.AssertExpectations(t)
+	})
+}
+
+func TestDockerManager_createContainer(t *testing.T) {
+	mockDockerClient := new(MockDockerClient)
+	dockerManager := createDockerManager(mockDockerClient)
+
+	ctx := context.Background()
+	pipeline := "text-to-image"
+	modelID := "test-model"
+	containerID := "container1"
+	gpu := "0"
+	containerHostPort := "8000"
+	containerName := dockerContainerName(pipeline, modelID, containerHostPort)
+	containerImage := "default-image"
+	optimizationFlags := OptimizationFlags{}
+
+	// Mock nested functions.
+	originalFunc := dockerWaitUntilRunningFunc
+	dockerWaitUntilRunningFunc = func(ctx context.Context, client DockerClient, containerID string, pollingInterval time.Duration) error {
+		return nil
+	}
+	defer func() { dockerWaitUntilRunningFunc = originalFunc }()
+	originalFunc2 := runnerWaitUntilReadyFunc
+	runnerWaitUntilReadyFunc = func(ctx context.Context, client *ClientWithResponses, pollingInterval time.Duration) error {
+		return nil
+	}
+	defer func() { runnerWaitUntilReadyFunc = originalFunc2 }()
+
+	// Mock allocGPU and getContainerImageName methods.
+	dockerManager.gpus = []string{gpu}
+	dockerManager.gpuContainers = make(map[string]string)
+	dockerManager.containers = make(map[string]*RunnerContainer)
+	dockerManager.defaultImage = containerImage
+
+	mockDockerClient.On("ContainerCreate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(container.CreateResponse{ID: containerID}, nil)
+	mockDockerClient.On("ContainerStart", mock.Anything, containerID, mock.Anything).Return(nil)
+
+	rc, err := dockerManager.createContainer(ctx, pipeline, modelID, false, optimizationFlags)
+	require.NoError(t, err)
+	require.NotNil(t, rc)
+	require.Equal(t, containerID, rc.ID)
+	require.Equal(t, gpu, rc.GPU)
+	require.Equal(t, pipeline, rc.Pipeline)
+	require.Equal(t, modelID, rc.ModelID)
+	require.Equal(t, containerName, rc.Name)
+
+	mockDockerClient.AssertExpectations(t)
+}
+
+func TestDockerManager_allocGPU(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		name                 string
+		setup                func(*DockerManager, *MockDockerClient)
+		expectedAllocatedGPU string
+		errorMessage         string
+	}{
+		{
+			name: "GPUAvailable",
+			setup: func(dockerManager *DockerManager, mockDockerClient *MockDockerClient) {
+				// Ensure that the GPU is available by not setting any container for the GPU.
+				dockerManager.gpuContainers = make(map[string]string)
+			},
+			expectedAllocatedGPU: "gpu0",
+			errorMessage:         "",
+		},
+		{
+			name: "GPUUnavailable",
+			setup: func(dockerManager *DockerManager, mockDockerClient *MockDockerClient) {
+				// Ensure that the GPU is not available by setting a container for the GPU.
+				dockerManager.gpuContainers["gpu0"] = "container1"
+			},
+			expectedAllocatedGPU: "",
+			errorMessage:         "insufficient capacity",
+		},
+		{
+			name: "GPUUnavailableAndWarm",
+			setup: func(dockerManager *DockerManager, mockDockerClient *MockDockerClient) {
+				// Ensure that the GPU is not available by setting a container for the GPU.
+				dockerManager.gpuContainers["gpu0"] = "container1"
+				dockerManager.containers["container1"] = &RunnerContainer{
+					RunnerContainerConfig: RunnerContainerConfig{
+						ID:       "container1",
+						KeepWarm: true,
+					},
+				}
+			},
+			expectedAllocatedGPU: "",
+			errorMessage:         "insufficient capacity",
+		},
+		{
+			name: "GPUUnavailableButCold",
+			setup: func(dockerManager *DockerManager, mockDockerClient *MockDockerClient) {
+				// Ensure that the GPU is not available by setting a container for the GPU.
+				dockerManager.gpuContainers["gpu0"] = "container1"
+				dockerManager.containers["container1"] = &RunnerContainer{
+					RunnerContainerConfig: RunnerContainerConfig{
+						ID:       "container1",
+						KeepWarm: false,
+					},
+				}
+				// Mock client methods to simulate the removal of the warm container.
+				mockDockerClient.On("ContainerStop", mock.Anything, "container1", container.StopOptions{}).Return(nil)
+				mockDockerClient.On("ContainerRemove", mock.Anything, "container1", container.RemoveOptions{}).Return(nil)
+			},
+			expectedAllocatedGPU: "gpu0",
+			errorMessage:         "",
+		},
+	}
+
+	for _, tt := range tests {
+		mockDockerClient := new(MockDockerClient)
+		dockerManager := createDockerManager(mockDockerClient)
+
+		tt.setup(dockerManager, mockDockerClient)
+
+		gpu, err := dockerManager.allocGPU(ctx)
+		if tt.errorMessage != "" {
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tt.errorMessage)
+		} else {
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedAllocatedGPU, gpu)
+		}
+	}
+}
+
+func TestDockerManager_destroyContainer(t *testing.T) {
+	mockDockerClient := new(MockDockerClient)
+	dockerManager := createDockerManager(mockDockerClient)
+
+	containerID := "container1"
+	gpu := "gpu0"
+
+	rc := &RunnerContainer{
+		Name: containerID,
+		RunnerContainerConfig: RunnerContainerConfig{
+			ID:  containerID,
+			GPU: gpu,
+		},
+	}
+	dockerManager.gpuContainers[gpu] = containerID
+	dockerManager.containers[containerID] = rc
+
+	mockDockerClient.On("ContainerStop", mock.Anything, containerID, container.StopOptions{}).Return(nil)
+	mockDockerClient.On("ContainerRemove", mock.Anything, containerID, container.RemoveOptions{}).Return(nil)
+
+	err := dockerManager.destroyContainer(rc, true)
+	require.NoError(t, err)
+	require.Empty(t, dockerManager.gpuContainers, "gpuContainers map should be empty")
+	require.Empty(t, dockerManager.containers, "containers map should be empty")
+	mockDockerClient.AssertExpectations(t)
+}
+
+func TestDockerManager_isImageAvailable(t *testing.T) {
+	mockDockerClient := new(MockDockerClient)
+	dockerManager := createDockerManager(mockDockerClient)
+
+	ctx := context.Background()
+	pipeline := "text-to-image"
+	modelID := "test-model"
+
+	t.Run("ImageNotFound", func(t *testing.T) {
+		mockDockerClient.On("ImageInspectWithRaw", mock.Anything, "default-image").Return(types.ImageInspect{}, []byte{}, fmt.Errorf("image not found")).Once()
+
+		isAvailable := dockerManager.isImageAvailable(ctx, pipeline, modelID)
+		require.False(t, isAvailable)
+		mockDockerClient.AssertExpectations(t)
+	})
+
+	t.Run("ImageFound", func(t *testing.T) {
+		mockDockerClient.On("ImageInspectWithRaw", mock.Anything, "default-image").Return(types.ImageInspect{}, []byte{}, nil).Once()
+
+		isAvailable := dockerManager.isImageAvailable(ctx, pipeline, modelID)
+		require.True(t, isAvailable)
+		mockDockerClient.AssertExpectations(t)
+	})
+}
+
+func TestGetContainerImageName(t *testing.T) {
+	mockDockerClient := new(MockDockerClient)
+	dockerManager := createDockerManager(mockDockerClient)
+
+	tests := []struct {
+		pipeline string
+		modelID  string
+		expected string
+		err      bool
+	}{
+		{"segment-anything-2", "", "livepeer/ai-runner:segment-anything-2", false},
+		{"text-to-speech", "", "livepeer/ai-runner:text-to-speech", false},
+		{"live-video-to-video", "streamdiffusion", "livepeer/ai-runner:live-app-streamdiffusion", false},
+		{"live-video-to-video", "unknown-model", "", true},
+		{"unknown-pipeline", "", "default-image", false},
+	}
+
+	for _, tt := range tests {
+		image, err := dockerManager.getContainerImageName(tt.pipeline, tt.modelID)
+		if tt.err {
+			require.Error(t, err)
+		} else {
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, image)
+		}
+	}
+}
+
+func TestRemoveExistingContainers(t *testing.T) {
+	mockDockerClient := new(MockDockerClient)
+
+	ctx := context.Background()
+
+	// Mock client methods to simulate the removal of existing containers.
+	existingContainers := []types.Container{
+		{ID: "container1", Names: []string{"/container1"}},
+		{ID: "container2", Names: []string{"/container2"}},
+	}
+	mockDockerClient.On("ContainerList", mock.Anything, mock.Anything).Return(existingContainers, nil)
+	mockDockerClient.On("ContainerStop", mock.Anything, "container1", mock.Anything).Return(nil)
+	mockDockerClient.On("ContainerStop", mock.Anything, "container2", mock.Anything).Return(nil)
+	mockDockerClient.On("ContainerRemove", mock.Anything, "container1", mock.Anything).Return(nil)
+	mockDockerClient.On("ContainerRemove", mock.Anything, "container2", mock.Anything).Return(nil)
+
+	removeExistingContainers(ctx, mockDockerClient)
+	mockDockerClient.AssertExpectations(t)
+}
+
 func TestDockerContainerName(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -391,4 +659,15 @@ func TestDockerContainerName(t *testing.T) {
 			require.Equal(t, tt.expectedName, name)
 		})
 	}
+}
+
+func TestDockerRemoveContainer(t *testing.T) {
+	mockDockerClient := new(MockDockerClient)
+
+	mockDockerClient.On("ContainerStop", mock.Anything, "container1", container.StopOptions{}).Return(nil)
+	mockDockerClient.On("ContainerRemove", mock.Anything, "container1", container.RemoveOptions{}).Return(nil)
+
+	err := dockerRemoveContainer(mockDockerClient, "container1")
+	require.NoError(t, err)
+	mockDockerClient.AssertExpectations(t)
 }
