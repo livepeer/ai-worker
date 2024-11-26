@@ -61,6 +61,7 @@ var livePipelineToImage = map[string]string{
 	"streamdiffusion": "livepeer/ai-runner:live-app-streamdiffusion",
 	"liveportrait":    "livepeer/ai-runner:live-app-liveportrait",
 	"comfyui":         "livepeer/ai-runner:live-app-comfyui",
+	"noop":            "livepeer/ai-runner:live-app-noop",
 }
 
 // DockerClient is an interface for the Docker client, allowing for mocking in tests.
@@ -473,7 +474,10 @@ func (m *DockerManager) watchContainer(rc *RunnerContainer, borrowCtx context.Co
 			ctx, cancel := context.WithTimeout(context.Background(), containerWatchInterval)
 			container, err := m.dockerClient.ContainerInspect(ctx, rc.ID)
 			cancel()
-			if err != nil {
+
+			if docker.IsErrNotFound(err) {
+				// skip to destroy below to update internal state
+			} else if err != nil {
 				slog.Error("Error inspecting container",
 					slog.String("container", rc.Name),
 					slog.String("error", err.Error()))
@@ -515,21 +519,35 @@ func dockerContainerName(pipeline string, modelID string, suffix ...string) stri
 
 func dockerRemoveContainer(client DockerClient, containerID string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), containerRemoveTimeout)
-	err := client.ContainerStop(ctx, containerID, container.StopOptions{})
-	cancel()
+	defer cancel()
 
+	err := client.ContainerStop(ctx, containerID, container.StopOptions{})
 	// Ignore "not found" or "already stopped" errors
 	if err != nil && !docker.IsErrNotFound(err) && !errdefs.IsNotModified(err) {
 		return err
 	}
 
-	ctx, cancel = context.WithTimeout(context.Background(), containerRemoveTimeout)
 	err = client.ContainerRemove(ctx, containerID, container.RemoveOptions{})
-	cancel()
-	if err != nil && !docker.IsErrNotFound(err) {
+	if err == nil || docker.IsErrNotFound(err) {
+		return nil
+	} else if err != nil && !strings.Contains(err.Error(), "is already in progress") {
 		return err
 	}
-	return nil
+	// The container is being removed asynchronously, wait until it is actually gone
+	ticker := time.NewTicker(pollingInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("timed out waiting for container removal to complete")
+		case <-ticker.C:
+			_, err := client.ContainerInspect(ctx, containerID)
+			if docker.IsErrNotFound(err) {
+				return nil
+			}
+		}
+	}
 }
 
 func dockerWaitUntilRunning(ctx context.Context, client DockerClient, containerID string, pollingInterval time.Duration) error {
