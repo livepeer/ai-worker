@@ -13,39 +13,7 @@ DEFAULT_WORKFLOW_JSON = '''
 {
   "1": {
     "inputs": {
-      "model": "sam2_hiera_tiny.safetensors",
-      "segmentor": "realtime",
-      "device": "cuda",
-      "precision": "fp16"
-    },
-    "class_type": "DownloadAndLoadSAM2RealtimeModel",
-    "_meta": {
-      "title": "(Down)Load SAM2Model"
-    }
-  },
-  "2": {
-    "inputs": {
-      "keep_model_loaded": true,
-      "coordinates_positive": "[384,384]",
-      "coordinates_negative": "",
-      "individual_objects": false,
-      "images": [
-        "3",
-        0
-      ],
-      "sam2_model": [
-        "1",
-        0
-      ]
-    },
-    "class_type": "Sam2RealtimeSegmentation",
-    "_meta": {
-      "title": "Sam2RealtimeSegmentation"
-    }
-  },
-  "3": {
-    "inputs": {
-      "image": "headroom.jpeg",
+      "image": "example.png",
       "upload": "image"
     },
     "class_type": "LoadImage",
@@ -53,17 +21,48 @@ DEFAULT_WORKFLOW_JSON = '''
       "title": "Load Image"
     }
   },
-  "4": {
+  "2": {
     "inputs": {
       "filename_prefix": "ComfyUI",
       "images": [
-        "2",
+        "8",
         0
       ]
     },
     "class_type": "SaveImage",
     "_meta": {
       "title": "Save Image"
+    }
+  },
+  "7": {
+    "inputs": {
+      "model": "sam2_hiera_tiny.pt",
+      "segmentor": "realtime",
+      "device": "cuda",
+      "precision": "fp16"
+    },
+    "class_type": "DownloadAndLoadSAM2RealtimeModel",
+    "_meta": {
+      "title": "(Down)Load SAM2-Realtime Model"
+    }
+  },
+  "8": {
+    "inputs": {
+      "coordinates_positive": "[[384, 384]]",
+      "point_labels": "[1]",
+      "keep_model_loaded": "true",
+      "images": [
+        "1",
+        0
+      ],
+      "sam2_model": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "Sam2RealtimeSegmentation",
+    "_meta": {
+      "title": "Sam2RealtimeSegmentation"
     }
   }
 }
