@@ -263,7 +263,7 @@ func (m *DockerManager) pullImage(ctx context.Context, imageName string) error {
 	}
 	defer reader.Close()
 
-	// Show progress.
+	// Display progress messages from ImagePull reader.
 	decoder := json.NewDecoder(reader)
 	for {
 		var progress jsonmessage.JSONMessage
@@ -273,10 +273,9 @@ func (m *DockerManager) pullImage(ctx context.Context, imageName string) error {
 			return fmt.Errorf("error decoding progress message: %w", err)
 		}
 		if progress.Status != "" && progress.Progress != nil {
-			fmt.Printf("\r%s: %s", progress.Status, progress.Progress.String())
+			slog.Info(fmt.Sprintf("%s: %s", progress.Status, progress.Progress.String()))
 		}
 	}
-	fmt.Println()
 
 	return nil
 }
