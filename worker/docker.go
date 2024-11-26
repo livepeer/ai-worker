@@ -170,18 +170,19 @@ func (m *DockerManager) HasCapacity(ctx context.Context, pipeline, modelID strin
 	}
 
 	// Check for available GPU to allocate for a new container for the requested model.
-	_, err := m.allocGPU(ctx)
-	return err == nil
+	//_, err := m.allocGPU(ctx)
+	//return err == nil
+	return true
 }
 
 func (m *DockerManager) createContainer(ctx context.Context, pipeline string, modelID string, keepWarm bool, optimizationFlags OptimizationFlags) (*RunnerContainer, error) {
-	gpu, err := m.allocGPU(ctx)
-	if err != nil {
-		return nil, err
-	}
+	//gpu, err := m.allocGPU(ctx)
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	// NOTE: We currently allow only one container per GPU for each pipeline.
-	containerHostPort := containerHostPorts[pipeline][:3] + gpu
+	containerHostPort := containerHostPorts[pipeline][:3]
 	containerName := dockerContainerName(pipeline, modelID, containerHostPort)
 	containerImage := m.defaultImage
 	if pipelineSpecificImage, ok := pipelineToImage[pipeline]; ok {
@@ -194,7 +195,7 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 		}
 	}
 
-	slog.Info("Starting managed container", slog.String("gpu", gpu), slog.String("name", containerName), slog.String("modelID", modelID), slog.String("containerImage", containerImage))
+	slog.Info("Starting managed container", slog.String("name", containerName), slog.String("modelID", modelID), slog.String("containerImage", containerImage))
 
 	// Add optimization flags as environment variables.
 	envVars := []string{
@@ -220,7 +221,7 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	}
 
 	gpuOpts := opts.GpuOpts{}
-	gpuOpts.Set("device=" + gpu)
+	//gpuOpts.Set("device=" + gpu)
 
 	hostConfig := &container.HostConfig{
 		Resources: container.Resources{
@@ -279,8 +280,8 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 		Endpoint: RunnerEndpoint{
 			URL: "http://localhost:" + containerHostPort,
 		},
-		ID:               resp.ID,
-		GPU:              gpu,
+		ID: resp.ID,
+		//GPU:              gpu,
 		KeepWarm:         keepWarm,
 		containerTimeout: runnerContainerTimeout,
 	}
@@ -292,7 +293,7 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	}
 
 	m.containers[containerName] = rc
-	m.gpuContainers[gpu] = containerName
+	//m.gpuContainers[gpu] = containerName
 
 	return rc, nil
 }
