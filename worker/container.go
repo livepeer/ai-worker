@@ -65,20 +65,20 @@ func NewRunnerContainer(ctx context.Context, cfg RunnerContainerConfig, name str
 	}
 
 	cctx, cancel := context.WithTimeout(ctx, cfg.containerTimeout)
+	defer cancel()
 	if err := runnerWaitUntilReady(cctx, client, pollingInterval); err != nil {
-		cancel()
 		return nil, err
 	}
-	cancel()
+
 	var hardware *HardwareInformation
 	hctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 	hdw, err := getRunnerHardware(hctx, client)
-	if err == nil {
-		hardware = hdw
-	} else {
+	if err != nil {
 		hardware = &HardwareInformation{Pipeline: cfg.Pipeline, ModelId: cfg.ModelID, GpuInfo: nil}
+	} else {
+		hardware = hdw
 	}
-	cancel()
 
 	return &RunnerContainer{
 		RunnerContainerConfig: cfg,
