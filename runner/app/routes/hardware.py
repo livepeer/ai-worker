@@ -2,8 +2,8 @@ import os
 from typing import Dict
 
 from app.utils.hardware import (
-    HardwareDetail,
-    HardwareStatDetail,
+    GpuComputeInfo,
+    GpuUtilizationInfo,
     get_gpu_info,
     get_gpu_stats,
 )
@@ -18,14 +18,15 @@ class HardwareInformation(BaseModel):
 
     pipeline: str
     model_id: str
-    gpu_info: Dict[int, HardwareDetail]
+    gpu_info: Dict[int, GpuComputeInfo]
 
 
 class HardwareStats(BaseModel):
     """Response model for real-time GPU statistics."""
+
     pipeline: str
     model_id: str
-    gpu_stats: Dict[int, HardwareStatDetail]
+    gpu_stats: Dict[int, GpuUtilizationInfo]
 
 
 @router.get(
