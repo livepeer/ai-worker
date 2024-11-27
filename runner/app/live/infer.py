@@ -33,17 +33,16 @@ async def main(http_port: int, stream_protocol: str, subscribe_url: str, publish
     try:
         handler.start()
         runner = await start_http_server(handler, http_port)
-        asyncio.create_task(start_control_subscriber(handler, control_url))
+        signal_task = asyncio.create_task(block_until_signal([signal.SIGINT, signal.SIGTERM]))
+        handler_task = asyncio.create_task(start_control_subscriber(handler.wait(), control_url))
+
+        await asyncio.wait([signal_task, handler_task],
+            return_when=asyncio.FIRST_COMPLETED
+        )
     except Exception as e:
         logging.error(f"Error starting socket handler or HTTP server: {e}")
         logging.error(f"Stack trace:\n{traceback.format_exc()}")
         raise e
-
-    try:
-        await asyncio.wait(
-            [block_until_signal([signal.SIGINT, signal.SIGTERM]), handler.wait()],
-            return_when=asyncio.FIRST_COMPLETED
-        )
     finally:
         await runner.cleanup()
         await handler.stop()
