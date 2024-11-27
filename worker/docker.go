@@ -181,7 +181,7 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	}
 
 	// NOTE: We currently allow only one container per GPU for each pipeline.
-	containerHostPort := containerHostPorts[pipeline][:3] + gpu
+	containerHostPort := containerHostPorts[pipeline][:3] + portOffset(gpu)
 	containerName := dockerContainerName(pipeline, modelID, containerHostPort)
 	containerImage := m.defaultImage
 	if pipelineSpecificImage, ok := pipelineToImage[pipeline]; ok {
@@ -220,7 +220,9 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	}
 
 	gpuOpts := opts.GpuOpts{}
-	gpuOpts.Set("device=" + gpu)
+	if !isEmulatedGPU(gpu) {
+		gpuOpts.Set("device=" + gpu)
+	}
 
 	hostConfig := &container.HostConfig{
 		Resources: container.Resources{
@@ -471,4 +473,15 @@ tickerLoop:
 	}
 
 	return nil
+}
+
+func portOffset(gpu string) string {
+	if isEmulatedGPU(gpu) {
+		return strings.Replace(gpu, "emulated-", "", 1)
+	}
+	return gpu
+}
+
+func isEmulatedGPU(gpu string) bool {
+	return strings.HasPrefix(gpu, "emulated-")
 }
