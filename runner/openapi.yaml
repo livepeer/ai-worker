@@ -10,17 +10,6 @@ servers:
 - url: https://livepeer.studio/api/beta/generate
   description: Livepeer Studio Gateway
 paths:
-  /health:
-    get:
-      summary: Health
-      operationId: health
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HealthCheck'
   /text-to-image:
     post:
       tags:
@@ -520,6 +509,39 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: textToSpeech
+  /health:
+    get:
+      summary: Health
+      operationId: health
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheck'
+  /hardware/info:
+    get:
+      summary: Hardware Info
+      operationId: hardware_info
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HardwareInformation'
+  /hardware/stats:
+    get:
+      summary: Hardware Stats
+      operationId: hardware_stats
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HardwareStats'
 components:
   schemas:
     APIError:
@@ -867,6 +889,66 @@ components:
       - text
       title: Chunk
       description: A chunk of text with a timestamp.
+    GpuComputeInfo:
+      properties:
+        id:
+          type: string
+          title: Id
+        name:
+          type: string
+          title: Name
+        memory_total:
+          type: integer
+          title: Memory Total
+        memory_free:
+          type: integer
+          title: Memory Free
+        major:
+          type: integer
+          title: Major
+        minor:
+          type: integer
+          title: Minor
+      type: object
+      required:
+      - id
+      - name
+      - memory_total
+      - memory_free
+      - major
+      - minor
+      title: GpuComputeInfo
+      description: Model for detailed GPU compute information.
+    GpuUtilizationInfo:
+      properties:
+        id:
+          type: string
+          title: Id
+        name:
+          type: string
+          title: Name
+        memory_total:
+          type: integer
+          title: Memory Total
+        memory_free:
+          type: integer
+          title: Memory Free
+        utilization_compute:
+          type: integer
+          title: Utilization Compute
+        utilization_memory:
+          type: integer
+          title: Utilization Memory
+      type: object
+      required:
+      - id
+      - name
+      - memory_total
+      - memory_free
+      - utilization_compute
+      - utilization_memory
+      title: GpuUtilizationInfo
+      description: Model for real-time GPU utilization statistics.
     HTTPError:
       properties:
         detail:
@@ -887,6 +969,46 @@ components:
           title: Detail
       type: object
       title: HTTPValidationError
+    HardwareInformation:
+      properties:
+        pipeline:
+          type: string
+          title: Pipeline
+        model_id:
+          type: string
+          title: Model Id
+        gpu_info:
+          additionalProperties:
+            $ref: '#/components/schemas/GpuComputeInfo'
+          type: object
+          title: Gpu Info
+      type: object
+      required:
+      - pipeline
+      - model_id
+      - gpu_info
+      title: HardwareInformation
+      description: Response model for GPU information.
+    HardwareStats:
+      properties:
+        pipeline:
+          type: string
+          title: Pipeline
+        model_id:
+          type: string
+          title: Model Id
+        gpu_stats:
+          additionalProperties:
+            $ref: '#/components/schemas/GpuUtilizationInfo'
+          type: object
+          title: Gpu Stats
+      type: object
+      required:
+      - pipeline
+      - model_id
+      - gpu_stats
+      title: HardwareStats
+      description: Response model for real-time GPU statistics.
     HealthCheck:
       properties:
         status:
