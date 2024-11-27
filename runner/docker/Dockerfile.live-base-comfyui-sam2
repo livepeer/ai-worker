@@ -16,13 +16,13 @@ ENV PIP_PREFER_BINARY=1
 RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools==69.5.1 wheel==0.43.0
 
 # Install g++ compiler
-# RUN apt-get update && apt-get install -y \
-#     g++-11 \
-#     && apt-get clean && rm -rf /var/lib/apt/lists/*
-# ENV CXX=/usr/bin/g++-11
+RUN apt-get update && apt-get install -y \
+    g++-11 \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+ENV CXX=/usr/bin/g++-11
 
 # Install Sam2 dependencies
-RUN pip install --no-cache-dir torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1
+RUN pip install --no-cache-dir torch==2.3.1 torchvision torchaudio
 
 # Install comfystream (which includes ComfyUI)
 
