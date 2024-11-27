@@ -10,8 +10,9 @@ require (
 	github.com/getkin/kin-openapi v0.128.0
 	github.com/go-chi/chi/v5 v5.1.0
 	github.com/oapi-codegen/runtime v1.1.1
+	github.com/pebbe/zmq4 v1.2.11
 	github.com/vincent-petithory/dataurl v1.0.0
-	trickle v0.0.0-20241120082738-d168ca53a1f5
+	trickle v0.0.0-20241123075249-bf10c47c3c40
 )
 
 require (
@@ -50,4 +51,4 @@ require (
 	gotest.tools/v3 v3.5.1 // indirect
 )
 
-replace trickle => github.com/j0sh/http-trickle v0.0.0-20241120082738-d168ca53a1f5
+replace trickle => github.com/j0sh/http-trickle v0.0.0-20241123075249-bf10c47c3c40

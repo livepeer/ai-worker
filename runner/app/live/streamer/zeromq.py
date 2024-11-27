@@ -33,7 +33,7 @@ class ZeroMQStreamer(PipelineStreamer):
         )  # Subscribe to all messages
         self.input_socket.set_hwm(10)
 
-        self.output_socket.connect(self.output_address)
+        self.output_socket.bind(self.output_address)
         self.output_socket.set_hwm(10)
 
         super().start()
