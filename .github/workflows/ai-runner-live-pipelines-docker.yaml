@@ -238,4 +238,4 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           file: docker/Dockerfile.live-app-noop
           cache-from: type=registry,ref=livepeerci/build:cache
-          cache-to: type=registry,ref=livepeerci/build:cache,mode=max                              
+          cache-to: type=registry,ref=livepeerci/build:cache,mode=max
