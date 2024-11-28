@@ -9,8 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"image"
-	_ "image/jpeg"
-    _ "image/png"
 	"sync"
 	"time"
 	"fmt"
@@ -62,7 +60,7 @@ func sendImages(ctx context.Context, imagePath string, fps int) error {
 
 
 func receiveImages(ctx context.Context) error {
-    time.Sleep(5 * time.Second)
+    time.Sleep(2 * time.Second)
 
     subscriber, err := zmq4.NewSocket(zmq4.SUB)
     if err != nil {
@@ -70,8 +68,8 @@ func receiveImages(ctx context.Context) error {
     }
     defer subscriber.Close()
 
-    receiveAddress := "tcp://127.0.0.1:5556"
-    err = subscriber.Connect(receiveAddress)
+    receiveAddress := "tcp://*:5556"
+    err = subscriber.Bind(receiveAddress)
     if err != nil {
         return fmt.Errorf("failed to connect ZMQ SUB socket: %v", err)
     }
@@ -190,7 +188,7 @@ func main() {
     req := worker.GenLiveVideoToVideoJSONRequestBody{
         ModelId:      modelID,
         SubscribeUrl: "tcp://172.17.0.1:5555",
-        PublishUrl:   "tcp://*:5556",
+        PublishUrl:   "tcp://172.17.0.1:5556",
         StreamProtocol: &streamProtocol,
     }
 
