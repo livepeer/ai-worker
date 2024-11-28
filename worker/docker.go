@@ -213,6 +213,7 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 		},
 		ExposedPorts: nat.PortSet{
 			containerPort: struct{}{},
+        	"5556/tcp": struct{}{},
 		},
 		Labels: map[string]string{
 			containerCreatorLabel: containerCreator,
@@ -240,8 +241,13 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 					HostPort: containerHostPort,
 				},
 			},
+			"5556/tcp": {
+				{
+					HostIP:   "0.0.0.0",
+					HostPort: "5556",
+				},
+			},
 		},
-		NetworkMode: "host",
 		AutoRemove: true,
 	}
 

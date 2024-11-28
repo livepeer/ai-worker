@@ -186,10 +186,12 @@ func main() {
 
     slog.Info("Warm container is up")
 
+    streamProtocol := "zeromq"
     req := worker.GenLiveVideoToVideoJSONRequestBody{
         ModelId:      modelID,
         SubscribeUrl: "tcp://172.17.0.1:5555",
         PublishUrl:   "tcp://*:5556",
+        StreamProtocol: &streamProtocol,
     }
 
     slog.Info("Running live-video-to-video")

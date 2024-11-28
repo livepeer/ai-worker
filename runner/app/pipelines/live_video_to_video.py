@@ -28,7 +28,7 @@ class LiveVideoToVideoPipeline(Pipeline):
 
 
     def __call__(  # type: ignore
-        self, *, subscribe_url: str, publish_url: str, control_url: str, params: dict, **kwargs
+        self, *, subscribe_url: str, publish_url: str, control_url: str, params: dict, stream_protocol: str, **kwargs
     ):
         if self.process:
             raise RuntimeError("Pipeline already running")
@@ -42,6 +42,7 @@ class LiveVideoToVideoPipeline(Pipeline):
                     subscribe_url=subscribe_url,
                     publish_url=publish_url,
                     control_url=control_url,
+                    stream_protocol=stream_protocol,
                     initial_params=json.dumps(params),
                     # TODO: set torch device from self.torch_device
                 )
