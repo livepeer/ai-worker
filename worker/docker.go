@@ -103,6 +103,33 @@ type DockerManager struct {
 	mu         *sync.Mutex
 }
 
+func overridePipelineImages(defaultImage string) error {
+	// First check if the defaultImage is a valid JSON string
+	var pipelineOverrides map[string]string
+	if strings.HasPrefix(defaultImage, "{") && strings.HasSuffix(defaultImage, "}") {
+		// Parse the JSON string for custom pipeline images override
+		if err := json.Unmarshal([]byte(defaultImage), &pipelineOverrides); err != nil {
+			return fmt.Errorf("failed to parse pipeline overrides JSON: %w", err)
+		}
+
+		// Override the pipelineToImage and livePipelineToImage mappings
+		for pipeline, image := range pipelineOverrides {
+			if _, isPresent := pipelineToImage[pipeline]; isPresent {
+				pipelineToImage[pipeline] = image
+			} else {
+				slog.Warn("Pipeline not found in pipelineToImage map", "pipeline", pipeline)
+			}
+
+			if _, isPresent := livePipelineToImage[pipeline]; isPresent {
+				livePipelineToImage[pipeline] = image
+			} else {
+				slog.Warn("Pipeline not found in livePipelineToImage map", "pipeline", pipeline)
+			}
+		}
+	}
+	return nil
+}
+
 func NewDockerManager(defaultImage string, gpus []string, modelDir string, client DockerClient) (*DockerManager, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), containerTimeout)
 	if err := removeExistingContainers(ctx, client); err != nil {
@@ -110,6 +137,11 @@ func NewDockerManager(defaultImage string, gpus []string, modelDir string, clien
 		return nil, err
 	}
 	cancel()
+
+	// call to handle image overriding logic
+	if err := overridePipelineImages(defaultImage); err != nil {
+		return nil, err
+	}
 
 	manager := &DockerManager{
 		defaultImage:  defaultImage,
