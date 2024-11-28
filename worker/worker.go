@@ -69,6 +69,27 @@ func NewWorker(defaultImage string, gpus []string, modelDir string) (*Worker, er
 	}, nil
 }
 
+func (w *Worker) HardwareInformation() []HardwareInformation {
+	var hardware []HardwareInformation
+	for _, rc := range w.externalContainers {
+		if rc.Hardware != nil {
+			hardware = append(hardware, *rc.Hardware)
+		} else {
+			hardware = append(hardware, HardwareInformation{})
+		}
+	}
+
+	for _, rc := range w.manager.containers {
+		if rc.Hardware != nil {
+			hardware = append(hardware, *rc.Hardware)
+		} else {
+			hardware = append(hardware, HardwareInformation{})
+		}
+	}
+
+	return hardware
+}
+
 func (w *Worker) TextToImage(ctx context.Context, req GenTextToImageJSONRequestBody) (*ImageResponse, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
