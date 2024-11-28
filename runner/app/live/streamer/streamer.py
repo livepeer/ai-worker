@@ -118,7 +118,7 @@ class PipelineStreamer(ABC):
 
             active_after_reload = time_since_last_output < (time_since_reload - 1)
             stopped_recently = (
-                time_since_last_output > 5
+                time_since_last_output > 8
                 if self.pipeline == "liveportrait" # liveportrait loads very quick but gets stuck too often
                 else active_after_reload and time_since_last_output > 5 and time_since_last_output < 60
             )
