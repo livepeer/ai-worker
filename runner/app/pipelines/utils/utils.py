@@ -17,7 +17,9 @@ from torchvision.transforms import v2
 from transformers import CLIPImageProcessor
 from typing import Dict, Optional, List, Any
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline
-from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
+from PIL import Image
+from torch import dtype as TorchDtype
+from transformers import CLIPImageProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -203,6 +205,8 @@ class SafetyChecker:
 
         self.device = device
         self._dtype = dtype
+        
+        from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
         self._safety_checker = StableDiffusionSafetyChecker.from_pretrained(
             "CompVis/stable-diffusion-safety-checker"
         ).to(self.device)

@@ -220,6 +220,26 @@ type Chunk struct {
 	Timestamp []interface{} `json:"timestamp"`
 }
 
+// GpuComputeInfo Model for detailed GPU compute information.
+type GpuComputeInfo struct {
+	Id          string `json:"id"`
+	Major       int    `json:"major"`
+	MemoryFree  int    `json:"memory_free"`
+	MemoryTotal int    `json:"memory_total"`
+	Minor       int    `json:"minor"`
+	Name        string `json:"name"`
+}
+
+// GpuUtilizationInfo Model for real-time GPU utilization statistics.
+type GpuUtilizationInfo struct {
+	Id                 string `json:"id"`
+	MemoryFree         int    `json:"memory_free"`
+	MemoryTotal        int    `json:"memory_total"`
+	Name               string `json:"name"`
+	UtilizationCompute int    `json:"utilization_compute"`
+	UtilizationMemory  int    `json:"utilization_memory"`
+}
+
 // HTTPError HTTP error response model.
 type HTTPError struct {
 	// Detail Detailed error information.
@@ -229,6 +249,20 @@ type HTTPError struct {
 // HTTPValidationError defines model for HTTPValidationError.
 type HTTPValidationError struct {
 	Detail *[]ValidationError `json:"detail,omitempty"`
+}
+
+// HardwareInformation Response model for GPU information.
+type HardwareInformation struct {
+	GpuInfo  map[string]GpuComputeInfo `json:"gpu_info"`
+	ModelId  string                    `json:"model_id"`
+	Pipeline string                    `json:"pipeline"`
+}
+
+// HardwareStats Response model for real-time GPU statistics.
+type HardwareStats struct {
+	GpuStats map[string]GpuUtilizationInfo `json:"gpu_stats"`
+	ModelId  string                        `json:"model_id"`
+	Pipeline string                        `json:"pipeline"`
 }
 
 // HealthCheck defines model for HealthCheck.
@@ -256,10 +290,13 @@ type LLMResponse struct {
 
 // LiveVideoToVideoParams defines model for LiveVideoToVideoParams.
 type LiveVideoToVideoParams struct {
-	// ModelId Hugging Face model ID used for image generation.
+	// ControlUrl URL for subscribing via Trickle protocol for updates in the live video-to-video generation params.
+	ControlUrl *string `json:"control_url,omitempty"`
+
+	// ModelId Name of the pipeline to run in the live video to video job. Notice that this is named model_id for consistency with other routes, but it does not refer to a Hugging Face model ID. The exact model(s) depends on the pipeline implementation and might be configurable via the `params` argument.
 	ModelId *string `json:"model_id,omitempty"`
 
-	// Params Initial parameters for the model.
+	// Params Initial parameters for the pipeline.
 	Params *map[string]interface{} `json:"params,omitempty"`
 
 	// PublishUrl Destination URL of the outgoing stream to publish.
@@ -271,6 +308,9 @@ type LiveVideoToVideoParams struct {
 
 // LiveVideoToVideoResponse Response model for live video-to-video generation.
 type LiveVideoToVideoResponse struct {
+	// ControlUrl URL for updating the live video-to-video generation
+	ControlUrl string `json:"control_url"`
+
 	// PublishUrl Destination URL of the outgoing stream to publish to
 	PublishUrl string `json:"publish_url"`
 
@@ -566,6 +606,12 @@ type ClientInterface interface {
 	// FrameInterpolationFrameInterpolationPostWithBody request with any body
 	FrameInterpolationFrameInterpolationPostWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// HardwareInfo request
+	HardwareInfo(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// HardwareStats request
+	HardwareStats(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// Health request
 	Health(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -619,6 +665,30 @@ func (c *Client) GenAudioToTextWithBody(ctx context.Context, contentType string,
 
 func (c *Client) FrameInterpolationFrameInterpolationPostWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewFrameInterpolationFrameInterpolationPostRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) HardwareInfo(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewHardwareInfoRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) HardwareStats(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewHardwareStatsRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -851,6 +921,60 @@ func NewFrameInterpolationFrameInterpolationPostRequestWithBody(server string, c
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewHardwareInfoRequest generates requests for HardwareInfo
+func NewHardwareInfoRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/hardware/info")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewHardwareStatsRequest generates requests for HardwareStats
+func NewHardwareStatsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/hardware/stats")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -1235,6 +1359,12 @@ type ClientWithResponsesInterface interface {
 
 	// FrameInterpolationFrameInterpolationPostWithBodyWithResponse request with any body
 	FrameInterpolationFrameInterpolationPostWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*FrameInterpolationFrameInterpolationPostResponse, error)
+	
+	// HardwareInfoWithResponse request
+	HardwareInfoWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*HardwareInfoResponse, error)
+
+	// HardwareStatsWithResponse request
+	HardwareStatsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*HardwareStatsResponse, error)
 
 	// HealthWithResponse request
 	HealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*HealthResponse, error)
@@ -1323,6 +1453,50 @@ func (r FrameInterpolationFrameInterpolationPostResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r FrameInterpolationFrameInterpolationPostResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type HardwareInfoResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *HardwareInformation
+}
+
+// Status returns HTTPResponse.Status
+func (r HardwareInfoResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r HardwareInfoResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type HardwareStatsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *HardwareStats
+}
+
+// Status returns HTTPResponse.Status
+func (r HardwareStatsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r HardwareStatsResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1604,6 +1778,24 @@ func (c *ClientWithResponses) FrameInterpolationFrameInterpolationPostWithBodyWi
 	return ParseFrameInterpolationFrameInterpolationPostResponse(rsp)
 }
 
+// HardwareInfoWithResponse request returning *HardwareInfoResponse
+func (c *ClientWithResponses) HardwareInfoWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*HardwareInfoResponse, error) {
+	rsp, err := c.HardwareInfo(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseHardwareInfoResponse(rsp)
+}
+
+// HardwareStatsWithResponse request returning *HardwareStatsResponse
+func (c *ClientWithResponses) HardwareStatsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*HardwareStatsResponse, error) {
+	rsp, err := c.HardwareStats(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseHardwareStatsResponse(rsp)
+}
+
 // HealthWithResponse request returning *HealthResponse
 func (c *ClientWithResponses) HealthWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*HealthResponse, error) {
 	rsp, err := c.Health(ctx, reqEditors...)
@@ -1842,6 +2034,58 @@ func ParseFrameInterpolationFrameInterpolationPostResponse(rsp *http.Response) (
 			return nil, err
 		}
 		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseHardwareInfoResponse parses an HTTP response from a HardwareInfoWithResponse call
+func ParseHardwareInfoResponse(rsp *http.Response) (*HardwareInfoResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &HardwareInfoResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest HardwareInformation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseHardwareStatsResponse parses an HTTP response from a HardwareStatsWithResponse call
+func ParseHardwareStatsResponse(rsp *http.Response) (*HardwareStatsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &HardwareStatsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest HardwareStats
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
 
 	}
 
@@ -2374,7 +2618,13 @@ type ServerInterface interface {
 	GenAudioToText(w http.ResponseWriter, r *http.Request)
 	// Frame Interpolation
 	// (POST /frame-interpolation)
-	FrameInterpolationFrameInterpolationPost(w http.ResponseWriter, r *http.Request)
+	FrameInterpolationFrameInterpolationPost(w http.ResponseWriter, r *http.Request)	
+	// Hardware Info
+	// (GET /hardware/info)
+	HardwareInfo(w http.ResponseWriter, r *http.Request)
+	// Hardware Stats
+	// (GET /hardware/stats)
+	HardwareStats(w http.ResponseWriter, r *http.Request)
 	// Health
 	// (GET /health)
 	Health(w http.ResponseWriter, r *http.Request)
@@ -2387,7 +2637,7 @@ type ServerInterface interface {
 	// Image To Video
 	// (POST /image-to-video)
 	GenImageToVideo(w http.ResponseWriter, r *http.Request)
-	// Video To Video
+	// Live Video To Video
 	// (POST /live-video-to-video)
 	GenLiveVideoToVideo(w http.ResponseWriter, r *http.Request)
 	// LLM
@@ -2423,6 +2673,18 @@ func (_ Unimplemented) FrameInterpolationFrameInterpolationPost(w http.ResponseW
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// Hardware Info
+// (GET /hardware/info)
+func (_ Unimplemented) HardwareInfo(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Hardware Stats
+// (GET /hardware/stats)
+func (_ Unimplemented) HardwareStats(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // Health
 // (GET /health)
 func (_ Unimplemented) Health(w http.ResponseWriter, r *http.Request) {
@@ -2447,7 +2709,7 @@ func (_ Unimplemented) GenImageToVideo(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-// Video To Video
+// Live Video To Video
 // (POST /live-video-to-video)
 func (_ Unimplemented) GenLiveVideoToVideo(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
@@ -2517,6 +2779,36 @@ func (siw *ServerInterfaceWrapper) FrameInterpolationFrameInterpolationPost(w ht
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.FrameInterpolationFrameInterpolationPost(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// HardwareInfo operation middleware
+func (siw *ServerInterfaceWrapper) HardwareInfo(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.HardwareInfo(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// HardwareStats operation middleware
+func (siw *ServerInterfaceWrapper) HardwareStats(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.HardwareStats(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2812,6 +3104,12 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/frame-interpolation", wrapper.FrameInterpolationFrameInterpolationPost)
+	})		
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/hardware/info", wrapper.HardwareInfo)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/hardware/stats", wrapper.HardwareStats)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/health", wrapper.Health)

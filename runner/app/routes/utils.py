@@ -92,7 +92,9 @@ class LiveVideoToVideoResponse(BaseModel):
     publish_url: str = Field(
         ..., description="Destination URL of the outgoing stream to publish to"
     )
-
+    control_url: str = Field(
+        ..., description="URL for updating the live video-to-video generation"
+    )
 
 class APIError(BaseModel):
     """API error response model."""
@@ -228,9 +230,9 @@ ERROR_CONFIG: Dict[str, Tuple[Union[str, None], int]] = {
 
 def handle_pipeline_exception(
     e: object,
-    default_error_message: Union[str, Dict[str, object]] = "Pipeline error.",
+    default_error_message: Union[str, Dict[str, object], None] = "Pipeline error.",
     default_status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR,
-    custom_error_config: Dict[str, Tuple[str, int]] = None,
+    custom_error_config: Dict[str, Tuple[str | None, int]] | None = None,
 ) -> JSONResponse:
     """Handles pipeline exceptions by returning a JSON response with the appropriate
     error message and status code.
