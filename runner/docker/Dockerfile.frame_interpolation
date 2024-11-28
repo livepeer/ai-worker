@@ -1,0 +1,12 @@
+ARG BASE_IMAGE=livepeer/ai-runner:base
+FROM ${BASE_IMAGE}
+
+ARG PIP_VERSION=23.3.2
+RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools==71.1.0
+
+RUN pip install --no-cache-dir  transformers==4.41.1 torch --index-url https://download.pytorch.org/whl/cu121 && \
+    pip install torchvision --index-url https://download.pytorch.org/whl/cu121 && \
+    pip install torchaudio --index-url https://download.pytorch.org/whl/cu121 && \
+    pip install opencv-python==4.10.0.84
+
+CMD ["uvicorn", "app.main:app", "--log-config", "app/cfg/uvicorn_logging_config.json", "--host", "0.0.0.0", "--port", "8000"]

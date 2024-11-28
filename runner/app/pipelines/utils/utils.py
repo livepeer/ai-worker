@@ -1,14 +1,21 @@
 """This module contains several utility functions."""
 
-import json
-import logging
 import os
 import re
-from pathlib import Path
-from typing import Any, Dict, List, Optional
-
-import numpy as np
+import cv2
+import glob
+import json
 import torch
+import logging
+import tempfile
+import numpy as np
+
+from PIL import Image
+from pathlib import Path
+from torch import dtype as TorchDtype
+from torchvision.transforms import v2
+from transformers import CLIPImageProcessor
+from typing import Dict, Optional, List, Any
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline
 from PIL import Image
 from torch import dtype as TorchDtype
@@ -124,6 +131,51 @@ def split_prompt(
 
     return prompt_dict
 
+def video_shredder(video_data, is_file_path=True) -> np.ndarray:
+    """
+    Extract frames from a video file or in-memory video data and return them as a NumPy array.
+
+    Args:
+        video_data (str or BytesIO): Path to the input video file or in-memory video data.
+        is_file_path (bool): Indicates if video_data is a file path (True) or in-memory data (False).
+
+    Returns:
+        np.ndarray: Array of frames with shape (num_frames, height, width, channels).
+    """
+    if is_file_path:
+        # Handle file-based video input
+        video_capture = cv2.VideoCapture(video_data)
+    else:
+        # Handle in-memory video input
+        # Create a temporary file to store in-memory video data
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_file:
+            temp_file.write(video_data)
+            temp_file_path = temp_file.name
+
+        # Open the temporary video file
+        video_capture = cv2.VideoCapture(temp_file_path)
+
+    if not video_capture.isOpened():
+        raise ValueError("Error opening video data")
+
+    frames = []
+    success, frame = video_capture.read()
+
+    while success:
+        frames.append(frame)
+        success, frame = video_capture.read()
+
+    video_capture.release()
+
+    # Delete the temporary file if it was created
+    if not is_file_path:
+        os.remove(temp_file_path)
+
+    # Convert list of frames to a NumPy array
+    frames_array = np.array(frames)
+    print(f"Extracted {frames_array.shape[0]} frames from video in shape of {frames_array.shape}")
+
+    return frames_array
 
 class SafetyChecker:
     """Checks images for unsafe or inappropriate content using a pretrained model.
@@ -183,6 +235,69 @@ class SafetyChecker:
         )
         return images, has_nsfw_concept
 
+
+def natural_sort_key(s):
+    """
+    Sort in a natural order, separating strings into a list of strings and integers.
+    This handles leading zeros and case insensitivity.
+    """
+    return [
+        int(text) if text.isdigit() else text.lower()
+        for text in re.split(r'([0-9]+)', os.path.basename(s))
+    ]
+
+class DirectoryReader:
+    def __init__(self, dir: str):
+        self.paths = sorted(
+            glob.glob(os.path.join(dir, "*")),
+            key=natural_sort_key
+        )
+        self.nb_frames = len(self.paths)
+        self.idx = 0
+
+        assert self.nb_frames > 0, "no frames found in directory"
+
+        first_img = Image.open(self.paths[0])
+        self.height = first_img.height
+        self.width = first_img.width
+
+    def get_resolution(self):
+        return self.height, self.width
+
+    def reset(self):
+        self.idx = 0  # Reset the index counter to 0
+
+    def get_frame(self):
+        if self.idx >= self.nb_frames:
+            return None
+        path = self.paths[self.idx]
+        try:
+            img = Image.open(path)
+            transforms = v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=True)])
+            frame = transforms(img)
+            self.idx += 1
+            return frame
+        except Exception as e:
+            logger.error(f"Error reading frame {self.idx}: {e}")
+            return None
+
+class DirectoryWriter:
+    def __init__(self, dir: str):
+        self.dir = dir
+        self.idx = 0
+
+    def open(self):
+        return
+
+    def close(self):
+        return
+
+    def write_frame(self, frame: torch.Tensor):
+        path = f"{self.dir}/{self.idx}.png"
+        self.idx += 1
+
+        transforms = v2.Compose([v2.ToPILImage()])
+        transforms(frame.squeeze(0)).save(path)
 
 def is_numeric(val: Any) -> bool:
     """Check if the given value is numeric.
