@@ -1,7 +1,7 @@
 #!/bin/bash
 set -ex
 
-if [ $# -ne 2 ]; then
+if [ $# -lt 2 ]; then
     echo "Usage: $0 <input_room> <output_room>"
     exit 1
 fi
@@ -13,8 +13,12 @@ PORT=${4:-9000}
 
 # Build images, this will be quick if everything is cached
 docker build -t livepeer/ai-runner:live-base -f docker/Dockerfile.live-base .
-docker build -t livepeer/ai-runner:live-base-${PIPELINE} -f docker/Dockerfile.live-base-${PIPELINE} .
-docker build -t livepeer/ai-runner:live-app-${PIPELINE} -f docker/Dockerfile.live-app__PIPELINE__ --build-arg PIPELINE=${PIPELINE} .
+if [ "${PIPELINE}" = "noop" ]; then
+    docker build -t livepeer/ai-runner:live-app-noop -f docker/Dockerfile.live-app-noop .
+else
+    docker build -t livepeer/ai-runner:live-base-${PIPELINE} -f docker/Dockerfile.live-base-${PIPELINE} .
+    docker build -t livepeer/ai-runner:live-app-${PIPELINE} -f docker/Dockerfile.live-app__PIPELINE__ --build-arg PIPELINE=${PIPELINE} .
+fi
 
 CONTAINER_NAME=live-video-to-video-${PIPELINE}
 docker run -it --rm --name ${CONTAINER_NAME} \

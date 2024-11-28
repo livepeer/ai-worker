@@ -34,14 +34,27 @@ class PipelineProcess:
 
     def stop(self):
         self.done.set()
-        if self.process.is_alive():
-            logging.info("Terminating pipeline process")
-            self.process.terminate()
-            try:
-                self.process.join(timeout=5)
-            except Exception as e:
-                logging.error(f"Killing process due to join error: {e}")
-                self.process.kill()
+        if not self.process.is_alive():
+            logging.info("Process already not alive")
+            return
+
+        logging.info("Terminating pipeline process")
+        self.process.terminate()
+
+        stopped = False
+        try:
+            self.process.join(timeout=5)
+            stopped = True
+        except Exception as e:
+            logging.error(f"Process join error: {e}")
+        if not stopped or self.process.is_alive():
+            logging.error("Failed to terminate process, killing")
+            self.process.kill()
+
+        for q in [self.input_queue, self.output_queue, self.param_update_queue]:
+            q.cancel_join_thread()
+            q.close()
+        self.done = None
 
     def is_done(self):
         return self.done.is_set()
