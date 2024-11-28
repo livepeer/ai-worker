@@ -10,7 +10,6 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import torch
 from diffusers.pipelines.pipeline_utils import DiffusionPipeline
-from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
 from PIL import Image
 from torch import dtype as TorchDtype
 from transformers import CLIPImageProcessor
@@ -169,6 +168,8 @@ class SafetyChecker:
 
         self.device = device
         self._dtype = dtype
+        
+        from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
         self._safety_checker = StableDiffusionSafetyChecker.from_pretrained(
             "CompVis/stable-diffusion-safety-checker"
         ).to(self.device)

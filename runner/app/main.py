@@ -2,9 +2,12 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from app.routes import health
+import app
+from app.routes import health, hardware
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
+from app.utils.hardware import get_gpu_info
+from app.utils.nvml_manager import nvml_manager
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +16,10 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     config_logging()
 
+    nvml_manager.initialize()
+
     app.include_router(health.router)
+    app.include_router(hardware.router)
 
     pipeline = os.environ.get("PIPELINE", "")
     model_id = os.environ.get("MODEL_ID", "")
@@ -21,8 +27,13 @@ async def lifespan(app: FastAPI):
     app.pipeline = load_pipeline(pipeline, model_id)
     app.include_router(load_route(pipeline))
 
+    print_cuda_devices()
     logger.info(f"Started up with pipeline {app.pipeline}")
+
     yield
+
+    nvml_manager.shutdown()
+
     logger.info("Shutting down")
 
 
@@ -56,7 +67,20 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
             return SegmentAnything2Pipeline(model_id)
         case "llm":
             from app.pipelines.llm import LLMPipeline
+
             return LLMPipeline(model_id)
+        case "image-to-text":
+            from app.pipelines.image_to_text import ImageToTextPipeline
+
+            return ImageToTextPipeline(model_id)
+        case "live-video-to-video":
+            from app.pipelines.live_video_to_video import LiveVideoToVideoPipeline
+
+            return LiveVideoToVideoPipeline(model_id)
+        case "text-to-speech":
+            from app.pipelines.text_to_speech import TextToSpeechPipeline
+
+            return TextToSpeechPipeline(model_id)
         case _:
             raise EnvironmentError(
                 f"{pipeline} is not a valid pipeline for model {model_id}"
@@ -93,7 +117,20 @@ def load_route(pipeline: str) -> any:
             return segment_anything_2.router
         case "llm":
             from app.routes import llm
+
             return llm.router
+        case "image-to-text":
+            from app.routes import image_to_text
+
+            return image_to_text.router
+        case "live-video-to-video":
+            from app.routes import live_video_to_video
+
+            return live_video_to_video.router
+        case "text-to-speech":
+            from app.routes import text_to_speech
+
+            return text_to_speech.router
         case _:
             raise EnvironmentError(f"{pipeline} is not a valid pipeline")
 
@@ -104,6 +141,13 @@ def config_logging():
         level=logging.INFO,
         force=True,
     )
+
+
+def print_cuda_devices():
+    devices = get_gpu_info()
+    logger.info("Cuda devices available:")
+    for device in devices:
+        logger.info(devices[device])
 
 
 def use_route_names_as_operation_ids(app: FastAPI) -> None:

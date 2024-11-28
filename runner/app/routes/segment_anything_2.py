@@ -1,27 +1,40 @@
 import logging
 import os
-from typing import Annotated
+from typing import Annotated, Dict, Tuple, Union
 
 import numpy as np
-from app.dependencies import get_pipeline
-from app.pipelines.base import Pipeline
-from app.routes.util import (
-    HTTPError,
-    InferenceError,
-    MasksResponse,
-    http_error,
-    json_str_to_np_array,
-)
+import torch
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from PIL import Image, ImageFile
+
+from app.dependencies import get_pipeline
+from app.pipelines.base import Pipeline
+from app.routes.utils import (
+    HTTPError,
+    MasksResponse,
+    handle_pipeline_exception,
+    http_error,
+    json_str_to_np_array,
+)
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 router = APIRouter()
 
 logger = logging.getLogger(__name__)
+
+
+# Pipeline specific error handling configuration.
+PIPELINE_ERROR_CONFIG: Dict[str, Tuple[Union[str, None], int]] = {
+    # Specific error types.
+    "OutOfMemoryError": (
+        "Out of memory error. Try reducing input image resolution.",
+        status.HTTP_500_INTERNAL_SERVER_ERROR,
+    )
+}
+
 
 RESPONSES = {
     status.HTTP_200_OK: {
@@ -134,7 +147,7 @@ async def segment_anything_2(
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 headers={"WWW-Authenticate": "Bearer"},
-                content=http_error("Invalid bearer token"),
+                content=http_error("Invalid bearer token."),
             )
 
     if model_id != "" and model_id != pipeline.model_id:
@@ -142,7 +155,7 @@ async def segment_anything_2(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=http_error(
                 f"pipeline configured with {pipeline.model_id} but called with "
-                f"{model_id}"
+                f"{model_id}."
             ),
         )
 
@@ -170,17 +183,14 @@ async def segment_anything_2(
             normalize_coords=normalize_coords,
         )
     except Exception as e:
-        logger.error(f"Segment Anything 2 error: {e}")
-        logger.exception(e)
-        if isinstance(e, InferenceError):
-            return JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content=http_error(str(e)),
-            )
-
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=http_error("Segment Anything 2 error"),
+        if isinstance(e, torch.cuda.OutOfMemoryError):
+            # TODO: Investigate why not all VRAM memory is cleared.
+            torch.cuda.empty_cache()
+        logger.error(f"SegmentAnything2 pipeline error: {e}")
+        return handle_pipeline_exception(
+            e,
+            default_error_message="Segment-anything-2 pipeline error.",
+            custom_error_config=PIPELINE_ERROR_CONFIG,
         )
 
     # Return masks sorted by descending score as string.

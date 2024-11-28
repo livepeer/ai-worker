@@ -5,7 +5,6 @@ from typing import List, Optional, Tuple
 
 import PIL
 import torch
-from app.pipelines.base import Pipeline
 from diffusers import StableVideoDiffusionPipeline
 from huggingface_hub import file_download
 from PIL import ImageFile
@@ -14,6 +13,10 @@ from app.pipelines.utils import (
     get_model_dir,
     get_torch_device
 )
+
+from app.pipelines.base import Pipeline
+from app.pipelines.utils import SafetyChecker, get_model_dir, get_torch_device
+from app.utils.errors import InferenceError
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -37,7 +40,7 @@ class ImageToVideoPipeline(Pipeline):
             for _, _, files in os.walk(folder_path)
             for fname in files
         )
-        if torch_device != "cpu" and has_fp16_variant:
+        if torch_device.type != "cpu" and has_fp16_variant:
             logger.info("ImageToVideoPipeline loading fp16 variant for %s", model_id)
 
             kwargs["torch_dtype"] = torch.float16
@@ -139,7 +142,14 @@ class ImageToVideoPipeline(Pipeline):
         else:
             has_nsfw_concept = [None]
 
-        return self.ldm(image, **kwargs).frames, has_nsfw_concept
+        try:
+            outputs = self.ldm(image, **kwargs)
+        except torch.cuda.OutOfMemoryError as e:
+            raise e
+        except Exception as e:
+            raise InferenceError(original_exception=e)
+
+        return outputs.frames, has_nsfw_concept
 
     def __str__(self) -> str:
         return f"ImageToVideoPipeline model_id={self.model_id}"

@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	docker "github.com/docker/docker/client"
 )
 
 // EnvValue unmarshals JSON booleans as strings for compatibility with env variables.
@@ -50,7 +52,12 @@ type Worker struct {
 }
 
 func NewWorker(defaultImage string, gpus []string, modelDir string) (*Worker, error) {
-	manager, err := NewDockerManager(defaultImage, gpus, modelDir)
+	dockerClient, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithAPIVersionNegotiation())
+	if err != nil {
+		return nil, err
+	}
+
+	manager, err := NewDockerManager(defaultImage, gpus, modelDir, dockerClient)
 	if err != nil {
 		return nil, err
 	}
@@ -62,25 +69,38 @@ func NewWorker(defaultImage string, gpus []string, modelDir string) (*Worker, er
 	}, nil
 }
 
+func (w *Worker) HardwareInformation() []HardwareInformation {
+	var hardware []HardwareInformation
+	for _, rc := range w.externalContainers {
+		if rc.Hardware != nil {
+			hardware = append(hardware, *rc.Hardware)
+		} else {
+			hardware = append(hardware, HardwareInformation{})
+		}
+	}
+
+	for _, rc := range w.manager.containers {
+		if rc.Hardware != nil {
+			hardware = append(hardware, *rc.Hardware)
+		} else {
+			hardware = append(hardware, HardwareInformation{})
+		}
+	}
+
+	return hardware
+}
+
 func (w *Worker) TextToImage(ctx context.Context, req GenTextToImageJSONRequestBody) (*ImageResponse, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	c, err := w.borrowContainer(ctx, "text-to-image", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
-	defer w.returnContainer(c)
 
 	resp, err := c.Client.GenTextToImageWithResponse(ctx, req)
 	if err != nil {
 		return nil, err
-	}
-
-	if resp.JSON422 != nil {
-		val, err := json.Marshal(resp.JSON422)
-		if err != nil {
-			return nil, err
-		}
-		slog.Error("text-to-image container returned 422", slog.String("err", string(val)))
-		return nil, errors.New("text-to-image container returned 422")
 	}
 
 	if resp.JSON400 != nil {
@@ -92,24 +112,43 @@ func (w *Worker) TextToImage(ctx context.Context, req GenTextToImageJSONRequestB
 		return nil, errors.New("text-to-image container returned 400: " + resp.JSON400.Detail.Msg)
 	}
 
+	if resp.JSON401 != nil {
+		val, err := json.Marshal(resp.JSON401)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("text-to-image container returned 401", slog.String("err", string(val)))
+		return nil, errors.New("text-to-image container returned 401: " + resp.JSON401.Detail.Msg)
+	}
+
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("text-to-image container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("text-to-image container returned 422: " + string(val))
+	}
+
 	if resp.JSON500 != nil {
 		val, err := json.Marshal(resp.JSON500)
 		if err != nil {
 			return nil, err
 		}
 		slog.Error("text-to-image container returned 500", slog.String("err", string(val)))
-		return nil, errors.New("text-to-image container returned 500")
+		return nil, errors.New("text-to-image container returned 500: " + resp.JSON500.Detail.Msg)
 	}
 
 	return resp.JSON200, nil
 }
 
 func (w *Worker) ImageToImage(ctx context.Context, req GenImageToImageMultipartRequestBody) (*ImageResponse, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	c, err := w.borrowContainer(ctx, "image-to-image", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
-	defer w.returnContainer(c)
 
 	var buf bytes.Buffer
 	mw, err := NewImageToImageMultipartWriter(&buf, req)
@@ -122,15 +161,6 @@ func (w *Worker) ImageToImage(ctx context.Context, req GenImageToImageMultipartR
 		return nil, err
 	}
 
-	if resp.JSON422 != nil {
-		val, err := json.Marshal(resp.JSON422)
-		if err != nil {
-			return nil, err
-		}
-		slog.Error("image-to-image container returned 422", slog.String("err", string(val)))
-		return nil, errors.New("image-to-image container returned 422")
-	}
-
 	if resp.JSON400 != nil {
 		val, err := json.Marshal(resp.JSON400)
 		if err != nil {
@@ -140,24 +170,43 @@ func (w *Worker) ImageToImage(ctx context.Context, req GenImageToImageMultipartR
 		return nil, errors.New("image-to-image container returned 400: " + resp.JSON400.Detail.Msg)
 	}
 
+	if resp.JSON401 != nil {
+		val, err := json.Marshal(resp.JSON401)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("image-to-image container returned 401", slog.String("err", string(val)))
+		return nil, errors.New("image-to-image container returned 401: " + resp.JSON401.Detail.Msg)
+	}
+
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("image-to-image container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("image-to-image container returned 422: " + string(val))
+	}
+
 	if resp.JSON500 != nil {
 		val, err := json.Marshal(resp.JSON500)
 		if err != nil {
 			return nil, err
 		}
 		slog.Error("image-to-image container returned 500", slog.String("err", string(val)))
-		return nil, errors.New("image-to-image container returned 500")
+		return nil, errors.New("image-to-image container returned 500: " + resp.JSON500.Detail.Msg)
 	}
 
 	return resp.JSON200, nil
 }
 
 func (w *Worker) ImageToVideo(ctx context.Context, req GenImageToVideoMultipartRequestBody) (*VideoResponse, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	c, err := w.borrowContainer(ctx, "image-to-video", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
-	defer w.returnContainer(c)
 
 	var buf bytes.Buffer
 	mw, err := NewImageToVideoMultipartWriter(&buf, req)
@@ -170,22 +219,31 @@ func (w *Worker) ImageToVideo(ctx context.Context, req GenImageToVideoMultipartR
 		return nil, err
 	}
 
-	if resp.JSON422 != nil {
-		val, err := json.Marshal(resp.JSON422)
-		if err != nil {
-			return nil, err
-		}
-		slog.Error("image-to-video container returned 422", slog.String("err", string(val)))
-		return nil, errors.New("image-to-video container returned 422")
-	}
-
 	if resp.JSON400 != nil {
 		val, err := json.Marshal(resp.JSON400)
 		if err != nil {
 			return nil, err
 		}
 		slog.Error("image-to-video container returned 400", slog.String("err", string(val)))
-		return nil, errors.New("image-to-video container returned 400")
+		return nil, errors.New("image-to-video container returned 400: " + resp.JSON400.Detail.Msg)
+	}
+
+	if resp.JSON401 != nil {
+		val, err := json.Marshal(resp.JSON401)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("image-to-video container returned 401", slog.String("err", string(val)))
+		return nil, errors.New("image-to-video container returned 401: " + resp.JSON401.Detail.Msg)
+	}
+
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("image-to-video container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("image-to-video container returned 422: " + string(val))
 	}
 
 	if resp.JSON500 != nil {
@@ -194,7 +252,7 @@ func (w *Worker) ImageToVideo(ctx context.Context, req GenImageToVideoMultipartR
 			return nil, err
 		}
 		slog.Error("image-to-video container returned 500", slog.String("err", string(val)))
-		return nil, errors.New("image-to-video container returned 500")
+		return nil, errors.New("image-to-video container returned 500: " + resp.JSON500.Detail.Msg)
 	}
 
 	if resp.JSON200 == nil {
@@ -206,11 +264,12 @@ func (w *Worker) ImageToVideo(ctx context.Context, req GenImageToVideoMultipartR
 }
 
 func (w *Worker) Upscale(ctx context.Context, req GenUpscaleMultipartRequestBody) (*ImageResponse, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	c, err := w.borrowContainer(ctx, "upscale", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
-	defer w.returnContainer(c)
 
 	var buf bytes.Buffer
 	mw, err := NewUpscaleMultipartWriter(&buf, req)
@@ -223,22 +282,31 @@ func (w *Worker) Upscale(ctx context.Context, req GenUpscaleMultipartRequestBody
 		return nil, err
 	}
 
-	if resp.JSON422 != nil {
-		val, err := json.Marshal(resp.JSON422)
-		if err != nil {
-			return nil, err
-		}
-		slog.Error("upscale container returned 422", slog.String("err", string(val)))
-		return nil, errors.New("upscale container returned 422")
-	}
-
 	if resp.JSON400 != nil {
 		val, err := json.Marshal(resp.JSON400)
 		if err != nil {
 			return nil, err
 		}
 		slog.Error("upscale container returned 400", slog.String("err", string(val)))
-		return nil, errors.New("upscale container returned 400")
+		return nil, errors.New("upscale container returned 400: " + resp.JSON400.Detail.Msg)
+	}
+
+	if resp.JSON401 != nil {
+		val, err := json.Marshal(resp.JSON401)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("upscale container returned 401", slog.String("err", string(val)))
+		return nil, errors.New("upscale container returned 401: " + resp.JSON401.Detail.Msg)
+	}
+
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("upscale container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("upscale container returned 422: " + string(val))
 	}
 
 	if resp.JSON500 != nil {
@@ -247,18 +315,19 @@ func (w *Worker) Upscale(ctx context.Context, req GenUpscaleMultipartRequestBody
 			return nil, err
 		}
 		slog.Error("upscale container returned 500", slog.String("err", string(val)))
-		return nil, errors.New("upscale container returned 500")
+		return nil, errors.New("upscale container returned 500: " + resp.JSON500.Detail.Msg)
 	}
 
 	return resp.JSON200, nil
 }
 
 func (w *Worker) AudioToText(ctx context.Context, req GenAudioToTextMultipartRequestBody) (*TextResponse, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	c, err := w.borrowContainer(ctx, "audio-to-text", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
-	defer w.returnContainer(c)
 
 	var buf bytes.Buffer
 	mw, err := NewAudioToTextMultipartWriter(&buf, req)
@@ -271,28 +340,46 @@ func (w *Worker) AudioToText(ctx context.Context, req GenAudioToTextMultipartReq
 		return nil, err
 	}
 
-	if resp.JSON422 != nil {
-		val, err := json.Marshal(resp.JSON422)
-		if err != nil {
-			return nil, err
-		}
-		slog.Error("audio-to-text container returned 422", slog.String("err", string(val)))
-		return nil, errors.New("audio-to-text container returned 422")
-	}
-
 	if resp.JSON400 != nil {
 		val, err := json.Marshal(resp.JSON400)
 		if err != nil {
 			return nil, err
 		}
 		slog.Error("audio-to-text container returned 400", slog.String("err", string(val)))
-		return nil, errors.New("audio-to-text container returned 400")
+		return nil, errors.New("audio-to-text container returned 400: " + resp.JSON400.Detail.Msg)
+	}
+
+	if resp.JSON401 != nil {
+		val, err := json.Marshal(resp.JSON401)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("audio-to-text container returned 401", slog.String("err", string(val)))
+		return nil, errors.New("audio-to-text container returned 401: " + resp.JSON401.Detail.Msg)
 	}
 
 	if resp.JSON413 != nil {
-		msg := "audio-to-text container returned 413 file too large; max file size is 50MB"
+		msg := "audio-to-text container returned 413: file too large; max file size is 50MB"
 		slog.Error("audio-to-text container returned 413", slog.String("err", string(msg)))
 		return nil, errors.New(msg)
+	}
+
+	if resp.JSON415 != nil {
+		val, err := json.Marshal(resp.JSON415)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("audio-to-text container returned 415", slog.String("err", string(val)))
+		return nil, errors.New("audio-to-text container returned 415: " + resp.JSON415.Detail.Msg)
+	}
+
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("audio-to-text container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("audio-to-text container returned 422: " + string(val))
 	}
 
 	if resp.JSON500 != nil {
@@ -301,14 +388,16 @@ func (w *Worker) AudioToText(ctx context.Context, req GenAudioToTextMultipartReq
 			return nil, err
 		}
 		slog.Error("audio-to-text container returned 500", slog.String("err", string(val)))
-		return nil, errors.New("audio-to-text container returned 500")
+		return nil, errors.New("audio-to-text container returned 500: " + resp.JSON500.Detail.Msg)
 	}
 
 	return resp.JSON200, nil
 }
 
 func (w *Worker) LLM(ctx context.Context, req GenLLMFormdataRequestBody) (interface{}, error) {
-	c, err := w.borrowContainer(ctx, "llm", *req.ModelId)
+	isStreaming := req.Stream != nil && *req.Stream
+	borrowCtx, cancel := context.WithCancel(context.Background())
+	c, err := w.borrowContainer(borrowCtx, "llm", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
@@ -324,16 +413,19 @@ func (w *Worker) LLM(ctx context.Context, req GenLLMFormdataRequestBody) (interf
 	var buf bytes.Buffer
 	mw, err := NewLLMMultipartWriter(&buf, req)
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 
-	if req.Stream != nil && *req.Stream {
+	if isStreaming {
 		resp, err := c.Client.GenLLMWithBody(ctx, mw.FormDataContentType(), &buf)
 		if err != nil {
+			cancel()
 			return nil, err
 		}
-		return w.handleStreamingResponse(ctx, c, resp)
+		return w.handleStreamingResponse(ctx, c, resp, cancel)
 	}
+	defer cancel()
 
 	resp, err := c.Client.GenLLMWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
 	if err != nil {
@@ -343,11 +435,12 @@ func (w *Worker) LLM(ctx context.Context, req GenLLMFormdataRequestBody) (interf
 }
 
 func (w *Worker) SegmentAnything2(ctx context.Context, req GenSegmentAnything2MultipartRequestBody) (*MasksResponse, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	c, err := w.borrowContainer(ctx, "segment-anything-2", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
-	defer w.returnContainer(c)
 
 	var buf bytes.Buffer
 	mw, err := NewSegmentAnything2MultipartWriter(&buf, req)
@@ -360,22 +453,31 @@ func (w *Worker) SegmentAnything2(ctx context.Context, req GenSegmentAnything2Mu
 		return nil, err
 	}
 
-	if resp.JSON422 != nil {
-		val, err := json.Marshal(resp.JSON422)
-		if err != nil {
-			return nil, err
-		}
-		slog.Error("segment anything 2 container returned 422", slog.String("err", string(val)))
-		return nil, errors.New("segment anything 2 container returned 422")
-	}
-
 	if resp.JSON400 != nil {
 		val, err := json.Marshal(resp.JSON400)
 		if err != nil {
 			return nil, err
 		}
 		slog.Error("segment anything 2 container returned 400", slog.String("err", string(val)))
-		return nil, errors.New("segment anything 2 container returned 400")
+		return nil, errors.New("segment anything 2 container returned 400: " + resp.JSON400.Detail.Msg)
+	}
+
+	if resp.JSON401 != nil {
+		val, err := json.Marshal(resp.JSON401)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("segment anything 2 container returned 401", slog.String("err", string(val)))
+		return nil, errors.New("segment anything 2 container returned 401: " + resp.JSON401.Detail.Msg)
+	}
+
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("segment anything 2 container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("segment anything 2 container returned 422: " + string(val))
 	}
 
 	if resp.JSON500 != nil {
@@ -384,10 +486,181 @@ func (w *Worker) SegmentAnything2(ctx context.Context, req GenSegmentAnything2Mu
 			return nil, err
 		}
 		slog.Error("segment anything 2 container returned 500", slog.String("err", string(val)))
-		return nil, errors.New("segment anything 2 container returned 500")
+		return nil, errors.New("segment anything 2 container returned 500: " + resp.JSON500.Detail.Msg)
 	}
 
 	return resp.JSON200, nil
+}
+
+func (w *Worker) ImageToText(ctx context.Context, req GenImageToTextMultipartRequestBody) (*ImageToTextResponse, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, err := w.borrowContainer(ctx, "image-to-text", *req.ModelId)
+	if err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	mw, err := NewImageToTextMultipartWriter(&buf, req)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.Client.GenImageToTextWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.JSON400 != nil {
+		val, err := json.Marshal(resp.JSON400)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("image-to-text container returned 400", slog.String("err", string(val)))
+		return nil, errors.New("image-to-text container returned 400: " + resp.JSON400.Detail.Msg)
+	}
+
+	if resp.JSON401 != nil {
+		val, err := json.Marshal(resp.JSON401)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("image-to-text container returned 401", slog.String("err", string(val)))
+		return nil, errors.New("image-to-text container returned 401: " + resp.JSON401.Detail.Msg)
+	}
+
+	if resp.JSON413 != nil {
+		msg := "image-to-text container returned 413 file too large; max file size is 50MB"
+		slog.Error("image-to-text container returned 413", slog.String("err", string(msg)))
+		return nil, errors.New(msg)
+	}
+
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("image-to-text container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("image-to-text  container returned 422: " + string(val))
+	}
+
+	if resp.JSON500 != nil {
+		val, err := json.Marshal(resp.JSON500)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("image-to-text container returned 500", slog.String("err", string(val)))
+		return nil, errors.New("image-to-text container returned 500: " + resp.JSON500.Detail.Msg)
+	}
+
+	return resp.JSON200, nil
+}
+
+func (w *Worker) TextToSpeech(ctx context.Context, req GenTextToSpeechJSONRequestBody) (*AudioResponse, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, err := w.borrowContainer(ctx, "text-to-speech", *req.ModelId)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.Client.GenTextToSpeechWithResponse(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.JSON400 != nil {
+		val, err := json.Marshal(resp.JSON400)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("text-to-speech container returned 400", slog.String("err", string(val)))
+		return nil, errors.New("text-to-speech container returned 400: " + resp.JSON400.Detail.Msg)
+	}
+
+	if resp.JSON401 != nil {
+		val, err := json.Marshal(resp.JSON401)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("text-to-speech container returned 401", slog.String("err", string(val)))
+		return nil, errors.New("text-to-speech container returned 401: " + resp.JSON401.Detail.Msg)
+	}
+
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("text-to-speech container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("text-to-speech container returned 422: " + string(val))
+	}
+
+	if resp.JSON500 != nil {
+		val, err := json.Marshal(resp.JSON500)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("text-to-speech container returned 500", slog.String("err", string(val)))
+		return nil, errors.New("text-to-speech container returned 500: " + resp.JSON500.Detail.Msg)
+	}
+
+	return resp.JSON200, nil
+}
+
+func (w *Worker) LiveVideoToVideo(ctx context.Context, req GenLiveVideoToVideoJSONRequestBody) (*LiveVideoToVideoResponse, error) {
+	// Live video containers keep running after the initial request, so we use a background context to borrow the container.
+	c, err := w.borrowContainer(context.Background(), "live-video-to-video", *req.ModelId)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.Client.GenLiveVideoToVideoWithResponse(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.JSON400 != nil {
+		val, err := json.Marshal(resp.JSON400)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("live-video-to-video container returned 400", slog.String("err", string(val)))
+		return nil, errors.New("live-video-to-video container returned 400: " + resp.JSON400.Detail.Msg)
+	}
+
+	if resp.JSON401 != nil {
+		val, err := json.Marshal(resp.JSON401)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("live-video-to-video container returned 401", slog.String("err", string(val)))
+		return nil, errors.New("live-video-to-video container returned 401: " + resp.JSON401.Detail.Msg)
+	}
+
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("live-video-to-video container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("live-video-to-video container returned 422: " + string(val))
+	}
+
+	if resp.JSON500 != nil {
+		val, err := json.Marshal(resp.JSON500)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("live-video-to-video container returned 500", slog.String("err", string(val)))
+		return nil, errors.New("live-video-to-video container returned 500: " + resp.JSON500.Detail.Msg)
+	}
+
+	return resp.JSON200, nil
+}
+
+func (w *Worker) EnsureImageAvailable(ctx context.Context, pipeline string, modelID string) error {
+	return w.manager.EnsureImageAvailable(ctx, pipeline, modelID)
 }
 
 func (w *Worker) Warm(ctx context.Context, pipeline string, modelID string, endpoint RunnerEndpoint, optimizationFlags OptimizationFlags) error {
@@ -464,24 +737,14 @@ func (w *Worker) borrowContainer(ctx context.Context, pipeline, modelID string) 
 	return w.manager.Borrow(ctx, pipeline, modelID)
 }
 
-func (w *Worker) returnContainer(rc *RunnerContainer) {
-	switch rc.Type {
-	case Managed:
-		w.manager.Return(rc)
-	case External:
-		// Noop because we allow concurrent in-flight requests for external containers
-	}
-}
-
 func (w *Worker) handleNonStreamingResponse(c *RunnerContainer, resp *GenLLMResponse) (*LLMResponse, error) {
-	defer w.returnContainer(c)
 	if resp.JSON400 != nil {
 		val, err := json.Marshal(resp.JSON400)
 		if err != nil {
 			return nil, err
 		}
 		slog.Error("LLM container returned 400", slog.String("err", string(val)))
-		return nil, errors.New("LLM container returned 400")
+		return nil, errors.New("LLM container returned 400: " + resp.JSON400.Detail.Msg)
 	}
 
 	if resp.JSON401 != nil {
@@ -490,7 +753,7 @@ func (w *Worker) handleNonStreamingResponse(c *RunnerContainer, resp *GenLLMResp
 			return nil, err
 		}
 		slog.Error("LLM container returned 401", slog.String("err", string(val)))
-		return nil, errors.New("LLM container returned 401")
+		return nil, errors.New("LLM container returned 401: " + resp.JSON401.Detail.Msg)
 	}
 
 	if resp.JSON500 != nil {
@@ -499,7 +762,7 @@ func (w *Worker) handleNonStreamingResponse(c *RunnerContainer, resp *GenLLMResp
 			return nil, err
 		}
 		slog.Error("LLM container returned 500", slog.String("err", string(val)))
-		return nil, errors.New("LLM container returned 500")
+		return nil, errors.New("LLM container returned 500: " + resp.JSON500.Detail.Msg)
 	}
 
 	return resp.JSON200, nil
@@ -511,7 +774,7 @@ type LlmStreamChunk struct {
 	Done       bool   `json:"done,omitempty"`
 }
 
-func (w *Worker) handleStreamingResponse(ctx context.Context, c *RunnerContainer, resp *http.Response) (<-chan LlmStreamChunk, error) {
+func (w *Worker) handleStreamingResponse(ctx context.Context, c *RunnerContainer, resp *http.Response, returnContainer func()) (<-chan LlmStreamChunk, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
@@ -520,7 +783,7 @@ func (w *Worker) handleStreamingResponse(ctx context.Context, c *RunnerContainer
 
 	go func() {
 		defer close(outputChan)
-		defer w.returnContainer(c)
+		defer returnContainer()
 
 		scanner := bufio.NewScanner(resp.Body)
 		totalTokens := 0
