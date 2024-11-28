@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/deepmap/oapi-codegen/v2/pkg/securityprovider"
@@ -17,8 +18,9 @@ const (
 
 type RunnerContainer struct {
 	RunnerContainerConfig
-	Name   string
-	Client *ClientWithResponses
+	Name     string
+	Client   *ClientWithResponses
+	Hardware *HardwareInformation
 }
 
 type RunnerEndpoint struct {
@@ -39,6 +41,9 @@ type RunnerContainerConfig struct {
 	KeepWarm         bool
 	containerTimeout time.Duration
 }
+
+// Create global references to functions to allow for mocking in tests.
+var runnerWaitUntilReadyFunc = runnerWaitUntilReady
 
 func NewRunnerContainer(ctx context.Context, cfg RunnerContainerConfig, name string) (*RunnerContainer, error) {
 	// Ensure that timeout is set to a non-zero value.
@@ -63,16 +68,26 @@ func NewRunnerContainer(ctx context.Context, cfg RunnerContainerConfig, name str
 	}
 
 	cctx, cancel := context.WithTimeout(ctx, cfg.containerTimeout)
-	if err := runnerWaitUntilReady(cctx, client, pollingInterval); err != nil {
-		cancel()
+	defer cancel()
+	if err := runnerWaitUntilReadyFunc(cctx, client, pollingInterval); err != nil {
 		return nil, err
 	}
-	cancel()
+
+	var hardware *HardwareInformation
+	hctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	hdw, err := getRunnerHardware(hctx, client)
+	if err != nil {
+		hardware = &HardwareInformation{Pipeline: cfg.Pipeline, ModelId: cfg.ModelID, GpuInfo: nil}
+	} else {
+		hardware = hdw
+	}
 
 	return &RunnerContainer{
 		RunnerContainerConfig: cfg,
 		Name:                  name,
 		Client:                client,
+		Hardware:              hardware,
 	}, nil
 }
 
@@ -93,4 +108,14 @@ tickerLoop:
 	}
 
 	return nil
+}
+
+func getRunnerHardware(ctx context.Context, client *ClientWithResponses) (*HardwareInformation, error) {
+	resp, err := client.HardwareInfoWithResponse(ctx)
+	if err != nil {
+		slog.Error("Error getting hardware info for runner", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	return resp.JSON200, nil
 }

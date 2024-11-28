@@ -6,15 +6,6 @@ from typing import List, Optional, Tuple
 
 import PIL
 import torch
-from app.pipelines.base import Pipeline
-from app.pipelines.utils import (
-    LoraLoader,
-    SafetyChecker,
-    get_model_dir,
-    get_torch_device,
-    is_lightning_model,
-    is_turbo_model,
-)
 from diffusers import (
     AutoPipelineForImage2Image,
     EulerAncestralDiscreteScheduler,
@@ -26,6 +17,17 @@ from diffusers import (
 from huggingface_hub import file_download, hf_hub_download
 from PIL import ImageFile
 from safetensors.torch import load_file
+
+from app.pipelines.base import Pipeline
+from app.pipelines.utils import (
+    LoraLoader,
+    SafetyChecker,
+    get_model_dir,
+    get_torch_device,
+    is_lightning_model,
+    is_turbo_model,
+)
+from app.utils.errors import InferenceError
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -41,7 +43,7 @@ class ModelName(Enum):
     @classmethod
     def list(cls):
         """Return a list of all model IDs."""
-        return list(map(lambda c: c.value, cls))
+        return [model.value for model in cls]
 
 
 class ImageToImagePipeline(Pipeline):
@@ -65,7 +67,7 @@ class ImageToImagePipeline(Pipeline):
             )
             or ModelName.SDXL_LIGHTNING.value in model_id
         )
-        if torch_device != "cpu" and has_fp16_variant:
+        if torch_device.type != "cpu" and has_fp16_variant:
             logger.info("ImageToImagePipeline loading fp16 variant for %s", model_id)
 
             kwargs["torch_dtype"] = torch.float16
@@ -223,7 +225,7 @@ class ImageToImagePipeline(Pipeline):
         try:
             compel_proc = Compel(tokenizer=self.ldm.tokenizer, text_encoder=self.ldm.text_encoder)
             prompt_embeds = compel_proc(prompt)
-            output = self.ldm(prompt_embeds=prompt_embeds, image=image, **kwargs)
+            outputs = self.ldm(prompt_embeds=prompt_embeds, image=image, **kwargs)
         except Exception as e:
             logging.info(f"Failed to generate prompt embeddings: {e}. Using prompt and pooled embeddings.")
 
@@ -233,7 +235,7 @@ class ImageToImagePipeline(Pipeline):
                                 returned_embeddings_type=ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
                                 requires_pooled=[False, True])
                 prompt_embeds, pooled_prompt_embeds = compel_proc(prompt)
-                output = self.ldm(
+                outputs = self.ldm(
                     prompt_embeds=prompt_embeds,
                     pooled_prompt_embeds=pooled_prompt_embeds,
                     image=image,
@@ -241,15 +243,20 @@ class ImageToImagePipeline(Pipeline):
                 )
             except Exception as e:
                 logging.info(f"Failed to generate prompt and pooled embeddings: {e}. Trying normal prompt.")
-                output = self.ldm(prompt=prompt, image=image, **kwargs)
+                try:
+                    outputs = self.ldm(prompt, image=image, **kwargs)
+                except torch.cuda.OutOfMemoryError as e:
+                    raise e
+                except Exception as e:
+                    raise InferenceError(original_exception=e)
 
 
         if safety_check:
-            _, has_nsfw_concept = self._safety_checker.check_nsfw_images(output.images)
+            _, has_nsfw_concept = self._safety_checker.check_nsfw_images(outputs.images)
         else:
-            has_nsfw_concept = [None] * len(output.images)
+            has_nsfw_concept = [None] * len(outputs.images)
 
-        return output.images, has_nsfw_concept
+        return outputs.images, has_nsfw_concept
 
     def __str__(self) -> str:
         return f"ImageToImagePipeline model_id={self.model_id}"

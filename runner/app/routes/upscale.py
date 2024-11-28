@@ -1,15 +1,23 @@
 import logging
 import os
 import random
-from typing import Annotated
+from typing import Annotated, Dict, Tuple, Union
 
-from app.dependencies import get_pipeline
-from app.pipelines.base import Pipeline
-from app.routes.util import HTTPError, ImageResponse, http_error, image_to_data_url
+import torch
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from PIL import Image, ImageFile
+
+from app.dependencies import get_pipeline
+from app.pipelines.base import Pipeline
+from app.routes.utils import (
+    HTTPError,
+    ImageResponse,
+    handle_pipeline_exception,
+    http_error,
+    image_to_data_url,
+)
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -17,6 +25,14 @@ router = APIRouter()
 
 logger = logging.getLogger(__name__)
 
+# Pipeline specific error handling configuration.
+PIPELINE_ERROR_CONFIG: Dict[str, Tuple[Union[str, None], int]] = {
+    # Specific error types.
+    "OutOfMemoryError": (
+        "Out of memory error. Try reducing input image resolution.",
+        status.HTTP_500_INTERNAL_SERVER_ERROR,
+    )
+}
 
 RESPONSES = {
     status.HTTP_200_OK: {
@@ -93,7 +109,7 @@ async def upscale(
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 headers={"WWW-Authenticate": "Bearer"},
-                content=http_error("Invalid bearer token"),
+                content=http_error("Invalid bearer token."),
             )
 
     if model_id != "" and model_id != pipeline.model_id:
@@ -101,7 +117,7 @@ async def upscale(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=http_error(
                 f"pipeline configured with {pipeline.model_id} but called with "
-                f"{model_id}"
+                f"{model_id}."
             ),
         )
 
@@ -118,11 +134,14 @@ async def upscale(
             seed=seed,
         )
     except Exception as e:
-        logger.error(f"UpscalePipeline error: {e}")
-        logger.exception(e)
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=http_error("UpscalePipeline error"),
+        if isinstance(e, torch.cuda.OutOfMemoryError):
+            # TODO: Investigate why not all VRAM memory is cleared.
+            torch.cuda.empty_cache()
+        logger.error(f"TextToImage pipeline error: {e}")
+        return handle_pipeline_exception(
+            e,
+            default_error_message="Upscale pipeline error.",
+            custom_error_config=PIPELINE_ERROR_CONFIG,
         )
 
     seeds = [seed]

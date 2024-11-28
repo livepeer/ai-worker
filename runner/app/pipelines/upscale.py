@@ -5,6 +5,10 @@ from typing import List, Optional, Tuple
 
 import PIL
 import torch
+from diffusers import StableDiffusionUpscalePipeline
+from huggingface_hub import file_download
+from PIL import ImageFile
+
 from app.pipelines.base import Pipeline
 from app.pipelines.utils import (
     SafetyChecker,
@@ -13,9 +17,7 @@ from app.pipelines.utils import (
     is_lightning_model,
     is_turbo_model,
 )
-from diffusers import StableDiffusionUpscalePipeline
-from huggingface_hub import file_download
-from PIL import ImageFile
+from app.utils.errors import InferenceError
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -37,7 +39,7 @@ class UpscalePipeline(Pipeline):
             for _, _, files in os.walk(folder_path)
             for fname in files
         )
-        if torch_device != "cpu" and has_fp16_variant:
+        if torch_device.type != "cpu" and has_fp16_variant:
             logger.info("UpscalePipeline loading fp16 variant for %s", model_id)
 
             kwargs["torch_dtype"] = torch.float16
@@ -118,8 +120,8 @@ class UpscalePipeline(Pipeline):
         # trying differnt configs of promp_embed for different models
         try:
             compel_proc=Compel(tokenizer=self.ldm.tokenizer, text_encoder=self.ldm.text_encoder)
-            prompt=embeds = compel_proc(prompt)
-            output = self.ldm(prompt_embeds=prompt_embeds, image=image, **kwargs)
+            prompt_embeds = compel_proc(prompt)
+            outputs = self.ldm(prompt_embeds=prompt_embeds, image=image, **kwargs)
         except Exception as e:
             logging.info(f"Failed to generate prompt embeddings: {e}. Using prompt and pooled embeddings.")
 
@@ -129,7 +131,7 @@ class UpscalePipeline(Pipeline):
                                 returned_embeddings_type=ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
                                 requires_pooled=[False, True])
                 prompt_embeds, pooled_prompt_embeds = compel_proc(prompt)
-                output = self.ldm(
+                outputs = self.ldm(
                     prompt_embeds=prompt_embeds,
                     pooled_prompt_embeds=pooled_prompt_embeds,
                     image=image,
@@ -137,14 +139,19 @@ class UpscalePipeline(Pipeline):
                 )
             except Exception as e:
                 logging.info(f"Failed to generate prompt and pooled embeddings: {e}. Trying normal prompt.")
-                output = self.ldm(prompt, image=image, **kwargs)
+                try:
+                    outputs = self.ldm(prompt, image=image, **kwargs)
+                except torch.cuda.OutOfMemoryError as e:
+                    raise e
+                except Exception as e:
+                    raise InferenceError(original_exception=e)
 
         if safety_check:
-            _, has_nsfw_concept = self._safety_checker.check_nsfw_images(output.images)
+            _, has_nsfw_concept = self._safety_checker.check_nsfw_images(outputs.images)
         else:
-            has_nsfw_concept = [None] * len(output.images)
+            has_nsfw_concept = [None] * len(outputs.images)
 
-        return output.images, has_nsfw_concept
+        return outputs.images, has_nsfw_concept
 
     def __str__(self) -> str:
         return f"UpscalePipeline model_id={self.model_id}"
