@@ -3,7 +3,7 @@
 from typing import Dict
 from pydantic import BaseModel
 import logging
-import pynvml
+from app.utils.nvml_manager import nvml_manager
 
 logger = logging.getLogger(__name__)
 
@@ -44,23 +44,34 @@ def retrieve_cuda_info() -> Dict[int, GpuInfo]:
         CUDA device information.
     """
     devices = {}
-    for i in range(pynvml.nvmlDeviceGetCount()):
-        handle = pynvml.nvmlDeviceGetHandleByIndex(i)
-        uuid = pynvml.nvmlDeviceGetUUID(handle)
-        name = pynvml.nvmlDeviceGetName(handle)
-        memory_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
-        major, minor = pynvml.nvmlDeviceGetCudaComputeCapability(handle)
-        utilization_rates = pynvml.nvmlDeviceGetUtilizationRates(handle)
-        devices[i] = GpuInfo(
-            id=uuid,
-            name=name,
-            memory_total=memory_info.total,
-            memory_free=memory_info.free,
-            major=major,
-            minor=minor,
-            utilization_compute=utilization_rates.gpu,
-            utilization_memory=utilization_rates.memory,
-        )
+    if not nvml_manager.initialized:
+        logger.warning("NVML is not initialized.")
+        return devices
+
+    try:
+        for i in range(nvml_manager.pynvml.nvmlDeviceGetCount()):
+            handle = nvml_manager.pynvml.nvmlDeviceGetHandleByIndex(i)
+            uuid = nvml_manager.pynvml.nvmlDeviceGetUUID(handle)
+            name = nvml_manager.pynvml.nvmlDeviceGetName(handle)
+            memory_info = nvml_manager.pynvml.nvmlDeviceGetMemoryInfo(handle)
+            major, minor = nvml_manager.pynvml.nvmlDeviceGetCudaComputeCapability(
+                handle
+            )
+            utilization_rates = nvml_manager.pynvml.nvmlDeviceGetUtilizationRates(
+                handle
+            )
+            devices[i] = GpuInfo(
+                id=uuid,
+                name=name,
+                memory_total=memory_info.total,
+                memory_free=memory_info.free,
+                major=major,
+                minor=minor,
+                utilization_compute=utilization_rates.gpu,
+                utilization_memory=utilization_rates.memory,
+            )
+    except nvml_manager.pynvml.NVMLError as e:
+        logger.warning(f"Failed to retrieve CUDA device information: {e}")
     return devices
 
 

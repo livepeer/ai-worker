@@ -145,10 +145,12 @@ def config_logging():
 
 def print_cuda_devices():
     devices = get_gpu_info()
-    logger.info("Cuda devices available:")
-    for device in devices:
-        logger.info(devices[device])
-
+    if devices:
+        logger.info("CUDA devices available:")
+        for device_id, device_info in devices.items():
+            logger.info(f"Device {device_id}: {device_info}")
+    else:
+        logger.info("No CUDA devices available.")
 
 def use_route_names_as_operation_ids(app: FastAPI) -> None:
     for route in app.routes:
