@@ -245,7 +245,33 @@ func TestDockerManager_Borrow(t *testing.T) {
 	mockDockerClient.AssertExpectations(t)
 }
 
+func TestDockerManager_returnContainer(t *testing.T) {
+	mockDockerClient := new(MockDockerClient)
+	dockerManager := createDockerManager(mockDockerClient)
+
+	// Create a RunnerContainer to return to the pool
+	rc := &RunnerContainer{
+		Name:                  "container1",
+		RunnerContainerConfig: RunnerContainerConfig{},
+	}
+
+	// Ensure the container is not in the pool initially.
+	_, exists := dockerManager.containers[rc.Name]
+	require.False(t, exists)
+
+	// Return the container to the pool.
+	dockerManager.returnContainer(rc)
+
+	// Verify the container is now in the pool.
+	returnedContainer, exists := dockerManager.containers[rc.Name]
+	require.True(t, exists)
+	require.Equal(t, rc, returnedContainer)
+}
+
 func TestDockerManager_getContainerImageName(t *testing.T) {
+	mockDockerClient := new(MockDockerClient)
+	manager := createDockerManager(mockDockerClient)
+
 	tests := []struct {
 		name          string
 		pipeline      string
@@ -284,9 +310,6 @@ func TestDockerManager_getContainerImageName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockDockerClient := new(MockDockerClient)
-			manager := createDockerManager(mockDockerClient)
-
 			image, err := manager.getContainerImageName(tt.pipeline, tt.modelID)
 			if tt.expectError {
 				require.Error(t, err)
@@ -364,6 +387,31 @@ func TestDockerManager_HasCapacity(t *testing.T) {
 			mockDockerClient.AssertExpectations(t)
 		})
 	}
+}
+
+func TestDockerManager_isImageAvailable(t *testing.T) {
+	mockDockerClient := new(MockDockerClient)
+	dockerManager := createDockerManager(mockDockerClient)
+
+	ctx := context.Background()
+	pipeline := "text-to-image"
+	modelID := "test-model"
+
+	t.Run("ImageNotFound", func(t *testing.T) {
+		mockDockerClient.On("ImageInspectWithRaw", mock.Anything, "default-image").Return(types.ImageInspect{}, []byte{}, fmt.Errorf("image not found")).Once()
+
+		isAvailable := dockerManager.isImageAvailable(ctx, pipeline, modelID)
+		require.False(t, isAvailable)
+		mockDockerClient.AssertExpectations(t)
+	})
+
+	t.Run("ImageFound", func(t *testing.T) {
+		mockDockerClient.On("ImageInspectWithRaw", mock.Anything, "default-image").Return(types.ImageInspect{}, []byte{}, nil).Once()
+
+		isAvailable := dockerManager.isImageAvailable(ctx, pipeline, modelID)
+		require.True(t, isAvailable)
+		mockDockerClient.AssertExpectations(t)
+	})
 }
 
 func TestDockerManager_pullImage(t *testing.T) {
@@ -544,58 +592,59 @@ func TestDockerManager_destroyContainer(t *testing.T) {
 	mockDockerClient.AssertExpectations(t)
 }
 
-func TestDockerManager_isImageAvailable(t *testing.T) {
+func TestDockerManager_watchContainer(t *testing.T) {
 	mockDockerClient := new(MockDockerClient)
 	dockerManager := createDockerManager(mockDockerClient)
 
-	ctx := context.Background()
-	pipeline := "text-to-image"
-	modelID := "test-model"
+	// Override the containerWatchInterval for testing purposes.
+	containerWatchInterval = 10 * time.Millisecond
 
-	t.Run("ImageNotFound", func(t *testing.T) {
-		mockDockerClient.On("ImageInspectWithRaw", mock.Anything, "default-image").Return(types.ImageInspect{}, []byte{}, fmt.Errorf("image not found")).Once()
+	containerID := "container1"
+	rc := &RunnerContainer{
+		Name: containerID,
+		RunnerContainerConfig: RunnerContainerConfig{
+			ID: containerID,
+		},
+	}
 
-		isAvailable := dockerManager.isImageAvailable(ctx, pipeline, modelID)
-		require.False(t, isAvailable)
-		mockDockerClient.AssertExpectations(t)
+	t.Run("ReturnContainerOnContextDone", func(t *testing.T) {
+		borrowCtx, cancel := context.WithCancel(context.Background())
+
+		go dockerManager.watchContainer(rc, borrowCtx)
+		cancel()                          // Cancel the context.
+		time.Sleep(50 * time.Millisecond) // Ensure the ticker triggers.
+
+		// Verify that the container was returned.
+		_, exists := dockerManager.containers[rc.Name]
+		require.True(t, exists)
 	})
 
-	t.Run("ImageFound", func(t *testing.T) {
-		mockDockerClient.On("ImageInspectWithRaw", mock.Anything, "default-image").Return(types.ImageInspect{}, []byte{}, nil).Once()
+	t.Run("DestroyContainerOnNotRunning", func(t *testing.T) {
+		borrowCtx := context.Background()
 
-		isAvailable := dockerManager.isImageAvailable(ctx, pipeline, modelID)
-		require.True(t, isAvailable)
-		mockDockerClient.AssertExpectations(t)
+		// Mock ContainerInspect to return a non-running state.
+		mockDockerClient.On("ContainerInspect", mock.Anything, containerID).Return(types.ContainerJSON{
+			ContainerJSONBase: &types.ContainerJSONBase{
+				State: &types.ContainerState{
+					Running: false,
+				},
+			},
+		}, nil).Once()
+
+		// Mock destroyContainer to verify it is called.
+		mockDockerClient.On("ContainerStop", mock.Anything, containerID, mock.Anything).Return(nil)
+		mockDockerClient.On("ContainerRemove", mock.Anything, containerID, mock.Anything).Return(nil)
+
+		go dockerManager.watchContainer(rc, borrowCtx)
+		time.Sleep(50 * time.Millisecond) // Ensure the ticker triggers.
+
+		// Verify that the container was destroyed.
+		_, exists := dockerManager.containers[rc.Name]
+		require.False(t, exists)
 	})
 }
 
-func TestGetContainerImageName(t *testing.T) {
-	mockDockerClient := new(MockDockerClient)
-	dockerManager := createDockerManager(mockDockerClient)
-
-	tests := []struct {
-		pipeline string
-		modelID  string
-		expected string
-		err      bool
-	}{
-		{"segment-anything-2", "", "livepeer/ai-runner:segment-anything-2", false},
-		{"text-to-speech", "", "livepeer/ai-runner:text-to-speech", false},
-		{"live-video-to-video", "streamdiffusion", "livepeer/ai-runner:live-app-streamdiffusion", false},
-		{"live-video-to-video", "unknown-model", "", true},
-		{"unknown-pipeline", "", "default-image", false},
-	}
-
-	for _, tt := range tests {
-		image, err := dockerManager.getContainerImageName(tt.pipeline, tt.modelID)
-		if tt.err {
-			require.Error(t, err)
-		} else {
-			require.NoError(t, err)
-			require.Equal(t, tt.expected, image)
-		}
-	}
-}
+// Watch container
 
 func TestRemoveExistingContainers(t *testing.T) {
 	mockDockerClient := new(MockDockerClient)
@@ -670,4 +719,68 @@ func TestDockerRemoveContainer(t *testing.T) {
 	err := dockerRemoveContainer(mockDockerClient, "container1")
 	require.NoError(t, err)
 	mockDockerClient.AssertExpectations(t)
+}
+
+func TestDockerWaitUntilRunning(t *testing.T) {
+	mockDockerClient := new(MockDockerClient)
+	containerID := "container1"
+	pollingInterval := 10 * time.Millisecond
+	ctx := context.Background()
+
+	t.Run("ContainerRunning", func(t *testing.T) {
+		// Mock ContainerInspect to return a running container state.
+		mockDockerClient.On("ContainerInspect", mock.Anything, containerID).Return(types.ContainerJSON{
+			ContainerJSONBase: &types.ContainerJSONBase{
+				State: &types.ContainerState{
+					Running: true,
+				},
+			},
+		}, nil).Once()
+
+		err := dockerWaitUntilRunning(ctx, mockDockerClient, containerID, pollingInterval)
+		require.NoError(t, err)
+		mockDockerClient.AssertExpectations(t)
+	})
+
+	t.Run("ContainerNotRunningInitially", func(t *testing.T) {
+		// Mock ContainerInspect to return a non-running state initially, then a running state.
+		mockDockerClient.On("ContainerInspect", mock.Anything, containerID).Return(types.ContainerJSON{
+			ContainerJSONBase: &types.ContainerJSONBase{
+				State: &types.ContainerState{
+					Running: false,
+				},
+			},
+		}, nil).Once()
+		mockDockerClient.On("ContainerInspect", mock.Anything, containerID).Return(types.ContainerJSON{
+			ContainerJSONBase: &types.ContainerJSONBase{
+				State: &types.ContainerState{
+					Running: true,
+				},
+			},
+		}, nil).Once()
+
+		err := dockerWaitUntilRunning(ctx, mockDockerClient, containerID, pollingInterval)
+		require.NoError(t, err)
+		mockDockerClient.AssertExpectations(t)
+	})
+
+	t.Run("ContextTimeout", func(t *testing.T) {
+		// Create a context that will timeout.
+		timeoutCtx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+		defer cancel()
+
+		// Mock ContainerInspect to always return a non-running state.
+		mockDockerClient.On("ContainerInspect", mock.Anything, containerID).Return(types.ContainerJSON{
+			ContainerJSONBase: &types.ContainerJSONBase{
+				State: &types.ContainerState{
+					Running: false,
+				},
+			},
+		}, nil)
+
+		err := dockerWaitUntilRunning(timeoutCtx, mockDockerClient, containerID, pollingInterval)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "timed out waiting for managed container")
+		mockDockerClient.AssertExpectations(t)
+	})
 }
