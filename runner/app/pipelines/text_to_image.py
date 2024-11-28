@@ -1,6 +1,7 @@
 import logging
 import os
 from enum import Enum
+import time
 from typing import List, Optional, Tuple
 
 import PIL
@@ -31,6 +32,7 @@ from app.utils.errors import InferenceError
 
 logger = logging.getLogger(__name__)
 
+SFAST_WARMUP_ITERATIONS = 2  # Model warm-up iterations when SFAST is enabled.
 
 class ModelName(Enum):
     """Enumeration mapping model names to their corresponding IDs."""
@@ -177,14 +179,31 @@ class TextToImagePipeline(Pipeline):
 
             self.ldm = compile_model(self.ldm)
 
-            # Warm-up the pipeline.
-            # TODO: Not yet supported for TextToImagePipeline.
             if os.getenv("SFAST_WARMUP", "true").lower() == "true":
-                logger.warning(
-                    "The 'SFAST_WARMUP' flag is not yet supported for the "
-                    "TextToImagePipeline and will be ignored. As a result the first "
-                    "call may be slow if 'SFAST' is enabled."
-                )
+                # Retrieve default model params.
+                # TODO: Retrieve defaults from Pydantic class in route.
+                warmup_kwargs = {
+                    "prompt": "A happy pipe in the line looking at the wall with words sfast",
+                    "num_images_per_prompt": 4,
+                    "negative_prompt": "No blurry or weird artifacts",
+                }
+
+                logger.info("Warming up TextToImagePipeline pipeline...")
+                total_time = 0
+                for ii in range(SFAST_WARMUP_ITERATIONS):
+                    t = time.time()
+                    try:
+                        self.ldm(**warmup_kwargs).images
+                    except Exception as e:
+                        # FIXME: When out of memory, pipeline is corrupted.
+                        logger.error(f"TextToImagePipeline warmup error: {e}")
+                        raise e
+                    iteration_time = time.time() - t
+                    total_time += iteration_time
+                    logger.info(
+                        "Warmup iteration %s took %s seconds", ii + 1, iteration_time
+                    )
+                logger.info("Total warmup time: %s seconds", total_time)
 
         if deepcache_enabled and not (
             is_lightning_model(model_id) or is_turbo_model(model_id)
