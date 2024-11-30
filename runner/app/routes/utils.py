@@ -110,6 +110,9 @@ class ObjectDetectionResponse(BaseModel):
     detection_boxes: str = Field(
         ..., description="The model's x's and y's coordinates for each detected object in each frame."
     )
+    frames_pts: str = Field(
+        ..., description="The presentation timestamp (PTS) of each frame, indicating the exact time at which the frame should be displayed."
+    )
 
 
 class APIError(BaseModel):

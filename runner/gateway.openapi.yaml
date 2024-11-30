@@ -1129,14 +1129,18 @@ components:
         detection_boxes:
           type: string
           title: Detection Boxes
-          description: The model's x's and y's coordinates for each detected object in each
-            frame.
+          description: The model's x's and y's coordinates for each detected object in each frame.
+        frames_pts:
+          type: string
+          title: Frames Pts
+          description: The presentation timestamp (PTS) of each frame, indicating the exact time at which the frame should be displayed.
       type: object
       required:
       - frames
       - confidence_scores
       - labels
       - detection_boxes
+      - frames_pts
       title: ObjectDetectionResponse
       description: Response model for object detection.
     TextResponse:

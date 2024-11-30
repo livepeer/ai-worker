@@ -330,6 +330,9 @@ type ObjectDetectionResponse struct {
 
 	// DetectionBoxes The model's x's and y's coordinates for each detected object in each frame.
 	DetectionBoxes string `json:"detection_boxes"`
+
+	// FramesPts The presentation timestamp (PTS) of each frame, indicating the exact time at which the frame should be displayed.
+	FramesPts string `json:"frames_pts"`
 }
 
 // TextResponse Response model for text generation.

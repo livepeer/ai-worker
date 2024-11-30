@@ -112,12 +112,15 @@ async def object_detection(
         )
 
     frames = []
+    frames_pts = []
     try:
         container = av.open(video.file)
+        stream = container.streams.video[0]
 
         start = time.time()
         for frame in container.decode(video=0):  # Decode video frames
             frames.append(frame.to_image())  # Convert each frame to PIL image and add to list
+            frames_pts.append(float(frame.pts * stream.time_base))
 
         container.close()
         logger.info(f"Decoded video in {time.time() - start:.2f} seconds")
@@ -163,4 +166,5 @@ async def object_detection(
         "confidence_scores": str(confidence_scores_all_frames),
         "labels": str(labels_all_frames),
         "detection_boxes":str(detection_boxes),
+        "frames_pts":str(frames_pts),
     }
