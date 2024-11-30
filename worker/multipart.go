@@ -443,6 +443,11 @@ func NewObjectDetectionMultipartWriter(w io.Writer, req GenObjectDetectionMultip
 			return nil, err
 		}
 	}
+	if req.ReturnAnnotatedVideo != nil {
+		if err := mw.WriteField("return_annotated_video", strconv.FormatBool(*req.ReturnAnnotatedVideo)); err != nil {
+			return nil, err
+		}
+	}
 
 	if err := mw.Close(); err != nil {
 		return nil, err

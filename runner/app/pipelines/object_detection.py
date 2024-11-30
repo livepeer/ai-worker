@@ -69,7 +69,7 @@ class ObjectDetectionPipeline(Pipeline):
         self.font = ImageFont.load_default(size=self.font_size)
 
 
-    def __call__(self, frames: List[Image], confidence_threshold: float = 0.6, **kwargs) -> str:
+    def __call__(self, frames: List[Image], confidence_threshold: float = 0.6, return_annotated_video: bool = False, **kwargs) -> str:
 
         try:
             annotated_frames = []
@@ -98,15 +98,16 @@ class ObjectDetectionPipeline(Pipeline):
                     final_labels.append(self.object_detection_model.config.id2label[label_id])
                     confidence_scores.append(round(score, 3))
 
-                annotated_frame = annotate_image(
-                    input_image=frame,
-                    detections=detections,
-                    labels=final_labels,
-                    font_size=self.font_size,
-                    font=self.font
-                )
+                if return_annotated_video:
+                    annotated_frame = annotate_image(
+                        input_image=frame,
+                        detections=detections,
+                        labels=final_labels,
+                        font_size=self.font_size,
+                        font=self.font
+                    )
+                    annotated_frames.append(annotated_frame)
 
-                annotated_frames.append(annotated_frame)
                 confidence_scores_all_frames.append(confidence_scores)
                 labels_all_frames.append(final_labels)
 

@@ -80,6 +80,10 @@ async def object_detection(
         str,
         Form(description="Hugging Face model ID used for transformation."),
     ] = "",
+    return_annotated_video: Annotated[
+        bool,
+        Form(description="If true, returns annotated video url."),
+    ] = False,
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
@@ -122,6 +126,7 @@ async def object_detection(
         annotated_frames, confidence_scores_all_frames, labels_all_frames = pipeline(
             frames=frames,
             confidence_threshold=confidence_threshold,
+            return_annotated_video=return_annotated_video,
         )
         logger.info(f"Detections processed in {time.time() - start:.2f} seconds")
     except Exception as e:
@@ -135,10 +140,16 @@ async def object_detection(
         )
     start = time.time()
     output_frames = []
+
     # Convert the annotated frames to a data url
+    if return_annotated_video:
+        encoded_frames_url = frames_to_data_url(annotated_frames)
+    else:
+        encoded_frames_url = ""
+
     output_frames.append(
         {
-            "url": frames_to_data_url(annotated_frames),
+            "url": encoded_frames_url,
             "seed": 0,
             "nsfw": False,
         }

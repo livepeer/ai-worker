@@ -156,6 +156,9 @@ type BodyGenObjectDetection struct {
 	// ModelId Hugging Face model ID used for transformation.
 	ModelId *string `json:"model_id,omitempty"`
 
+	// ReturnAnnotatedVideo If true, returns annotated video url.
+	ReturnAnnotatedVideo *bool `json:"return_annotated_video,omitempty"`
+
 	// Video Uploaded video to transform with the pipeline.
 	Video openapi_types.File `json:"video"`
 }

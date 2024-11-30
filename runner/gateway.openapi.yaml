@@ -820,6 +820,11 @@ components:
           title: Model Id
           description: Hugging Face model ID used for transformation.
           default: ''
+        return_annotated_video:
+          type: boolean
+          title: Return Annotated Video
+          description: If true, returns annotated video url.
+          default: false
       type: object
       required:
       - video
