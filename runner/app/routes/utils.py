@@ -107,6 +107,9 @@ class ObjectDetectionResponse(BaseModel):
     labels: str = Field(
         ..., description="The model's labels for each detected object in each frame."
     )
+    detection_boxes: str = Field(
+        ..., description="The model's x's and y's coordinates for each detected object in each frame."
+    )
 
 
 class APIError(BaseModel):

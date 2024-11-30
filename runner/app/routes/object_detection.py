@@ -123,7 +123,7 @@ async def object_detection(
         logger.info(f"Decoded video in {time.time() - start:.2f} seconds")
     
         start = time.time()
-        annotated_frames, confidence_scores_all_frames, labels_all_frames = pipeline(
+        annotated_frames, confidence_scores_all_frames, labels_all_frames, detection_boxes = pipeline(
             frames=frames,
             confidence_threshold=confidence_threshold,
             return_annotated_video=return_annotated_video,
@@ -162,4 +162,5 @@ async def object_detection(
         "frames": frames,
         "confidence_scores": str(confidence_scores_all_frames),
         "labels": str(labels_all_frames),
+        "detection_boxes":str(detection_boxes),
     }

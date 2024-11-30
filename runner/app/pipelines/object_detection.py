@@ -111,7 +111,7 @@ class ObjectDetectionPipeline(Pipeline):
                 confidence_scores_all_frames.append(confidence_scores)
                 labels_all_frames.append(final_labels)
 
-            return annotated_frames, confidence_scores_all_frames, labels_all_frames
+            return annotated_frames, confidence_scores_all_frames, labels_all_frames, detections["boxes"].tolist()
 
         except Exception as e:
             raise InferenceError(original_exception=e)

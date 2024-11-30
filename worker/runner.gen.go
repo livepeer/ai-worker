@@ -327,6 +327,9 @@ type ObjectDetectionResponse struct {
 
 	// Labels The model's labels for each detected object in each frame.
 	Labels string `json:"labels"`
+
+	// DetectionBoxes The model's x's and y's coordinates for each detected object in each frame.
+	DetectionBoxes string `json:"detection_boxes"`
 }
 
 // TextResponse Response model for text generation.

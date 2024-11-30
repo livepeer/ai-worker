@@ -1141,11 +1141,17 @@ components:
           type: string
           title: Labels
           description: The model's labels for each detected object in each frame.
+        detection_boxes:
+          type: string
+          title: Detection Boxes
+          description: The model's x's and y's coordinates for each detected object in each
+            frame.
       type: object
       required:
       - frames
       - confidence_scores
       - labels
+      - detection_boxes
       title: ObjectDetectionResponse
       description: Response model for object detection.
     TextResponse:
