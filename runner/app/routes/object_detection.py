@@ -14,7 +14,7 @@ from app.routes.utils import (
     file_exceeds_max_size,
     handle_pipeline_exception,
     http_error,
-    image_to_data_url,
+    frames_to_data_url,
 )
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
@@ -135,16 +135,16 @@ async def object_detection(
         )
     start = time.time()
     output_frames = []
-    for frame in annotated_frames:
-        output_frames.append(
-            {
-                "url": image_to_data_url(frame),
-                "seed": 0,
-                "nsfw": False,
-            }
-        )
+    # Convert the annotated frames to a data url
+    output_frames.append(
+        {
+            "url": frames_to_data_url(annotated_frames),
+            "seed": 0,
+            "nsfw": False,
+        }
+    )
     
-    logger.info(f"Annotated frames converted to data URLs in {time.time() - start:.2f} seconds, frame count: {len(output_frames)}")
+    logger.info(f"Annotated frames converted to data URL in {time.time() - start:.2f} seconds, frame count: {len(annotated_frames)}")
     frames = []
     frames.append(output_frames)
     return {
