@@ -114,7 +114,7 @@ async def object_detection(
     frames = []
     frames_pts = []
     try:
-        container = av.open(video.file)
+        container = av.open(video.file, mode='r')
         stream = container.streams.video[0]
 
         start = time.time()
