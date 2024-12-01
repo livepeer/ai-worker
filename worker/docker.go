@@ -104,6 +104,14 @@ type DockerManager struct {
 }
 
 func overridePipelineImages(defaultImage string) error {
+	// overridePipelineImages function parses a JSON string containing pipeline-to-image mappings and overrides the default mappings if valid. 
+	// It updates the `pipelineToImage` and `livePipelineToImage` maps with custom images.
+	// Parameters:
+	// - defaultImage: A string that can either be containerImage name or a JSON string with overrides for pipeline-to-image mappings.
+	//
+	// Returns:
+	// - error: An error if the JSON parsing fails or if the mapping is not found in existing maps else `nil`.
+
 	// First check if the defaultImage is a valid JSON string
 	var pipelineOverrides map[string]string
 	if strings.HasPrefix(defaultImage, "{") && strings.HasSuffix(defaultImage, "}") {
