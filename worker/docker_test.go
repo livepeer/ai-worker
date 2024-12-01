@@ -784,3 +784,68 @@ func TestDockerWaitUntilRunning(t *testing.T) {
 		mockDockerClient.AssertExpectations(t)
 	})
 }
+
+func TestDockerManager_overridePipelineImages(t *testing.T) {
+	mockDockerClient := new(MockDockerClient)
+	dockerManager := createDockerManager(mockDockerClient)
+
+	tests := []struct {
+		name          string
+		inputJSON     string
+		pipeline      string
+		expectedImage string
+		expectError   bool
+	}{
+		{
+			name:          "ValidOverride",
+			inputJSON:     `{"segment-anything-2": "custom-image:1.0"}`,
+			pipeline:      "segment-anything-2",
+			expectedImage: "custom-image:1.0",
+			expectError:   false,
+		},
+		{
+			name:          "MultipleOverrides",
+			inputJSON:     `{"segment-anything-2": "custom-image:1.0", "text-to-speech": "speech-image:2.0"}`,
+			pipeline:      "text-to-speech",
+			expectedImage: "speech-image:2.0",
+			expectError:   false,
+		},
+		{
+			name:          "NoOverrideFallback",
+			inputJSON:     `{"segment-anything-2": "custom-image:1.0"}`,
+			pipeline:      "video-to-video",
+			expectedImage: "default-image",
+			expectError:   false,
+		},
+		{
+			name:        "EmptyJSON",
+			inputJSON:   `{}`,
+			pipeline:    "segment-anything-2",
+			expectedImage: "default-image",
+			expectError:   false,
+		},
+		{
+			name:        "MalformedJSON",
+			inputJSON:   `{"segment-anything-2": "custom-image:1.0`,
+			pipeline:    "segment-anything-2",
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Call overridePipelineImages function with the mock data.
+			err := overridePipelineImages(tt.inputJSON)
+
+			if tt.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				
+				// Verify the expected image.
+				image, _ := dockerManager.getContainerImageName(tt.pipeline, "")
+				require.Equal(t, tt.expectedImage, image)
+			}
+		})
+	}
+}
