@@ -33,10 +33,14 @@ async def main(http_port: int, stream_protocol: str, subscribe_url: str, publish
     try:
         handler.start()
         runner = await start_http_server(handler, http_port)
-        signal_task = asyncio.create_task(block_until_signal([signal.SIGINT, signal.SIGTERM]))
-        handler_task = asyncio.create_task(start_control_subscriber(handler.wait(), control_url))
 
-        await asyncio.wait([signal_task, handler_task],
+        tasks: List[asyncio.Task] = []
+        tasks.append(handler.wait())
+        tasks.append(asyncio.create_task(block_until_signal([signal.SIGINT, signal.SIGTERM])))
+        if control_url is not None and control_url.strip() != "":
+            tasks.append(asyncio.create_task(start_control_subscriber(handler, control_url)))
+
+        await asyncio.wait(tasks,
             return_when=asyncio.FIRST_COMPLETED
         )
     except Exception as e:
