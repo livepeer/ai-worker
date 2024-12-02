@@ -114,10 +114,12 @@ func overridePipelineImages(defaultImage string) error {
 
 	// First check if the defaultImage is a valid JSON string
 	var pipelineOverrides map[string]string
-	if strings.HasPrefix(defaultImage, "{") && strings.HasSuffix(defaultImage, "}") {
+	if strings.HasPrefix(defaultImage, "{") || strings.HasSuffix(defaultImage, "}") {
 		// Parse the JSON string for custom pipeline images override
-		if err := json.Unmarshal([]byte(defaultImage), &pipelineOverrides); err != nil {
-			return fmt.Errorf("failed to parse pipeline overrides JSON: %w", err)
+		err := json.Unmarshal([]byte(defaultImage), &pipelineOverrides)
+		if err != nil {
+			slog.Error("Malformed JSON in pipeline override", "error", err, "json", defaultImage)
+			return err
 		}
 
 		// Override the pipelineToImage and livePipelineToImage mappings
