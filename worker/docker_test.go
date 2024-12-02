@@ -830,6 +830,13 @@ func TestDockerManager_overridePipelineImages(t *testing.T) {
 			pipeline:    "segment-anything-2",
 			expectError: true,
 		},
+		{
+			name:          "RegularStringInput",
+			inputJSON:     "",
+			pipeline:      "image-to-video",
+			expectedImage: "default-image",
+			expectError:   false,
+		},
 	}
 
 	for _, tt := range tests {
