@@ -948,12 +948,6 @@ components:
           description: URL for subscribing via Trickle protocol for updates in the
             live video-to-video generation params.
           default: ''
-        stream_protocol:
-          type: string
-          title: Stream Protocol
-          description: Stream protocol could be trickle (production use) or zeromq
-            (testing)
-          default: trickle
         model_id:
           type: string
           title: Model Id

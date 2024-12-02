@@ -177,19 +177,26 @@ func main() {
 
     slog.Info("Warming container")
 
-    if err := w.Warm(ctx, pipeline, *modelID, worker.RunnerEndpoint{}, worker.OptimizationFlags{}); err != nil {
+    optimizationFlags := worker.OptimizationFlags{
+        "STREAM_PROTOCOL": "zeromq",
+        // "FPS_MONITOR_FLAG": "false", // add to trigger monitoring
+        // "FPS_MONITOR_KAFKA_TOPIC": "",
+        // "BOOTSTRAP_SERVERS": "",
+        // "KAFKA_USERNAME": "",
+        // "KAFKA_PASSWORD": "",
+    }
+
+    if err := w.Warm(ctx, pipeline, *modelID, worker.RunnerEndpoint{}, optimizationFlags); err != nil {
         slog.Error("Error warming container", slog.String("error", err.Error()))
         return
     }
 
     slog.Info("Warm container is up")
 
-    streamProtocol := "zeromq"
     req := worker.GenLiveVideoToVideoJSONRequestBody{
         ModelId:      modelID,
         SubscribeUrl: "tcp://172.17.0.1:5555",
         PublishUrl:   "tcp://172.17.0.1:5556",
-        StreamProtocol: &streamProtocol,
     }
 
     slog.Info("Running live-video-to-video")
