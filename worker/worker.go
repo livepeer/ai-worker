@@ -632,11 +632,12 @@ func (w *Worker) LiveVideoToVideo(ctx context.Context, req GenLiveVideoToVideoJS
 }
 
 func (w *Worker) ObjectDetection(ctx context.Context, req GenObjectDetectionMultipartRequestBody) (*ObjectDetectionResponse, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	c, err := w.borrowContainer(ctx, "object-detection", *req.ModelId)
 	if err != nil {
 		return nil, err
 	}
-	defer w.returnContainer(c)
 
 	var buf bytes.Buffer
 	mw, err := NewObjectDetectionMultipartWriter(&buf, req)
