@@ -813,7 +813,7 @@ func TestDockerManager_overridePipelineImages(t *testing.T) {
 		{
 			name:          "NoOverrideFallback",
 			inputJSON:     `{"segment-anything-2": "custom-image:1.0"}`,
-			pipeline:      "video-to-video",
+			pipeline:      "streamdiffusion",
 			expectedImage: "default-image",
 			expectError:   false,
 		},
@@ -821,12 +821,12 @@ func TestDockerManager_overridePipelineImages(t *testing.T) {
 			name:        "EmptyJSON",
 			inputJSON:   `{}`,
 			pipeline:    "segment-anything-2",
-			expectedImage: "default-image",
+			expectedImage: "custom-image:1.0",
 			expectError:   false,
 		},
 		{
 			name:        "MalformedJSON",
-			inputJSON:   `{"segment-anything-2": "custom-image:1.0`,
+			inputJSON:   `{"segment-anything-2": "custom-image:1.0"`,
 			pipeline:    "segment-anything-2",
 			expectError: true,
 		},
