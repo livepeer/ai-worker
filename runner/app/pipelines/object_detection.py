@@ -75,6 +75,7 @@ class ObjectDetectionPipeline(Pipeline):
             annotated_frames = []
             confidence_scores_all_frames = []
             labels_all_frames = []
+            detection_boxes_all_frames = []
 
             for frame in frames:
                 # Process frame and add annotations
@@ -110,8 +111,9 @@ class ObjectDetectionPipeline(Pipeline):
 
                 confidence_scores_all_frames.append(confidence_scores)
                 labels_all_frames.append(final_labels)
+                detection_boxes_all_frames.append(detections["boxes"].tolist())
 
-            return annotated_frames, confidence_scores_all_frames, labels_all_frames, detections["boxes"].tolist()
+            return annotated_frames, confidence_scores_all_frames, labels_all_frames, detection_boxes_all_frames
 
         except Exception as e:
             raise InferenceError(original_exception=e)
