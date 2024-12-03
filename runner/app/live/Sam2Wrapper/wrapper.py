@@ -28,7 +28,8 @@ class Sam2Wrapper:
     def __init__(
         self,
         model_id_or_path: str,
-        device: str
+        device: str,
+        **kwargs
     ):
         self.device = device
         self.model_id = model_id_or_path
