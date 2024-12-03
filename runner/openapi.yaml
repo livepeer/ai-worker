@@ -1070,6 +1070,12 @@ components:
           description: URL for subscribing via Trickle protocol for updates in the
             live video-to-video generation params.
           default: ''
+        events_url:
+          type: string
+          title: Events Url
+          description: EventsUrl URL for publishing events via Trickle protocol for
+            pipeline status and logs.
+          default: ''
         model_id:
           type: string
           title: Model Id
@@ -1103,11 +1109,16 @@ components:
           type: string
           title: Control Url
           description: URL for updating the live video-to-video generation
+        events_url:
+          type: string
+          title: Events Url
+          description: URL for subscribing to events for pipeline status and logs
       type: object
       required:
       - subscribe_url
       - publish_url
       - control_url
+      - events_url
       title: LiveVideoToVideoResponse
       description: Response model for live video-to-video generation.
     MasksResponse:
