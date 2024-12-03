@@ -93,10 +93,12 @@ class LiveVideoToVideoResponse(BaseModel):
         ..., description="Destination URL of the outgoing stream to publish to"
     )
     control_url: str = Field(
-        ..., description="URL for updating the live video-to-video generation"
+        default='',
+        description="URL for updating the live video-to-video generation",
     )
     events_url: str = Field(
-        ..., description="URL for subscribing to events for pipeline status and logs"
+        default='',
+        description="URL for subscribing to events for pipeline status and logs",
     )
 
 class APIError(BaseModel):
