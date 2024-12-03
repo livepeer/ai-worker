@@ -24,23 +24,13 @@ MODEL_MAPPING = {
     }
 }
 
-torch.autocast(device_type="cuda", dtype=torch.bfloat16).__enter__()
-if torch.cuda.get_device_properties(0).major >= 8:
-    torch.backends.cuda.matmul.allow_tf32 = True
-    torch.backends.cudnn.allow_tf32 = True
-
-# Initialize Hydra to load the configuration
-if GlobalHydra.instance().is_initialized():
-    GlobalHydra.instance().clear()
-
 class Sam2Wrapper:
     def __init__(
         self,
         model_id_or_path: str,
-        device: Optional[str] = None,
-        **kwargs
+        device: str
     ):
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = device
         self.model_id = model_id_or_path
         if model_id_or_path in MODEL_MAPPING:
             model_info = MODEL_MAPPING[model_id_or_path]
@@ -51,6 +41,15 @@ class Sam2Wrapper:
             raise ValueError(f"Model ID {model_id_or_path} not supported")
         
         logging.info(f"Initializing segment-anything-2 with model_id {self.model_id}")
+        
+        torch.autocast(device_type=device, dtype=torch.bfloat16).__enter__()
+        if torch.cuda.get_device_properties(0).major >= 8:
+            torch.backends.cuda.matmul.allow_tf32 = True
+            torch.backends.cudnn.allow_tf32 = True
+
+        # Initialize Hydra to load the configuration
+        if GlobalHydra.instance().is_initialized():
+            GlobalHydra.instance().clear()
         
         # Code from sam2.build_sam.build_sam2_camera_predictor to appease Hydra
         with initialize_config_dir(config_dir=config_path, version_base=None):
@@ -80,17 +79,6 @@ class Sam2Wrapper:
             # Set the model in memory
             self.predictor = model
 
-    def __call__(
-        self, 
-        image: Image.Image,
-        **kwargs
-    ) -> Tuple[List[Image.Image], List[Optional[bool]]]:
-        pass
-
-    def __str__(self) -> str:
-        return f"Sam2Wrapper model_id={self.model_id}"
-        
-
 def load_checkpoint(model, ckpt_path, device):
     if ckpt_path is not None:
 
@@ -103,4 +91,3 @@ def load_checkpoint(model, ckpt_path, device):
             logging.error(f"Unexpected keys: {unexpected_keys}")
             raise RuntimeError("Unexpected keys while loading checkpoint.")
         logging.info("Loaded checkpoint successfully.")
-    
