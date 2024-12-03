@@ -50,6 +50,12 @@ class LiveVideoToVideoParams(BaseModel):
             default="",description="URL for subscribing via Trickle protocol for updates in the live video-to-video generation params.",
         ),
     ]
+    events_url: Annotated[
+        str,
+        Field(
+            default="", description="EventsUrl URL for publishing events via Trickle protocol for pipeline status and logs.",
+        ),
+    ]
     model_id: Annotated[
         str,
         Field(

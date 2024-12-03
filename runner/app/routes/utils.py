@@ -95,6 +95,9 @@ class LiveVideoToVideoResponse(BaseModel):
     control_url: str = Field(
         ..., description="URL for updating the live video-to-video generation"
     )
+    events_url: str = Field(
+        ..., description="URL for subscribing to events for pipeline status and logs"
+    )
 
 class APIError(BaseModel):
     """API error response model."""
