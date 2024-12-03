@@ -90,7 +90,7 @@ if __name__ == "__main__":
         "--stream-protocol",
         type=str,
         choices=["trickle", "zeromq"],
-        default="trickle",
+        default=os.getenv("STREAM_PROTOCOL", "trickle"),
         help="Protocol to use for streaming frames in and out. One of: trickle, zeromq"
     )
     parser.add_argument(

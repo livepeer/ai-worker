@@ -10,9 +10,8 @@ from typing import AsyncGenerator
 from PIL import Image
 
 from .process import PipelineProcess
-from .monitor import KafkaProducer
 
-fps_log_interval = 1
+fps_log_interval = 10
 
 
 class PipelineStreamer(ABC):
@@ -24,7 +23,6 @@ class PipelineStreamer(ABC):
         self.restart_count = 0
         self.input_timeout = input_timeout  # 0 means disabled
         self.done_future = None
-        self.fps_monitor = KafkaProducer()
 
     def start(self):
         self.done_future = asyncio.get_running_loop().create_future()
@@ -157,7 +155,6 @@ class PipelineStreamer(ABC):
                 if elapsed_time >= fps_log_interval:
                     fps = frame_count / elapsed_time
                     logging.info(f"Input FPS: {fps:.2f}")
-                    self.fps_monitor.send_event("network_events", "input_fps", {"model_id":"NA", "pipeline_id": self.pipeline, "stream_id":"NA", "fps": fps,})
                     frame_count = 0
                     start_time = time.time()
             # automatically stop the streamer when the ingress ends cleanly
@@ -185,7 +182,7 @@ class PipelineStreamer(ABC):
                 elapsed_time = time.time() - start_time
                 if elapsed_time >= fps_log_interval:
                     fps = frame_count / elapsed_time
-                    self.fps_monitor.send_event("network_events", "output_fps", {"model_id":"NA", "pipeline_id": self.pipeline, "stream_id":"NA", "fps": fps,})
+                    logging.info(f"Output FPS: {fps:.2f}")
                     frame_count = 0
                     start_time = time.time()
 
