@@ -103,6 +103,23 @@ type DockerManager struct {
 	mu         *sync.Mutex
 }
 
+// updatePipelineMappings updates the specified mapping with pipeline to image overriding.
+// It logs a warning if a pipeline is not found in the given mapping.
+//
+// Parameters:
+// - overrides: A map of pipeline names to custom image names.
+// - mapping: The map to be updated with the provided overrides.
+// - mapName: The name of the map (used for logging purposes).
+func updatePipelineMappings(overrides map[string]string, mapping map[string]string, mapName string) {
+	for pipeline, image := range overrides {
+		if _, exists := mapping[pipeline]; exists {
+			mapping[pipeline] = image
+		} else {
+			slog.Warn("Pipeline not found in map", "map", mapName, "pipeline", pipeline)
+		}
+	}
+}
+
 // overridePipelineImages function parses a JSON string containing pipeline-to-image mappings and overrides the default mappings if valid. 
 // It updates the `pipelineToImage` and `livePipelineToImage` maps with custom images.
 // Parameters:
@@ -111,30 +128,14 @@ type DockerManager struct {
 // Returns:
 // - error: An error if the JSON parsing fails or if the mapping is not found in existing maps else `nil`.
 func overridePipelineImages(defaultImage string) error {
-	// First check if the defaultImage is a valid JSON string
-	var pipelineOverrides map[string]string
 	if strings.HasPrefix(defaultImage, "{") || strings.HasSuffix(defaultImage, "}") {
-		// Parse the JSON string for custom pipeline images override
-		err := json.Unmarshal([]byte(defaultImage), &pipelineOverrides)
-		if err != nil {
-			slog.Error("Malformed JSON in pipeline override", "error", err, "json", defaultImage)
+		var pipelineOverrides map[string]string
+		if err := json.Unmarshal([]byte(defaultImage), &pipelineOverrides); err != nil {
+			slog.Error("Error parsing JSON", "error", err)
 			return err
 		}
-
-		// Override the pipelineToImage and livePipelineToImage mappings
-		for pipeline, image := range pipelineOverrides {
-			if _, isPresent := pipelineToImage[pipeline]; isPresent {
-				pipelineToImage[pipeline] = image
-			} else {
-				slog.Warn("Pipeline not found in pipelineToImage map", "pipeline", pipeline)
-			}
-
-			if _, isPresent := livePipelineToImage[pipeline]; isPresent {
-				livePipelineToImage[pipeline] = image
-			} else {
-				slog.Warn("Pipeline not found in livePipelineToImage map", "pipeline", pipeline)
-			}
-		}
+		updatePipelineMappings(pipelineOverrides, pipelineToImage, "pipelineToImage")
+		updatePipelineMappings(pipelineOverrides, livePipelineToImage, "livePipelineToImage")
 	}
 	return nil
 }
