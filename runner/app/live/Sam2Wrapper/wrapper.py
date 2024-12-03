@@ -1,8 +1,8 @@
 import logging
-from typing import List, Optional, Tuple, Dict
+from typing import List, Optional, Tuple
 from PIL import Image
 import torch
-from sam2.build_sam import build_sam2_camera_predictor #import required by hydra even if it appears unused
+from sam2.build_sam import build_sam2_camera_predictor
 from omegaconf import OmegaConf
 from hydra.utils import instantiate
 from hydra import initialize_config_dir, compose
