@@ -18,10 +18,6 @@ MODEL_MAPPING = {
         "config": "sam2_hiera_s.yaml",
         "checkpoint": "sam2_hiera_small.pt"
     },
-    "facebook/sam2-hiera-base": {
-        "config": "sam2_hiera_b.yaml",
-        "checkpoint": "sam2_hiera_base.pt"
-    },
     "facebook/sam2-hiera-large": {
         "config": "sam2_hiera_l.yaml",
         "checkpoint": "sam2_hiera_large.pt"
@@ -48,11 +44,13 @@ class Sam2Wrapper:
         self.model_id = model_id_or_path
         if model_id_or_path in MODEL_MAPPING:
             model_info = MODEL_MAPPING[model_id_or_path]
+            config_path = os.path.join("/models/sam2--checkpoints/", model_id_or_path.replace("/", "--"))
             model_cfg = model_info['config']
-            config_path = os.path.abspath((f"models/sam2_configs"))
-            sam2_checkpoint = f"/models/checkpoints/{model_info['checkpoint']}"
+            sam2_checkpoint = f"{config_path}/{model_info['checkpoint']}"
         else:
             raise ValueError(f"Model ID {model_id_or_path} not supported")
+        
+        logging.info(f"Initializing segment-anything-2 with model_id {self.model_id}")
         
         # Code from sam2.build_sam.build_sam2_camera_predictor to appease Hydra
         with initialize_config_dir(config_dir=config_path, version_base=None):
@@ -104,5 +102,5 @@ def load_checkpoint(model, ckpt_path, device):
         if unexpected_keys:
             logging.error(f"Unexpected keys: {unexpected_keys}")
             raise RuntimeError("Unexpected keys while loading checkpoint.")
-        logging.info(f"Loaded checkpoint successfully: {ckpt_path}")
+        logging.info("Loaded checkpoint successfully.")
     
