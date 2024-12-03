@@ -74,9 +74,20 @@ async def start_control_subscriber(handler: PipelineStreamer, control_url: str):
         segment = await subscriber.next()
         if segment.eos():
             return
-        params = await segment.read()
-        logging.info("Received control message, updating model with params: %s", params)
-        handler.update_params(**json.loads(params))
+
+        try:
+            params = await segment.read()
+            logging.info("Received control message, updating model with params: %s", params)
+            data = json.loads(params)
+        except Exception as e:
+            logging.error(f"Error parsing control message: {e}")
+            continue
+        
+        try:        
+            handler.update_params(data)
+        except Exception as e:
+            logging.error(f"Error updating model with control message: {e}")
+            continue
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Infer process to run the AI pipeline")
