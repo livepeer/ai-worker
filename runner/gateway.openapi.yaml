@@ -971,16 +971,16 @@ components:
           type: string
           title: Control Url
           description: URL for updating the live video-to-video generation
+          default: ''
         events_url:
           type: string
           title: Events Url
           description: URL for subscribing to events for pipeline status and logs
+          default: ''
       type: object
       required:
       - subscribe_url
       - publish_url
-      - control_url
-      - events_url
       title: LiveVideoToVideoResponse
       description: Response model for live video-to-video generation.
     MasksResponse:
