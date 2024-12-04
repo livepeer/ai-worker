@@ -47,6 +47,15 @@ async def subscribe(subscribe_url, out_pipe):
         except aiohttp.ClientError as e:
             logging.info(f"Failed to read segment - {e}")
             break # end of stream?
+        except asyncio.CancelledError:
+            logging.error("Subscription task was cancelled")
+            break
+        except asyncio.TimeoutError:
+            logging.error("Timeout occurred while reading segment")
+            break
+        except OSError as e:
+            logging.error(f"OS error occurred: {e}")
+            break
         except Exception as e:
             raise e
         finally:
