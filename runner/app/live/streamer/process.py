@@ -24,9 +24,7 @@ class PipelineProcess:
         self.ctx = mp.get_context("spawn")
 
         self.input_queue = self.ctx.Queue(maxsize=5)
-        self.last_input_time = 0.0
         self.output_queue = self.ctx.Queue()
-        self.last_output_time = 0.0
         self.param_update_queue = self.ctx.Queue()
 
         self.done = self.ctx.Event()
@@ -66,7 +64,6 @@ class PipelineProcess:
         while not self.is_done():
             try:
                 self.input_queue.put_nowait(frame)
-                self.last_input_time = time.time()
                 break
             except queue.Full:
                 try:
@@ -82,7 +79,6 @@ class PipelineProcess:
         while not self.is_done():
             try:
                 output = self.output_queue.get_nowait()
-                self.last_output_time = time.time()
                 return output
             except queue.Empty:
                 await asyncio.sleep(0.005)
