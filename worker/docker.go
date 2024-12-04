@@ -174,7 +174,6 @@ func (m *DockerManager) Borrow(ctx context.Context, pipeline, modelID string) (*
 
 	for _, runner := range m.containers {
 		if runner.Pipeline == pipeline && runner.ModelID == modelID {
-			delete(m.containers, runner.Name)
 			rc = runner
 			break
 		}
