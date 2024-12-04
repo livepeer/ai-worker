@@ -8,32 +8,28 @@ from typing import AsyncGenerator
 
 from trickle import media
 
-from .streamer import PipelineStreamer
+from .protocol import StreamProtocol
 from .jpeg import to_jpeg_bytes, from_jpeg_bytes
 
-class TrickleStreamer(PipelineStreamer):
-    def __init__(
-        self,
-        subscribe_url: str,
-        publish_url: str,
-        pipeline: str,
-        input_timeout: int,
-        params: dict,
-    ):
-        super().__init__(pipeline, input_timeout, params)
+class TrickleProtocol(StreamProtocol):
+    def __init__(self, subscribe_url: str, publish_url: str):
         self.subscribe_url = subscribe_url
         self.publish_url = publish_url
         self.subscribe_queue = queue.Queue[bytearray]()
         self.publish_queue = queue.Queue[bytearray]()
+        self.subscribe_task = None
+        self.publish_task = None
 
-    def start(self):
-        self.subscribe_task = asyncio.create_task(media.run_subscribe(self.subscribe_url, self.subscribe_queue.put))
-        self.publish_task = asyncio.create_task(media.run_publish(self.publish_url, self.publish_queue.get))
-        super().start()
+    async def start(self):
+        self.subscribe_task = asyncio.create_task(
+            media.run_subscribe(self.subscribe_url, self.subscribe_queue.put)
+        )
+        self.publish_task = asyncio.create_task(
+            media.run_publish(self.publish_url, self.publish_queue.get)
+        )
 
     async def stop(self):
         if not self.subscribe_task or not self.publish_task:
-            await super().stop()
             return
 
         # send sentinel None values to stop the trickle tasks
@@ -50,8 +46,6 @@ class TrickleStreamer(PipelineStreamer):
 
         self.subscribe_task = None
         self.publish_task = None
-
-        await super().stop()
 
     async def ingress_loop(self, done: Event) -> AsyncGenerator[Image.Image, None]:
         def dequeue_jpeg():
