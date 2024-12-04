@@ -25,3 +25,8 @@ class StreamProtocol(ABC):
     async def egress_loop(self, output_frames: AsyncGenerator[Image.Image, None]):
         """Consumes generated frames and processes them"""
         pass
+
+    @abstractmethod
+    async def report_status(self, status: dict):
+        """Reports status updates to the event stream if available"""
+        pass

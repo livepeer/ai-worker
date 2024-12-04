@@ -3,14 +3,16 @@ import io
 import zmq.asyncio
 from PIL import Image
 from multiprocessing.synchronize import Event
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 
 from .protocol import StreamProtocol
 from .jpeg import to_jpeg_bytes, from_jpeg_bytes
 
 
 class ZeroMQProtocol(StreamProtocol):
-    def __init__(self, input_address: str, output_address: str):
+    def __init__(self, input_address: str, output_address: str, events_url: Optional[str] = None):
+        if events_url:
+            raise ValueError("ZeroMQ protocol does not support event streaming")
         self.input_address = input_address
         self.output_address = output_address
         self.context = zmq.asyncio.Context()
@@ -38,3 +40,6 @@ class ZeroMQProtocol(StreamProtocol):
         async for frame in output_frames:
             frame_bytes = to_jpeg_bytes(frame)
             await self.output_socket.send(frame_bytes)
+
+    async def report_status(self, status: dict):
+        pass  # No-op for ZeroMQ

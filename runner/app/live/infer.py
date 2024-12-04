@@ -21,11 +21,11 @@ from streamer.protocol.trickle import TrickleProtocol
 from streamer.protocol.zeromq import ZeroMQProtocol
 
 
-async def main(http_port: int, stream_protocol: str, subscribe_url: str, publish_url: str, control_url: str, pipeline: str, params: dict, input_timeout: int):
+async def main(*, http_port: int, stream_protocol: str, subscribe_url: str, publish_url: str, control_url: str, events_url: str, pipeline: str, params: dict, input_timeout: int):
     if stream_protocol == "trickle":
-        protocol = TrickleProtocol(subscribe_url, publish_url)
+        protocol = TrickleProtocol(subscribe_url, publish_url, events_url)
     elif stream_protocol == "zeromq":
-        protocol = ZeroMQProtocol(subscribe_url, publish_url)
+        protocol = ZeroMQProtocol(subscribe_url, publish_url, events_url)
     else:
         raise ValueError(f"Unsupported protocol: {stream_protocol}")
 
@@ -153,7 +153,17 @@ if __name__ == "__main__":
 
     try:
         asyncio.run(
-            main(args.http_port, args.stream_protocol, args.subscribe_url, args.publish_url, args.control_url, args.pipeline, params, args.input_timeout)
+            main(
+                http_port=args.http_port,
+                stream_protocol=args.stream_protocol,
+                subscribe_url=args.subscribe_url,
+                publish_url=args.publish_url,
+                control_url=args.control_url,
+                events_url=args.events_url,
+                pipeline=args.pipeline,
+                params=params,
+                input_timeout=args.input_timeout
+            )
         )
     except Exception as e:
         logging.error(f"Fatal error in main: {e}")
