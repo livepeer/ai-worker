@@ -123,6 +123,9 @@ if __name__ == "__main__":
         "--control-url", type=str, help="URL to subscribe for Control API JSON messages to update inference params"
     )
     parser.add_argument(
+        "--events-url", type=str, help="URL to publish events about pipeline status and logs."
+    )
+    parser.add_argument(
         "--input-timeout",
         type=int,
         default=60,
