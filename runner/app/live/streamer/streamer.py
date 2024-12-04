@@ -69,7 +69,7 @@ class PipelineStreamer:
 
     async def _restart(self):
         try:
-            # don't call the start/stop methods since those might be overridden by the concrete implementations
+            # don't call the full start/stop methods since we don't want to restart the protocol
             await self._stop_process()
             self._start_process()
             self.restart_count += 1
