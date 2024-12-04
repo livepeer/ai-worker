@@ -170,24 +170,28 @@ func (m *DockerManager) Stop(ctx context.Context) error {
 func (m *DockerManager) Borrow(ctx context.Context, pipeline, modelID string) (*RunnerContainer, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	var rc *RunnerContainer
+	var err error
 
 	for _, runner := range m.containers {
 		if runner.Pipeline == pipeline && runner.ModelID == modelID {
-			delete(m.containers, runner.Name)
-			return runner, nil
+			rc = runner
+			break
 		}
 	}
 
 	// The container does not exist so try to create it
-	var err error
-	// TODO: Optimization flags for dynamically loaded (borrowed) containers are not currently supported due to startup delays.
-	rc, err := m.createContainer(ctx, pipeline, modelID, false, map[string]EnvValue{})
-	if err != nil {
-		return nil, err
+	if rc == nil {
+		// TODO: Optimization flags for dynamically loaded (borrowed) containers are not currently supported due to startup delays.
+		rc, err = m.createContainer(ctx, pipeline, modelID, false, map[string]EnvValue{})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Remove container so it is unavailable until Return() is called
 	delete(m.containers, rc.Name)
+	// watch container to return when request completed
 	go m.watchContainer(rc, ctx)
 
 	return rc, nil
