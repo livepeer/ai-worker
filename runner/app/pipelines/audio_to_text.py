@@ -5,6 +5,7 @@ from enum import Enum
 from typing import List
 
 import torch
+import warnings
 from fastapi import File, UploadFile
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 
@@ -65,6 +66,17 @@ class AudioToTextPipeline(Pipeline):
 
         torch_device = get_torch_device()
 
+        # Get the GPU device properties
+        device = torch.cuda.get_device_properties(0)
+        major, minor = device.major, device.minor
+
+        # Compute capability of Ampere starts at 8.0
+        if (major, minor) >= (8, 0):
+            attn_implementation = "flash_attention_2"
+        else:
+            warnings.warn(f"GPU {device.name} (Compute Capability {major}.{minor}) is not compatible with FlashAttention so, scaled_dot_product_attention is being used instead")
+            attn_implementation = "sdpa"
+
         # Get model specific configuration parameters.
         model_enum = ModelName.from_value(model_id)
         self._model_cfg: ModelConfig = MODEL_CONFIGS.get(model_enum, ModelConfig())
@@ -81,7 +93,8 @@ class AudioToTextPipeline(Pipeline):
             low_cpu_mem_usage=True,
             use_safetensors=True,
             cache_dir=get_model_dir(),
-            attn_implementation="eager",  # TODO: enable flash attention.
+            torch_dtype="auto",
+            attn_implementation=attn_implementation,
             **kwargs,
         ).to(torch_device)
 
