@@ -9,12 +9,30 @@ from typing import AsyncGenerator
 
 import cv2
 from PIL import Image
+from pydantic import BaseModel
 
 from .process import PipelineProcess
 from .protocol.protocol import StreamProtocol
 
 fps_log_interval = 10
+status_report_interval = 10
 
+class StreamMetrics(BaseModel):
+    """Holds metrics for the pipeline streamer"""
+    start_time: float
+    input_fps: float = 0.0
+    output_fps: float = 0.0
+    restart_count: int = 0
+    last_restart_time: float = 0.0
+    last_input_time: float = 0.0
+    last_output_time: float = 0.0
+
+    def to_dict(self) -> dict:
+        current_time = time.time()
+        return {
+            **super().model_dump(),
+            "uptime": current_time - self.start_time
+        }
 
 class PipelineStreamer:
     def __init__(self, protocol: StreamProtocol, pipeline: str, input_timeout: int, params: dict):
@@ -23,12 +41,13 @@ class PipelineStreamer:
         self.params = params
         self.process = None
         self.last_params_time = 0.0
-        self.restart_count = 0
         self.input_timeout = input_timeout  # 0 means disabled
         self.done_future = None
+        self.metrics = StreamMetrics(start_time=time.time())
 
     async def start(self):
         self.done_future = asyncio.get_running_loop().create_future()
+        self.report_status_task = asyncio.create_task(self.report_status_loop())
         self._start_process()
         await self.protocol.start()
 
@@ -40,6 +59,9 @@ class PipelineStreamer:
     async def stop(self):
         await self.protocol.stop()
         await self._stop_process()
+        if self.report_status_task:
+            self.report_status_task.cancel()
+            self.report_status_task = None
         if self.done_future and not self.done_future.done():
             self.done_future.set_result(None)
 
@@ -74,9 +96,10 @@ class PipelineStreamer:
             # don't call the full start/stop methods since we don't want to restart the protocol
             await self._stop_process()
             self._start_process()
-            self.restart_count += 1
+            self.metrics.restart_count += 1
+            self.metrics.last_restart_time = time.time()
             logging.info(
-                f"PipelineProcess restarted. Restart count: {self.restart_count}"
+                f"PipelineProcess restarted. Restart count: {self.metrics.restart_count}"
             )
         except Exception as e:
             logging.error(f"Error restarting pipeline process: {e}")
@@ -89,6 +112,26 @@ class PipelineStreamer:
         if self.process:
             self.process.update_params(**params)
 
+    async def report_status_loop(self):
+        next_report = time.time() + status_report_interval
+        while not self.done_future.done():
+            # report at consistent 10s intervals
+            current_time = time.time()
+            if next_report < current_time:
+                next_report = current_time + status_report_interval
+            else:
+                await asyncio.sleep(next_report - current_time)
+                next_report += status_report_interval
+
+            status = {
+                "pipeline": self.pipeline,
+                **self.metrics.to_dict(),
+            }
+            try:
+                await self.protocol.report_status(status)
+            except Exception as e:
+                logging.error(f"Failed to report status: {e}")
+
     async def monitor_loop(self, done: Event):
         start_time = time.time()
         while not done.is_set():
@@ -97,9 +140,8 @@ class PipelineStreamer:
                 return
 
             current_time = time.time()
-            last_input_time = self.process.last_input_time or start_time
-            last_output_time = self.process.last_output_time or start_time
-            logging.debug(f"Monitoring process. last_input_time: {last_input_time}, last_output_time: {last_output_time} last_params_time: {self.last_params_time}")
+            last_input_time = self.metrics.last_input_time or start_time
+            last_output_time = self.metrics.last_output_time or start_time
 
             time_since_last_input = current_time - last_input_time
             time_since_last_output = current_time - last_output_time
@@ -136,11 +178,13 @@ class PipelineStreamer:
 
     async def run_ingress_loop(self, done: Event):
         frame_count = 0
-        start_time = time.time()
+        start_time = 0.0
         try:
             async for frame in self.protocol.ingress_loop(done):
                 if done.is_set() or not self.process:
                     return
+                if not start_time:
+                    start_time = time.time()
 
                 # crop the max square from the center of the image and scale to 512x512
                 # most models expect this size especially when using tensorrt
@@ -160,13 +204,14 @@ class PipelineStreamer:
 
                 logging.debug(f"Sending input frame. Scaled from {width}x{height} to {frame.size[0]}x{frame.size[1]}")
                 self.process.send_input(frame)
+                self.metrics.last_input_time = time.time()  # Track time after send completes
 
                 # Increment frame count and measure FPS
                 frame_count += 1
                 elapsed_time = time.time() - start_time
                 if elapsed_time >= fps_log_interval:
-                    fps = frame_count / elapsed_time
-                    logging.info(f"Input FPS: {fps:.2f}")
+                    self.metrics.input_fps = frame_count / elapsed_time
+                    logging.info(f"Input FPS: {self.metrics.input_fps:.2f}")
                     frame_count = 0
                     start_time = time.time()
             # automatically stop the streamer when the ingress ends cleanly
@@ -178,11 +223,16 @@ class PipelineStreamer:
     async def run_egress_loop(self, done: Event):
         async def gen_output_frames() -> AsyncGenerator[Image.Image, None]:
             frame_count = 0
-            start_time = time.time()
+            start_time = 0.0
             while not done.is_set() and self.process:
                 output_image = await self.process.recv_output()
+                if not start_time:
+                    # only start measuring output FPS after the first frame
+                    start_time = time.time()
                 if not output_image:
                     break
+
+                self.metrics.last_output_time = time.time()  # Track time after receive completes
                 logging.debug(
                     f"Output image received out_width: {output_image.width}, out_height: {output_image.height}"
                 )
@@ -193,8 +243,8 @@ class PipelineStreamer:
                 frame_count += 1
                 elapsed_time = time.time() - start_time
                 if elapsed_time >= fps_log_interval:
-                    fps = frame_count / elapsed_time
-                    logging.info(f"Output FPS: {fps:.2f}")
+                    self.metrics.output_fps = frame_count / elapsed_time
+                    logging.info(f"Output FPS: {self.metrics.output_fps:.2f}")
                     frame_count = 0
                     start_time = time.time()
 
