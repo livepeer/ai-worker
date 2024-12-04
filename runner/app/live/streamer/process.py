@@ -133,4 +133,4 @@ class PipelineProcess:
                 except Exception as e:
                     logging.error(f"Error processing frame: {e}")
         except Exception as e:
-            logging.error(f"Error in process run method: {e}")
+            logging.error(f"Error in process run method: {e}", exc_info=True)
