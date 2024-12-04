@@ -17,7 +17,7 @@ class ZeroMQProtocol(StreamProtocol):
         self.input_socket = self.context.socket(zmq.SUB)
         self.output_socket = self.context.socket(zmq.PUB)
 
-    def start(self):
+    async def start(self):
         self.input_socket.connect(self.input_address)
         self.input_socket.setsockopt_string(zmq.SUBSCRIBE, "")
         self.input_socket.set_hwm(10)
