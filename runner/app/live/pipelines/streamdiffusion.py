@@ -18,7 +18,7 @@ class StreamDiffusionParams(BaseModel):
     use_lcm_lora: bool = True
     lcm_lora_id: str = "latent-consistency/lcm-lora-sdv1-5"
     num_inference_steps: int = 50
-    t_index_list: Optional[List[int]] = None
+    t_index_list: Optional[List[int]] = [37, 45, 48]
     scale: float = 1.0
     acceleration: Literal["none", "xformers", "tensorrt"] = "tensorrt"
     use_denoising_batch: bool = True
