@@ -47,15 +47,12 @@ docker build -t livepeer/ai-runner:live-app-${PIPELINE} -f docker/Dockerfile.liv
 
 2. Download Depth Anything model
 ```
-mkdir models
-wget https://huggingface.co/yuvraj108c/Depth-Anything-Onnx/resolve/main/depth_anything_vitl14.onnx -P models
+./dl_checkpoints --live
 ```
 
 3. Build Depth Anything Engine
 ```
-docker run -it --rm --name video-to-video --gpus all -v ./models:/models livepeer/ai-runner:live-app-comfyui /bin/bash -c "cd /models; python /comfyui/custom_nodes/ComfyUI-Depth-Anything-Tensorrt/export_trt.py"
-mkdir -p ./models/tensorrt/depth-anything
-mv ./models/*.engine ./models/tensorrt/depth-anything
+./dl_checkpoints --tensorrt
 ```
 
 4. Start Docker container

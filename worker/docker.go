@@ -2,20 +2,27 @@ package worker
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/docker/cli/opts"
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"
+	"github.com/docker/docker/api/types/network"
 	docker "github.com/docker/docker/client"
 	"github.com/docker/docker/errdefs"
+	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/go-connections/nat"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 const containerModelDir = "/models"
@@ -27,7 +34,8 @@ const optFlagsContainerTimeout = 5 * time.Minute
 const containerRemoveTimeout = 30 * time.Second
 const containerCreatorLabel = "creator"
 const containerCreator = "ai-worker"
-const containerWatchInterval = 10 * time.Second
+
+var containerWatchInterval = 10 * time.Second
 
 // This only works right now on a single GPU because if there is another container
 // using the GPU we stop it so we don't have to worry about having enough ports
@@ -51,18 +59,38 @@ var pipelineToImage = map[string]string{
 }
 
 var livePipelineToImage = map[string]string{
-	"noop": "livepeer/ai-runner:live-app-noop",
-	"streamdiffusion": "livepeer/ai-runner:live-app-streamdiffusion",
-	"liveportrait":    "livepeer/ai-runner:live-app-liveportrait",
-	"comfyui":         "livepeer/ai-runner:live-app-comfyui",
+	"streamdiffusion":    "livepeer/ai-runner:live-app-streamdiffusion",
+	"liveportrait":       "livepeer/ai-runner:live-app-liveportrait",
+	"comfyui":            "livepeer/ai-runner:live-app-comfyui",
+	"segment_anything_2": "livepeer/ai-runner:live-app-segment_anything_2",
+	"noop":               "livepeer/ai-runner:live-app-noop",
 }
+
+// DockerClient is an interface for the Docker client, allowing for mocking in tests.
+// NOTE: ensure any docker.Client methods used in this package are added.
+type DockerClient interface {
+	ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, platform *ocispec.Platform, containerName string) (container.CreateResponse, error)
+	ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error)
+	ContainerList(ctx context.Context, options container.ListOptions) ([]types.Container, error)
+	ContainerRemove(ctx context.Context, containerID string, options container.RemoveOptions) error
+	ContainerStart(ctx context.Context, containerID string, options container.StartOptions) error
+	ContainerStop(ctx context.Context, containerID string, options container.StopOptions) error
+	ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error)
+	ImagePull(ctx context.Context, ref string, options image.PullOptions) (io.ReadCloser, error)
+}
+
+// Compile-time assertion to ensure docker.Client implements DockerClient.
+var _ DockerClient = (*docker.Client)(nil)
+
+// Create global references to functions to allow for mocking in tests.
+var dockerWaitUntilRunningFunc = dockerWaitUntilRunning
 
 type DockerManager struct {
 	defaultImage string
 	gpus         []string
 	modelDir     string
 
-	dockerClient *docker.Client
+	dockerClient DockerClient
 	// gpu ID => container name
 	gpuContainers map[string]string
 	// container name => container
@@ -70,28 +98,44 @@ type DockerManager struct {
 	mu         *sync.Mutex
 }
 
-func NewDockerManager(defaultImage string, gpus []string, modelDir string) (*DockerManager, error) {
-	dockerClient, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithAPIVersionNegotiation())
-	if err != nil {
-		return nil, err
-	}
-
+func NewDockerManager(defaultImage string, gpus []string, modelDir string, client DockerClient) (*DockerManager, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), containerTimeout)
-	if err := removeExistingContainers(ctx, dockerClient); err != nil {
+	if err := removeExistingContainers(ctx, client); err != nil {
 		cancel()
 		return nil, err
 	}
 	cancel()
 
-	return &DockerManager{
+	manager := &DockerManager{
 		defaultImage:  defaultImage,
 		gpus:          gpus,
 		modelDir:      modelDir,
-		dockerClient:  dockerClient,
+		dockerClient:  client,
 		gpuContainers: make(map[string]string),
 		containers:    make(map[string]*RunnerContainer),
 		mu:            &sync.Mutex{},
-	}, nil
+	}
+
+	return manager, nil
+}
+
+// EnsureImageAvailable ensures the container image is available locally for the given pipeline and model ID.
+func (m *DockerManager) EnsureImageAvailable(ctx context.Context, pipeline string, modelID string) error {
+	imageName, err := m.getContainerImageName(pipeline, modelID)
+	if err != nil {
+		return err
+	}
+
+	// Pull the image if it is not available locally.
+	if !m.isImageAvailable(ctx, pipeline, modelID) {
+		slog.Info(fmt.Sprintf("Pulling image for pipeline %s and modelID %s: %s", pipeline, modelID, imageName))
+		err = m.pullImage(ctx, imageName)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (m *DockerManager) Warm(ctx context.Context, pipeline string, modelID string, optimizationFlags OptimizationFlags) error {
@@ -126,24 +170,28 @@ func (m *DockerManager) Stop(ctx context.Context) error {
 func (m *DockerManager) Borrow(ctx context.Context, pipeline, modelID string) (*RunnerContainer, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	var rc *RunnerContainer
+	var err error
 
 	for _, runner := range m.containers {
 		if runner.Pipeline == pipeline && runner.ModelID == modelID {
-			delete(m.containers, runner.Name)
-			return runner, nil
+			rc = runner
+			break
 		}
 	}
 
 	// The container does not exist so try to create it
-	var err error
-	// TODO: Optimization flags for dynamically loaded (borrowed) containers are not currently supported due to startup delays.
-	rc, err := m.createContainer(ctx, pipeline, modelID, false, map[string]EnvValue{})
-	if err != nil {
-		return nil, err
+	if rc == nil {
+		// TODO: Optimization flags for dynamically loaded (borrowed) containers are not currently supported due to startup delays.
+		rc, err = m.createContainer(ctx, pipeline, modelID, false, map[string]EnvValue{})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Remove container so it is unavailable until Return() is called
 	delete(m.containers, rc.Name)
+	// watch container to return when request completed
 	go m.watchContainer(rc, ctx)
 
 	return rc, nil
@@ -155,6 +203,24 @@ func (m *DockerManager) returnContainer(rc *RunnerContainer) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.containers[rc.Name] = rc
+}
+
+// getContainerImageName returns the image name for the given pipeline and model ID.
+// Returns an error if the image is not found for "live-video-to-video".
+func (m *DockerManager) getContainerImageName(pipeline, modelID string) (string, error) {
+	if pipeline == "live-video-to-video" {
+		// We currently use the model ID as the live pipeline name for legacy reasons.
+		if image, ok := livePipelineToImage[modelID]; ok {
+			return image, nil
+		}
+		return "", fmt.Errorf("no container image found for live pipeline %s", modelID)
+	}
+
+	if image, ok := pipelineToImage[pipeline]; ok {
+		return image, nil
+	}
+
+	return m.defaultImage, nil
 }
 
 // HasCapacity checks if an unused managed container exists or if a GPU is available for a new container.
@@ -169,9 +235,55 @@ func (m *DockerManager) HasCapacity(ctx context.Context, pipeline, modelID strin
 		}
 	}
 
+	// TODO: This can be removed if we optimize the selection algorithm.
+	// Currently, using CreateContainer errors only can cause orchestrator reselection.
+	if !m.isImageAvailable(ctx, pipeline, modelID) {
+		return false
+	}
+
 	// Check for available GPU to allocate for a new container for the requested model.
 	_, err := m.allocGPU(ctx)
 	return err == nil
+}
+
+// isImageAvailable checks if the specified image is available locally.
+func (m *DockerManager) isImageAvailable(ctx context.Context, pipeline string, modelID string) bool {
+	imageName, err := m.getContainerImageName(pipeline, modelID)
+	if err != nil {
+		slog.Error(err.Error())
+		return false
+	}
+
+	_, _, err = m.dockerClient.ImageInspectWithRaw(ctx, imageName)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Image for pipeline %s and modelID %s is not available locally: %s", pipeline, modelID, imageName))
+	}
+	return err == nil
+}
+
+// pullImage pulls the specified image from the registry.
+func (m *DockerManager) pullImage(ctx context.Context, imageName string) error {
+	reader, err := m.dockerClient.ImagePull(ctx, imageName, image.PullOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to pull image: %w", err)
+	}
+	defer reader.Close()
+
+	// Display progress messages from ImagePull reader.
+	decoder := json.NewDecoder(reader)
+	for {
+		var progress jsonmessage.JSONMessage
+		if err := decoder.Decode(&progress); err == io.EOF {
+			break
+		} else if err != nil {
+			return fmt.Errorf("error decoding progress message: %w", err)
+		}
+		if progress.Status != "" && progress.Progress != nil {
+			slog.Info(fmt.Sprintf("%s: %s", progress.Status, progress.Progress.String()))
+		}
+	}
+
+	return nil
 }
 
 func (m *DockerManager) createContainer(ctx context.Context, pipeline string, modelID string, keepWarm bool, optimizationFlags OptimizationFlags) (*RunnerContainer, error) {
@@ -181,17 +293,11 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	}
 
 	// NOTE: We currently allow only one container per GPU for each pipeline.
-	containerHostPort := containerHostPorts[pipeline][:3] + gpu
+	containerHostPort := containerHostPorts[pipeline][:3] + portOffset(gpu)
 	containerName := dockerContainerName(pipeline, modelID, containerHostPort)
-	containerImage := m.defaultImage
-	if pipelineSpecificImage, ok := pipelineToImage[pipeline]; ok {
-		containerImage = pipelineSpecificImage
-	} else if pipeline == "live-video-to-video" {
-		// We currently use the model ID as the live pipeline name for legacy reasons
-		containerImage = livePipelineToImage[modelID]
-		if containerImage == "" {
-			return nil, fmt.Errorf("no container image found for live pipeline %s", modelID)
-		}
+	containerImage, err := m.getContainerImageName(pipeline, modelID)
+	if err != nil {
+		return nil, err
 	}
 
 	slog.Info("Starting managed container", slog.String("gpu", gpu), slog.String("name", containerName), slog.String("modelID", modelID), slog.String("containerImage", containerImage))
@@ -220,7 +326,9 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	}
 
 	gpuOpts := opts.GpuOpts{}
-	gpuOpts.Set("device=" + gpu)
+	if !isEmulatedGPU(gpu) {
+		gpuOpts.Set("device=" + gpu)
+	}
 
 	hostConfig := &container.HostConfig{
 		Resources: container.Resources{
@@ -258,7 +366,7 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	cancel()
 
 	cctx, cancel = context.WithTimeout(ctx, containerTimeout)
-	if err := dockerWaitUntilRunning(cctx, m.dockerClient, resp.ID, pollingInterval); err != nil {
+	if err := dockerWaitUntilRunningFunc(cctx, m.dockerClient, resp.ID, pollingInterval); err != nil {
 		cancel()
 		dockerRemoveContainer(m.dockerClient, resp.ID)
 		return nil, err
@@ -373,7 +481,10 @@ func (m *DockerManager) watchContainer(rc *RunnerContainer, borrowCtx context.Co
 			ctx, cancel := context.WithTimeout(context.Background(), containerWatchInterval)
 			container, err := m.dockerClient.ContainerInspect(ctx, rc.ID)
 			cancel()
-			if err != nil {
+
+			if docker.IsErrNotFound(err) {
+				// skip to destroy below to update internal state
+			} else if err != nil {
 				slog.Error("Error inspecting container",
 					slog.String("container", rc.Name),
 					slog.String("error", err.Error()))
@@ -387,7 +498,7 @@ func (m *DockerManager) watchContainer(rc *RunnerContainer, borrowCtx context.Co
 	}
 }
 
-func removeExistingContainers(ctx context.Context, client *docker.Client) error {
+func removeExistingContainers(ctx context.Context, client DockerClient) error {
 	filters := filters.NewArgs(filters.Arg("label", containerCreatorLabel+"="+containerCreator))
 	containers, err := client.ContainerList(ctx, container.ListOptions{All: true, Filters: filters})
 	if err != nil {
@@ -413,25 +524,40 @@ func dockerContainerName(pipeline string, modelID string, suffix ...string) stri
 	return fmt.Sprintf("%s_%s", pipeline, sanitizedModelID)
 }
 
-func dockerRemoveContainer(client *docker.Client, containerID string) error {
+func dockerRemoveContainer(client DockerClient, containerID string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), containerRemoveTimeout)
+	defer cancel()
+
 	err := client.ContainerStop(ctx, containerID, container.StopOptions{})
-	cancel()
 	// Ignore "not found" or "already stopped" errors
 	if err != nil && !docker.IsErrNotFound(err) && !errdefs.IsNotModified(err) {
 		return err
 	}
 
-	ctx, cancel = context.WithTimeout(context.Background(), containerRemoveTimeout)
 	err = client.ContainerRemove(ctx, containerID, container.RemoveOptions{})
-	cancel()
-	if err != nil && !docker.IsErrNotFound(err) {
+	if err == nil || docker.IsErrNotFound(err) {
+		return nil
+	} else if err != nil && !strings.Contains(err.Error(), "is already in progress") {
 		return err
 	}
-	return nil
+	// The container is being removed asynchronously, wait until it is actually gone
+	ticker := time.NewTicker(pollingInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("timed out waiting for container removal to complete")
+		case <-ticker.C:
+			_, err := client.ContainerInspect(ctx, containerID)
+			if docker.IsErrNotFound(err) {
+				return nil
+			}
+		}
+	}
 }
 
-func dockerWaitUntilRunning(ctx context.Context, client *docker.Client, containerID string, pollingInterval time.Duration) error {
+func dockerWaitUntilRunning(ctx context.Context, client DockerClient, containerID string, pollingInterval time.Duration) error {
 	ticker := time.NewTicker(pollingInterval)
 	defer ticker.Stop()
 
@@ -453,4 +579,15 @@ tickerLoop:
 	}
 
 	return nil
+}
+
+func portOffset(gpu string) string {
+	if isEmulatedGPU(gpu) {
+		return strings.Replace(gpu, "emulated-", "", 1)
+	}
+	return gpu
+}
+
+func isEmulatedGPU(gpu string) bool {
+	return strings.HasPrefix(gpu, "emulated-")
 }

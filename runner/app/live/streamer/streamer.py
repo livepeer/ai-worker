@@ -104,7 +104,7 @@ class PipelineStreamer(ABC):
 
             if self.input_timeout > 0 and time_since_last_input > self.input_timeout:
                 logging.info(f"Input stream stopped for {time_since_last_input} seconds. Shutting down...")
-                await self.stop()
+                await asyncio.create_task(self.stop())
                 return
 
             gone_stale = (
@@ -118,7 +118,7 @@ class PipelineStreamer(ABC):
 
             active_after_reload = time_since_last_output < (time_since_reload - 1)
             stopped_recently = (
-                time_since_last_output > 5
+                time_since_last_output > 8
                 if self.pipeline == "liveportrait" # liveportrait loads very quick but gets stuck too often
                 else active_after_reload and time_since_last_output > 5 and time_since_last_output < 60
             )

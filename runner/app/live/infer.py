@@ -33,17 +33,20 @@ async def main(http_port: int, stream_protocol: str, subscribe_url: str, publish
     try:
         handler.start()
         runner = await start_http_server(handler, http_port)
-        asyncio.create_task(start_control_subscriber(handler, control_url))
+
+        tasks: List[asyncio.Task] = []
+        tasks.append(handler.wait())
+        tasks.append(asyncio.create_task(block_until_signal([signal.SIGINT, signal.SIGTERM])))
+        if control_url is not None and control_url.strip() != "":
+            tasks.append(asyncio.create_task(start_control_subscriber(handler, control_url)))
+
+        await asyncio.wait(tasks,
+            return_when=asyncio.FIRST_COMPLETED
+        )
     except Exception as e:
         logging.error(f"Error starting socket handler or HTTP server: {e}")
         logging.error(f"Stack trace:\n{traceback.format_exc()}")
         raise e
-
-    try:
-        await asyncio.wait(
-            [block_until_signal([signal.SIGINT, signal.SIGTERM]), handler.wait()],
-            return_when=asyncio.FIRST_COMPLETED
-        )
     finally:
         await runner.cleanup()
         await handler.stop()
@@ -71,9 +74,20 @@ async def start_control_subscriber(handler: PipelineStreamer, control_url: str):
         segment = await subscriber.next()
         if segment.eos():
             return
-        params = await segment.read()
-        logging.info("Received control message, updating model with params: %s", params)
-        handler.update_params(**json.loads(params))
+
+        try:
+            params = await segment.read()
+            logging.info("Received control message, updating model with params: %s", params)
+            data = json.loads(params)
+        except Exception as e:
+            logging.error(f"Error parsing control message: {e}")
+            continue
+        
+        try:        
+            handler.update_params(data)
+        except Exception as e:
+            logging.error(f"Error updating model with control message: {e}")
+            continue
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Infer process to run the AI pipeline")

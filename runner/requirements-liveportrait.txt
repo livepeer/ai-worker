@@ -10,3 +10,4 @@ pycuda==2024.1.2
 scikit-image==0.24.0
 torchgeometry==0.1.2
 torchvision==0.19.1
+nvidia-ml-py==12.560.30

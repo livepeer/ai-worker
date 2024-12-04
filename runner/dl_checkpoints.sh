@@ -63,8 +63,8 @@ function download_all_models() {
     huggingface-cli download prompthero/openjourney-v4 --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
     huggingface-cli download SG161222/RealVisXL_V4.0 --include "*.fp16.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
     huggingface-cli download stabilityai/stable-diffusion-3-medium-diffusers --include "*.fp16*.safetensors" "*.model" "*.json" "*.txt" --cache-dir models ${TOKEN_FLAG:+"$TOKEN_FLAG"}
-    huggingface-cli download stabilityai/stable-diffusion-3.5-medium --include "transformer/*.safetensors" "*model.fp16.safetensors" "*.model" "*.json" "*.txt" --cache-dir models ${TOKEN_FLAG:+"$TOKEN_FLAG"}
-    huggingface-cli download stabilityai/stable-diffusion-3.5-large --include "transformer/*.safetensors" "*model.fp16.safetensors" "*.model" "*.json" "*.txt" --cache-dir models ${TOKEN_FLAG:+"$TOKEN_FLAG"}
+    huggingface-cli download stabilityai/stable-diffusion-3.5-medium --include "transformer/*.safetensors" "*model.fp16*" "*.model" "*.json" "*.txt" --cache-dir models ${TOKEN_FLAG:+"$TOKEN_FLAG"}
+    huggingface-cli download stabilityai/stable-diffusion-3.5-large --include "transformer/*.safetensors" "*model.fp16*" "*.model" "*.json" "*.txt" --cache-dir models ${TOKEN_FLAG:+"$TOKEN_FLAG"}
     huggingface-cli download SG161222/Realistic_Vision_V6.0_B1_noVAE --include "*.fp16.safetensors" "*.json" "*.txt" "*.bin" --exclude ".onnx" ".onnx_data" --cache-dir models
     huggingface-cli download black-forest-labs/FLUX.1-schnell --include "*.safetensors" "*.json" "*.txt" "*.model" --exclude ".onnx" ".onnx_data" --cache-dir models
 
@@ -77,18 +77,30 @@ function download_all_models() {
     # Custom pipeline models.
     huggingface-cli download facebook/sam2-hiera-large --include "*.pt" "*.yaml" --cache-dir models
 
-    # Download live-video-to-video models.
+    download_live_models
+}
+
+# Download models only for the live-video-to-video pipeline.
+function download_live_models() {
     huggingface-cli download KBlueLeaf/kohaku-v2.1 --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
     huggingface-cli download stabilityai/sd-turbo --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
     huggingface-cli download warmshao/FasterLivePortrait --local-dir models/FasterLivePortrait--checkpoints
+    huggingface-cli download yuvraj108c/Depth-Anything-Onnx --include depth_anything_vitl14.onnx --local-dir models/ComfyUI--models/Depth-Anything-Onnx
+    download_sam2_checkpoints
+}
+
+function download_sam2_checkpoints() {
+    huggingface-cli download facebook/sam2-hiera-tiny --local-dir models/sam2--checkpoints/facebook--sam2-hiera-tiny
+    huggingface-cli download facebook/sam2-hiera-small --local-dir models/sam2--checkpoints/facebook--sam2-hiera-small
+    huggingface-cli download facebook/sam2-hiera-large --local-dir models/sam2--checkpoints/facebook--sam2-hiera-large
 }
 
 function build_tensorrt_models() {
-    download_all_models
+    download_live_models
 
     printf "\nBuilding TensorRT models...\n"
 
-    # Matrix of models and timesteps to compile StreamDiffusion TensorRT engines for.
+    # StreamDiffusion (compile a matrix of models and timesteps)
     MODELS="stabilityai/sd-turbo KBlueLeaf/kohaku-v2.1"
     TIMESTEPS="3 4" # This is basically the supported sizes for the t_index_list
     docker run --rm -it -v ./models:/models --gpus all \
@@ -100,6 +112,7 @@ function build_tensorrt_models() {
                     done
                 done"
 
+    # FasterLivePortrait
     docker run --rm -it -v ./models:/models --gpus all \
         livepeer/ai-runner:live-app-liveportrait \
         bash -c "cd /app/app/live/FasterLivePortrait && \
@@ -115,6 +128,14 @@ function build_tensorrt_models() {
                     else
                         echo 'Animal LivePortrait TensorRT engines already exist, skipping build'
                     fi"
+
+    # ComfyUI (only DepthAnything for now)
+    docker run --rm -it -v ./models:/models --gpus all \
+        livepeer/ai-runner:live-app-comfyui \
+        bash -c "cd /comfyui/models/Depth-Anything-Onnx && \
+                    python /comfyui/custom_nodes/ComfyUI-Depth-Anything-Tensorrt/export_trt.py && \
+                    mkdir -p /comfyui/models/tensorrt/depth-anything && \
+                    mv *.engine /comfyui/models/tensorrt/depth-anything"
 }
 
 # Download models with a restrictive license.
@@ -148,6 +169,10 @@ do
             MODE="restricted"
             shift
         ;;
+        --live)
+            MODE="live"
+            shift
+        ;;
         --tensorrt)
             MODE="tensorrt"
             shift
@@ -165,7 +190,7 @@ done
 echo "Starting livepeer AI subnet model downloader..."
 echo "Creating 'models' directory in the current working directory..."
 mkdir -p models
-mkdir -p models/StreamDiffusion--engines models/FasterLivePortrait--checkpoints
+mkdir -p models/StreamDiffusion--engines models/FasterLivePortrait--checkpoints models/ComfyUI--models models/sam2--checkpoints
 
 # Ensure 'huggingface-cli' is installed.
 echo "Checking if 'huggingface-cli' is installed..."
@@ -178,6 +203,8 @@ if [ "$MODE" = "beta" ]; then
     download_beta_models
 elif [ "$MODE" = "restricted" ]; then
     download_restricted_models
+elif [ "$MODE" = "live" ]; then
+    download_live_models
 elif [ "$MODE" = "tensorrt" ]; then
     build_tensorrt_models
 else

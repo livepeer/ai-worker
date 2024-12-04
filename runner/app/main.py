@@ -2,10 +2,10 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
+from app.routes import health, hardware
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
-
-from app.routes import health
+from app.utils.hardware import HardwareInfo
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,11 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     config_logging()
 
+    # Create application wide hardware info service.
+    app.hardware_info_service = HardwareInfo()
+
     app.include_router(health.router)
+    app.include_router(hardware.router)
 
     pipeline = os.environ["PIPELINE"]
     model_id = os.environ["MODEL_ID"]
@@ -22,8 +26,11 @@ async def lifespan(app: FastAPI):
     app.pipeline = load_pipeline(pipeline, model_id)
     app.include_router(load_route(pipeline))
 
+    app.hardware_info_service.log_gpu_compute_info()
     logger.info(f"Started up with pipeline {app.pipeline}")
+
     yield
+
     logger.info("Shutting down")
 
 
