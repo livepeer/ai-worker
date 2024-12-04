@@ -93,7 +93,6 @@ class AudioToTextPipeline(Pipeline):
             low_cpu_mem_usage=True,
             use_safetensors=True,
             cache_dir=get_model_dir(),
-            torch_dtype="auto",
             attn_implementation=attn_implementation,
             **kwargs,
         ).to(torch_device)

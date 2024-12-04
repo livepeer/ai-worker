@@ -10,7 +10,8 @@ RUN pip install --no-cache-dir \
     transformers==4.43.3 \
     peft \
     deepcache \
-    flash_attn
+    flash_attn \
+    pynvml
 
 # Override base working directory to ensure the correct working directory.
 WORKDIR /app
