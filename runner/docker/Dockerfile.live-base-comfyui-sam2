@@ -18,6 +18,9 @@ RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools==69.5.1 
 # Install Sam2 dependencies
 RUN pip install --no-cache-dir torch==2.3.1 torchvision torchaudio
 
+# Set TORCH_CUDA_ARCH_LIST environment variable, fixes build error in segment-anything-2-real-time
+ENV TORCH_CUDA_ARCH_LIST="6.0 7.0 7.5 8.0 8.6+PTX"
+
 # Install comfystream (which includes ComfyUI)
 RUN pip install git+https://github.com/yondonfu/comfystream.git
 RUN git clone https://github.com/yondonfu/comfystream.git && \
@@ -39,6 +42,17 @@ RUN cd /comfyui/custom_nodes && \
     cd ComfyUI-SAM2-Realtime && \
     pip install -r requirements.txt && \
     cd ..
+
+# Install ComfyUI-Depth-Anything-Tensorrt Node (https://github.com/yuvraj108c/ComfyUI-Depth-Anything-Tensorrt)
+RUN cd /comfyui/custom_nodes && \
+    git clone https://github.com/yuvraj108c/ComfyUI-Depth-Anything-Tensorrt.git && \
+    cd ComfyUI-Depth-Anything-Tensorrt && \
+    pip install -r requirements.txt && \
+    cd ..
+
+# Upgrade TensorRT to 10.6.0
+RUN pip uninstall -y tensorrt && \
+    pip install tensorrt==10.6.0
 
 # Set the working directory for the custom nodes
 WORKDIR /comfyui/custom_nodes
