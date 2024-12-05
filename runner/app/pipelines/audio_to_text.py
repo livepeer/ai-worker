@@ -93,9 +93,12 @@ class AudioToTextPipeline(Pipeline):
             low_cpu_mem_usage=True,
             use_safetensors=True,
             cache_dir=get_model_dir(),
-            attn_implementation=attn_implementation,
             **kwargs,
-        ).to(torch_device)
+        ).to('cpu')
+
+        # Move the model to the GPU
+        model = model.to(torch_device)
+        model.config.attn_implementation = attn_implementation
 
         processor = AutoProcessor.from_pretrained(model_id, cache_dir=get_model_dir())
 
