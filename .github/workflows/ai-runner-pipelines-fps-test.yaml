@@ -1,4 +1,4 @@
-name: Check Min FPS for livevideo2video pipelines
+name: FPS check for live-video-to-video pipelines
 
 on:
   pull_request:
@@ -24,6 +24,8 @@ jobs:
         model_config:
           - { id: noop, input_fps: 30, exp_output_fps: 28 }
           - { id: liveportrait, input_fps: 30, exp_output_fps: 28 }
+          - { id: streamdiffusion, input_fps: 30, exp_output_fps: 25 }
+          - { id: comfyui, input_fps: 30, exp_output_fps: 21 }
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

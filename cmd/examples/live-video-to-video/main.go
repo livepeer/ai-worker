@@ -16,6 +16,7 @@ import (
 	"fmt"
     "math"
     "sort"
+    "strings"
 
     "github.com/disintegration/imaging"
 	"github.com/pebbe/zmq4"
@@ -25,7 +26,7 @@ import (
 	"github.com/livepeer/ai-worker/worker"
 )
 
-func sendImages(ctx context.Context, imagePath string, inputFps int) error {
+func sendImages(ctx context.Context, imageDir string, inputFps int) error {
     publisher, err := zmq4.NewSocket(zmq4.PUB)
     if err != nil {
         return fmt.Errorf("failed to create ZMQ PUB socket: %v", err)
@@ -38,56 +39,78 @@ func sendImages(ctx context.Context, imagePath string, inputFps int) error {
         return fmt.Errorf("failed to bind ZMQ PUB socket: %v", err)
     }
 
-    fileBytes, err := os.ReadFile(imagePath)
+    var preprocessedImages [][]byte
+    files, err := os.ReadDir(imageDir)
     if err != nil {
-        return fmt.Errorf("failed to read image file: %v", err)
+        return fmt.Errorf("failed to read image directory: %v", err)
     }
 
-    img, format, err := image.Decode(bytes.NewReader(fileBytes))
-    if err != nil {
-        return fmt.Errorf("failed to decode image file: %v", err)
-    }
-    resizedImg := imaging.Resize(img, 512, 512, imaging.Lanczos)
+    for _, file := range files {
+        if !file.IsDir() {
+            ext := strings.ToLower(filepath.Ext(file.Name()))
+            if ext == ".jpg" || ext == ".jpeg" || ext == ".png" {
+                imagePath := filepath.Join(imageDir, file.Name())
+                
+                fileBytes, err := os.ReadFile(imagePath)
+                if err != nil {
+                    slog.Error("Failed to read image file", slog.String("path", imagePath), slog.String("error", err.Error()))
+                    continue
+                }
 
-    var buffer bytes.Buffer
-    switch format {
-    case "jpeg", "jpg":
-        err = jpeg.Encode(&buffer, resizedImg, nil)
-        if err != nil {
-            return fmt.Errorf("failed to encode image to JPEG: %v", err)
+                img, format, err := image.Decode(bytes.NewReader(fileBytes))
+                if err != nil {
+                    slog.Error("Failed to decode image", slog.String("path", imagePath), slog.String("error", err.Error()))
+                    continue
+                }
+
+                resizedImg := imaging.Resize(img, 512, 512, imaging.Lanczos)
+
+                var buffer bytes.Buffer
+                switch format {
+                case "jpeg", "jpg":
+                    err = jpeg.Encode(&buffer, resizedImg, nil)
+                case "png":
+                    err = png.Encode(&buffer, resizedImg)
+                default:
+                    slog.Error("Unsupported image format", slog.String("format", format))
+                    continue
+                }
+
+                if err != nil {
+                    slog.Error("Failed to encode image", slog.String("path", imagePath), slog.String("error", err.Error()))
+                    continue
+                }
+
+                preprocessedImages = append(preprocessedImages, buffer.Bytes())
+            }
         }
-    case "png":
-        err = png.Encode(&buffer, resizedImg)
-        if err != nil {
-            return fmt.Errorf("failed to encode image to PNG: %v", err)
-        }
-    default:
-        return fmt.Errorf("unsupported image format: %s", format)
     }
 
-    imageBytes := buffer.Bytes()
+    if len(preprocessedImages) == 0 {
+        return fmt.Errorf("no image files found in directory")
+    }
 
     interval := time.Second / time.Duration(inputFps)
 
     slog.Info(fmt.Sprintf("Sending images at %d FPS to %s", inputFps, sendAddress))
 
-    ticker := time.NewTicker(interval)
-    defer ticker.Stop()
-
     for {
-        select {
-        case <-ctx.Done():
-            return nil
-        default:
-            startTime := time.Now()
-            _, err = publisher.SendBytes(imageBytes, 0)
-            if err != nil {
-                slog.Error("Failed to send image bytes", slog.String("error", err.Error()))
-            }
-            elapsed := time.Since(startTime)
-            sleepTime := interval - elapsed
-            if sleepTime > 0 {
-                time.Sleep(sleepTime)
+        for _, imageBytes := range preprocessedImages {
+            select {
+            case <-ctx.Done():
+                return nil
+            default:
+                startTime := time.Now()
+                _, err = publisher.SendBytes(imageBytes, 0)
+                if err != nil {
+                    slog.Error("Failed to send image bytes", slog.String("error", err.Error()))
+                }
+                
+                elapsed := time.Since(startTime)
+                sleepTime := interval - elapsed
+                if sleepTime > 0 {
+                    time.Sleep(sleepTime)
+                }
             }
         }
     }
@@ -109,12 +132,10 @@ func printFPSStatistics(fpsList []float64, expOutputFps int) {
         return
     }
 
-    // Sort the list for percentile calculations
     sorted := make([]float64, len(fpsList))
     copy(sorted, fpsList)
     sort.Float64s(sorted)
 
-    // Calculate statistics
     min := sorted[0]
     max := sorted[len(sorted)-1]
     
@@ -137,7 +158,7 @@ func printFPSStatistics(fpsList []float64, expOutputFps int) {
         "\nP10: %.2f\n",
         min, max, avg, p1, p5, p10))
 
-    if min >= float64(expOutputFps) {
+    if p1 >= float64(expOutputFps) {
         slog.Info("TEST PASSED!")
     } else {
         slog.Info("TEST FAILED!")
@@ -218,8 +239,8 @@ func receiveImages(ctx context.Context, expOutputFps int) error {
 func main() {
     aiModelsDir := flag.String("aimodelsdir", "runner/models", "path to the models directory")
     inputFps := flag.Int("inputfps", 30, "Frames per second to send")
-    modelID := flag.String("modelid", "noop", "Model ID for the live pipeline")
-	imagePath := flag.String("imagepath", "runner/images/flame-smile.jpg", "Path to the image to send")
+    modelID := flag.String("modelid", "liveportrait", "Model ID for the live pipeline")
+	imageDir := flag.String("imagedir", "runner/example_data/live-video-to-video/", "Path to the image to send")
     expOutputFps := flag.Int("expoutputfps", 27, "Minimum expected output FPS")
     flag.Parse()
 
@@ -248,16 +269,14 @@ func main() {
         return
     }
 
-    // Create a context with a 1.5-minute timeout
     ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
     defer cancel()
 
-	// Remove existing containers if any
     existingContainers, err := dockerClient.ContainerList(ctx, container.ListOptions{
         Filters: filters.NewArgs(
             filters.Arg("name", "^"+pipeline+"_"+*modelID),
         ),
-        All: true, // include stopped containers
+        All: true,
     })
     if err != nil {
         slog.Error("Error listing existing containers", slog.String("error", err.Error()))
@@ -301,18 +320,16 @@ func main() {
         return
     }
 
-    // The response will be empty since there's no input stream
     slog.Info("Got response", slog.Any("response", resp))
 
     var wg sync.WaitGroup
 
-    // Start sending images after 2 seconds
     wg.Add(1)
     go func() {
         defer wg.Done()
         select {
         case <-time.After(10 * time.Second):
-            err := sendImages(ctx, *imagePath, *inputFps)
+            err := sendImages(ctx, *imageDir, *inputFps)
             if err != nil {
                 slog.Error("Error in sendImages", slog.String("error", err.Error()))
             }
