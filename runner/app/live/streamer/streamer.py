@@ -3,19 +3,20 @@ import logging
 import os
 import time
 import traceback
-from abc import ABC, abstractmethod
 from multiprocessing.synchronize import Event
 from typing import AsyncGenerator
 
 from PIL import Image
 
 from .process import PipelineProcess
+from .protocol.protocol import StreamProtocol
 
 fps_log_interval = 10
 
 
-class PipelineStreamer(ABC):
-    def __init__(self, pipeline: str, input_timeout: int, params: dict):
+class PipelineStreamer:
+    def __init__(self, protocol: StreamProtocol, pipeline: str, input_timeout: int, params: dict):
+        self.protocol = protocol
         self.pipeline = pipeline
         self.params = params
         self.process = None
@@ -24,9 +25,10 @@ class PipelineStreamer(ABC):
         self.input_timeout = input_timeout  # 0 means disabled
         self.done_future = None
 
-    def start(self):
+    async def start(self):
         self.done_future = asyncio.get_running_loop().create_future()
         self._start_process()
+        await self.protocol.start()
 
     async def wait(self):
         if not self.done_future:
@@ -34,6 +36,7 @@ class PipelineStreamer(ABC):
         return await self.done_future
 
     async def stop(self):
+        await self.protocol.stop()
         await self._stop_process()
         if self.done_future and not self.done_future.done():
             self.done_future.set_result(None)
@@ -66,7 +69,7 @@ class PipelineStreamer(ABC):
 
     async def _restart(self):
         try:
-            # don't call the start/stop methods since those might be overridden by the concrete implementations
+            # don't call the full start/stop methods since we don't want to restart the protocol
             await self._stop_process()
             self._start_process()
             self.restart_count += 1
@@ -133,7 +136,7 @@ class PipelineStreamer(ABC):
         frame_count = 0
         start_time = time.time()
         try:
-            async for frame in self.ingress_loop(done):
+            async for frame in self.protocol.ingress_loop(done):
                 if done.is_set() or not self.process:
                     return
 
@@ -187,21 +190,9 @@ class PipelineStreamer(ABC):
                     start_time = time.time()
 
         try:
-            await self.egress_loop(gen_output_frames())
+            await self.protocol.egress_loop(gen_output_frames())
             # automatically stop the streamer when the egress ends cleanly
             await self.stop()
         except Exception:
             logging.error("Error running egress loop", exc_info=True)
             await self._restart()
-
-    @abstractmethod
-    async def ingress_loop(self, done: Event) -> AsyncGenerator[Image.Image, None]:
-        """Generator that yields the ingress frames."""
-        if False:
-            yield Image.new('RGB', (1, 1)) # dummy yield for linter to see this is a generator
-        pass
-
-    @abstractmethod
-    async def egress_loop(self, output_frames: AsyncGenerator[Image.Image, None]):
-        """Consumes generated frames and processes them."""
-        pass
