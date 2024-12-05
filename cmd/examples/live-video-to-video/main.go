@@ -1,20 +1,23 @@
 package main
 
 import (
-	"bytes"
+    "bytes"
+    "image"
+    "image/jpeg"
+    "image/png"
 	"context"
 	"errors"
 	"flag"
 	"log/slog"
 	"os"
 	"path/filepath"
-	"image"
 	"sync"
 	"time"
 	"fmt"
     "math"
     "sort"
 
+    "github.com/disintegration/imaging"
 	"github.com/pebbe/zmq4"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
@@ -35,12 +38,36 @@ func sendImages(ctx context.Context, imagePath string, inputFps int) error {
         return fmt.Errorf("failed to bind ZMQ PUB socket: %v", err)
     }
 
-    imageBytes, err := os.ReadFile(imagePath)
+    fileBytes, err := os.ReadFile(imagePath)
     if err != nil {
         return fmt.Errorf("failed to read image file: %v", err)
     }
 
-    interval := time.Duration(1e9 / inputFps)
+    img, format, err := image.Decode(bytes.NewReader(fileBytes))
+    if err != nil {
+        return fmt.Errorf("failed to decode image file: %v", err)
+    }
+    resizedImg := imaging.Resize(img, 512, 512, imaging.Lanczos)
+
+    var buffer bytes.Buffer
+    switch format {
+    case "jpeg", "jpg":
+        err = jpeg.Encode(&buffer, resizedImg, nil)
+        if err != nil {
+            return fmt.Errorf("failed to encode image to JPEG: %v", err)
+        }
+    case "png":
+        err = png.Encode(&buffer, resizedImg)
+        if err != nil {
+            return fmt.Errorf("failed to encode image to PNG: %v", err)
+        }
+    default:
+        return fmt.Errorf("unsupported image format: %s", format)
+    }
+
+    imageBytes := buffer.Bytes()
+
+    interval := time.Second / time.Duration(inputFps)
 
     slog.Info(fmt.Sprintf("Sending images at %d FPS to %s", inputFps, sendAddress))
 
@@ -51,14 +78,22 @@ func sendImages(ctx context.Context, imagePath string, inputFps int) error {
         select {
         case <-ctx.Done():
             return nil
-        case <-ticker.C:
+        default:
+            startTime := time.Now()
             _, err = publisher.SendBytes(imageBytes, 0)
             if err != nil {
                 slog.Error("Failed to send image bytes", slog.String("error", err.Error()))
             }
+            elapsed := time.Since(startTime)
+            sleepTime := interval - elapsed
+            if sleepTime > 0 {
+                time.Sleep(sleepTime)
+            }
         }
     }
 }
+
+
 
 func printFPSStatistics(fpsList []float64, expOutputFps int) {
     if len(fpsList) < 5 {
@@ -89,20 +124,18 @@ func printFPSStatistics(fpsList []float64, expOutputFps int) {
     }
     avg := sum / float64(len(sorted))
 
-    // Calculate median (p50)
-    median := calculatePercentile(sorted, 50)
-    p90 := calculatePercentile(sorted, 90)
-    p99 := calculatePercentile(sorted, 99)
+    p1 := calculatePercentile(sorted, 1)
+    p5 := calculatePercentile(sorted, 5)
+    p10 := calculatePercentile(sorted, 10)
 
-    // Print statistics
     slog.Info(fmt.Sprintf("FPS Statistics:"+
         "\nMin: %.2f"+
         "\nMax: %.2f"+
         "\nAvg: %.2f"+
-        "\nMedian (P50): %.2f"+
-        "\nP90: %.2f"+
-        "\nP99: %.2f\n",
-        min, max, avg, median, p90, p99))
+        "\nP1: %.2f"+
+        "\nP5: %.2f"+
+        "\nP10: %.2f\n",
+        min, max, avg, p1, p5, p10))
 
     if min >= float64(expOutputFps) {
         slog.Info("TEST PASSED!")
@@ -125,8 +158,6 @@ func calculatePercentile(sorted []float64, percentile float64) float64 {
 
 
 func receiveImages(ctx context.Context, expOutputFps int) error {
-    time.Sleep(2 * time.Second)
-
     subscriber, err := zmq4.NewSocket(zmq4.SUB)
     if err != nil {
         return fmt.Errorf("failed to create ZMQ SUB socket: %v", err)
@@ -144,12 +175,6 @@ func receiveImages(ctx context.Context, expOutputFps int) error {
         return fmt.Errorf("failed to subscribe to all messages: %v", err)
     }
 
-    // Set receive timeout
-    err = subscriber.SetRcvtimeo(1 * time.Second)
-    if err != nil {
-        return fmt.Errorf("failed to set receive timeout: %v", err)
-    }
-
     slog.Info(fmt.Sprintf("Receiving images on %s", receiveAddress))
 
     startTime := time.Now()
@@ -164,13 +189,8 @@ func receiveImages(ctx context.Context, expOutputFps int) error {
         default:
             imageBytes, err := subscriber.RecvBytes(0)
             if err != nil {
-                if errors.Is(err, os.ErrDeadlineExceeded) {
-                    slog.Error("1sec timelimit exceeded", slog.String("error", err.Error()))
-                    continue
-                } else {
-                    slog.Error("Failed to receive image bytes", slog.String("error", err.Error()))
-                    continue
-                }
+                slog.Error("Failed to receive image bytes", slog.String("error", err.Error()))
+                continue
             }
 
             reader := bytes.NewReader(imageBytes)
@@ -199,7 +219,7 @@ func main() {
     aiModelsDir := flag.String("aimodelsdir", "runner/models", "path to the models directory")
     inputFps := flag.Int("inputfps", 30, "Frames per second to send")
     modelID := flag.String("modelid", "noop", "Model ID for the live pipeline")
-	imagePath := flag.String("imagepath", "runner/example_data/image.jpeg", "Path to the image to send")
+	imagePath := flag.String("imagepath", "runner/images/flame-smile.jpg", "Path to the image to send")
     expOutputFps := flag.Int("expoutputfps", 27, "Minimum expected output FPS")
     flag.Parse()
 
@@ -291,7 +311,7 @@ func main() {
     go func() {
         defer wg.Done()
         select {
-        case <-time.After(2 * time.Second):
+        case <-time.After(10 * time.Second):
             err := sendImages(ctx, *imagePath, *inputFps)
             if err != nil {
                 slog.Error("Error in sendImages", slog.String("error", err.Error()))
@@ -301,12 +321,11 @@ func main() {
         }
     }()
 
-    // Start receiving images after 5 seconds (3 seconds after sending starts)
     wg.Add(1)
     go func() {
         defer wg.Done()
         select {
-        case <-time.After(5 * time.Second):
+        case <-time.After(10 * time.Second):
             err := receiveImages(ctx, *expOutputFps)
             if err != nil {
                 slog.Error("Error in receiveImages", slog.String("error", err.Error()))

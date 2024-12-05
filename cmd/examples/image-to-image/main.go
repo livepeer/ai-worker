@@ -86,11 +86,6 @@ func main() {
 
 		for j, media := range resp.Images {
 			outputPath := path.Join(baseOutputPath, strconv.Itoa(i)+"_"+strconv.Itoa(j)+".png")
-			if err := os.MkdirAll(baseOutputPath, 0755); err != nil {
-				slog.Error("Error creating output directory", slog.String("error", err.Error()))
-				return
-			}
-			
 			if err := worker.SaveImageB64DataUrl(media.Url, outputPath); err != nil {
 				slog.Error("Error saving b64 data url as image", slog.String("error", err.Error()))
 				return

@@ -19,9 +19,11 @@ jobs:
   run-fps-test:
     runs-on: ubuntu-latest
     strategy:
+      max-parallel: 1
       matrix:
         model_config:
-          - { id: noop, input_fps: 10, exp_output_fps: 8 }
+          - { id: noop, input_fps: 30, exp_output_fps: 28 }
+          - { id: liveportrait, input_fps: 30, exp_output_fps: 28 }
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -43,7 +45,7 @@ jobs:
               docker build -t livepeer/ai-runner:live-app-noop -f docker/Dockerfile.live-app-noop .
           else
               docker build -t livepeer/ai-runner:live-base-${MODEL_ID} -f docker/Dockerfile.live-base-${MODEL_ID} .
-              docker build -t livepeer/ai-runner:live-app-${MODEL_ID} -f docker/Dockerfile.live-app-${MODEL_ID} --build-arg PIPELINE=${MODEL_ID} .
+              docker build -t livepeer/ai-runner:live-app-${MODEL_ID} -f docker/Dockerfile.live-app__PIPELINE__ --build-arg PIPELINE=${MODEL_ID} .
           fi
           cd ..
       
@@ -62,14 +64,22 @@ jobs:
           INPUT_FPS: ${{ matrix.model_config.input_fps }}
           EXP_OUTPUT_FPS: ${{ matrix.model_config.exp_output_fps }}
         run: |
-          output=$(go run cmd/examples/live-video-to-video/main.go -modelid=${MODEL_ID} -inputfps=${INPUT_FPS} -expoutputfps=${EXP_OUTPUT_FPS})
-          echo "$output"
-          if echo "$output" | grep -q "TEST PASSED!"; then
+          # Redirect both stdout and stderr to a file and tee to console
+          go run cmd/examples/live-video-to-video/main.go \
+            -modelid=${MODEL_ID} \
+            -inputfps=${INPUT_FPS} \
+            -expoutputfps=${EXP_OUTPUT_FPS} 2>&1 | tee output.log
+          
+          # Use grep with the timestamp pattern to find the TEST PASSED/FAILED message
+          if grep -q "INFO TEST PASSED!" output.log; then
             echo "Test for ${MODEL_ID} pipeline PASSED"
-          elif echo "$output" | grep -q "TEST FAILED!"; then
+            exit 0
+          elif grep -q "INFO TEST FAILED!" output.log; then
             echo "Test for ${MODEL_ID} pipeline FAILED"
             exit 1
           else
             echo "Test for ${MODEL_ID} pipeline had an unknown result"
+            echo "Full log output:"
+            cat output.log
             exit 1
           fi
