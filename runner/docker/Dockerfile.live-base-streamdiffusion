@@ -21,7 +21,8 @@ RUN pip install --no-cache-dir \
 RUN pip install --no-cache-dir \
     huggingface-hub==0.23.2 \
     diffusers==0.30.0 \
-    protobuf==5.27.2
+    protobuf==5.27.2 \
+    nvidia-ml-py==12.560.30 
 
 # Install StreamDiffusion @ 765d71029b1404b94aee2865178d71c257c20318 (latest at time of writing)
 RUN pip install git+https://github.com/cumulo-autumn/StreamDiffusion.git@765d710#egg=streamdiffusion[tensorrt]

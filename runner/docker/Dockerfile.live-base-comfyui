@@ -25,7 +25,7 @@ RUN cd /comfyui/custom_nodes && \
 RUN pip uninstall -y tensorrt && \
     pip install tensorrt==10.6.0
 
-RUN pip install torch==2.5.1 torchvision torchaudio tqdm
+RUN pip install torch==2.5.1 torchvision torchaudio tqdm nvidia-ml-py==12.560.30
 
 # Install comfystream (which includes ComfyUI)
 RUN pip install git+https://github.com/yondonfu/comfystream.git
