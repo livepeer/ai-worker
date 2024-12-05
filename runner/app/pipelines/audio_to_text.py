@@ -5,7 +5,6 @@ from enum import Enum
 from typing import List
 
 import torch
-import warnings
 from fastapi import File, UploadFile
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 
@@ -74,7 +73,7 @@ class AudioToTextPipeline(Pipeline):
         if (major, minor) >= (8, 0):
             attn_implementation = "flash_attention_2"
         else:
-            warnings.warn(f"GPU {device.name} (Compute Capability {major}.{minor}) is not compatible with FlashAttention so, scaled_dot_product_attention is being used instead")
+            logger.warning(f"GPU {device.name} (Compute Capability {major}.{minor}) is not compatible with FlashAttention, so scaled_dot_product_attention is being used instead.")
             attn_implementation = "sdpa"
 
         # Get model specific configuration parameters.
