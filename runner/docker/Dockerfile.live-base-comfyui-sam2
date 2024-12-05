@@ -19,7 +19,7 @@ RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools==69.5.1 
 RUN pip install --no-cache-dir torch==2.3.1 torchvision torchaudio
 
 # Set TORCH_CUDA_ARCH_LIST environment variable, fixes build error in segment-anything-2-real-time
-ENV TORCH_CUDA_ARCH_LIST="6.0 7.0 7.5 8.0 8.6+PTX"
+ENV TORCH_CUDA_ARCH_LIST="8.0+PTX"
 
 # Install comfystream (which includes ComfyUI)
 RUN pip install git+https://github.com/yondonfu/comfystream.git
