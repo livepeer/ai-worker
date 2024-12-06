@@ -37,7 +37,7 @@ async def main(http_port: int, stream_protocol: str, subscribe_url: str, publish
         runner = await start_http_server(streamer, http_port)
 
         tasks: List[asyncio.Task] = []
-        tasks.append(asyncio.create_task(streamer.wait()))
+        tasks.append(streamer.wait())
         tasks.append(asyncio.create_task(block_until_signal([signal.SIGINT, signal.SIGTERM])))
         if control_url is not None and control_url.strip() != "":
             tasks.append(asyncio.create_task(start_control_subscriber(streamer, control_url)))
