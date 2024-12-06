@@ -2,12 +2,10 @@ import os
 from typing import Dict
 
 from app.utils.hardware import (
-    GpuComputeInfo,
-    GpuUtilizationInfo,
-    get_gpu_info,
-    get_gpu_stats,
+    GPUComputeInfo,
+    GPUUtilizationInfo
 )
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -18,7 +16,7 @@ class HardwareInformation(BaseModel):
 
     pipeline: str
     model_id: str
-    gpu_info: Dict[int, GpuComputeInfo]
+    gpu_info: Dict[int, GPUComputeInfo]
 
 
 class HardwareStats(BaseModel):
@@ -26,7 +24,7 @@ class HardwareStats(BaseModel):
 
     pipeline: str
     model_id: str
-    gpu_stats: Dict[int, GpuUtilizationInfo]
+    gpu_stats: Dict[int, GPUUtilizationInfo]
 
 
 @router.get(
@@ -39,11 +37,11 @@ class HardwareStats(BaseModel):
     response_model=HardwareInformation,
     include_in_schema=False,
 )
-async def hardware_info():
+async def hardware_info(request: Request):
     return HardwareInformation(
         pipeline=os.environ["PIPELINE"],
         model_id=os.environ["MODEL_ID"],
-        gpu_info=get_gpu_info(),
+        gpu_info=request.app.hardware_info_service.get_gpu_compute_info(),
     )
 
 
@@ -57,9 +55,9 @@ async def hardware_info():
     response_model=HardwareStats,
     include_in_schema=False,
 )
-async def hardware_stats():
+async def hardware_stats(request: Request):
     return HardwareStats(
         pipeline=os.environ["PIPELINE"],
         model_id=os.environ["MODEL_ID"],
-        gpu_stats=get_gpu_stats(),
+        gpu_stats=request.app.hardware_info_service.get_gpu_utilization_stats(),
     )

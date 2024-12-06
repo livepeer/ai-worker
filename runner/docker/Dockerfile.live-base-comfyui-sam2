@@ -40,6 +40,17 @@ RUN cd /comfyui/custom_nodes && \
     pip install -r requirements.txt && \
     cd ..
 
+# Install ComfyUI-Depth-Anything-Tensorrt Node (https://github.com/yuvraj108c/ComfyUI-Depth-Anything-Tensorrt)
+RUN cd /comfyui/custom_nodes && \
+    git clone https://github.com/yuvraj108c/ComfyUI-Depth-Anything-Tensorrt.git && \
+    cd ComfyUI-Depth-Anything-Tensorrt && \
+    pip install -r requirements.txt && \
+    cd ..
+
+# Upgrade TensorRT to 10.6.0
+RUN pip uninstall -y tensorrt && \
+    pip install tensorrt==10.6.0
+
 # Set the working directory for the custom nodes
 WORKDIR /comfyui/custom_nodes
 

@@ -11,32 +11,60 @@ from comfystream.client import ComfyStreamClient
 COMFY_UI_WORKSPACE_ENV = "COMFY_UI_WORKSPACE"
 DEFAULT_WORKFLOW_JSON = '''
 {
-    "1": {
-        "inputs": {
-            "images": ["2", 0]
-        },
-        "class_type": "SaveTensor",
-        "_meta": {
-            "title": "SaveTensor"
-        }
+  "1": {
+    "inputs": {
+      "image": "example.png",
+      "upload": "image"
     },
-    "2": {
-        "inputs": {
-            "engine": "depth_anything_vitl14-fp16.engine",
-            "images": ["3", 0]
-        },
-        "class_type": "DepthAnythingTensorrt",
-        "_meta": {
-            "title": "Depth Anything Tensorrt"
-        }
-    },
-    "3": {
-        "inputs": {},
-        "class_type": "LoadTensor",
-        "_meta": {
-            "title": "LoadTensor"
-        }
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
     }
+  },
+  "2": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "7": {
+    "inputs": {
+      "model": "sam2_hiera_tiny.pt",
+      "segmentor": "realtime",
+      "device": "cuda",
+      "precision": "fp16"
+    },
+    "class_type": "DownloadAndLoadSAM2RealtimeModel",
+    "_meta": {
+      "title": "(Down)Load SAM2-Realtime Model"
+    }
+  },
+  "8": {
+    "inputs": {
+      "coordinates_positive": "[[384, 384]]",
+      "point_labels": "[1]",
+      "keep_model_loaded": "true",
+      "images": [
+        "1",
+        0
+      ],
+      "sam2_model": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "Sam2RealtimeSegmentation",
+    "_meta": {
+      "title": "Sam2RealtimeSegmentation"
+    }
+  }
 }
 '''
 

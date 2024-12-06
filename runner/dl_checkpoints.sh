@@ -63,8 +63,8 @@ function download_all_models() {
     huggingface-cli download prompthero/openjourney-v4 --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
     huggingface-cli download SG161222/RealVisXL_V4.0 --include "*.fp16.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
     huggingface-cli download stabilityai/stable-diffusion-3-medium-diffusers --include "*.fp16*.safetensors" "*.model" "*.json" "*.txt" --cache-dir models ${TOKEN_FLAG:+"$TOKEN_FLAG"}
-    huggingface-cli download stabilityai/stable-diffusion-3.5-medium --include "transformer/*.safetensors" "*model.fp16.safetensors" "*.model" "*.json" "*.txt" --cache-dir models ${TOKEN_FLAG:+"$TOKEN_FLAG"}
-    huggingface-cli download stabilityai/stable-diffusion-3.5-large --include "transformer/*.safetensors" "*model.fp16.safetensors" "*.model" "*.json" "*.txt" --cache-dir models ${TOKEN_FLAG:+"$TOKEN_FLAG"}
+    huggingface-cli download stabilityai/stable-diffusion-3.5-medium --include "transformer/*.safetensors" "*model.fp16*" "*.model" "*.json" "*.txt" --cache-dir models ${TOKEN_FLAG:+"$TOKEN_FLAG"}
+    huggingface-cli download stabilityai/stable-diffusion-3.5-large --include "transformer/*.safetensors" "*model.fp16*" "*.model" "*.json" "*.txt" --cache-dir models ${TOKEN_FLAG:+"$TOKEN_FLAG"}
     huggingface-cli download SG161222/Realistic_Vision_V6.0_B1_noVAE --include "*.fp16.safetensors" "*.json" "*.txt" "*.bin" --exclude ".onnx" ".onnx_data" --cache-dir models
     huggingface-cli download black-forest-labs/FLUX.1-schnell --include "*.safetensors" "*.json" "*.txt" "*.model" --exclude ".onnx" ".onnx_data" --cache-dir models
 
@@ -86,6 +86,13 @@ function download_live_models() {
     huggingface-cli download stabilityai/sd-turbo --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
     huggingface-cli download warmshao/FasterLivePortrait --local-dir models/FasterLivePortrait--checkpoints
     huggingface-cli download yuvraj108c/Depth-Anything-Onnx --include depth_anything_vitl14.onnx --local-dir models/ComfyUI--models/Depth-Anything-Onnx
+    download_sam2_checkpoints
+}
+
+function download_sam2_checkpoints() {
+    huggingface-cli download facebook/sam2-hiera-tiny --local-dir models/sam2--checkpoints/facebook--sam2-hiera-tiny
+    huggingface-cli download facebook/sam2-hiera-small --local-dir models/sam2--checkpoints/facebook--sam2-hiera-small
+    huggingface-cli download facebook/sam2-hiera-large --local-dir models/sam2--checkpoints/facebook--sam2-hiera-large
 }
 
 function build_tensorrt_models() {
@@ -183,7 +190,7 @@ done
 echo "Starting livepeer AI subnet model downloader..."
 echo "Creating 'models' directory in the current working directory..."
 mkdir -p models
-mkdir -p models/StreamDiffusion--engines models/FasterLivePortrait--checkpoints models/ComfyUI--models
+mkdir -p models/StreamDiffusion--engines models/FasterLivePortrait--checkpoints models/ComfyUI--models models/sam2--checkpoints
 
 # Ensure 'huggingface-cli' is installed.
 echo "Checking if 'huggingface-cli' is installed..."

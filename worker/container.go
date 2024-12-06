@@ -42,6 +42,9 @@ type RunnerContainerConfig struct {
 	containerTimeout time.Duration
 }
 
+// Create global references to functions to allow for mocking in tests.
+var runnerWaitUntilReadyFunc = runnerWaitUntilReady
+
 func NewRunnerContainer(ctx context.Context, cfg RunnerContainerConfig, name string) (*RunnerContainer, error) {
 	// Ensure that timeout is set to a non-zero value.
 	timeout := cfg.containerTimeout
@@ -66,7 +69,7 @@ func NewRunnerContainer(ctx context.Context, cfg RunnerContainerConfig, name str
 
 	cctx, cancel := context.WithTimeout(ctx, cfg.containerTimeout)
 	defer cancel()
-	if err := runnerWaitUntilReady(cctx, client, pollingInterval); err != nil {
+	if err := runnerWaitUntilReadyFunc(cctx, client, pollingInterval); err != nil {
 		return nil, err
 	}
 
