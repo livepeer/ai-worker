@@ -89,7 +89,6 @@ class TrickleProtocol(StreamProtocol):
         except Exception as e:
             logging.error(f"Error reporting status: {e}")
 
-
 async def start_control_subscriber(control_url: str, update_params: Callable[[dict], None]):
     if control_url is None or control_url.strip() == "":
         logging.warning("No control-url provided, inference won't get updates from the control trickle subscription")
@@ -118,3 +117,4 @@ async def start_control_subscriber(control_url: str, update_params: Callable[[di
         except Exception as e:
             logging.error(f"Error updating model with control message: {e}")
             continue
+

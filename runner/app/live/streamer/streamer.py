@@ -26,6 +26,8 @@ class StreamMetrics(BaseModel):
     last_restart_time: float = 0.0
     last_input_time: float = 0.0
     last_output_time: float = 0.0
+    last_error: str | None = None
+    last_restart_logs: list[str] = []  # Will contain last N lines before restart
 
     def to_dict(self) -> dict:
         current_time = time.time()
@@ -97,6 +99,12 @@ class PipelineStreamer:
 
     async def _restart(self):
         try:
+            # Capture logs before stopping the process
+            self.metrics.last_restart_logs = self.process.get_recent_logs()
+            last_error = self.process.get_last_error()
+            if last_error:
+                self.metrics.last_error = last_error
+
             # don't call the full start/stop methods since we don't want to restart the protocol
             await self._stop_process()
             self._start_process()
@@ -105,6 +113,7 @@ class PipelineStreamer:
             logging.info(
                 f"PipelineProcess restarted. Restart count: {self.metrics.restart_count}"
             )
+            # TODO: report status immediately on process restart
         except Exception as e:
             logging.error(f"Error restarting pipeline process: {e}")
             logging.error(f"Stack trace:\n{traceback.format_exc()}")
@@ -142,6 +151,11 @@ class PipelineStreamer:
             await asyncio.sleep(2)
             if not self.process:
                 return
+
+            last_error = self.process.get_last_error()
+            if last_error:
+                # TODO: report status immediately when a new error is detected
+                self.metrics.last_error = last_error
 
             current_time = time.time()
             last_input_time = self.metrics.last_input_time or start_time
