@@ -72,6 +72,7 @@ async def start_control_subscriber(handler: PipelineStreamer, control_url: str):
         return
     logging.info("Starting Control subscriber at %s", control_url)
     subscriber = TrickleSubscriber(url=control_url)
+    keepalive_message = {"keep": "alive"}
     while True:
         segment = await subscriber.next()
         if segment.eos():
@@ -81,6 +82,9 @@ async def start_control_subscriber(handler: PipelineStreamer, control_url: str):
             params = await segment.read()
             logging.info("Received control message, updating model with params: %s", params)
             data = json.loads(params)
+            if data == keepalive_message:
+                # Ignore periodic keepalive messages
+                continue
         except Exception as e:
             logging.error(f"Error parsing control message: {e}")
             continue
