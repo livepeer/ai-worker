@@ -153,15 +153,15 @@ class PipelineProcess:
         sys.stdout = QueueTeeStream(sys.stdout, self)
         sys.stderr = QueueTeeStream(sys.stderr, self)
 
-    def _queue_put_fifo(self, queue: mp.Queue, item: any):
+    def _queue_put_fifo(self, _queue: mp.Queue, item: any):
         """Helper to put an item on a queue, dropping oldest items if needed"""
         while not self.is_done():
             try:
-                queue.put_nowait(item)
+                _queue.put_nowait(item)
                 break
             except queue.Full:
                 try:
-                    queue.get_nowait()  # remove oldest item
+                    _queue.get_nowait()  # remove oldest item
                 except queue.Empty:
                     continue
 
