@@ -17,24 +17,20 @@ from .protocol.protocol import StreamProtocol
 fps_log_interval = 10
 status_report_interval = 10
 
-class StreamMetrics(BaseModel):
+class PipelineStatus(BaseModel):
     """Holds metrics for the pipeline streamer"""
+    pipeline: str
     start_time: float
+
     input_fps: float = 0.0
     output_fps: float = 0.0
-    restart_count: int = 0
-    last_restart_time: float = 0.0
-    last_input_time: float = 0.0
-    last_output_time: float = 0.0
-    last_error: str | None = None
-    last_restart_logs: list[str] = []  # Will contain last N lines before restart
+    last_input_time: float | None = None
+    last_output_time: float | None = None
 
-    def to_dict(self) -> dict:
-        current_time = time.time()
-        return {
-            **super().model_dump(),
-            "uptime": current_time - self.start_time
-        }
+    restart_count: int = 0
+    last_restart_time: float | None = None
+    last_restart_logs: list[str] | None = None  # Will contain last N lines before restart
+    last_error: str | None = None
 
 class PipelineStreamer:
     def __init__(self, protocol: StreamProtocol, pipeline: str, input_timeout: int, params: dict):
@@ -45,7 +41,7 @@ class PipelineStreamer:
         self.last_params_time = 0.0
         self.input_timeout = input_timeout  # 0 means disabled
         self.done_future = None
-        self.metrics = StreamMetrics(start_time=time.time())
+        self.status = PipelineStatus(pipeline=pipeline, start_time=time.time())
 
     async def start(self):
         self.done_future = asyncio.get_running_loop().create_future()
@@ -100,18 +96,18 @@ class PipelineStreamer:
     async def _restart(self):
         try:
             # Capture logs before stopping the process
-            self.metrics.last_restart_logs = self.process.get_recent_logs()
+            self.status.last_restart_logs = self.process.get_recent_logs()
             last_error = self.process.get_last_error()
             if last_error:
-                self.metrics.last_error = last_error
+                self.status.last_error = last_error
 
             # don't call the full start/stop methods since we don't want to restart the protocol
             await self._stop_process()
             self._start_process()
-            self.metrics.restart_count += 1
-            self.metrics.last_restart_time = time.time()
+            self.status.restart_count += 1
+            self.status.last_restart_time = time.time()
             logging.info(
-                f"PipelineProcess restarted. Restart count: {self.metrics.restart_count}"
+                f"PipelineProcess restarted. Restart count: {self.status.restart_count}"
             )
             # TODO: report status immediately on process restart
         except Exception as e:
@@ -136,12 +132,8 @@ class PipelineStreamer:
                 await asyncio.sleep(next_report - current_time)
                 next_report += status_report_interval
 
-            status = {
-                "pipeline": self.pipeline,
-                **self.metrics.to_dict(),
-            }
             try:
-                await self.protocol.report_status(status)
+                await self.protocol.report_status(self.status.model_dump())
             except Exception as e:
                 logging.error(f"Failed to report status: {e}")
 
@@ -155,11 +147,11 @@ class PipelineStreamer:
             last_error = self.process.get_last_error()
             if last_error:
                 # TODO: report status immediately when a new error is detected
-                self.metrics.last_error = last_error
+                self.status.last_error = last_error
 
             current_time = time.time()
-            last_input_time = self.metrics.last_input_time or start_time
-            last_output_time = self.metrics.last_output_time or start_time
+            last_input_time = self.status.last_input_time or start_time
+            last_output_time = self.status.last_output_time or start_time
 
             time_since_last_input = current_time - last_input_time
             time_since_last_output = current_time - last_output_time
@@ -222,14 +214,14 @@ class PipelineStreamer:
 
                 logging.debug(f"Sending input frame. Scaled from {width}x{height} to {frame.size[0]}x{frame.size[1]}")
                 self.process.send_input(frame)
-                self.metrics.last_input_time = time.time()  # Track time after send completes
+                self.status.last_input_time = time.time()  # Track time after send completes
 
                 # Increment frame count and measure FPS
                 frame_count += 1
                 elapsed_time = time.time() - start_time
                 if elapsed_time >= fps_log_interval:
-                    self.metrics.input_fps = frame_count / elapsed_time
-                    logging.info(f"Input FPS: {self.metrics.input_fps:.2f}")
+                    self.status.input_fps = frame_count / elapsed_time
+                    logging.info(f"Input FPS: {self.status.input_fps:.2f}")
                     frame_count = 0
                     start_time = time.time()
             # automatically stop the streamer when the ingress ends cleanly
@@ -250,7 +242,7 @@ class PipelineStreamer:
                 if not output_image:
                     break
 
-                self.metrics.last_output_time = time.time()  # Track time after receive completes
+                self.status.last_output_time = time.time()  # Track time after receive completes
                 logging.debug(
                     f"Output image received out_width: {output_image.width}, out_height: {output_image.height}"
                 )
@@ -261,8 +253,8 @@ class PipelineStreamer:
                 frame_count += 1
                 elapsed_time = time.time() - start_time
                 if elapsed_time >= fps_log_interval:
-                    self.metrics.output_fps = frame_count / elapsed_time
-                    logging.info(f"Output FPS: {self.metrics.output_fps:.2f}")
+                    self.status.output_fps = frame_count / elapsed_time
+                    logging.info(f"Output FPS: {self.status.output_fps:.2f}")
                     frame_count = 0
                     start_time = time.time()
 
