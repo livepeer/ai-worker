@@ -62,7 +62,7 @@ class PipelineProcess:
     def update_params(self, **params):
         self.param_update_queue.put(params)
 
-    async def send_input(self, image: Image.Image):
+    def send_input(self, image: Image.Image):
         self._queue_put_fifo(self.input_queue, image)
 
     async def recv_output(self) -> Image.Image | None:
