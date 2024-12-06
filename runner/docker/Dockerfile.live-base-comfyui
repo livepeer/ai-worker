@@ -15,10 +15,6 @@ ARG PIP_VERSION=23.3.2
 ENV PIP_PREFER_BINARY=1
 RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools==69.5.1 wheel==0.43.0
 
-# Upgrade TensorRT to 10.6.0
-RUN pip uninstall -y tensorrt && \
-    pip install tensorrt==10.6.0
-
 # Install ComfyUI-Depth-Anything-Tensorrt Node (https://github.com/yuvraj108c/ComfyUI-Depth-Anything-Tensorrt)
 RUN cd /comfyui/custom_nodes && \
     git clone https://github.com/yuvraj108c/ComfyUI-Depth-Anything-Tensorrt.git && \
@@ -45,6 +41,9 @@ RUN git clone https://github.com/ryanontheinside/ComfyUI_RyanOnTheInside.git && 
 # Install ComfyUI-Misc-Effects ( Starburst ) (https://github.com/ryanontheinside/ComfyUI-Misc-Effects.git)
 RUN git clone https://github.com/ryanontheinside/ComfyUI-Misc-Effects.git
 
+# Upgrade TensorRT to 10.6.0
+RUN pip uninstall -y tensorrt && \
+    pip install tensorrt==10.6.0
 
 RUN pip install torch==2.5.1 torchvision torchaudio tqdm
 
