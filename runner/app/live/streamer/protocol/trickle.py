@@ -86,7 +86,7 @@ class TrickleProtocol(StreamProtocol):
         try:
             status_json = json.dumps(status)
             async with await self.events_publisher.next() as event:
-                event.write(status_json.encode())
+                await event.write(status_json.encode())
         except Exception as e:
             logging.error(f"Error reporting status: {e}")
 
