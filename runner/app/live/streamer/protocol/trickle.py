@@ -1,22 +1,25 @@
 import asyncio
 import logging
 import queue
+import json
+from typing import AsyncGenerator, Optional, Callable
 
 from PIL import Image
 from multiprocessing.synchronize import Event
-from typing import AsyncGenerator
 
-from trickle import media
+from trickle import media, TricklePublisher, TrickleSubscriber
 
 from .protocol import StreamProtocol
 from .jpeg import to_jpeg_bytes, from_jpeg_bytes
 
 class TrickleProtocol(StreamProtocol):
-    def __init__(self, subscribe_url: str, publish_url: str):
+    def __init__(self, subscribe_url: str, publish_url: str, events_url: Optional[str] = None):
         self.subscribe_url = subscribe_url
         self.publish_url = publish_url
+        self.events_url = events_url
         self.subscribe_queue = queue.Queue[bytearray]()
         self.publish_queue = queue.Queue[bytearray]()
+        self.events_publisher = None
         self.subscribe_task = None
         self.publish_task = None
 
@@ -27,22 +30,27 @@ class TrickleProtocol(StreamProtocol):
         self.publish_task = asyncio.create_task(
             media.run_publish(self.publish_url, self.publish_queue.get)
         )
+        if self.events_url:
+            self.events_publisher = TricklePublisher(self.events_url, "application/json")
 
     async def stop(self):
         if not self.subscribe_task or not self.publish_task:
             return
 
-        # send sentinel None values to stop the trickle tasks
+        # send sentinel None values to stop the trickle tasks gracefully
         self.subscribe_queue.put(None)
         self.publish_queue.put(None)
 
+        if self.events_publisher:
+            await self.events_publisher.close()
+            self.events_publisher = None
+
+        tasks = [self.subscribe_task, self.publish_task]
         try:
-            await asyncio.wait([self.subscribe_task, self.publish_task], timeout=30.0)
+            await asyncio.wait(tasks, timeout=30.0)
         except asyncio.TimeoutError:
-            self.subscribe_task.cancel()
-            self.publish_task.cancel()
-        except Exception:
-            logging.error("Error stopping trickle streamer", exc_info=True)
+            for task in tasks:
+                task.cancel()
 
         self.subscribe_task = None
         self.publish_task = None
@@ -71,3 +79,39 @@ class TrickleProtocol(StreamProtocol):
 
         async for frame in output_frames:
             await asyncio.to_thread(enqueue_bytes, frame)
+
+    async def report_status(self, status: dict):
+        if not self.events_publisher:
+            return
+        try:
+            status_json = json.dumps(status)
+            async with await self.events_publisher.next() as event:
+                await event.write(status_json.encode())
+        except Exception as e:
+            logging.error(f"Error reporting status: {e}")
+
+async def start_control_subscriber(control_url: str, update_params: Callable[[dict], None]):
+    if control_url is None or control_url.strip() == "":
+        logging.warning("No control-url provided, inference won't get updates from the control trickle subscription")
+        return
+    logging.info("Starting Control subscriber at %s", control_url)
+    subscriber = TrickleSubscriber(url=control_url)
+    while True:
+        segment = await subscriber.next()
+        if segment.eos():
+            return
+
+        try:
+            params = await segment.read()
+            logging.info("Received control message, updating model with params: %s", params)
+            data = json.loads(params)
+        except Exception as e:
+            logging.error(f"Error parsing control message: {e}")
+            continue
+
+        try:
+            update_params(data)
+        except Exception as e:
+            logging.error(f"Error updating model with control message: {e}")
+            continue
+

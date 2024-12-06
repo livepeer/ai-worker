@@ -55,7 +55,7 @@ class LiveVideoToVideoParams(BaseModel):
         str,
         Field(
             default="",
-            description="EventsUrl URL for publishing events via Trickle protocol for pipeline status and logs.",
+            description="URL for publishing events via Trickle protocol for pipeline status and logs.",
         ),
     ]
     model_id: Annotated[
