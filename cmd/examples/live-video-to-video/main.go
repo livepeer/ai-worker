@@ -3,8 +3,6 @@ package main
 import (
     "bytes"
     "image"
-    "image/jpeg"
-    "image/png"
 	"context"
 	"errors"
 	"flag"
@@ -18,7 +16,6 @@ import (
     "sort"
     "strings"
 
-    "github.com/disintegration/imaging"
 	"github.com/pebbe/zmq4"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
@@ -57,31 +54,7 @@ func sendImages(ctx context.Context, imageDir string, inputFps int) error {
                     continue
                 }
 
-                img, format, err := image.Decode(bytes.NewReader(fileBytes))
-                if err != nil {
-                    slog.Error("Failed to decode image", slog.String("path", imagePath), slog.String("error", err.Error()))
-                    continue
-                }
-
-                resizedImg := imaging.Resize(img, 512, 512, imaging.Lanczos)
-
-                var buffer bytes.Buffer
-                switch format {
-                case "jpeg", "jpg":
-                    err = jpeg.Encode(&buffer, resizedImg, nil)
-                case "png":
-                    err = png.Encode(&buffer, resizedImg)
-                default:
-                    slog.Error("Unsupported image format", slog.String("format", format))
-                    continue
-                }
-
-                if err != nil {
-                    slog.Error("Failed to encode image", slog.String("path", imagePath), slog.String("error", err.Error()))
-                    continue
-                }
-
-                preprocessedImages = append(preprocessedImages, buffer.Bytes())
+                preprocessedImages = append(preprocessedImages, fileBytes)
             }
         }
     }

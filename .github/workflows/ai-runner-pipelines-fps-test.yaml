@@ -57,7 +57,7 @@ jobs:
 
       - name: Clean up runner dockers
         run: |
-          CONTAINERS=$(docker ps -aq --filter name=live-video-to-video_${MODEL_ID}*)
+          CONTAINERS=$(docker ps -aq --filter "name=^live-video-to-video*")
           if [ -n "$CONTAINERS" ]; then
             echo "Removing containers: $CONTAINERS"
             echo "$CONTAINERS" | xargs -r docker rm -f
