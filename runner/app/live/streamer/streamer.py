@@ -57,13 +57,17 @@ class PipelineStreamer:
         return await self.done_future
 
     async def stop(self):
-        await self.protocol.stop()
-        await self._stop_process()
-        if self.report_status_task:
-            self.report_status_task.cancel()
-            self.report_status_task = None
-        if self.done_future and not self.done_future.done():
-            self.done_future.set_result(None)
+        try:
+            await self.protocol.stop()
+            await self._stop_process()
+            if self.report_status_task:
+                self.report_status_task.cancel()
+                self.report_status_task = None
+        except Exception:
+            logging.error("Error stopping streamer", exc_info=True)
+        finally:
+            if self.done_future and not self.done_future.done():
+                self.done_future.set_result(None)
 
     def _start_process(self):
         if self.process:
