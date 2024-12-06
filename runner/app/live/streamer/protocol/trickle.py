@@ -2,12 +2,12 @@ import asyncio
 import logging
 import queue
 import json
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator, Optional, Callable
 
 from PIL import Image
 from multiprocessing.synchronize import Event
 
-from trickle import media, TricklePublisher
+from trickle import media, TricklePublisher, TrickleSubscriber
 
 from .protocol import StreamProtocol
 from .jpeg import to_jpeg_bytes, from_jpeg_bytes
@@ -88,3 +88,33 @@ class TrickleProtocol(StreamProtocol):
                 event.write(status_json.encode())
         except Exception as e:
             logging.error(f"Error reporting status: {e}")
+
+
+async def start_control_subscriber(control_url: str, update_params: Callable[[dict], None]):
+    if control_url is None or control_url.strip() == "":
+        logging.warning("No control-url provided, inference won't get updates from the control trickle subscription")
+        return
+    logging.info("Starting Control subscriber at %s", control_url)
+    subscriber = TrickleSubscriber(url=control_url)
+    keepalive_message = {"keep": "alive"}
+    while True:
+        segment = await subscriber.next()
+        if segment.eos():
+            return
+
+        try:
+            params = await segment.read()
+            logging.info("Received control message, updating model with params: %s", params)
+            data = json.loads(params)
+            if data == keepalive_message:
+                # Ignore periodic keepalive messages
+                continue
+        except Exception as e:
+            logging.error(f"Error parsing control message: {e}")
+            continue
+
+        try:
+            update_params(data)
+        except Exception as e:
+            logging.error(f"Error updating model with control message: {e}")
+            continue

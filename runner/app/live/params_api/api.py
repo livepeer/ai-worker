@@ -4,11 +4,9 @@ import mimetypes
 import os
 import tempfile
 import time
-from typing import cast
+from typing import cast, Callable
 
 from aiohttp import BodyPartReader, web
-
-from streamer import PipelineStreamer
 
 TEMP_SUBDIR = "infer_temp"
 MAX_FILE_AGE = 86400  # 1 day
@@ -58,8 +56,8 @@ async def handle_params_update(request):
         else:
             raise ValueError(f"Unknown content type: {request.content_type}")
 
-        handler = cast(PipelineStreamer, request.app["handler"])
-        handler.update_params(params)
+        update_params = cast(Callable[[dict], None], request.app["update_params_func"])
+        update_params(params)
 
         return web.Response(text="Params updated successfully")
     except Exception as e:
@@ -67,9 +65,9 @@ async def handle_params_update(request):
         return web.Response(text=f"Error updating params: {str(e)}", status=400)
 
 
-async def start_http_server(handler: PipelineStreamer, port: int):
+async def start_http_server(port: int, update_params: Callable[[dict], None]):
     app = web.Application()
-    app["handler"] = handler
+    app["update_params_func"] = update_params
     app.router.add_post("/api/params", handle_params_update)
     runner = web.AppRunner(app)
     await runner.setup()
