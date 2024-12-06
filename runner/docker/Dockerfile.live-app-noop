@@ -18,7 +18,7 @@ RUN pyenv install $PYTHON_VERSION && \
 ARG PIP_VERSION=23.3.2
 
 # Install any additional Python packages
-RUN pip install uvicorn==0.30.0 fastapi==0.111.0 numpy==1.26.4 torch==2.5.1 diffusers==0.30.0 transformers==4.43.3 aiohttp==3.10.9 pyzmq==26.2.0
+RUN pip install uvicorn==0.30.0 fastapi==0.111.0 numpy==1.26.4 torch==2.5.1 diffusers==0.30.0 transformers==4.43.3 aiohttp==3.10.9 pyzmq==26.2.0 pynvml==12.0.0
 
 # Set environment variables
 ENV MAX_WORKERS=1

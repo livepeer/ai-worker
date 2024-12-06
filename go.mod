@@ -11,6 +11,7 @@ require (
 	github.com/go-chi/chi/v5 v5.1.0
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/opencontainers/image-spec v1.1.0
+	github.com/pebbe/zmq4 v1.2.11
 	github.com/stretchr/testify v1.9.0
 	github.com/vincent-petithory/dataurl v1.0.0
 )
