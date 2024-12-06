@@ -18,8 +18,7 @@ class StreamDiffusionParams(BaseModel):
     use_lcm_lora: bool = True
     lcm_lora_id: str = "latent-consistency/lcm-lora-sdv1-5"
     num_inference_steps: int = 50
-    t_index_list: Optional[List[int]] = None
-    t_index_ratio_list: Optional[List[float]] = [0.75, 0.9, 0.975]
+    t_index_list: Optional[List[int]] = [37, 45, 48]
     scale: float = 1.0
     acceleration: Literal["none", "xformers", "tensorrt"] = "tensorrt"
     use_denoising_batch: bool = True
@@ -28,13 +27,6 @@ class StreamDiffusionParams(BaseModel):
     guidance_scale: float = 1.2
     do_add_noise: bool = False
     similar_image_filter_threshold: float = 0.98
-
-    def __init__(self, **data):
-        super().__init__(**data)
-        if self.t_index_ratio_list is not None and self.t_index_list is None:
-            self.t_index_list = [
-                int(i * self.num_inference_steps) for i in self.t_index_ratio_list
-            ]
 
 
 class StreamDiffusion(Pipeline):

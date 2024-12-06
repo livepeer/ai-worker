@@ -208,8 +208,8 @@ type Chunk struct {
 	Timestamp []interface{} `json:"timestamp"`
 }
 
-// GpuComputeInfo Model for detailed GPU compute information.
-type GpuComputeInfo struct {
+// GPUComputeInfo Model for detailed GPU compute information.
+type GPUComputeInfo struct {
 	Id          string `json:"id"`
 	Major       int    `json:"major"`
 	MemoryFree  int    `json:"memory_free"`
@@ -218,8 +218,8 @@ type GpuComputeInfo struct {
 	Name        string `json:"name"`
 }
 
-// GpuUtilizationInfo Model for real-time GPU utilization statistics.
-type GpuUtilizationInfo struct {
+// GPUUtilizationInfo Model for GPU utilization statistics.
+type GPUUtilizationInfo struct {
 	Id                 string `json:"id"`
 	MemoryFree         int    `json:"memory_free"`
 	MemoryTotal        int    `json:"memory_total"`
@@ -241,14 +241,14 @@ type HTTPValidationError struct {
 
 // HardwareInformation Response model for GPU information.
 type HardwareInformation struct {
-	GpuInfo  map[string]GpuComputeInfo `json:"gpu_info"`
+	GpuInfo  map[string]GPUComputeInfo `json:"gpu_info"`
 	ModelId  string                    `json:"model_id"`
 	Pipeline string                    `json:"pipeline"`
 }
 
 // HardwareStats Response model for real-time GPU statistics.
 type HardwareStats struct {
-	GpuStats map[string]GpuUtilizationInfo `json:"gpu_stats"`
+	GpuStats map[string]GPUUtilizationInfo `json:"gpu_stats"`
 	ModelId  string                        `json:"model_id"`
 	Pipeline string                        `json:"pipeline"`
 }
@@ -281,6 +281,9 @@ type LiveVideoToVideoParams struct {
 	// ControlUrl URL for subscribing via Trickle protocol for updates in the live video-to-video generation params.
 	ControlUrl *string `json:"control_url,omitempty"`
 
+	// EventsUrl EventsUrl URL for publishing events via Trickle protocol for pipeline status and logs.
+	EventsUrl *string `json:"events_url,omitempty"`
+
 	// ModelId Name of the pipeline to run in the live video to video job. Notice that this is named model_id for consistency with other routes, but it does not refer to a Hugging Face model ID. The exact model(s) depends on the pipeline implementation and might be configurable via the `params` argument.
 	ModelId *string `json:"model_id,omitempty"`
 
@@ -297,7 +300,10 @@ type LiveVideoToVideoParams struct {
 // LiveVideoToVideoResponse Response model for live video-to-video generation.
 type LiveVideoToVideoResponse struct {
 	// ControlUrl URL for updating the live video-to-video generation
-	ControlUrl string `json:"control_url"`
+	ControlUrl *string `json:"control_url,omitempty"`
+
+	// EventsUrl URL for subscribing to events for pipeline status and logs
+	EventsUrl *string `json:"events_url,omitempty"`
 
 	// PublishUrl Destination URL of the outgoing stream to publish to
 	PublishUrl string `json:"publish_url"`

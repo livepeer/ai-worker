@@ -889,7 +889,7 @@ components:
       - text
       title: Chunk
       description: A chunk of text with a timestamp.
-    GpuComputeInfo:
+    GPUComputeInfo:
       properties:
         id:
           type: string
@@ -917,9 +917,9 @@ components:
       - memory_free
       - major
       - minor
-      title: GpuComputeInfo
+      title: GPUComputeInfo
       description: Model for detailed GPU compute information.
-    GpuUtilizationInfo:
+    GPUUtilizationInfo:
       properties:
         id:
           type: string
@@ -947,8 +947,8 @@ components:
       - memory_free
       - utilization_compute
       - utilization_memory
-      title: GpuUtilizationInfo
-      description: Model for real-time GPU utilization statistics.
+      title: GPUUtilizationInfo
+      description: Model for GPU utilization statistics.
     HTTPError:
       properties:
         detail:
@@ -979,7 +979,7 @@ components:
           title: Model Id
         gpu_info:
           additionalProperties:
-            $ref: '#/components/schemas/GpuComputeInfo'
+            $ref: '#/components/schemas/GPUComputeInfo'
           type: object
           title: Gpu Info
       type: object
@@ -999,7 +999,7 @@ components:
           title: Model Id
         gpu_stats:
           additionalProperties:
-            $ref: '#/components/schemas/GpuUtilizationInfo'
+            $ref: '#/components/schemas/GPUUtilizationInfo'
           type: object
           title: Gpu Stats
       type: object
@@ -1070,6 +1070,12 @@ components:
           description: URL for subscribing via Trickle protocol for updates in the
             live video-to-video generation params.
           default: ''
+        events_url:
+          type: string
+          title: Events Url
+          description: EventsUrl URL for publishing events via Trickle protocol for
+            pipeline status and logs.
+          default: ''
         model_id:
           type: string
           title: Model Id
@@ -1103,11 +1109,16 @@ components:
           type: string
           title: Control Url
           description: URL for updating the live video-to-video generation
+          default: ''
+        events_url:
+          type: string
+          title: Events Url
+          description: URL for subscribing to events for pipeline status and logs
+          default: ''
       type: object
       required:
       - subscribe_url
       - publish_url
-      - control_url
       title: LiveVideoToVideoResponse
       description: Response model for live video-to-video generation.
     MasksResponse:
