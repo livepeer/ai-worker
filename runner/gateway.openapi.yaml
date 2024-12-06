@@ -934,8 +934,8 @@ components:
         events_url:
           type: string
           title: Events Url
-          description: EventsUrl URL for publishing events via Trickle protocol for
-            pipeline status and logs.
+          description: URL for publishing events via Trickle protocol for pipeline
+            status and logs.
           default: ''
         model_id:
           type: string
