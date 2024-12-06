@@ -32,6 +32,7 @@ RUN cd /comfyui/custom_nodes && \
 # Install ComfyUI-Misc-Effects ( Starburst ) (https://github.com/ryanontheinside/ComfyUI-Misc-Effects.git)
 RUN cd /comfyui/custom_nodes && \
     git clone https://github.com/ryanontheinside/ComfyUI-Misc-Effects.git && \
+    cd ComfyUI-Misc-Effects && \
     git checkout c6b360c78611134c3723388170475eb4898ff6b7
 
 RUN pip install torch==2.5.1 torchvision torchaudio tqdm
