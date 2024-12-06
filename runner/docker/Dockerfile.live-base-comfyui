@@ -23,17 +23,13 @@ RUN cd /comfyui/custom_nodes && \
 
 # Install ComfyUI_RyanOnTheInside (https://github.com/ryanontheinside/ComfyUI_RyanOnTheInside.git)
 RUN cd /comfyui/custom_nodes && \
-    git clone https://github.com/ryanontheinside/ComfyUI_RyanOnTheInside.git && \
+    git clone https://github.com/pschroedl/ComfyUI_RyanOnTheInside.git && \
     cd ComfyUI_RyanOnTheInside && \
     pip install -r requirements.txt
 
 # Install ComfyUI-Misc-Effects ( Starburst ) (https://github.com/ryanontheinside/ComfyUI-Misc-Effects.git)
 RUN cd /comfyui/custom_nodes && \
     git clone https://github.com/ryanontheinside/ComfyUI-Misc-Effects.git
-
-# Upgrade TensorRT to 10.6.0
-RUN pip uninstall -y tensorrt && \
-    pip install tensorrt==10.6.0
 
 RUN pip install torch==2.5.1 torchvision torchaudio tqdm
 
@@ -55,6 +51,10 @@ RUN cd /comfyui/custom_nodes && \
     git clone https://github.com/pschroedl/ComfyUI-StreamDiffusion.git && \
     cd ComfyUI-StreamDiffusion && \
     pip install -r requirements.txt
+
+# Upgrade TensorRT to 10.6.0
+RUN pip uninstall -y tensorrt && \
+    pip install tensorrt==10.6.0
 
 # Set up ComfyUI workspace
 ENV COMFY_UI_WORKSPACE="/comfyui"
