@@ -135,8 +135,11 @@ if __name__ == "__main__":
                 input_timeout=args.input_timeout
             )
         )
+        # We force an exit here to ensure that the process terminates. If any asyncio tasks or
+        # sub-processes failed to shutdown they'd block the main process from exiting.
+        os._exit(0)
     except Exception as e:
         logging.error(f"Fatal error in main: {e}")
         logging.error(f"Traceback:\n{''.join(traceback.format_tb(e.__traceback__))}")
-        sys.exit(1)
+        os._exit(1)
 
