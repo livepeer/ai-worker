@@ -41,8 +41,9 @@ class TrickleProtocol(StreamProtocol):
         self.subscribe_queue.put(None)
         self.publish_queue.put(None)
 
-        await self.events_publisher.close()
-        self.events_publisher = None
+        if self.events_publisher:
+            await self.events_publisher.close()
+            self.events_publisher = None
 
         tasks = [self.subscribe_task, self.publish_task]
         try:
