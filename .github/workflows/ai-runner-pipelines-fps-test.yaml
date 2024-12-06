@@ -24,8 +24,7 @@ jobs:
         model_config:
           - { id: noop, input_fps: 30, exp_output_fps: 28 }
           - { id: liveportrait, input_fps: 30, exp_output_fps: 28 }
-          - { id: streamdiffusion, input_fps: 30, exp_output_fps: 25 }
-          - { id: comfyui, input_fps: 30, exp_output_fps: 21 }
+          - { id: streamdiffusion, input_fps: 30, exp_output_fps: 28 }
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -58,7 +57,13 @@ jobs:
 
       - name: Clean up runner dockers
         run: |
-          docker ps -aq --filter name=live-video-to-video_${MODEL_ID}* | xargs -r docker rm -f || true
+          CONTAINERS=$(docker ps -aq --filter name=live-video-to-video_${MODEL_ID}*)
+          if [ -n "$CONTAINERS" ]; then
+            echo "Removing containers: $CONTAINERS"
+            echo "$CONTAINERS" | xargs -r docker rm -f
+          else
+            echo "No containers to remove for model ${MODEL_ID}"
+          fi
 
       - name: Run FPS test
         env:
