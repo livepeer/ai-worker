@@ -12,6 +12,7 @@ from PIL import Image
 
 from .process import PipelineProcess
 from .protocol.protocol import StreamProtocol
+from app.utils.misc_utils import fast_image_resize
 
 fps_log_interval = 10
 
@@ -144,19 +145,8 @@ class PipelineStreamer:
 
                 # crop the max square from the center of the image and scale to 512x512
                 # most models expect this size especially when using tensorrt
-                frame_array = np.array(frame)
-                height, width = frame_array.shape[:2]
-
-                if width != height:
-                    square_size = min(width, height)
-                    start_x = width // 2 - square_size // 2
-                    start_y = height // 2 - square_size // 2
-                    frame_array = frame_array[start_y:start_y+square_size, start_x:start_x+square_size]
-
-                # Resize using cv2 (much faster than PIL)
-                if frame_array.shape[:2] != (512, 512):
-                    frame_array = cv2.resize(frame_array, (512, 512))
-                frame = Image.fromarray(frame_array)
+                width, height = frame.size
+                frame = fast_image_resize(frame, 512, 512)
 
                 logging.debug(f"Sending input frame. Scaled from {width}x{height} to 512x512")
                 self.process.send_input(frame)
