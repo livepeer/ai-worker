@@ -8,6 +8,8 @@ import numpy as np
 from .interface import Pipeline
 from comfystream.client import ComfyStreamClient
 
+import logging
+
 COMFY_UI_WORKSPACE_ENV = "COMFY_UI_WORKSPACE"
 DEFAULT_WORKFLOW_JSON = '''
 {
@@ -48,7 +50,10 @@ class ComfyUI(Pipeline):
     comfy_ui_workspace = os.getenv(COMFY_UI_WORKSPACE_ENV)
     self.client = ComfyStreamClient(cwd=comfy_ui_workspace)
 
-    params = {'prompt': json.loads(DEFAULT_WORKFLOW_JSON)}
+    params = {
+        'prompt': params['prompt'] if params.get('prompt') not in (None, "") else json.loads(DEFAULT_WORKFLOW_JSON)
+    }
+
     self.update_params(**params)
 
     # Comfy will cache nodes that only need to be run once (i.e. a node that loads model weights)
@@ -75,4 +80,5 @@ class ComfyUI(Pipeline):
 
   def update_params(self, **params):
     # params['prompt'] is the JSON string with the ComfyUI workflow
+    logging.info(f"ComfyUI Pipeline Prompt: {params['prompt']}")
     self.client.set_prompt(params['prompt'])
