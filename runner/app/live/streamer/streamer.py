@@ -46,6 +46,7 @@ class PipelineStreamer:
         self.status = PipelineStatus(pipeline=pipeline, start_time=time.time())
         self.control_task = None
         self.report_status_task = None
+        self.trigger_status_report = asyncio.Event()  # Event to trigger immediate status reports
 
     async def start(self):
         self.done_future = asyncio.get_running_loop().create_future()
@@ -117,7 +118,7 @@ class PipelineStreamer:
             logging.info(
                 f"PipelineProcess restarted. Restart count: {self.status.restart_count}"
             )
-            # TODO: report status immediately on process restart
+            self.trigger_status_report.set()
         except Exception:
             logging.error(f"Error restarting pipeline process", exc_info=True)
             os._exit(1)
@@ -129,18 +130,28 @@ class PipelineStreamer:
         self.status.last_params_hash = str(hash(str(sorted(params.items()))))
         if self.process:
             self.process.update_params(**params)
+        self.trigger_status_report.set()
 
     async def report_status_loop(self):
-        next_report = time.time() + status_report_interval
-        while not self.done_future.done():
-            # report at consistent 10s intervals
-            current_time = time.time()
-            if next_report < current_time:
-                next_report = current_time + status_report_interval
-            else:
-                await asyncio.sleep(next_report - current_time)
-                next_report += status_report_interval
+        async def tick_periodically():
+            """Yields a value every status_report_interval seconds or when the trigger is set"""
+            next_report = time.time() + status_report_interval
+            while not self.done_future.done():
+                current_time = time.time()
+                if next_report <= current_time:
+                    # If we lost track of the next report time, just report immediately
+                    next_report = current_time + status_report_interval
+                else:
+                    try:
+                        # Wait for either the next scheduled report or an immediate trigger
+                        await asyncio.wait_for(self.trigger_status_report.wait(), next_report - current_time)
+                    except asyncio.TimeoutError:
+                        # Normal flow every status_report_interval
+                        next_report += status_report_interval
+                self.trigger_status_report.clear()
+                yield
 
+        async for _ in tick_periodically():
             try:
                 await self.protocol.report_status(self.status.model_dump())
                 # Clear the large transient fields after reporting them once
@@ -152,14 +163,14 @@ class PipelineStreamer:
     async def monitor_loop(self, done: Event):
         start_time = time.time()
         while not done.is_set():
-            await asyncio.sleep(2)
+            await asyncio.sleep(1)
             if not self.process:
                 return
 
             last_error = self.process.get_last_error()
             if last_error:
-                # TODO: report status immediately when a new error is detected
                 self.status.last_error = last_error
+                self.trigger_status_report()
 
             current_time = time.time()
             last_input_time = self.status.last_input_time or start_time
