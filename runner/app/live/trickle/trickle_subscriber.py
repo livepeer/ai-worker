@@ -7,10 +7,18 @@ class TrickleSubscriber:
     def __init__(self, url: str):
         self.base_url = url
         self.idx = -1  # Start with -1 for 'latest' index
-        self.pending_get = None  # Pre-initialized GET request
+        self.pending_get: aiohttp.ClientResponse | None = None  # Pre-initialized GET request
         self.lock = asyncio.Lock()  # Lock to manage concurrent access
         self.session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=False))
         self.errored = False
+
+    async def __aenter__(self):
+        """Enter context manager."""
+        return self
+
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        """Exit context manager and close the session."""
+        await self.close()
 
     async def preconnect(self):
         """Preconnect to the server by making a GET request to fetch the next segment."""
@@ -74,6 +82,13 @@ class TrickleSubscriber:
             next_conn = await self.preconnect()
             if next_conn:
                 self.pending_get = next_conn
+
+    async def close(self):
+        """Close the session when done."""
+        logging.info(f"Closing {self.base_url}")
+        if self.pending_get:
+            await self.pending_get.close()
+        await self.session.close()
 
 class Segment:
     def __init__(self, response):
