@@ -65,16 +65,23 @@ class AudioToTextPipeline(Pipeline):
 
         torch_device = get_torch_device()
 
-        # Get the GPU device properties
-        device = torch.cuda.get_device_properties(0)
-        major, minor = device.major, device.minor
-
-        # Compute capability of Ampere starts at 8.0
-        if (major, minor) >= (8, 0):
-            attn_implementation = "flash_attention_2"
+        # Enable FlashAttention based on device compatibility.
+        attn_implementation = "eager"
+        if torch_device.type == "cuda":
+            device = torch.cuda.get_device_properties(0)
+            major, minor = device.major, device.minor
+            # FlashAttention requires CUDA Compute Capability >= 8.0.
+            if (major, minor) >= (8, 0):
+                attn_implementation = "flash_attention_2"
+            else:
+                attn_implementation = "sdpa"
+                logger.warning(
+                    f"GPU {device.name} (Compute Capability {major}.{minor}) is not "
+                    "compatible with FlashAttention, so scaled_dot_product_attention "
+                    "is being used instead."
+                )
         else:
-            logger.warning(f"GPU {device.name} (Compute Capability {major}.{minor}) is not compatible with FlashAttention, so scaled_dot_product_attention is being used instead.")
-            attn_implementation = "sdpa"
+            logger.warning("FlashAttention disabled since it requires a CUDA device.")
 
         # Get model specific configuration parameters.
         model_enum = ModelName.from_value(model_id)
@@ -92,12 +99,10 @@ class AudioToTextPipeline(Pipeline):
             low_cpu_mem_usage=True,
             use_safetensors=True,
             cache_dir=get_model_dir(),
+            attn_implementation=attn_implementation,
+            device_map={"": torch_device},
             **kwargs,
-        ).to('cpu')
-
-        # Move the model to the GPU
-        model = model.to(torch_device)
-        model.config.attn_implementation = attn_implementation
+        )
 
         processor = AutoProcessor.from_pretrained(model_id, cache_dir=get_model_dir())
 
@@ -107,7 +112,7 @@ class AudioToTextPipeline(Pipeline):
             tokenizer=processor.tokenizer,
             feature_extractor=processor.feature_extractor,
             max_new_tokens=128,
-            device=torch_device,
+            device_map={"", torch_device},
             **kwargs,
         )
 
