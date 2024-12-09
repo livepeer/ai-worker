@@ -35,14 +35,14 @@ RUN cd /comfyui/custom_nodes && \
     cd ComfyUI-Misc-Effects && \
     git checkout c6b360c78611134c3723388170475eb4898ff6b7
 
-RUN pip install torch==2.5.1 torchvision torchaudio tqdm nvidia-ml-py==12.560.30
+RUN pip install torch==2.5.1 torchvision torchaudio tqdm
 
 # Install comfystream (which includes ComfyUI)
 RUN pip install git+https://github.com/yondonfu/comfystream.git
 RUN git clone https://github.com/yondonfu/comfystream.git && \
     cd comfystream && \
     pip install -r requirements.txt && \
-    cp -r nodes/tensor_utils /comfyui/custom_nodes/ 
+    cp -r nodes/tensor_utils /comfyui/custom_nodes/
 
 # Install ComfyUI-SAM2-Realtime (https://github.com/pschroedl/ComfyUI-SAM2-Realtime.git)
 RUN cd /comfyui/custom_nodes && \
