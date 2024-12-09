@@ -23,6 +23,35 @@ import (
 	"github.com/livepeer/ai-worker/worker"
 )
 
+const defaultPrompt = `{
+    "1": {
+        "inputs": {
+            "images": ["2", 0]
+        },
+        "class_type": "SaveTensor",
+        "_meta": {
+            "title": "SaveTensor"
+        }
+    },
+    "2": {
+        "inputs": {
+            "engine": "depth_anything_vitl14-fp16.engine",
+            "images": ["3", 0]
+        },
+        "class_type": "DepthAnythingTensorrt",
+        "_meta": {
+            "title": "Depth Anything Tensorrt"
+        }
+    },
+    "3": {
+        "inputs": {},
+        "class_type": "LoadTensor",
+        "_meta": {
+            "title": "LoadTensor"
+        }
+    }
+}`
+
 func sendImages(ctx context.Context, imageDir string, inputFps int) error {
     publisher, err := zmq4.NewSocket(zmq4.PUB)
     if err != nil {
@@ -215,6 +244,7 @@ func main() {
     modelID := flag.String("modelid", "liveportrait", "Model ID for the live pipeline")
 	imageDir := flag.String("imagedir", "runner/example_data/live-video-to-video/", "Path to the image to send")
     expOutputFps := flag.Int("expoutputfps", 27, "Minimum expected output FPS")
+    comfyuiPrompt := flag.String("comfyuiprompt", defaultPrompt, "Prompt to be used in comfyui pipeline")
     flag.Parse()
 
     pipeline := "live-video-to-video"
@@ -283,6 +313,9 @@ func main() {
         ModelId:      modelID,
         SubscribeUrl: "tcp://172.17.0.1:5555",
         PublishUrl:   "tcp://172.17.0.1:5556",
+        Params: &map[string]interface{}{
+            "prompt": *comfyuiPrompt,
+        },
     }
 
     slog.Info("Running live-video-to-video")

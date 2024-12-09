@@ -25,6 +25,7 @@ jobs:
           - { id: noop, input_fps: 30, exp_output_fps: 28 }
           - { id: liveportrait, input_fps: 30, exp_output_fps: 28 }
           - { id: streamdiffusion, input_fps: 30, exp_output_fps: 28 }
+          - { id: comfyui, input_fps: 30, exp_output_fps: 28 } # only depth anything for now
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -52,8 +53,7 @@ jobs:
       
       - name: Install packages
         run: |
-          apt-get update && apt-get install -y libzmq3-dev
-          rm -rf /var/lib/apt/lists/*
+          sudo sh -c "apt-get update && apt-get install -y libzmq3-dev && rm -rf /var/lib/apt/lists/*"
 
       - name: Clean up runner dockers
         run: |
