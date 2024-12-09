@@ -65,6 +65,24 @@ class AudioToTextPipeline(Pipeline):
 
         torch_device = get_torch_device()
 
+        # Enable FlashAttention based on device compatibility.
+        attn_implementation = "eager"
+        if torch_device.type == "cuda":
+            device = torch.cuda.get_device_properties(0)
+            major, minor = device.major, device.minor
+            # FlashAttention requires CUDA Compute Capability >= 8.0.
+            if (major, minor) >= (8, 0):
+                attn_implementation = "flash_attention_2"
+            else:
+                attn_implementation = "sdpa"
+                logger.warning(
+                    f"GPU {device.name} (Compute Capability {major}.{minor}) is not "
+                    "compatible with FlashAttention, so scaled_dot_product_attention "
+                    "is being used instead."
+                )
+        else:
+            logger.warning("FlashAttention disabled since it requires a CUDA device.")
+
         # Get model specific configuration parameters.
         model_enum = ModelName.from_value(model_id)
         self._model_cfg: ModelConfig = MODEL_CONFIGS.get(model_enum, ModelConfig())
@@ -81,9 +99,10 @@ class AudioToTextPipeline(Pipeline):
             low_cpu_mem_usage=True,
             use_safetensors=True,
             cache_dir=get_model_dir(),
-            attn_implementation="eager",  # TODO: enable flash attention.
+            attn_implementation=attn_implementation,
+            device_map="auto",
             **kwargs,
-        ).to(torch_device)
+        )
 
         processor = AutoProcessor.from_pretrained(model_id, cache_dir=get_model_dir())
 
@@ -93,7 +112,7 @@ class AudioToTextPipeline(Pipeline):
             tokenizer=processor.tokenizer,
             feature_extractor=processor.feature_extractor,
             max_new_tokens=128,
-            device=torch_device,
+            device_map="auto",
             **kwargs,
         )
 
