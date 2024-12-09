@@ -158,7 +158,7 @@ class PipelineStreamer:
                     frame_array = cv2.resize(frame_array, (512, 512))
                     frame = Image.fromarray(frame_array)
 
-                logging.debug(f"Sending input frame. Scaled from {width}x{height} to 512x512")
+                logging.debug(f"Sending input frame. Scaled from {width}x{height} to {frame.size[0]}x{frame.size[1]}")
                 self.process.send_input(frame)
 
                 # Increment frame count and measure FPS
