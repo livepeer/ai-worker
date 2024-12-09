@@ -42,9 +42,6 @@ jobs:
           # for ref value discussion
           ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Cleanup hosted runner
-        uses: ./.github/actions/cleanup-runner
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
