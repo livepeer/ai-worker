@@ -54,7 +54,7 @@ jobs:
         run: echo "should_build=true" >> $GITHUB_OUTPUT
 
       - name: Cleanup hosted runner
-        uses: ./.github/actions/cleanup-runner
+        uses: ./.github/actions/cleanup-runner-non-sudo
         if: steps.check_build.outputs.should_build == 'true'
 
       - name: Set up Docker Buildx
@@ -107,7 +107,7 @@ jobs:
               - runner/requirements-liveportrait.txt
 
       - name: Cleanup hosted runner
-        uses: ./.github/actions/cleanup-runner
+        uses: ./.github/actions/cleanup-runner-non-sudo
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
