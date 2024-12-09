@@ -30,3 +30,10 @@ class StreamProtocol(ABC):
     async def report_status(self, status: dict):
         """Reports status updates to the event stream if available"""
         pass
+
+    @abstractmethod
+    async def control_loop(self) -> AsyncGenerator[dict, None]:
+        """Generator that yields control messages for updating pipeline parameters"""
+        if False:
+            yield {}  # dummy yield for proper typing
+        pass

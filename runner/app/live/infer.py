@@ -22,9 +22,13 @@ from streamer.protocol.zeromq import ZeroMQProtocol
 
 async def main(*, http_port: int, stream_protocol: str, subscribe_url: str, publish_url: str, control_url: str, events_url: str, pipeline: str, params: dict, input_timeout: int):
     if stream_protocol == "trickle":
-        protocol = TrickleProtocol(subscribe_url, publish_url, events_url)
+        protocol = TrickleProtocol(subscribe_url, publish_url, control_url, events_url)
     elif stream_protocol == "zeromq":
-        protocol = ZeroMQProtocol(subscribe_url, publish_url, events_url)
+        if events_url:
+            logging.warning("ZeroMQ protocol does not support event streaming")
+        if control_url:
+            logging.warning("ZeroMQ protocol does not support control messages")
+        protocol = ZeroMQProtocol(subscribe_url, publish_url)
     else:
         raise ValueError(f"Unsupported protocol: {stream_protocol}")
 
@@ -38,8 +42,6 @@ async def main(*, http_port: int, stream_protocol: str, subscribe_url: str, publ
         tasks: List[asyncio.Task] = []
         tasks.append(streamer.wait())
         tasks.append(asyncio.create_task(block_until_signal([signal.SIGINT, signal.SIGTERM])))
-        if control_url is not None and control_url.strip() != "":
-            tasks.append(asyncio.create_task(start_control_subscriber(control_url, streamer.update_params)))
 
         await asyncio.wait(tasks,
             return_when=asyncio.FIRST_COMPLETED
