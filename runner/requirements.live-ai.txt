@@ -22,4 +22,4 @@ PyGObject==3.50.0
 onnxruntime==1.19.2
 watchdog==5.0.2
 aiohttp==3.10.9
-nvidia-ml-py==12.560.30
+nvidia-ml-py==12.560.30  # Includes pynvml.
