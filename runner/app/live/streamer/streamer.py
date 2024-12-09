@@ -21,6 +21,7 @@ class PipelineStatus(BaseModel):
     """Holds metrics for the pipeline streamer"""
     pipeline: str
     start_time: float
+    last_params_update_time: float | None = None
 
     input_fps: float = 0.0
     output_fps: float = 0.0
@@ -38,16 +39,18 @@ class PipelineStreamer:
         self.pipeline = pipeline
         self.params = params
         self.process = None
-        self.last_params_time = 0.0
         self.input_timeout = input_timeout  # 0 means disabled
         self.done_future = None
         self.status = PipelineStatus(pipeline=pipeline, start_time=time.time())
+        self.control_task = None
+        self.report_status_task = None
 
     async def start(self):
         self.done_future = asyncio.get_running_loop().create_future()
-        self.report_status_task = asyncio.create_task(self.report_status_loop())
         self._start_process()
         await self.protocol.start()
+        self.control_task = asyncio.create_task(self.run_control_loop())
+        self.report_status_task = asyncio.create_task(self.report_status_loop())
 
     async def wait(self):
         if not self.done_future:
@@ -56,11 +59,14 @@ class PipelineStreamer:
 
     async def stop(self):
         try:
-            await self.protocol.stop()
-            await self._stop_process()
             if self.report_status_task:
                 self.report_status_task.cancel()
                 self.report_status_task = None
+            if self.control_task:
+                self.control_task.cancel()
+                self.control_task = None
+            await self.protocol.stop()
+            await self._stop_process()
         except Exception:
             logging.error("Error stopping streamer", exc_info=True)
         finally:
@@ -110,14 +116,13 @@ class PipelineStreamer:
                 f"PipelineProcess restarted. Restart count: {self.status.restart_count}"
             )
             # TODO: report status immediately on process restart
-        except Exception as e:
-            logging.error(f"Error restarting pipeline process: {e}")
-            logging.error(f"Stack trace:\n{traceback.format_exc()}")
+        except Exception:
+            logging.error(f"Error restarting pipeline process", exc_info=True)
             os._exit(1)
 
     def update_params(self, params: dict):
         self.params = params
-        self.last_params_time = time.time()
+        self.status.last_params_update_time = time.time()
         if self.process:
             self.process.update_params(**params)
 
@@ -152,11 +157,12 @@ class PipelineStreamer:
             current_time = time.time()
             last_input_time = self.status.last_input_time or start_time
             last_output_time = self.status.last_output_time or start_time
+            last_params_update_time = self.status.last_params_update_time or start_time
 
             time_since_last_input = current_time - last_input_time
             time_since_last_output = current_time - last_output_time
             time_since_start = current_time - start_time
-            time_since_last_params = current_time - self.last_params_time
+            time_since_last_params = current_time - last_params_update_time
             time_since_reload = min(time_since_last_params, time_since_start)
 
             if self.input_timeout > 0 and time_since_last_input > self.input_timeout:
@@ -265,3 +271,16 @@ class PipelineStreamer:
         except Exception:
             logging.error("Error running egress loop", exc_info=True)
             await self._restart()
+
+    async def run_control_loop(self):
+        """Consumes control messages from the protocol and updates parameters"""
+        try:
+            async for params in self.protocol.control_loop():
+                try:
+                    self.update_params(params)
+                except Exception as e:
+                    logging.error(f"Error updating model with control message: {e}")
+            logging.info("Control loop ended")
+            # control loop it not required to be running, so we keep the streamer running
+        except Exception as e:
+            logging.error(f"Error in control loop", exc_info=True)

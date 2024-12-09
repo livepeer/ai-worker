@@ -10,9 +10,7 @@ from .jpeg import to_jpeg_bytes, from_jpeg_bytes
 
 
 class ZeroMQProtocol(StreamProtocol):
-    def __init__(self, input_address: str, output_address: str, events_url: Optional[str] = None):
-        if events_url:
-            raise ValueError("ZeroMQ protocol does not support event streaming")
+    def __init__(self, input_address: str, output_address: str):
         self.input_address = input_address
         self.output_address = output_address
         self.context = zmq.asyncio.Context()
@@ -43,3 +41,8 @@ class ZeroMQProtocol(StreamProtocol):
 
     async def report_status(self, status: dict):
         pass  # No-op for ZeroMQ
+
+    async def control_loop(self) -> AsyncGenerator[dict, None]:
+        if False:
+            yield {}  # Empty generator, dummy yield for proper typing
+        pass # ZeroMQ protocol does not support control messages
