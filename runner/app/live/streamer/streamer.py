@@ -22,6 +22,8 @@ class PipelineStatus(BaseModel):
     pipeline: str
     start_time: float
     last_params_update_time: float | None = None
+    last_params: dict | None = None
+    last_params_hash: str | None = None
 
     input_fps: float = 0.0
     output_fps: float = 0.0
@@ -123,6 +125,8 @@ class PipelineStreamer:
     def update_params(self, params: dict):
         self.params = params
         self.status.last_params_update_time = time.time()
+        self.status.last_params = params
+        self.status.last_params_hash = str(hash(str(sorted(params.items()))))
         if self.process:
             self.process.update_params(**params)
 
@@ -139,6 +143,9 @@ class PipelineStreamer:
 
             try:
                 await self.protocol.report_status(self.status.model_dump())
+                # Clear the large transient fields after reporting them once
+                self.status.last_params = None
+                self.status.last_restart_logs = None
             except Exception as e:
                 logging.error(f"Failed to report status: {e}")
 
