@@ -100,7 +100,7 @@ class AudioToTextPipeline(Pipeline):
             use_safetensors=True,
             cache_dir=get_model_dir(),
             attn_implementation=attn_implementation,
-            device_map={"": torch_device},
+            device_map="auto",
             **kwargs,
         )
 
@@ -112,7 +112,7 @@ class AudioToTextPipeline(Pipeline):
             tokenizer=processor.tokenizer,
             feature_extractor=processor.feature_extractor,
             max_new_tokens=128,
-            device_map={"", torch_device},
+            device_map="auto",
             **kwargs,
         )
 
