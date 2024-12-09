@@ -185,4 +185,5 @@ async def run_publish(publish_url: str, image_generator):
         logging.error(f"postprocess got error {e}", e)
         raise e
     finally:
-        await publisher.close()
+        if publisher:
+            await publisher.close()
