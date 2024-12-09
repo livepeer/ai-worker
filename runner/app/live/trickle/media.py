@@ -30,32 +30,32 @@ async def run_subscribe(subscribe_url: str, image_callback):
         raise e
 
 async def subscribe(subscribe_url, out_pipe):
-    subscriber = TrickleSubscriber(url=subscribe_url)
-    logging.info(f"launching subscribe loop for {subscribe_url}")
-    while True:
-        segment = None
-        try:
-            segment = await subscriber.next()
-            if not segment:
-                break # complete
-            while True:
-                chunk = await segment.read()
-                if not chunk:
-                    break # end of segment
-                out_pipe.write(chunk)
-                await out_pipe.drain()
-        except aiohttp.ClientError as e:
-            logging.info(f"Failed to read segment - {e}")
-            break # end of stream?
-        except Exception as e:
-            raise e
-        finally:
-            if segment:
-                await segment.close()
-            else:
-                # stream is complete
-                out_pipe.close()
-                break
+    async with TrickleSubscriber(url=subscribe_url) as subscriber:
+        logging.info(f"launching subscribe loop for {subscribe_url}")
+        while True:
+            segment = None
+            try:
+                segment = await subscriber.next()
+                if not segment:
+                    break # complete
+                while True:
+                    chunk = await segment.read()
+                    if not chunk:
+                        break # end of segment
+                    out_pipe.write(chunk)
+                    await out_pipe.drain()
+            except aiohttp.ClientError as e:
+                logging.info(f"Failed to read segment - {e}")
+                break # end of stream?
+            except Exception as e:
+                raise e
+            finally:
+                if segment:
+                    await segment.close()
+                else:
+                    # stream is complete
+                    out_pipe.close()
+                    break
 
 async def launch_ffmpeg():
     if GPU:
@@ -129,6 +129,7 @@ def feed_ffmpeg(ffmpeg_fd, image_generator):
     os.close(ffmpeg_fd)
 
 async def run_publish(publish_url: str, image_generator):
+    publisher = None
     try:
         publisher = TricklePublisher(url=publish_url, mime_type="video/mp2t")
 
@@ -184,4 +185,5 @@ async def run_publish(publish_url: str, image_generator):
         logging.error(f"postprocess got error {e}", e)
         raise e
     finally:
-        await publisher.close()
+        if publisher:
+            await publisher.close()
