@@ -53,7 +53,7 @@ class ComfyUI(Pipeline):
     params = {
         'prompt': params['prompt'] if params.get('prompt') not in (None, "") else json.loads(DEFAULT_WORKFLOW_JSON)
     }
-
+    logging.info(f"prompt: {params['prompt']}")
     self.update_params(**params)
 
     # Comfy will cache nodes that only need to be run once (i.e. a node that loads model weights)
