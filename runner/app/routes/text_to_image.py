@@ -36,7 +36,7 @@ PIPELINE_ERROR_CONFIG: Dict[str, Tuple[Union[str, None], int]] = {
 
 class TextToImageParams(BaseModel):
     # TODO: Make model_id and other None properties optional once Go codegen tool
-    # supports OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373
+    # supports OAPI 3.1 https://github.com/deepmap/oapi-codegen/issues/373.
     model_id: Annotated[
         str,
         Field(
