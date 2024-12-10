@@ -16,7 +16,7 @@ infer_root = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, infer_root)
 
 from params_api import start_http_server
-from streamer.protocol.trickle import TrickleProtocol, start_control_subscriber
+from streamer.protocol.trickle import TrickleProtocol
 from streamer.protocol.zeromq import ZeroMQProtocol
 
 

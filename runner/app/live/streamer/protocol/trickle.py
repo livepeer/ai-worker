@@ -108,7 +108,7 @@ class TrickleProtocol(StreamProtocol):
         while True:
             try:
                 segment = await self.control_subscriber.next()
-                if segment.eos():
+                if not segment or segment.eos():
                     return
 
                 params = await segment.read()
