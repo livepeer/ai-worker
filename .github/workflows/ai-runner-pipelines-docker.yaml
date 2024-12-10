@@ -17,7 +17,7 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build-and-push-docker-images:
@@ -28,6 +28,7 @@ jobs:
       contents: read
     runs-on: ubuntu-20.04
     strategy:
+      fail-fast: false
       matrix:
         dockerfile:
           - docker/Dockerfile.segment_anything_2

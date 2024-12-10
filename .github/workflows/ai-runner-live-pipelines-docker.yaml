@@ -81,9 +81,9 @@ jobs:
     permissions:
       pull-requests: read
     strategy:
+      fail-fast: false
       matrix:
         pipeline: [streamdiffusion, comfyui, liveportrait]
-      fail-fast: false
     steps:
       - name: Check out code
         uses: actions/checkout@v4.1.1
