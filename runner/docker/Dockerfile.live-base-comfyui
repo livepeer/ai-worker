@@ -34,6 +34,13 @@ RUN cd /comfyui/custom_nodes && \
     cd ComfyUI-Misc-Effects && \
     git checkout c6b360c78611134c3723388170475eb4898ff6b7
 
+# Install ComfyUI-LivePortraitKJ Node (https://github.com/kijai/ComfyUI-LivePortraitKJ)
+RUN cd /comfyui/custom_nodes && \
+    git clone https://github.com/kijai/ComfyUI-LivePortraitKJ.git && \
+    cd ComfyUI-LivePortraitKJ && \
+    git checkout 4d9dc6205b793ffd0fb319816136d9b8c0dbfdff && \
+    pip install -r requirements.txt
+
 RUN pip install torch==2.5.1 torchvision torchaudio tqdm nvidia-ml-py==12.560.30
 
 # Install comfystream (which includes ComfyUI)
