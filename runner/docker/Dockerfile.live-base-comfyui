@@ -19,7 +19,6 @@ RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools==69.5.1 
 RUN cd /comfyui/custom_nodes && \
     git clone https://github.com/yuvraj108c/ComfyUI-Depth-Anything-Tensorrt.git && \
     cd ComfyUI-Depth-Anything-Tensorrt && \
-    git checkout ede57bac05059731f955c1b1563af2c1947f999a && \
     pip install -r requirements.txt
 
 # Install ComfyUI_RyanOnTheInside (https://github.com/ryanontheinside/ComfyUI_RyanOnTheInside.git)
