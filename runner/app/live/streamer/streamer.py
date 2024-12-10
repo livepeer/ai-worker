@@ -6,6 +6,7 @@ import traceback
 import numpy as np
 from multiprocessing.synchronize import Event
 from typing import AsyncGenerator
+from asyncio import Lock
 
 import cv2
 from PIL import Image
@@ -35,6 +36,11 @@ class PipelineStatus(BaseModel):
     last_restart_logs: list[str] | None = None  # Will contain last N lines before restart
     last_error: str | None = None
 
+    def update_params(self, params: dict):
+        self.last_params = params
+        self.last_params_hash = str(hash(str(sorted(params.items()))))
+        return self
+
 class PipelineStreamer:
     def __init__(self, protocol: StreamProtocol, pipeline: str, input_timeout: int, params: dict):
         self.protocol = protocol
@@ -43,10 +49,10 @@ class PipelineStreamer:
         self.process = None
         self.input_timeout = input_timeout  # 0 means disabled
         self.done_future = None
-        self.status = PipelineStatus(pipeline=pipeline, start_time=time.time())
+        self.status = PipelineStatus(pipeline=pipeline, start_time=time.time()).update_params(params)
         self.control_task = None
         self.report_status_task = None
-        self.trigger_status_report = asyncio.Event()  # Event to trigger immediate status reports
+        self.report_status_lock = Lock()
 
     async def start(self):
         self.done_future = asyncio.get_running_loop().create_future()
@@ -118,47 +124,47 @@ class PipelineStreamer:
             logging.info(
                 f"PipelineProcess restarted. Restart count: {self.status.restart_count}"
             )
-            self.trigger_status_report.set()
+            await self._report_status()
         except Exception:
             logging.error(f"Error restarting pipeline process", exc_info=True)
             os._exit(1)
 
-    def update_params(self, params: dict):
+    async def update_params(self, params: dict):
         self.params = params
-        self.status.last_params_update_time = time.time()
-        self.status.last_params = params
-        self.status.last_params_hash = str(hash(str(sorted(params.items()))))
         if self.process:
-            self.process.update_params(**params)
-        self.trigger_status_report.set()
+            self.process.update_params(params)
+        self.status.last_params_update_time = time.time()
+        self.status.update_params(params)
+        await self._report_status()
 
     async def report_status_loop(self):
-        async def tick_periodically():
-            """Yields a value every status_report_interval seconds or when the trigger is set"""
-            next_report = time.time() + status_report_interval
-            while not self.done_future.done():
-                current_time = time.time()
-                if next_report <= current_time:
-                    # If we lost track of the next report time, just report immediately
-                    next_report = current_time + status_report_interval
-                else:
-                    try:
-                        # Wait for either the next scheduled report or an immediate trigger
-                        await asyncio.wait_for(self.trigger_status_report.wait(), next_report - current_time)
-                    except asyncio.TimeoutError:
-                        # Normal flow every status_report_interval
-                        next_report += status_report_interval
-                self.trigger_status_report.clear()
-                yield
+        next_report = time.time() + status_report_interval
+        while not self.done_future.done():
+            current_time = time.time()
+            if next_report <= current_time:
+                # If we lost track of the next report time, just report immediately
+                next_report = current_time + status_report_interval
+            else:
+                await asyncio.sleep(next_report - current_time)
+                next_report += status_report_interval
 
-        async for _ in tick_periodically():
+            await self._report_status()
+
+    async def _report_status(self):
+        """Reports pipeline status on the event stream"""
+        event = self.status.model_dump()
+        # Clear the large transient fields after reporting them once
+        self.status.last_params = None
+        self.status.last_restart_logs = None
+        await self._emit_monitoring_event(event)
+
+    async def _emit_monitoring_event(self, event: dict):
+        """Protected method to emit monitoring event with lock"""
+        async with self.report_status_lock:
             try:
-                await self.protocol.report_status(self.status.model_dump())
-                # Clear the large transient fields after reporting them once
-                self.status.last_params = None
-                self.status.last_restart_logs = None
+                await self.protocol.emit_monitoring_event(event)
             except Exception as e:
-                logging.error(f"Failed to report status: {e}")
+                logging.error(f"Failed to emit monitoring event: {e}")
 
     async def monitor_loop(self, done: Event):
         start_time = time.time()
@@ -170,7 +176,7 @@ class PipelineStreamer:
             last_error = self.process.get_last_error()
             if last_error:
                 self.status.last_error = last_error
-                self.trigger_status_report()
+                await self._report_status()
 
             current_time = time.time()
             last_input_time = self.status.last_input_time or start_time
@@ -295,7 +301,7 @@ class PipelineStreamer:
         try:
             async for params in self.protocol.control_loop():
                 try:
-                    self.update_params(params)
+                    await self.update_params(params)
                 except Exception as e:
                     logging.error(f"Error updating model with control message: {e}")
             logging.info("Control loop ended")

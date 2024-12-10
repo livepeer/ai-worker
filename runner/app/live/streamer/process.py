@@ -12,10 +12,10 @@ from pipelines import load_pipeline
 
 class PipelineProcess:
     @staticmethod
-    def start(pipeline_name: str, **params):
+    def start(pipeline_name: str, params: dict):
         instance = PipelineProcess(pipeline_name)
         if params:
-            instance.update_params(**params)
+            instance.update_params(params)
         instance.process.start()
         return instance
 
@@ -59,7 +59,7 @@ class PipelineProcess:
     def is_done(self):
         return self.done.is_set()
 
-    def update_params(self, **params):
+    def update_params(self, params: dict):
         self.param_update_queue.put(params)
 
     def send_input(self, image: Image.Image):
@@ -80,7 +80,7 @@ class PipelineProcess:
 
     def get_recent_logs(self, n=10) -> list[str]:
         logs = []
-        while not self.log_queue.empty() and len(logs) < n:
+        while not self.log_queue.empty():
             try:
                 logs.append(self.log_queue.get_nowait())
             except queue.Empty:

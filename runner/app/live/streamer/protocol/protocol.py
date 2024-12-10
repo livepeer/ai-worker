@@ -27,8 +27,8 @@ class StreamProtocol(ABC):
         pass
 
     @abstractmethod
-    async def report_status(self, status: dict):
-        """Reports status updates to the event stream if available"""
+    async def emit_monitoring_event(self, event: dict):
+        """Sends a monitoring event to the event stream if available"""
         pass
 
     @abstractmethod

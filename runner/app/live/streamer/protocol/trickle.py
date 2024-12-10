@@ -87,13 +87,13 @@ class TrickleProtocol(StreamProtocol):
         async for frame in output_frames:
             await asyncio.to_thread(enqueue_bytes, frame)
 
-    async def report_status(self, status: dict):
+    async def emit_monitoring_event(self, event: dict):
         if not self.events_publisher:
             return
         try:
-            status_json = json.dumps(status)
+            event_json = json.dumps(event)
             async with await self.events_publisher.next() as event:
-                await event.write(status_json.encode())
+                await event.write(event_json.encode())
         except Exception as e:
             logging.error(f"Error reporting status: {e}")
 
