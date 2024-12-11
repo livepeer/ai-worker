@@ -87,12 +87,19 @@ function download_live_models() {
     huggingface-cli download warmshao/FasterLivePortrait --local-dir models/FasterLivePortrait--checkpoints
     huggingface-cli download yuvraj108c/Depth-Anything-Onnx --include depth_anything_vitl14.onnx --local-dir models/ComfyUI--models/Depth-Anything-Onnx
     download_sam2_checkpoints
+    download_stable_diffusion_checkpoints
 }
 
 function download_sam2_checkpoints() {
     huggingface-cli download facebook/sam2-hiera-tiny --local-dir models/sam2--checkpoints/facebook--sam2-hiera-tiny
     huggingface-cli download facebook/sam2-hiera-small --local-dir models/sam2--checkpoints/facebook--sam2-hiera-small
     huggingface-cli download facebook/sam2-hiera-large --local-dir models/sam2--checkpoints/facebook--sam2-hiera-large
+}
+
+function download_stable_diffusion_checkpoints() {
+    # ComfyUI-StableDiffusion expects a non-symlink .safetensors file - this should probably be changed to (also) accept HF cached models
+    wget -P models/checkpoints/ https://huggingface.co/KBlueLeaf/kohaku-v2.1/resolve/main/kohaku-v2.1.safetensors
+    wget -P models/checkpoints/ https://huggingface.co/stabilityai/sd-turbo/resolve/main/sd_turbo.safetensors
 }
 
 function build_tensorrt_models() {
@@ -190,6 +197,7 @@ done
 echo "Starting livepeer AI subnet model downloader..."
 echo "Creating 'models' directory in the current working directory..."
 mkdir -p models
+mkdir -p models/checkpoints
 mkdir -p models/StreamDiffusion--engines models/FasterLivePortrait--checkpoints models/ComfyUI--models models/sam2--checkpoints
 
 # Ensure 'huggingface-cli' is installed.
