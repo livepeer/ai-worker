@@ -1,0 +1,96 @@
+name: FPS check for live-video-to-video pipelines
+
+on:
+  workflow_run:
+    workflows: ["Build ai-runner live pipeline Docker images"]
+    types:
+      - completed
+  push:
+    paths:
+      - ".github/workflows/ai-runner-pipelines-fps-test.yaml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  setup:
+    runs-on: gpu-amd64
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.3"
+
+      - name: Download Checkpoints
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          sudo pip install huggingface_hub[cli,hf_transfer] hf_transfer
+          sudo -E runner/dl_checkpoints.sh
+
+      - name: Install packages
+        run: |
+          sudo sh -c "apt-get update && apt-get install -y libzmq3-dev && rm -rf /var/lib/apt/lists/*"
+
+  run-fps-test:
+    runs-on: gpu-amd64
+    needs: setup
+    strategy:
+      max-parallel: 1
+      matrix:
+        pipeline_config:
+          - id: noop
+            input_fps: 30
+            exp_output_fps: 28
+          - id: liveportrait
+            input_fps: 30
+            exp_output_fps: 28
+          - id: streamdiffusion
+            input_fps: 30
+            exp_output_fps: 28
+          - id: comfyui
+            input_fps: 30
+            exp_output_fps: 28 # for depth-anything
+
+    steps:
+      - name: Clean up runner dockers
+        run: |
+          CONTAINERS=$(docker ps -aq --filter "name=^live-video-to-video*")
+          if [ -n "$CONTAINERS" ]; then
+            echo "Removing containers: $CONTAINERS"
+            echo "$CONTAINERS" | xargs -r docker rm -f
+          else
+            echo "No containers to remove of live-video-to-video"
+          fi
+
+      - name: Run FPS test
+        env:
+          PIPELINE_ID: ${{ matrix.pipeline_config.id }}
+          INPUT_FPS: ${{ matrix.pipeline_config.input_fps }}
+          EXP_OUTPUT_FPS: ${{ matrix.pipeline_config.exp_output_fps }}
+        run: |
+          # Redirect both stdout and stderr to a file and tee to console
+          go run cmd/examples/live-video-to-video/main.go \
+            -modelid=${PIPELINE_ID} \
+            -inputfps=${INPUT_FPS} \
+            -expoutputfps=${EXP_OUTPUT_FPS} 2>&1 | tee output.log
+
+          # Use grep with the timestamp pattern to find the TEST PASSED/FAILED message
+          if grep -q "INFO TEST PASSED!" output.log; then
+            echo "Test for ${PIPELINE_ID} pipeline PASSED"
+            exit 0
+          elif grep -q "INFO TEST FAILED!" output.log; then
+            echo "Test for ${PIPELINE_ID} pipeline FAILED"
+            exit 1
+          else
+            echo "Test for ${PIPELINE_ID} pipeline had an unknown result"
+            echo "Full log output:"
+            cat output.log
+            exit 1
+          fi
