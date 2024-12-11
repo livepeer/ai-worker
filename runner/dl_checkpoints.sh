@@ -97,9 +97,8 @@ function download_sam2_checkpoints() {
 }
 
 function download_stable_diffusion_checkpoints() {
-    # ComfyUI-StableDiffusion expects a non-symlink .safetensors file - this should probably be changed to (also) accept HF cached models
-    wget -P models/checkpoints/ https://huggingface.co/KBlueLeaf/kohaku-v2.1/resolve/main/kohaku-v2.1.safetensors
-    wget -P models/checkpoints/ https://huggingface.co/stabilityai/sd-turbo/resolve/main/sd_turbo.safetensors
+    huggingface-cli download KBlueLeaf/kohaku-v2.1 --local-dir models/checkpoints --include "*.safetensors"
+    huggingface-cli download stabilityai/sd-turbo --local-dir models/checkpoints --include "*.safetensors"
 }
 
 function build_tensorrt_models() {
