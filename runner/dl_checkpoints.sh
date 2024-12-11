@@ -84,25 +84,25 @@ function download_all_models() {
 function download_live_models() {
     huggingface-cli download KBlueLeaf/kohaku-v2.1 --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
     huggingface-cli download stabilityai/sd-turbo --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
-    huggingface-cli download microsoft/Florence-2-large --include "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
-    huggingface-cli download microsoft/Florence-2-large-ft --include "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
-    huggingface-cli download microsoft/Florence-2-base --include "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
-    huggingface-cli download microsoft/Florence-2-base-ft --include "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
     huggingface-cli download warmshao/FasterLivePortrait --local-dir models/FasterLivePortrait--checkpoints
+    huggingface-cli download microsoft/Florence-2-large --include "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models/ComfyUI--models
+    huggingface-cli download microsoft/Florence-2-large-ft --include "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models/ComfyUI--models
+    huggingface-cli download microsoft/Florence-2-base --include "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models/ComfyUI--models
+    huggingface-cli download microsoft/Florence-2-base-ft --include "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models/ComfyUI--models
     huggingface-cli download yuvraj108c/Depth-Anything-Onnx --include depth_anything_vitl14.onnx --local-dir models/ComfyUI--models/Depth-Anything-Onnx
     download_sam2_checkpoints
     download_stable_diffusion_checkpoints
 }
 
 function download_sam2_checkpoints() {
-    huggingface-cli download facebook/sam2-hiera-tiny --local-dir models/sam2--checkpoints/facebook--sam2-hiera-tiny
-    huggingface-cli download facebook/sam2-hiera-small --local-dir models/sam2--checkpoints/facebook--sam2-hiera-small
-    huggingface-cli download facebook/sam2-hiera-large --local-dir models/sam2--checkpoints/facebook--sam2-hiera-large
+    huggingface-cli download facebook/sam2-hiera-tiny --local-dir models/models/ComfyUI--models/sam2--checkpoints/facebook--sam2-hiera-tiny
+    huggingface-cli download facebook/sam2-hiera-small --local-dir models/models/ComfyUI--models/sam2--checkpoints/facebook--sam2-hiera-small
+    huggingface-cli download facebook/sam2-hiera-large --local-dir models/models/ComfyUI--models/sam2--checkpoints/facebook--sam2-hiera-large
 }
 
 function download_stable_diffusion_checkpoints() {
-    huggingface-cli download KBlueLeaf/kohaku-v2.1 --local-dir models/checkpoints --include "*.safetensors"
-    huggingface-cli download stabilityai/sd-turbo --local-dir models/checkpoints --include "*.safetensors"
+    huggingface-cli download KBlueLeaf/kohaku-v2.1 --local-dir models/models/ComfyUI--models/checkpoints --include "*.safetensors"
+    huggingface-cli download stabilityai/sd-turbo --local-dir models/models/ComfyUI--models/checkpoints --include "*.safetensors"
 }
 
 function build_tensorrt_models() {
@@ -201,7 +201,7 @@ echo "Starting livepeer AI subnet model downloader..."
 echo "Creating 'models' directory in the current working directory..."
 mkdir -p models
 mkdir -p models/checkpoints
-mkdir -p models/StreamDiffusion--engines models/FasterLivePortrait--checkpoints models/ComfyUI--models models/sam2--checkpoints
+mkdir -p models/StreamDiffusion--engines models/FasterLivePortrait--checkpoints models/ComfyUI--models models/ComfyUI--models/sam2--checkpoints models/ComfyUI--models/checkpoints
 
 # Ensure 'huggingface-cli' is installed.
 echo "Checking if 'huggingface-cli' is installed..."
