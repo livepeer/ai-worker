@@ -525,8 +525,7 @@ components:
     AudioResponse:
       properties:
         audio:
-          allOf:
-          - $ref: '#/components/schemas/MediaURL'
+          $ref: '#/components/schemas/MediaURL'
           description: The generated audio.
       type: object
       required:
@@ -861,8 +860,7 @@ components:
     HTTPError:
       properties:
         detail:
-          allOf:
-          - $ref: '#/components/schemas/APIError'
+          $ref: '#/components/schemas/APIError'
           description: Detailed error information.
       type: object
       required:
@@ -936,6 +934,11 @@ components:
           title: Events Url
           description: URL for publishing events via Trickle protocol for pipeline
             status and logs.
+          default: ''
+        request_id:
+          type: string
+          title: Request Id
+          description: Request ID for the live video to video job.
           default: ''
         model_id:
           type: string
