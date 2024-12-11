@@ -20,6 +20,7 @@ class TrickleProtocol(StreamProtocol):
         self.events_url = events_url
         self.subscribe_queue = queue.Queue[bytearray]()
         self.publish_queue = queue.Queue[bytearray]()
+        self.control_subscriber = None
         self.events_publisher = None
         self.subscribe_task = None
         self.publish_task = None
