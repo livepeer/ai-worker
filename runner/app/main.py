@@ -58,6 +58,10 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
             from app.pipelines.upscale import UpscalePipeline
 
             return UpscalePipeline(model_id)
+        case "live-portrait":
+            from app.pipelines.live_portrait import Inference
+
+            return Inference()
         case "segment-anything-2":
             from app.pipelines.segment_anything_2 import SegmentAnything2Pipeline
 
@@ -108,6 +112,10 @@ def load_route(pipeline: str) -> any:
             from app.routes import upscale
 
             return upscale.router
+        case "live-portrait":
+            from app.routes import live_portrait
+
+            return live_portrait.router
         case "segment-anything-2":
             from app.routes import segment_anything_2
 
