@@ -91,12 +91,18 @@ function download_live_models() {
     huggingface-cli download warmshao/FasterLivePortrait --local-dir models/FasterLivePortrait--checkpoints
     huggingface-cli download yuvraj108c/Depth-Anything-Onnx --include depth_anything_vitl14.onnx --local-dir models/ComfyUI--models/Depth-Anything-Onnx
     download_sam2_checkpoints
+    download_stable_diffusion_checkpoints
 }
 
 function download_sam2_checkpoints() {
     huggingface-cli download facebook/sam2-hiera-tiny --local-dir models/sam2--checkpoints/facebook--sam2-hiera-tiny
     huggingface-cli download facebook/sam2-hiera-small --local-dir models/sam2--checkpoints/facebook--sam2-hiera-small
     huggingface-cli download facebook/sam2-hiera-large --local-dir models/sam2--checkpoints/facebook--sam2-hiera-large
+}
+
+function download_stable_diffusion_checkpoints() {
+    huggingface-cli download KBlueLeaf/kohaku-v2.1 --local-dir models/checkpoints --include "*.safetensors"
+    huggingface-cli download stabilityai/sd-turbo --local-dir models/checkpoints --include "*.safetensors"
 }
 
 function build_tensorrt_models() {
@@ -107,7 +113,7 @@ function build_tensorrt_models() {
     # StreamDiffusion (compile a matrix of models and timesteps)
     MODELS="stabilityai/sd-turbo KBlueLeaf/kohaku-v2.1"
     TIMESTEPS="3 4" # This is basically the supported sizes for the t_index_list
-    docker run --rm -it -v ./models:/models --gpus all \
+    docker run --rm -v ./models:/models --gpus all \
         livepeer/ai-runner:live-app-streamdiffusion \
         bash -c "for model in $MODELS; do
                     for timestep in $TIMESTEPS; do
@@ -117,7 +123,7 @@ function build_tensorrt_models() {
                 done"
 
     # FasterLivePortrait
-    docker run --rm -it -v ./models:/models --gpus all \
+    docker run --rm -v ./models:/models --gpus all \
         livepeer/ai-runner:live-app-liveportrait \
         bash -c "cd /app/app/live/FasterLivePortrait && \
                     if [ ! -f '/models/FasterLivePortrait--checkpoints/liveportrait_onnx/stitching_lip.trt' ]; then
@@ -134,7 +140,7 @@ function build_tensorrt_models() {
                     fi"
 
     # ComfyUI (only DepthAnything for now)
-    docker run --rm -it -v ./models:/models --gpus all \
+    docker run --rm -v ./models:/models --gpus all \
         livepeer/ai-runner:live-app-comfyui \
         bash -c "cd /comfyui/models/Depth-Anything-Onnx && \
                     python /comfyui/custom_nodes/ComfyUI-Depth-Anything-Tensorrt/export_trt.py && \
@@ -194,6 +200,7 @@ done
 echo "Starting livepeer AI subnet model downloader..."
 echo "Creating 'models' directory in the current working directory..."
 mkdir -p models
+mkdir -p models/checkpoints
 mkdir -p models/StreamDiffusion--engines models/FasterLivePortrait--checkpoints models/ComfyUI--models models/sam2--checkpoints
 
 # Ensure 'huggingface-cli' is installed.
