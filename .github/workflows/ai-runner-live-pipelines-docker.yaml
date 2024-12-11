@@ -26,7 +26,7 @@ jobs:
     name: Build common live base image
     permissions:
       pull-requests: read
-    runs-on: [self-hosted, linux]
+    runs-on: [self-hosted, linux, amd64]
     steps:
       - name: Check out code
         uses: actions/checkout@v4.1.1
@@ -77,13 +77,13 @@ jobs:
   build-pipeline-images:
     name: Build pipeline images
     needs: build-common-base
-    runs-on: [self-hosted, linux]
+    runs-on: [self-hosted, linux, amd64]
     permissions:
       pull-requests: read
     strategy:
+      fail-fast: false
       matrix:
         pipeline: [streamdiffusion, comfyui, liveportrait]
-      fail-fast: false
     steps:
       - name: Check out code
         uses: actions/checkout@v4.1.1
