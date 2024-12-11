@@ -2,7 +2,7 @@ name: FPS check for live-video-to-video pipelines
 
 on:
   workflow_run:
-    workflows: ["Build ai-runner base Docker image"]
+    workflows: ["Build ai-runner live pipeline Docker images"]
     types:
       - completed
   push:
@@ -32,7 +32,7 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           sudo pip install huggingface_hub[cli,hf_transfer] hf_transfer
-          sudo runner/dl_checkpoints.sh
+          sudo -E runner/dl_checkpoints.sh
 
       - name: Install packages
         run: |
