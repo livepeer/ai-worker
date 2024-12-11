@@ -4,6 +4,7 @@ import logging
 import multiprocessing as mp
 import queue
 import sys
+import time
 
 from PIL import Image
 
@@ -91,8 +92,12 @@ class PipelineProcess:
         self._setup_logging()
 
         def report_error(error_msg: str):
+            error_event = {
+                "message": error_msg,
+                "timestamp": time.time()
+            }
             logging.error(error_msg)
-            self._queue_put_fifo(self.error_queue, error_msg)
+            self._queue_put_fifo(self.error_queue, error_event)
 
         try:
             params = {}
@@ -165,15 +170,15 @@ class PipelineProcess:
                 except queue.Empty:
                     continue
 
-    def get_last_error(self) -> str | None:
-        """Get the most recent error from the error queue, if any"""
+    def get_last_error(self) -> tuple[str, float] | None:
+        """Get the most recent error and its timestamp from the error queue, if any"""
         last_error = None
         while True:
             try:
                 last_error = self.error_queue.get_nowait()
             except queue.Empty:
                 break
-        return last_error
+        return (last_error["message"], last_error["timestamp"]) if last_error else None
 
 class QueueTeeStream:
     """Tee all stream (stdout or stderr) messages to the process log queue"""

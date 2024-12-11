@@ -20,6 +20,7 @@ status_report_interval = 10
 
 class PipelineStatus(BaseModel):
     """Holds metrics for the pipeline streamer"""
+    type: str = "status"
     pipeline: str
     start_time: float
     last_params_update_time: float | None = None
@@ -35,6 +36,7 @@ class PipelineStatus(BaseModel):
     last_restart_time: float | None = None
     last_restart_logs: list[str] | None = None  # Will contain last N lines before restart
     last_error: str | None = None
+    last_error_time: float | None = None
 
     def update_params(self, params: dict):
         self.last_params = params
@@ -111,20 +113,30 @@ class PipelineStreamer:
     async def _restart(self):
         try:
             # Capture logs before stopping the process
-            self.status.last_restart_logs = self.process.get_recent_logs()
+            restart_logs = self.process.get_recent_logs()
             last_error = self.process.get_last_error()
-            if last_error:
-                self.status.last_error = last_error
 
             # don't call the full start/stop methods since we don't want to restart the protocol
             await self._stop_process()
             self._start_process()
             self.status.restart_count += 1
             self.status.last_restart_time = time.time()
+            self.status.last_restart_logs = restart_logs
+            if last_error:
+                self.status.last_error = last_error
+
+            await self._emit_monitoring_event({
+                "type": "restart",
+                "pipeline": self.pipeline,
+                "restart_count": self.status.restart_count,
+                "restart_time": self.status.last_restart_time,
+                "restart_logs": restart_logs,
+                "last_error": last_error
+            })
+
             logging.info(
                 f"PipelineProcess restarted. Restart count: {self.status.restart_count}"
             )
-            await self._report_status()
         except Exception:
             logging.error(f"Error restarting pipeline process", exc_info=True)
             os._exit(1)
@@ -135,7 +147,14 @@ class PipelineStreamer:
             self.process.update_params(params)
         self.status.last_params_update_time = time.time()
         self.status.update_params(params)
-        await self._report_status()
+
+        await self._emit_monitoring_event({
+            "type": "params_update",
+            "pipeline": self.pipeline,
+            "params": params,
+            "params_hash": self.status.last_params_hash,
+            "update_time": self.status.last_params_update_time
+        })
 
     async def report_status_loop(self):
         next_report = time.time() + status_report_interval
@@ -148,15 +167,11 @@ class PipelineStreamer:
                 await asyncio.sleep(next_report - current_time)
                 next_report += status_report_interval
 
-            await self._report_status()
-
-    async def _report_status(self):
-        """Reports pipeline status on the event stream"""
-        event = self.status.model_dump()
-        # Clear the large transient fields after reporting them once
-        self.status.last_params = None
-        self.status.last_restart_logs = None
-        await self._emit_monitoring_event(event)
+            event = self.status.model_dump()
+            # Clear the large transient fields after reporting them once
+            self.status.last_params = None
+            self.status.last_restart_logs = None
+            await self._emit_monitoring_event(event)
 
     async def _emit_monitoring_event(self, event: dict):
         """Protected method to emit monitoring event with lock"""
@@ -173,10 +188,17 @@ class PipelineStreamer:
             if not self.process:
                 return
 
-            last_error = self.process.get_last_error()
-            if last_error:
-                self.status.last_error = last_error
-                await self._report_status()
+            error_info = self.process.get_last_error()
+            if error_info:
+                error_msg, error_time = error_info
+                self.status.last_error = error_msg
+                self.status.last_error_time = error_time
+                await self._emit_monitoring_event({
+                    "type": "error",
+                    "pipeline": self.pipeline,
+                    "error": error_msg,
+                    "time": error_time
+                })
 
             current_time = time.time()
             last_input_time = self.status.last_input_time or start_time
