@@ -43,6 +43,19 @@ class PipelineStatus(BaseModel):
         self.last_params_hash = str(hash(str(sorted(params.items()))))
         return self
 
+    def model_dump(self, **kwargs):
+        data = super().model_dump(**kwargs)
+        # Convert all fields ending with _time to milliseconds
+        for field, value in data.items():
+            if field.endswith('_time'):
+                data[field] = _timestamp_to_ms(value)
+        return data
+
+
+def _timestamp_to_ms(v: float | None) -> int | None:
+    return int(v * 1000) if v is not None else None
+
+
 class PipelineStreamer:
     def __init__(self, protocol: StreamProtocol, pipeline: str, input_timeout: int, params: dict):
         self.protocol = protocol
