@@ -1,5 +1,6 @@
 import logging
 import os
+from compel import Compel, ReturnedEmbeddingsType 
 from typing import List, Optional, Tuple
 
 import PIL
@@ -88,7 +89,7 @@ class UpscalePipeline(Pipeline):
         elif deepcache_enabled:
             logger.warning(
                 "DeepCache is not supported for Lightning or Turbo models. "
-                "TextToImagePipeline will NOT be optimized with DeepCache for %s",
+                "UpscalingPiepline will NOT be optimized with DeepCache for %s",
                 model_id,
             )
 
@@ -116,12 +117,34 @@ class UpscalePipeline(Pipeline):
         ):
             del kwargs["num_inference_steps"]
 
+        # trying differnt configs of promp_embed for different models
         try:
-            outputs = self.ldm(prompt, image=image, **kwargs)
-        except torch.cuda.OutOfMemoryError as e:
-            raise e
+            compel_proc=Compel(tokenizer=self.ldm.tokenizer, text_encoder=self.ldm.text_encoder)
+            prompt_embeds = compel_proc(prompt)
+            outputs = self.ldm(prompt_embeds=prompt_embeds, image=image, **kwargs)
         except Exception as e:
-            raise InferenceError(original_exception=e)
+            logging.info(f"Failed to generate prompt embeddings: {e}. Using prompt and pooled embeddings.")
+
+            try:
+                compel_proc = Compel(tokenizer=[self.ldm.tokenizer, self.ldm.tokenizer_2],
+                                text_encoder=[self.ldm.text_encoder, self.ldm.text_encoder_2],
+                                returned_embeddings_type=ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
+                                requires_pooled=[False, True])
+                prompt_embeds, pooled_prompt_embeds = compel_proc(prompt)
+                outputs = self.ldm(
+                    prompt_embeds=prompt_embeds,
+                    pooled_prompt_embeds=pooled_prompt_embeds,
+                    image=image,
+                    **kwargs
+                )
+            except Exception as e:
+                logging.info(f"Failed to generate prompt and pooled embeddings: {e}. Trying normal prompt.")
+                try:
+                    outputs = self.ldm(prompt, image=image, **kwargs)
+                except torch.cuda.OutOfMemoryError as e:
+                    raise e
+                except Exception as e:
+                    raise InferenceError(original_exception=e)
 
         if safety_check:
             _, has_nsfw_concept = self._safety_checker.check_nsfw_images(outputs.images)

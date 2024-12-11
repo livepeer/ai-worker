@@ -1,6 +1,7 @@
 import logging
 import os
 from enum import Enum
+from compel import Compel, ReturnedEmbeddingsType
 from typing import List, Optional, Tuple
 
 import PIL
@@ -186,13 +187,9 @@ class ImageToImagePipeline(Pipeline):
 
         if seed is not None:
             if isinstance(seed, int):
-                kwargs["generator"] = torch.Generator(get_torch_device()).manual_seed(
-                    seed
-                )
+                kwargs["generator"] = torch.Generator(get_torch_device()).manual_seed(seed)
             elif isinstance(seed, list):
-                kwargs["generator"] = [
-                    torch.Generator(get_torch_device()).manual_seed(s) for s in seed
-                ]
+                kwargs["generator"] = [torch.Generator(get_torch_device()).manual_seed(s) for s in seed]
 
         # Dynamically (un)load LoRas.
         if not loras_json:
@@ -205,26 +202,15 @@ class ImageToImagePipeline(Pipeline):
         ):
             del kwargs["num_inference_steps"]
 
-        if (
-            self.model_id == "stabilityai/sdxl-turbo"
-            or self.model_id == "stabilityai/sd-turbo"
-        ):
-            # SD turbo models were trained without guidance_scale so
-            # it should be set to 0
+        if self.model_id in ["stabilityai/sdxl-turbo", "stabilityai/sd-turbo"]:
             kwargs["guidance_scale"] = 0.0
-
-            # Ensure num_inference_steps * strength >= 1 for minimum pipeline
-            # execution steps.
             if "num_inference_steps" in kwargs:
                 kwargs["strength"] = max(
                     1.0 / kwargs.get("num_inference_steps", 1),
                     kwargs.get("strength", 0.5),
                 )
         elif ModelName.SDXL_LIGHTNING.value in self.model_id:
-            # SDXL-Lightning models should have guidance_scale = 0 and use
-            # the correct number of inference steps for the unet checkpoint loaded
             kwargs["guidance_scale"] = 0.0
-
             if "2step" in self.model_id:
                 kwargs["num_inference_steps"] = 2
             elif "4step" in self.model_id:
@@ -235,12 +221,35 @@ class ImageToImagePipeline(Pipeline):
                 # Default to 8step
                 kwargs["num_inference_steps"] = 8
 
+        # trying different cases for prompt_embed because some models dont support without pooled_prompt_embeds.
         try:
-            outputs = self.ldm(prompt, image=image, **kwargs)
-        except torch.cuda.OutOfMemoryError as e:
-            raise e
+            compel_proc = Compel(tokenizer=self.ldm.tokenizer, text_encoder=self.ldm.text_encoder)
+            prompt_embeds = compel_proc(prompt)
+            outputs = self.ldm(prompt_embeds=prompt_embeds, image=image, **kwargs)
         except Exception as e:
-            raise InferenceError(original_exception=e)
+            logging.info(f"Failed to generate prompt embeddings: {e}. Using prompt and pooled embeddings.")
+
+            try:
+                compel_proc = Compel(tokenizer=[self.ldm.tokenizer, self.ldm.tokenizer_2],
+                                text_encoder=[self.ldm.text_encoder, self.ldm.text_encoder_2],
+                                returned_embeddings_type=ReturnedEmbeddingsType.PENULTIMATE_HIDDEN_STATES_NON_NORMALIZED,
+                                requires_pooled=[False, True])
+                prompt_embeds, pooled_prompt_embeds = compel_proc(prompt)
+                outputs = self.ldm(
+                    prompt_embeds=prompt_embeds,
+                    pooled_prompt_embeds=pooled_prompt_embeds,
+                    image=image,
+                    **kwargs
+                )
+            except Exception as e:
+                logging.info(f"Failed to generate prompt and pooled embeddings: {e}. Trying normal prompt.")
+                try:
+                    outputs = self.ldm(prompt, image=image, **kwargs)
+                except torch.cuda.OutOfMemoryError as e:
+                    raise e
+                except Exception as e:
+                    raise InferenceError(original_exception=e)
+
 
         if safety_check:
             _, has_nsfw_concept = self._safety_checker.check_nsfw_images(outputs.images)
