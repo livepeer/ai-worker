@@ -1,46 +1,21 @@
 name: FPS check for live-video-to-video pipelines
 
 on:
-  pull_request:
-    paths:
-      - "runner/**"
-      - "!runner/.devcontainer/**"
+  workflow_run:
+    workflows: ["Build ai-runner base Docker image"]
+    types:
+      - completed
   push:
-    branches:
-      - main
-      - "hjp/*"
-    tags:
-      - "*"
     paths:
-      - "runner/**"
       - ".github/workflows/ai-runner-pipelines-fps-test.yaml"
-      - "!runner/.devcontainer/**"
-  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
-  run-fps-test:
+  setup:
     runs-on: gpu-amd64
-    strategy:
-      max-parallel: 1
-      matrix:
-        model_config:
-          - id: noop
-            input_fps: 30
-            exp_output_fps: 28
-          - id: liveportrait
-            input_fps: 30
-            exp_output_fps: 28
-          - id: streamdiffusion
-            input_fps: 30
-            exp_output_fps: 28
-          - id: comfyui
-            input_fps: 30
-            exp_output_fps: 28 # only depth anything for now
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -52,24 +27,38 @@ jobs:
         with:
           go-version: "1.23.3"
 
-      - name: Build Docker images
+      - name: Download Checkpoints
         env:
-          MODEL_ID: ${{ matrix.model_config.id }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          cd runner
-          docker build -t livepeer/ai-runner:live-base -f docker/Dockerfile.live-base .
-          if [ "${MODEL_ID}" = "noop" ]; then
-              docker build -t livepeer/ai-runner:live-app-noop -f docker/Dockerfile.live-app-noop .
-          else
-              docker build -t livepeer/ai-runner:live-base-${MODEL_ID} -f docker/Dockerfile.live-base-${MODEL_ID} .
-              docker build -t livepeer/ai-runner:live-app-${MODEL_ID} -f docker/Dockerfile.live-app__PIPELINE__ --build-arg PIPELINE=${MODEL_ID} .
-          fi
-          cd ..
+          sudo pip install huggingface_hub[cli,hf_transfer] hf_transfer
+          sudo runner/dl_checkpoints.sh
 
       - name: Install packages
         run: |
           sudo sh -c "apt-get update && apt-get install -y libzmq3-dev && rm -rf /var/lib/apt/lists/*"
 
+  run-fps-test:
+    runs-on: gpu-amd64
+    needs: setup
+    strategy:
+      max-parallel: 1
+      matrix:
+        pipeline_config:
+          - id: noop
+            input_fps: 30
+            exp_output_fps: 28
+          - id: liveportrait
+            input_fps: 30
+            exp_output_fps: 28
+          - id: streamdiffusion
+            input_fps: 30
+            exp_output_fps: 28
+          - id: comfyui
+            input_fps: 30
+            exp_output_fps: 28 # for depth-anything
+
+    steps:
       - name: Clean up runner dockers
         run: |
           CONTAINERS=$(docker ps -aq --filter "name=^live-video-to-video*")
@@ -77,30 +66,30 @@ jobs:
             echo "Removing containers: $CONTAINERS"
             echo "$CONTAINERS" | xargs -r docker rm -f
           else
-            echo "No containers to remove for model ${MODEL_ID}"
+            echo "No containers to remove of live-video-to-video"
           fi
 
       - name: Run FPS test
         env:
-          MODEL_ID: ${{ matrix.model_config.id }}
-          INPUT_FPS: ${{ matrix.model_config.input_fps }}
-          EXP_OUTPUT_FPS: ${{ matrix.model_config.exp_output_fps }}
+          PIPELINE_ID: ${{ matrix.pipeline_config.id }}
+          INPUT_FPS: ${{ matrix.pipeline_config.input_fps }}
+          EXP_OUTPUT_FPS: ${{ matrix.pipeline_config.exp_output_fps }}
         run: |
           # Redirect both stdout and stderr to a file and tee to console
           go run cmd/examples/live-video-to-video/main.go \
-            -modelid=${MODEL_ID} \
+            -modelid=${PIPELINE_ID} \
             -inputfps=${INPUT_FPS} \
             -expoutputfps=${EXP_OUTPUT_FPS} 2>&1 | tee output.log
 
           # Use grep with the timestamp pattern to find the TEST PASSED/FAILED message
           if grep -q "INFO TEST PASSED!" output.log; then
-            echo "Test for ${MODEL_ID} pipeline PASSED"
+            echo "Test for ${PIPELINE_ID} pipeline PASSED"
             exit 0
           elif grep -q "INFO TEST FAILED!" output.log; then
-            echo "Test for ${MODEL_ID} pipeline FAILED"
+            echo "Test for ${PIPELINE_ID} pipeline FAILED"
             exit 1
           else
-            echo "Test for ${MODEL_ID} pipeline had an unknown result"
+            echo "Test for ${PIPELINE_ID} pipeline had an unknown result"
             echo "Full log output:"
             cat output.log
             exit 1

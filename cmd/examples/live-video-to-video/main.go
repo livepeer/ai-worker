@@ -96,22 +96,18 @@ func sendImages(ctx context.Context, imageDir string, inputFps int) error {
 
     slog.Info(fmt.Sprintf("Sending images at %d FPS to %s", inputFps, sendAddress))
 
+    ticker := time.NewTicker(interval)
+    defer ticker.Stop()
+
     for {
         for _, imageBytes := range preprocessedImages {
             select {
             case <-ctx.Done():
                 return nil
-            default:
-                startTime := time.Now()
+            case <-ticker.C:
                 _, err = publisher.SendBytes(imageBytes, 0)
                 if err != nil {
                     slog.Error("Failed to send image bytes", slog.String("error", err.Error()))
-                }
-                
-                elapsed := time.Since(startTime)
-                sleepTime := interval - elapsed
-                if sleepTime > 0 {
-                    time.Sleep(sleepTime)
                 }
             }
         }
