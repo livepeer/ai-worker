@@ -10,7 +10,6 @@ from typing import List
 import logging
 
 from streamer import PipelineStreamer
-from trickle import TrickleSubscriber
 
 # loads neighbouring modules with absolute paths
 infer_root = os.path.abspath(os.path.dirname(__file__))
@@ -21,10 +20,14 @@ from streamer.protocol.trickle import TrickleProtocol
 from streamer.protocol.zeromq import ZeroMQProtocol
 
 
-async def main(http_port: int, stream_protocol: str, subscribe_url: str, publish_url: str, control_url: str, pipeline: str, params: dict, input_timeout: int):
+async def main(*, http_port: int, stream_protocol: str, subscribe_url: str, publish_url: str, control_url: str, events_url: str, pipeline: str, params: dict, input_timeout: int):
     if stream_protocol == "trickle":
-        protocol = TrickleProtocol(subscribe_url, publish_url)
+        protocol = TrickleProtocol(subscribe_url, publish_url, control_url, events_url)
     elif stream_protocol == "zeromq":
+        if events_url:
+            logging.warning("ZeroMQ protocol does not support event streaming")
+        if control_url:
+            logging.warning("ZeroMQ protocol does not support control messages")
         protocol = ZeroMQProtocol(subscribe_url, publish_url)
     else:
         raise ValueError(f"Unsupported protocol: {stream_protocol}")
@@ -34,13 +37,11 @@ async def main(http_port: int, stream_protocol: str, subscribe_url: str, publish
     runner = None
     try:
         await streamer.start()
-        runner = await start_http_server(streamer, http_port)
+        runner = await start_http_server(http_port, streamer.update_params)
 
         tasks: List[asyncio.Task] = []
         tasks.append(streamer.wait())
         tasks.append(asyncio.create_task(block_until_signal([signal.SIGINT, signal.SIGTERM])))
-        if control_url is not None and control_url.strip() != "":
-            tasks.append(asyncio.create_task(start_control_subscriber(streamer, control_url)))
 
         await asyncio.wait(tasks,
             return_when=asyncio.FIRST_COMPLETED
@@ -65,35 +66,6 @@ async def block_until_signal(sigs: List[signal.Signals]):
     for sig in sigs:
         signal.signal(sig, signal_handler)
     return await future
-
-async def start_control_subscriber(handler: PipelineStreamer, control_url: str):
-    if control_url is None or control_url.strip() == "":
-        logging.warning("No control-url provided, inference won't get updates from the control trickle subscription")
-        return
-    logging.info("Starting Control subscriber at %s", control_url)
-    subscriber = TrickleSubscriber(url=control_url)
-    keepalive_message = {"keep": "alive"}
-    while True:
-        segment = await subscriber.next()
-        if segment.eos():
-            return
-
-        try:
-            params = await segment.read()
-            logging.info("Received control message, updating model with params: %s", params)
-            data = json.loads(params)
-            if data == keepalive_message:
-                # Ignore periodic keepalive messages
-                continue
-        except Exception as e:
-            logging.error(f"Error parsing control message: {e}")
-            continue
-
-        try:
-            handler.update_params(data)
-        except Exception as e:
-            logging.error(f"Error updating model with control message: {e}")
-            continue
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Infer process to run the AI pipeline")
@@ -123,6 +95,9 @@ if __name__ == "__main__":
         "--control-url", type=str, help="URL to subscribe for Control API JSON messages to update inference params"
     )
     parser.add_argument(
+        "--events-url", type=str, help="URL to publish events about pipeline status and logs."
+    )
+    parser.add_argument(
         "--input-timeout",
         type=int,
         default=60,
@@ -150,10 +125,23 @@ if __name__ == "__main__":
 
     try:
         asyncio.run(
-            main(args.http_port, args.stream_protocol, args.subscribe_url, args.publish_url, args.control_url, args.pipeline, params, args.input_timeout)
+            main(
+                http_port=args.http_port,
+                stream_protocol=args.stream_protocol,
+                subscribe_url=args.subscribe_url,
+                publish_url=args.publish_url,
+                control_url=args.control_url,
+                events_url=args.events_url,
+                pipeline=args.pipeline,
+                params=params,
+                input_timeout=args.input_timeout
+            )
         )
+        # We force an exit here to ensure that the process terminates. If any asyncio tasks or
+        # sub-processes failed to shutdown they'd block the main process from exiting.
+        os._exit(0)
     except Exception as e:
         logging.error(f"Fatal error in main: {e}")
         logging.error(f"Traceback:\n{''.join(traceback.format_tb(e.__traceback__))}")
-        sys.exit(1)
+        os._exit(1)
 
