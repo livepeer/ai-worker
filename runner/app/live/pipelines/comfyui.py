@@ -50,9 +50,16 @@ class ComfyUI(Pipeline):
     comfy_ui_workspace = os.getenv(COMFY_UI_WORKSPACE_ENV)
     self.client = ComfyStreamClient(cwd=comfy_ui_workspace)
 
-    params = {
-        'prompt': params['prompt'] if params.get('prompt') not in (None, "") else json.loads(DEFAULT_WORKFLOW_JSON)
-    }
+    try:
+        if params.get('prompt') not in (None, ""):
+            if isinstance(params['prompt'], (str)):
+                params['prompt'] = json.loads(params['prompt'])
+        else:
+            params['prompt'] = json.loads(DEFAULT_WORKFLOW_JSON)
+    
+    except Exception as e:
+        logging.error(f"Error parsing JSON string: {e}")
+        params['prompt'] = json.loads(DEFAULT_WORKFLOW_JSON)
 
     self.update_params(**params)
 
