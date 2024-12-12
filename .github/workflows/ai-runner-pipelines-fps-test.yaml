@@ -13,32 +13,39 @@ concurrency:
 
 jobs:
   setup:
-    runs-on: ubuntu-latest
+    runs-on: gpu-amd64
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          clean: false
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.23.3"
 
+      - name: Create symlink for models directory
+        run: |
+          mkdir -p /home/user/models
+          rm -rf runner/models
+          ln -s /home/user/models runner/models
+
       - name: Download Checkpoints
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           sudo pip install huggingface_hub[cli,hf_transfer] hf_transfer
-          sudo -E runner/dl_checkpoints.sh --tensorrt
+          cd runner
+          sudo -E dl_checkpoints.sh --tensorrt
+          cd ..
 
       - name: Install packages
         run: |
           sudo sh -c "apt-get update && apt-get install -y libzmq3-dev && rm -rf /var/lib/apt/lists/*"
 
   run-fps-test:
-    runs-on: ubuntu-latest
+    runs-on: gpu-amd64
     needs: setup
     strategy:
       max-parallel: 1
