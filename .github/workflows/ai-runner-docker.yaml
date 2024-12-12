@@ -9,7 +9,7 @@ on:
     branches:
       - main
     tags:
-      - '*'
+      - "*"
     paths:
       - "runner/**"
       - "!runner/.devcontainer/**"
@@ -17,7 +17,7 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: ${{ !contains(github.ref, 'main') }}
+  cancel-in-progress: ${{ !((github.ref_type == 'branch' && github.ref_name == 'main') || github.ref_type == 'tag') }}
 
 jobs:
   docker:
