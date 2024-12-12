@@ -108,12 +108,17 @@ function download_stable_diffusion_checkpoints() {
 function build_tensorrt_models() {
     download_live_models
 
+    if [[ "$( docker ps -a -q --filter="label=TensorRT-engines" )" ]]; then
+        printf "Previous tensorrt run hasn't finished correclty. There are containers still running:\n"
+        docker ps -a --filter="label=TensorRT-engines"
+        exit 1
+    fi
     printf "\nBuilding TensorRT models...\n"
 
     # StreamDiffusion (compile a matrix of models and timesteps)
     MODELS="stabilityai/sd-turbo KBlueLeaf/kohaku-v2.1"
     TIMESTEPS="3 4" # This is basically the supported sizes for the t_index_list
-    docker run --rm -v ./models:/models --gpus all \
+    docker run --rm -v ./models:/models --gpus all -l TensorRT-engines \
         livepeer/ai-runner:live-app-streamdiffusion \
         bash -c "for model in $MODELS; do
                     for timestep in $TIMESTEPS; do
@@ -123,7 +128,7 @@ function build_tensorrt_models() {
                 done"
 
     # FasterLivePortrait
-    docker run --rm -v ./models:/models --gpus all \
+    docker run --rm -v ./models:/models --gpus all -l TensorRT-engines  \
         livepeer/ai-runner:live-app-liveportrait \
         bash -c "cd /app/app/live/FasterLivePortrait && \
                     if [ ! -f '/models/FasterLivePortrait--checkpoints/liveportrait_onnx/stitching_lip.trt' ]; then
@@ -140,7 +145,7 @@ function build_tensorrt_models() {
                     fi"
 
     # ComfyUI (only DepthAnything for now)
-    docker run --rm -v ./models:/models --gpus all \
+    docker run --rm -v ./models:/models --gpus all -l TensorRT-engines \
         livepeer/ai-runner:live-app-comfyui \
         bash -c "cd /comfyui/models/Depth-Anything-Onnx && \
                     python /comfyui/custom_nodes/ComfyUI-Depth-Anything-Tensorrt/export_trt.py && \
