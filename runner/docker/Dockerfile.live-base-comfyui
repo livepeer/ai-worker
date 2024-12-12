@@ -40,16 +40,9 @@ RUN cd /comfyui/custom_nodes && \
     cd ComfyUI-LivePortraitKJ && \
     git checkout 4d9dc6205b793ffd0fb319816136d9b8c0dbfdff && \
     pip install -r requirements.txt
-# Install ComfyUI-KJNodes Node (https://github.com/kijai/ComfyUI-KJNodes)
-RUN cd /comfyui/custom_nodes && \
-    git clone https://github.com/kijai/ComfyUI-KJNodes.git && \
-    cd ComfyUI-KJNodes && \
-    pip install -r requirements.txt
 # Install ComfyUI-load-image-from-url Node (https://github.com/tsogzark/ComfyUI-load-image-from-url.git)
 RUN cd /comfyui/custom_nodes && \
-    git clone https://github.com/tsogzark/ComfyUI-load-image-from-url.git && \
-    cd ComfyUI-load-image-from-url && \
-    pip install -r requirements.txt
+    git clone https://github.com/tsogzark/ComfyUI-load-image-from-url.git
 
 RUN pip install torch==2.5.1 torchvision torchaudio tqdm nvidia-ml-py==12.560.30
 
