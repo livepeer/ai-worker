@@ -250,9 +250,9 @@ class PipelineStreamer:
 
                 # crop the max square from the center of the image and scale to 512x512
                 # most models expect this size especially when using tensorrt
-                if frame.size != (512, 512):
+                width, height = frame.size
+                if (width, height) != (512, 512):
                     frame_array = np.array(frame)
-                    height, width = frame_array.shape[:2]
 
                     if width != height:
                         square_size = min(width, height)
