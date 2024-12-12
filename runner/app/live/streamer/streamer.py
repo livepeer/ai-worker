@@ -53,7 +53,7 @@ class PipelineStatus(BaseModel):
     pipeline: str
     start_time: float
     state: PipelineState = PipelineState.OFFLINE
-    last_state_update: float | None = None  # When the state changed
+    last_state_update_time: float | None = None
 
     input_status: InputStatus = InputStatus()
     output_status: OutputStatus = OutputStatus()
@@ -209,11 +209,39 @@ class PipelineStreamer:
                 await asyncio.sleep(next_report - current_time)
                 next_report += status_report_interval
 
+            new_state = self._current_state()
+            if new_state != self.status.state:
+                self.status.state = new_state
+                self.status.last_state_update_time = current_time
+                logging.info(f"Pipeline state changed to {new_state.value}")
+
             event = self.status.model_dump()
             # Clear the large transient fields after reporting them once
             self.status.last_params = None
             self.status.output_status.last_restart_logs = None
             await self._emit_monitoring_event(event)
+
+    def _current_state(self) -> PipelineState:
+        current_time = time.time()
+        input = self.status.input_status
+        if not input.last_frame_time or current_time - input.last_frame_time > 60:
+            return PipelineState.OFFLINE
+        elif current_time - input.last_frame_time > 2 or input.fps < 15:
+            return PipelineState.DEGRADED_INPUT
+
+        output = self.status.output_status
+        if not output.last_frame_time and current_time - self.status.start_time < 30:
+            # 30s grace period for the pipeline to start
+            return PipelineState.ONLINE
+
+        delayed_frames = not output.last_frame_time or current_time - output.last_frame_time > 5
+        low_fps = output.fps < min(10, 0.8 * input.fps)
+        recent_restart = output.last_restart_time and current_time - output.last_restart_time < 60
+        recent_error = output.last_error_time and current_time - output.last_error_time < 15
+        if delayed_frames or low_fps or recent_restart or recent_error:
+            return PipelineState.DEGRADED_OUTPUT
+
+        return PipelineState.ONLINE
 
     async def _emit_monitoring_event(self, event: dict):
         """Protected method to emit monitoring event with lock"""
