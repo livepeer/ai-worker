@@ -227,7 +227,7 @@ class PipelineStreamer:
 
             if self.input_timeout > 0 and time_since_last_input > self.input_timeout:
                 logging.info(f"Input stream stopped for {time_since_last_input} seconds. Shutting down...")
-                await asyncio.create_task(self.stop())
+                asyncio.create_task(self.stop())
                 return
 
             gone_stale = (
@@ -249,7 +249,7 @@ class PipelineStreamer:
                 logging.warning(
                     "No output received while inputs are being sent. Restarting process."
                 )
-                await self._restart()
+                asyncio.create_task(self._restart())
                 return
 
     async def run_ingress_loop(self, done: Event):
@@ -294,7 +294,7 @@ class PipelineStreamer:
             await self.stop()
         except Exception:
             logging.error("Error running ingress loop", exc_info=True)
-            await self._restart()
+            asyncio.create_task(self._restart())
 
     async def run_egress_loop(self, done: Event):
         async def gen_output_frames() -> AsyncGenerator[Image.Image, None]:
@@ -330,7 +330,7 @@ class PipelineStreamer:
             await self.stop()
         except Exception:
             logging.error("Error running egress loop", exc_info=True)
-            await self._restart()
+            asyncio.create_task(self._restart())
 
     async def run_control_loop(self):
         """Consumes control messages from the protocol and updates parameters"""
