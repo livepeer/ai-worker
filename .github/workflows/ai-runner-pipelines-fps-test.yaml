@@ -9,9 +9,10 @@ on:
     branches:
       - main
     tags:
-      - '*'
+      - "*"
     paths:
       - "runner/**"
+      - ".github/workflows/ai-runner-pipelines-fps-test.yaml"
       - "!runner/.devcontainer/**"
   workflow_dispatch:
 
@@ -20,52 +21,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  setup:
-    runs-on: gpu-amd64
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.23.3"
-
-      - name: Build Docker images
-        run: |
-          cd runner
-          docker build -t livepeer/ai-runner:live-base -f docker/Dockerfile.live-base .
-          docker build -t livepeer/ai-runner:live-app-noop -f docker/Dockerfile.live-app-noop .
-          for pipeline_id in "liveportrait" "streamdiffusion" "comfyui"; do
-            docker build -t livepeer/ai-runner:live-base-${pipeline_id} -f docker/Dockerfile.live-base-${pipeline_id} .
-            docker build -t livepeer/ai-runner:live-app-${pipeline_id} -f docker/Dockerfile.live-app__PIPELINE__ --build-arg PIPELINE=${pipeline_id} .
-          done
-          cd ..
-
-      - name: Create symlink for models directory
-        run: |
-          mkdir -p /home/user/models
-          rm -rf runner/models
-          ln -s /home/user/models runner/models
-
-      - name: Download Checkpoints
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          sudo pip install huggingface_hub[cli,hf_transfer] hf_transfer
-          cd runner
-          sudo -E dl_checkpoints.sh --tensorrt
-          cd ..
-
-      - name: Install packages
-        run: |
-          sudo sh -c "apt-get update && apt-get install -y libzmq3-dev && rm -rf /var/lib/apt/lists/*"
-
   run-fps-test:
     runs-on: gpu-amd64
-    needs: setup
     strategy:
       max-parallel: 1
       matrix:
@@ -84,6 +41,39 @@ jobs:
             exp_output_fps: 28 # for depth-anything
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.3"
+
+      - name: Build Docker images
+        env:
+          PIPELINE_ID: ${{ matrix.pipeline_config.id }}
+        run: |
+          cd runner
+          docker build -t livepeer/ai-runner:live-base -f docker/Dockerfile.live-base .
+          if [ "${PIPELINE_ID}" = "noop" ]; then
+              docker build -t livepeer/ai-runner:live-app-noop -f docker/Dockerfile.live-app-noop .
+          else
+              docker build -t livepeer/ai-runner:live-base-${PIPELINE_ID} -f docker/Dockerfile.live-base-${PIPELINE_ID} .
+              docker build -t livepeer/ai-runner:live-app-${PIPELINE_ID} -f docker/Dockerfile.live-app__PIPELINE__ --build-arg PIPELINE=${PIPELINE_ID} .
+          fi
+          cd ..
+
+      - name: Create symlink for models directory
+        run: |
+          rm -rf runner/models
+          ln -s /root/models runner/models
+
+      - name: Install packages
+        run: |
+          sudo sh -c "apt-get update && apt-get install -y libzmq3-dev && rm -rf /var/lib/apt/lists/*"
+
       - name: Clean up runner dockers
         run: |
           CONTAINERS=$(docker ps -aq --filter "name=^live-video-to-video*")
