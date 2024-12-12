@@ -15,6 +15,9 @@ function display_help() {
     echo "Options:"
     echo "  --beta  Download beta models."
     echo "  --restricted  Download models with a restrictive license."
+    echo "  --live  Download models only for the livestreaming pipelines."
+    echo "  --tensorrt  Download livestreaming models and build tensorrt models."
+    echo "  --batch  Download all models for batch processing."
     echo "  --help   Display this help message."
 }
 
@@ -159,6 +162,12 @@ function download_restricted_models() {
 
 }
 
+function download_batch_models() {
+    printf "\nDownloading Batch models...\n"
+
+    huggingface-cli download facebook/sam2-hiera-large --include "*.pt" "*.yaml" --cache-dir models
+}
+
 # Enable HF transfer acceleration.
 # See: https://huggingface.co/docs/huggingface_hub/v0.22.1/package_reference/environment_variables#hfhubenablehftransfer.
 export HF_HUB_ENABLE_HF_TRANSFER=1
@@ -185,6 +194,10 @@ do
         ;;
         --tensorrt)
             MODE="tensorrt"
+            shift
+        ;;
+        --batch)
+            MODE="batch"
             shift
         ;;
         --help)
@@ -218,6 +231,8 @@ elif [ "$MODE" = "live" ]; then
     download_live_models
 elif [ "$MODE" = "tensorrt" ]; then
     build_tensorrt_models
+elif [ "$MODE" = "batch" ]; then
+    download_batch_models
 else
     download_all_models
 fi
