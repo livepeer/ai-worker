@@ -1,11 +1,19 @@
 name: FPS check for live-video-to-video pipelines
 
 on:
-  workflow_run:
-    workflows: ["Build ai-runner live pipeline Docker images"]
-    types:
-      - completed
-  if: ${{ github.event.workflow_run.conclusion == 'success' }}
+  pull_request:
+    paths:
+      - "runner/**"
+      - "!runner/.devcontainer/**"
+  push:
+    branches:
+      - main
+    tags:
+      - '*'
+    paths:
+      - "runner/**"
+      - "!runner/.devcontainer/**"
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -24,6 +32,17 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.23.3"
+
+      - name: Build Docker images
+        run: |
+          cd runner
+          docker build -t livepeer/ai-runner:live-base -f docker/Dockerfile.live-base .
+          docker build -t livepeer/ai-runner:live-app-noop -f docker/Dockerfile.live-app-noop .
+          for pipeline_id in "liveportrait" "streamdiffusion" "comfyui"; do
+            docker build -t livepeer/ai-runner:live-base-${pipeline_id} -f docker/Dockerfile.live-base-${pipeline_id} .
+            docker build -t livepeer/ai-runner:live-app-${pipeline_id} -f docker/Dockerfile.live-app__PIPELINE__ --build-arg PIPELINE=${pipeline_id} .
+          done
+          cd ..
 
       - name: Create symlink for models directory
         run: |
