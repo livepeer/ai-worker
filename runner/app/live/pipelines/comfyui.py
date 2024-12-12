@@ -37,7 +37,10 @@ DEFAULT_WORKFLOW_JSON = '''
       "precision": "auto",
       "mode": "human"
     },
-    "class_type": "DownloadAndLoadLivePortraitModels"
+    "class_type": "DownloadAndLoadLivePortraitModels",
+    "_meta": {
+          "title": "DownloadAndLoadLivePortraitModels"
+    }
   },
   "4": {
     "inputs": {
