@@ -27,9 +27,9 @@ class InputStatus(BaseModel):
     def model_dump(self, **kwargs):
         return _convert_timestamps(super().model_dump(**kwargs))
 
-class OutputStatus(BaseModel):
+class InferenceStatus(BaseModel):
     """Holds metrics for the output stream"""
-    last_frame_time: float | None = None
+    last_output_time: float | None = None
     fps: float = 0.0
     last_restart_time: float | None = None
     last_error_time: float | None = None
@@ -45,7 +45,7 @@ class PipelineState(Enum):
     OFFLINE = "OFFLINE"
     ONLINE = "ONLINE"
     DEGRADED_INPUT = "DEGRADED_INPUT"
-    DEGRADED_OUTPUT = "DEGRADED_OUTPUT"
+    DEGRADED_INFERENCE = "DEGRADED_INFERENCE"
 
 class PipelineStatus(BaseModel):
     """Holds metrics for the pipeline streamer"""
@@ -56,7 +56,7 @@ class PipelineStatus(BaseModel):
     last_state_update_time: float | None = None
 
     input_status: InputStatus = InputStatus()
-    output_status: OutputStatus = OutputStatus()
+    inference_status: InferenceStatus = InferenceStatus()
 
     # Parameters tracking
     last_params_update_time: float | None = None
@@ -159,25 +159,25 @@ class PipelineStreamer:
             # don't call the full start/stop methods since we don't want to restart the protocol
             await self._stop_process()
             self._start_process()
-            self.status.output_status.restart_count += 1
-            self.status.output_status.last_restart_time = time.time()
-            self.status.output_status.last_restart_logs = restart_logs
+            self.status.inference_status.restart_count += 1
+            self.status.inference_status.last_restart_time = time.time()
+            self.status.inference_status.last_restart_logs = restart_logs
             if last_error:
                 error_msg, error_time = last_error
-                self.status.output_status.last_error = error_msg
-                self.status.output_status.last_error_time = error_time
+                self.status.inference_status.last_error = error_msg
+                self.status.inference_status.last_error_time = error_time
 
             await self._emit_monitoring_event({
                 "type": "restart",
                 "pipeline": self.pipeline,
-                "restart_count": self.status.output_status.restart_count,
-                "restart_time": self.status.output_status.last_restart_time,
+                "restart_count": self.status.inference_status.restart_count,
+                "restart_time": self.status.inference_status.last_restart_time,
                 "restart_logs": restart_logs,
                 "last_error": last_error
             })
 
             logging.info(
-                f"PipelineProcess restarted. Restart count: {self.status.output_status.restart_count}"
+                f"PipelineProcess restarted. Restart count: {self.status.inference_status.restart_count}"
             )
         except Exception:
             logging.error(f"Error restarting pipeline process", exc_info=True)
@@ -218,7 +218,7 @@ class PipelineStreamer:
             event = self.status.model_dump()
             # Clear the large transient fields after reporting them once
             self.status.last_params = None
-            self.status.output_status.last_restart_logs = None
+            self.status.inference_status.last_restart_logs = None
             await self._emit_monitoring_event(event)
 
     def _current_state(self) -> PipelineState:
@@ -229,17 +229,17 @@ class PipelineStreamer:
         elif current_time - input.last_frame_time > 2 or input.fps < 15:
             return PipelineState.DEGRADED_INPUT
 
-        output = self.status.output_status
-        if not output.last_frame_time and current_time - self.status.start_time < 30:
+        inference = self.status.inference_status
+        if not inference.last_output_time and current_time - self.status.start_time < 30:
             # 30s grace period for the pipeline to start
             return PipelineState.ONLINE
 
-        delayed_frames = not output.last_frame_time or current_time - output.last_frame_time > 5
-        low_fps = output.fps < min(10, 0.8 * input.fps)
-        recent_restart = output.last_restart_time and current_time - output.last_restart_time < 60
-        recent_error = output.last_error_time and current_time - output.last_error_time < 15
+        delayed_frames = not inference.last_output_time or current_time - inference.last_output_time > 5
+        low_fps = inference.fps < min(10, 0.8 * input.fps)
+        recent_restart = inference.last_restart_time and current_time - inference.last_restart_time < 60
+        recent_error = inference.last_error_time and current_time - inference.last_error_time < 15
         if delayed_frames or low_fps or recent_restart or recent_error:
-            return PipelineState.DEGRADED_OUTPUT
+            return PipelineState.DEGRADED_INFERENCE
 
         return PipelineState.ONLINE
 
@@ -262,8 +262,8 @@ class PipelineStreamer:
             last_error = self.process.get_last_error()
             if last_error:
                 error_msg, error_time = last_error
-                self.status.output_status.last_error = error_msg
-                self.status.output_status.last_error_time = error_time
+                self.status.inference_status.last_error = error_msg
+                self.status.inference_status.last_error_time = error_time
                 await self._emit_monitoring_event({
                     "type": "error",
                     "pipeline": self.pipeline,
@@ -273,7 +273,7 @@ class PipelineStreamer:
 
             current_time = time.time()
             last_input_time = self.status.input_status.last_frame_time or start_time
-            last_output_time = self.status.output_status.last_frame_time or start_time
+            last_output_time = self.status.inference_status.last_output_time or start_time
             last_params_update_time = self.status.last_params_update_time or start_time
 
             time_since_last_input = current_time - last_input_time
@@ -365,7 +365,7 @@ class PipelineStreamer:
                 if not output_image:
                     break
 
-                self.status.output_status.last_frame_time = time.time()  # Track time after receive completes
+                self.status.inference_status.last_output_time = time.time()  # Track time after receive completes
                 logging.debug(
                     f"Output image received out_width: {output_image.width}, out_height: {output_image.height}"
                 )
@@ -376,8 +376,8 @@ class PipelineStreamer:
                 frame_count += 1
                 elapsed_time = time.time() - start_time
                 if elapsed_time >= fps_log_interval:
-                    self.status.output_status.fps = frame_count / elapsed_time
-                    logging.info(f"Output FPS: {self.status.output_status.fps:.2f}")
+                    self.status.inference_status.fps = frame_count / elapsed_time
+                    logging.info(f"Output FPS: {self.status.inference_status.fps:.2f}")
                     frame_count = 0
                     start_time = time.time()
 
