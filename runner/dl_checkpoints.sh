@@ -90,6 +90,7 @@ function download_live_models() {
     huggingface-cli download microsoft/Florence-2-base --include "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models/ComfyUI--models
     huggingface-cli download microsoft/Florence-2-base-ft --include "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models/ComfyUI--models
     huggingface-cli download yuvraj108c/Depth-Anything-Onnx --include depth_anything_vitl14.onnx --local-dir models/ComfyUI--models/Depth-Anything-Onnx
+    huggingface-cli download Kijai/LivePortrait_safetensors --local-dir models/ComfyUI--models/livePortrait
     download_sam2_checkpoints
     download_stable_diffusion_checkpoints
 }
