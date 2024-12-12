@@ -33,6 +33,7 @@ jobs:
         with:
           fetch-depth: 50
           ref: ${{ github.event.pull_request.head.sha }}
+          clean: false
 
       - name: Get changed files
         id: changed-files
@@ -90,6 +91,7 @@ jobs:
         with:
           fetch-depth: 50
           ref: ${{ github.event.pull_request.head.sha }}
+          clean: false
 
       - name: Get changed files
         id: changed-files
@@ -175,6 +177,7 @@ jobs:
         with:
           fetch-depth: 50
           ref: ${{ github.event.pull_request.head.sha }}
+          clean: false
 
       - name: Get changed files
         id: changed-files
