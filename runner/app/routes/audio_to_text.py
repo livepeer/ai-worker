@@ -26,12 +26,13 @@ logger = logging.getLogger(__name__)
 # Pipeline specific error handling configuration.
 AUDIO_FORMAT_ERROR_MESSAGE = "Unsupported audio format or malformed file."
 PIPELINE_ERROR_CONFIG: Dict[str, Tuple[Union[str, None], int]] = {
-    # Specific error types.
-    "AudioConversionError": (
+    # Error strings.
+    "Soundfile is either not in the correct format or is malformed": (
         AUDIO_FORMAT_ERROR_MESSAGE,
         status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
     ),
-    "Soundfile is either not in the correct format or is malformed": (
+    # Specific error types.
+    "AudioConversionError": (
         AUDIO_FORMAT_ERROR_MESSAGE,
         status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
     ),
