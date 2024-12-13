@@ -28,24 +28,23 @@ class LiveVideoToVideoPipeline(Pipeline):
 
 
     def __call__(  # type: ignore
-        self, *, subscribe_url: str, publish_url: str, control_url: str, params: dict, **kwargs
+        self, *, subscribe_url: str, publish_url: str, control_url: str, events_url: str, params: dict, **kwargs
     ):
         if self.process:
             raise RuntimeError("Pipeline already running")
 
         try:
-            if not self.process:
-                logger.info(f"Starting stream, subscribe={subscribe_url} publish={publish_url}, control={control_url}")
-                self.start_process(
-                    pipeline=self.model_id,  # we use the model_id as the pipeline name for now
-                    http_port=8888,
-                    subscribe_url=subscribe_url,
-                    publish_url=publish_url,
-                    control_url=control_url,
-                    initial_params=json.dumps(params),
-                    # TODO: set torch device from self.torch_device
-                )
-            logger.info(f"Starting stream, subscribe={subscribe_url} publish={publish_url}, control={control_url}")
+            logger.info(f"Starting stream, subscribe={subscribe_url} publish={publish_url}, control={control_url}, events={events_url}")
+            self.start_process(
+                pipeline=self.model_id,  # we use the model_id as the pipeline name for now
+                http_port=8888,
+                subscribe_url=subscribe_url,
+                publish_url=publish_url,
+                control_url=control_url,
+                events_url=events_url,
+                initial_params=json.dumps(params),
+                # TODO: set torch device from self.torch_device
+            )
             return
         except Exception as e:
             raise InferenceError(original_exception=e)
@@ -91,8 +90,8 @@ class LiveVideoToVideoPipeline(Pipeline):
                 else:
                     # If process exited cleanly (return code 0) and exit the main process
                     logger.info("infer.py process exited cleanly, shutting down...")
-                    os._exit(0)
-                break
+                # propagate the exit code to the main process
+                os._exit(return_code)
 
             logger.info("infer.py process is running...")
             time.sleep(10)

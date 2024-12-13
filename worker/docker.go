@@ -56,13 +56,15 @@ var containerHostPorts = map[string]string{
 var pipelineToImage = map[string]string{
 	"segment-anything-2": "livepeer/ai-runner:segment-anything-2",
 	"text-to-speech":     "livepeer/ai-runner:text-to-speech",
+	"audio-to-text":      "livepeer/ai-runner:audio-to-text",
 }
 
 var livePipelineToImage = map[string]string{
-	"streamdiffusion": "livepeer/ai-runner:live-app-streamdiffusion",
-	"liveportrait":    "livepeer/ai-runner:live-app-liveportrait",
-	"comfyui":         "livepeer/ai-runner:live-app-comfyui",
-	"noop":            "livepeer/ai-runner:live-app-noop",
+	"streamdiffusion":    "livepeer/ai-runner:live-app-streamdiffusion",
+	"liveportrait":       "livepeer/ai-runner:live-app-liveportrait",
+	"comfyui":            "livepeer/ai-runner:live-app-comfyui",
+	"segment_anything_2": "livepeer/ai-runner:live-app-segment_anything_2",
+	"noop":               "livepeer/ai-runner:live-app-noop",
 }
 
 // DockerClient is an interface for the Docker client, allowing for mocking in tests.
@@ -169,24 +171,28 @@ func (m *DockerManager) Stop(ctx context.Context) error {
 func (m *DockerManager) Borrow(ctx context.Context, pipeline, modelID string) (*RunnerContainer, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	var rc *RunnerContainer
+	var err error
 
 	for _, runner := range m.containers {
 		if runner.Pipeline == pipeline && runner.ModelID == modelID {
-			delete(m.containers, runner.Name)
-			return runner, nil
+			rc = runner
+			break
 		}
 	}
 
 	// The container does not exist so try to create it
-	var err error
-	// TODO: Optimization flags for dynamically loaded (borrowed) containers are not currently supported due to startup delays.
-	rc, err := m.createContainer(ctx, pipeline, modelID, false, map[string]EnvValue{})
-	if err != nil {
-		return nil, err
+	if rc == nil {
+		// TODO: Optimization flags for dynamically loaded (borrowed) containers are not currently supported due to startup delays.
+		rc, err = m.createContainer(ctx, pipeline, modelID, false, map[string]EnvValue{})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Remove container so it is unavailable until Return() is called
 	delete(m.containers, rc.Name)
+	// watch container to return when request completed
 	go m.watchContainer(rc, ctx)
 
 	return rc, nil
@@ -288,7 +294,7 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	}
 
 	// NOTE: We currently allow only one container per GPU for each pipeline.
-	containerHostPort := containerHostPorts[pipeline][:3] + gpu
+	containerHostPort := containerHostPorts[pipeline][:3] + portOffset(gpu)
 	containerName := dockerContainerName(pipeline, modelID, containerHostPort)
 	containerImage, err := m.getContainerImageName(pipeline, modelID)
 	if err != nil {
@@ -321,7 +327,9 @@ func (m *DockerManager) createContainer(ctx context.Context, pipeline string, mo
 	}
 
 	gpuOpts := opts.GpuOpts{}
-	gpuOpts.Set("device=" + gpu)
+	if !isEmulatedGPU(gpu) {
+		gpuOpts.Set("device=" + gpu)
+	}
 
 	hostConfig := &container.HostConfig{
 		Resources: container.Resources{
@@ -572,4 +580,15 @@ tickerLoop:
 	}
 
 	return nil
+}
+
+func portOffset(gpu string) string {
+	if isEmulatedGPU(gpu) {
+		return strings.Replace(gpu, "emulated-", "", 1)
+	}
+	return gpu
+}
+
+func isEmulatedGPU(gpu string) bool {
+	return strings.HasPrefix(gpu, "emulated-")
 }
