@@ -6,7 +6,6 @@ import numpy as np
 from multiprocessing.synchronize import Event
 from typing import AsyncGenerator
 from asyncio import Lock
-from enum import Enum
 
 import cv2
 from PIL import Image
@@ -45,8 +44,8 @@ class InferenceStatus(BaseModel):
     def model_dump(self, **kwargs):
         return _convert_timestamps(super().model_dump(**kwargs))
 
-class PipelineState(Enum):
-    """Pipeline stream state"""
+# Use a class instead of an enum since Pydantic can't handle serializing enums
+class PipelineState:
     OFFLINE = "OFFLINE"
     ONLINE = "ONLINE"
     DEGRADED_INPUT = "DEGRADED_INPUT"
@@ -57,14 +56,11 @@ class PipelineStatus(BaseModel):
     type: str = "status"
     pipeline: str
     start_time: float
-    state: PipelineState = PipelineState.OFFLINE
+    state: str = PipelineState.OFFLINE
     last_state_update_time: float | None = None
 
     input_status: InputStatus = InputStatus()
     inference_status: InferenceStatus = InferenceStatus()
-
-    class Config:
-        use_enum_values = True
 
     def update_params(self, params: dict, do_update_time=True):
         self.inference_status.last_params = params
@@ -217,7 +213,7 @@ class PipelineStreamer:
             if new_state != self.status.state:
                 self.status.state = new_state
                 self.status.last_state_update_time = current_time
-                logging.info(f"Pipeline state changed to {new_state.value}")
+                logging.info(f"Pipeline state changed to {new_state}")
 
             event = self.status.model_dump()
             # Clear the large transient fields after reporting them once
@@ -225,7 +221,7 @@ class PipelineStreamer:
             self.status.inference_status.last_restart_logs = None
             await self._emit_monitoring_event(event)
 
-    def _current_state(self) -> PipelineState:
+    def _current_state(self) -> str:
         current_time = time.time()
         input = self.status.input_status
         if not input.last_input_time or current_time - input.last_input_time > 60:
