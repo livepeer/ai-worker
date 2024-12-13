@@ -15,6 +15,9 @@ function display_help() {
     echo "Options:"
     echo "  --beta  Download beta models."
     echo "  --restricted  Download models with a restrictive license."
+    echo "  --live  Download models only for the livestreaming pipelines."
+    echo "  --tensorrt  Download livestreaming models and build tensorrt models."
+    echo "  --batch  Download all models for batch processing."
     echo "  --help   Display this help message."
 }
 
@@ -85,25 +88,40 @@ function download_live_models() {
     huggingface-cli download KBlueLeaf/kohaku-v2.1 --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
     huggingface-cli download stabilityai/sd-turbo --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
     huggingface-cli download warmshao/FasterLivePortrait --local-dir models/FasterLivePortrait--checkpoints
+    huggingface-cli download microsoft/Florence-2-large --include "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models/ComfyUI--models
+    huggingface-cli download microsoft/Florence-2-large-ft --include "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models/ComfyUI--models
+    huggingface-cli download microsoft/Florence-2-base --include "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models/ComfyUI--models
+    huggingface-cli download microsoft/Florence-2-base-ft --include "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models/ComfyUI--models
     huggingface-cli download yuvraj108c/Depth-Anything-Onnx --include depth_anything_vitl14.onnx --local-dir models/ComfyUI--models/Depth-Anything-Onnx
     download_sam2_checkpoints
+    download_stable_diffusion_checkpoints
 }
 
 function download_sam2_checkpoints() {
-    huggingface-cli download facebook/sam2-hiera-tiny --local-dir models/sam2--checkpoints/facebook--sam2-hiera-tiny
-    huggingface-cli download facebook/sam2-hiera-small --local-dir models/sam2--checkpoints/facebook--sam2-hiera-small
-    huggingface-cli download facebook/sam2-hiera-large --local-dir models/sam2--checkpoints/facebook--sam2-hiera-large
+    huggingface-cli download facebook/sam2-hiera-tiny --local-dir models/ComfyUI--models/sam2--checkpoints/facebook--sam2-hiera-tiny
+    huggingface-cli download facebook/sam2-hiera-small --local-dir models/ComfyUI--models/sam2--checkpoints/facebook--sam2-hiera-small
+    huggingface-cli download facebook/sam2-hiera-large --local-dir models/ComfyUI--models/sam2--checkpoints/facebook--sam2-hiera-large
+}
+
+function download_stable_diffusion_checkpoints() {
+    huggingface-cli download KBlueLeaf/kohaku-v2.1 --local-dir models/ComfyUI--models/checkpoints --include "*.safetensors"
+    huggingface-cli download stabilityai/sd-turbo --local-dir models/ComfyUI--models/checkpoints --include "*.safetensors"
 }
 
 function build_tensorrt_models() {
     download_live_models
 
+    if [[ "$( docker ps -a -q --filter="label=TensorRT-engines" )" ]]; then
+        printf "Previous tensorrt run hasn't finished correclty. There are containers still running:\n"
+        docker ps -a --filter="label=TensorRT-engines"
+        exit 1
+    fi
     printf "\nBuilding TensorRT models...\n"
 
     # StreamDiffusion (compile a matrix of models and timesteps)
     MODELS="stabilityai/sd-turbo KBlueLeaf/kohaku-v2.1"
     TIMESTEPS="3 4" # This is basically the supported sizes for the t_index_list
-    docker run --rm -it -v ./models:/models --gpus all \
+    docker run --rm -v ./models:/models --gpus all -l TensorRT-engines \
         livepeer/ai-runner:live-app-streamdiffusion \
         bash -c "for model in $MODELS; do
                     for timestep in $TIMESTEPS; do
@@ -113,7 +131,7 @@ function build_tensorrt_models() {
                 done"
 
     # FasterLivePortrait
-    docker run --rm -it -v ./models:/models --gpus all \
+    docker run --rm -v ./models:/models --gpus all -l TensorRT-engines  \
         livepeer/ai-runner:live-app-liveportrait \
         bash -c "cd /app/app/live/FasterLivePortrait && \
                     if [ ! -f '/models/FasterLivePortrait--checkpoints/liveportrait_onnx/stitching_lip.trt' ]; then
@@ -130,7 +148,7 @@ function build_tensorrt_models() {
                     fi"
 
     # ComfyUI (only DepthAnything for now)
-    docker run --rm -it -v ./models:/models --gpus all \
+    docker run --rm -v ./models:/models --gpus all -l TensorRT-engines \
         livepeer/ai-runner:live-app-comfyui \
         bash -c "cd /comfyui/models/Depth-Anything-Onnx && \
                     python /comfyui/custom_nodes/ComfyUI-Depth-Anything-Tensorrt/export_trt.py && \
@@ -147,6 +165,12 @@ function download_restricted_models() {
     # Download LLM models (Warning: large model size)
     huggingface-cli download meta-llama/Meta-Llama-3.1-8B-Instruct --include "*.json" "*.bin" "*.safetensors" "*.txt" --cache-dir models
 
+}
+
+function download_batch_models() {
+    printf "\nDownloading Batch models...\n"
+
+    huggingface-cli download facebook/sam2-hiera-large --include "*.pt" "*.yaml" --cache-dir models
 }
 
 # Enable HF transfer acceleration.
@@ -177,6 +201,10 @@ do
             MODE="tensorrt"
             shift
         ;;
+        --batch)
+            MODE="batch"
+            shift
+        ;;
         --help)
             display_help
             exit 0
@@ -190,7 +218,8 @@ done
 echo "Starting livepeer AI subnet model downloader..."
 echo "Creating 'models' directory in the current working directory..."
 mkdir -p models
-mkdir -p models/StreamDiffusion--engines models/FasterLivePortrait--checkpoints models/ComfyUI--models models/sam2--checkpoints
+mkdir -p models/checkpoints
+mkdir -p models/StreamDiffusion--engines models/FasterLivePortrait--checkpoints models/ComfyUI--models models/ComfyUI--models/sam2--checkpoints models/ComfyUI--models/checkpoints
 
 # Ensure 'huggingface-cli' is installed.
 echo "Checking if 'huggingface-cli' is installed..."
@@ -207,6 +236,8 @@ elif [ "$MODE" = "live" ]; then
     download_live_models
 elif [ "$MODE" = "tensorrt" ]; then
     build_tensorrt_models
+elif [ "$MODE" = "batch" ]; then
+    download_batch_models
 else
     download_all_models
 fi

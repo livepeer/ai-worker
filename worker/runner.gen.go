@@ -281,7 +281,7 @@ type LiveVideoToVideoParams struct {
 	// ControlUrl URL for subscribing via Trickle protocol for updates in the live video-to-video generation params.
 	ControlUrl *string `json:"control_url,omitempty"`
 
-	// EventsUrl EventsUrl URL for publishing events via Trickle protocol for pipeline status and logs.
+	// EventsUrl URL for publishing events via Trickle protocol for pipeline status and logs.
 	EventsUrl *string `json:"events_url,omitempty"`
 
 	// ModelId Name of the pipeline to run in the live video to video job. Notice that this is named model_id for consistency with other routes, but it does not refer to a Hugging Face model ID. The exact model(s) depends on the pipeline implementation and might be configurable via the `params` argument.

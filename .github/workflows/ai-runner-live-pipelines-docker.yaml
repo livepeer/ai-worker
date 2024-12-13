@@ -19,14 +19,14 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ !((github.ref_type == 'branch' && github.ref_name == 'main') || github.ref_type == 'tag') }}
 
 jobs:
   build-common-base:
     name: Build common live base image
     permissions:
       pull-requests: read
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, linux, amd64]
     steps:
       - name: Check out code
         uses: actions/checkout@v4.1.1
@@ -53,10 +53,6 @@ jobs:
           )
         run: echo "should_build=true" >> $GITHUB_OUTPUT
 
-      - name: Cleanup hosted runner
-        uses: ./.github/actions/cleanup-runner
-        if: steps.check_build.outputs.should_build == 'true'
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -81,13 +77,13 @@ jobs:
   build-pipeline-images:
     name: Build pipeline images
     needs: build-common-base
-    runs-on: ubuntu-20.04
+    runs-on: [self-hosted, linux, amd64]
     permissions:
       pull-requests: read
     strategy:
+      fail-fast: false
       matrix:
         pipeline: [streamdiffusion, comfyui, liveportrait]
-      fail-fast: false
     steps:
       - name: Check out code
         uses: actions/checkout@v4.1.1
@@ -105,9 +101,6 @@ jobs:
             liveportrait:
               - runner/images/**
               - runner/requirements-liveportrait.txt
-
-      - name: Cleanup hosted runner
-        uses: ./.github/actions/cleanup-runner
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

@@ -25,3 +25,15 @@ class StreamProtocol(ABC):
     async def egress_loop(self, output_frames: AsyncGenerator[Image.Image, None]):
         """Consumes generated frames and processes them"""
         pass
+
+    @abstractmethod
+    async def emit_monitoring_event(self, event: dict):
+        """Sends a monitoring event to the event stream if available"""
+        pass
+
+    @abstractmethod
+    async def control_loop(self) -> AsyncGenerator[dict, None]:
+        """Generator that yields control messages for updating pipeline parameters"""
+        if False:
+            yield {}  # dummy yield for proper typing
+        pass

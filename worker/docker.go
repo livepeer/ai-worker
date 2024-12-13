@@ -56,6 +56,7 @@ var containerHostPorts = map[string]string{
 var pipelineToImage = map[string]string{
 	"segment-anything-2": "livepeer/ai-runner:segment-anything-2",
 	"text-to-speech":     "livepeer/ai-runner:text-to-speech",
+	"audio-to-text":      "livepeer/ai-runner:audio-to-text",
 }
 
 var livePipelineToImage = map[string]string{
