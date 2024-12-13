@@ -5,10 +5,9 @@ from typing import Annotated
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.routes.utils import HTTPError, TextSentimentAnalysisResponse, http_error
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Form
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import Field
 
 router = APIRouter()
 
@@ -66,17 +65,14 @@ def handle_pipeline_error(e: Exception) -> JSONResponse:
     include_in_schema=False,
 )
 async def text_sentiment_analysis(
-    model_id: Annotated[
-        str,
-        Field(
-            default="",
-            description="Hugging Face model ID used for text classsification."
-        ),
-    ],
     text_input: Annotated[
         str,
-        Field(description="Text to analyze. For multiple sentences, separate them with commas.")
+        Form(description="Text to analyze. For multiple sentences, separate them with commas.")
     ],
+    model_id: Annotated[
+        str,
+        Form(description="Hugging Face model ID used for text classification."),
+    ] = "",
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):

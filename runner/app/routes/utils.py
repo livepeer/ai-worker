@@ -73,11 +73,15 @@ class TextResponse(BaseModel):
 
 
 class LabelScore(BaseModel):
+    """A label and its corresponding score."""
+
     label: Literal["negative", "neutral", "positive"]
     score: float
 
 
 class TextSentimentAnalysisResponse(BaseModel):
+    """Response model for text sentiment analysis."""
+
     results: list[LabelScore]
 
 
