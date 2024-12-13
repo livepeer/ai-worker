@@ -4,12 +4,10 @@ import sys
 import cv2
 from contextlib import asynccontextmanager
 
-import app
 from app.routes import health, hardware
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
-from app.utils.hardware import get_gpu_info
-from app.utils.nvml_manager import nvml_manager
+from app.utils.hardware import HardwareInfo
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +16,8 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     config_logging()
 
-    nvml_manager.initialize()
+    # Create application wide hardware info service.
+    app.hardware_info_service = HardwareInfo()
 
     app.include_router(health.router)
     app.include_router(hardware.router)
@@ -29,12 +28,10 @@ async def lifespan(app: FastAPI):
     app.pipeline = load_pipeline(pipeline, model_id)
     app.include_router(load_route(pipeline))
 
-    print_cuda_devices()
+    app.hardware_info_service.log_gpu_compute_info()
     logger.info(f"Started up with pipeline {app.pipeline}")
 
     yield
-
-    nvml_manager.shutdown()
 
     logger.info("Shutting down")
 
@@ -147,13 +144,6 @@ def config_logging():
         level=logging.INFO,
         force=True,
     )
-
-
-def print_cuda_devices():
-    devices = get_gpu_info()
-    logger.info("Cuda devices available:")
-    for device in devices:
-        logger.info(devices[device])
 
 
 def use_route_names_as_operation_ids(app: FastAPI) -> None:

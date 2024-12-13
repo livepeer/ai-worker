@@ -13,4 +13,7 @@ def load_pipeline(name: str, **params) -> Pipeline:
     elif name == "noop":
         from .noop import Noop
         return Noop(**params)
+    elif name == "segment_anything_2":
+        from .segment_anything_2 import Sam2Live
+        return Sam2Live(**params)
     raise ValueError(f"Unknown pipeline: {name}")
