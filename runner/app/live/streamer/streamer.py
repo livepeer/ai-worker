@@ -63,6 +63,9 @@ class PipelineStatus(BaseModel):
     input_status: InputStatus = InputStatus()
     inference_status: InferenceStatus = InferenceStatus()
 
+    class Config:
+        use_enum_values = True
+
     def update_params(self, params: dict, do_update_time=True):
         self.inference_status.last_params = params
         self.inference_status.last_params_hash = str(hash(str(sorted(params.items()))))
