@@ -241,6 +241,8 @@ class PipelineStreamer:
     async def run_ingress_loop(self, done: Event):
         frame_count = 0
         start_time = 0.0
+        saved_frames = 0  # Add counter for saved frames
+        prefix = f"pipeline_{self.pipeline}_"  # Add prefix based on pipeline name
         try:
             async for frame in self.protocol.ingress_loop(done):
                 if done.is_set() or not self.process:
@@ -263,6 +265,16 @@ class PipelineStreamer:
                     # Resize using cv2 (much faster than PIL)
                     frame_array = cv2.resize(frame_array, (512, 512))
                     frame = Image.fromarray(frame_array)
+
+                # Save first 10 frames after all preprocessing but before sending to process
+                if saved_frames < 10:
+                    # Convert to RGB to ensure compatibility with JPEG/PNG
+                    if frame.mode != 'RGB':
+                        frame = frame.convert('RGB')
+                    save_path = f"/tmp/{prefix}preprocessed_frame_{saved_frames:03d}.png"
+                    frame.save(save_path)
+                    saved_frames += 1
+                    logging.info(f"Saved preprocessed frame to {save_path}")
 
                 logging.debug(f"Sending input frame. Scaled from {width}x{height} to {frame.size[0]}x{frame.size[1]}")
                 self.process.send_input(frame)

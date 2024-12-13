@@ -14,41 +14,43 @@ COMFY_UI_WORKSPACE_ENV = "COMFY_UI_WORKSPACE"
 DEFAULT_WORKFLOW_JSON = '''
 {
   "1": {
-      "inputs": {
-          "images": [
-              "5",
-              0
-          ]
-      },
-      "class_type": "SaveTensor",
-      "_meta": {
-          "title": "SaveTensor"
-      }
-  },
-  "2": {
-      "inputs": {},
-      "class_type": "LoadTensor",
-      "_meta": {
-          "title": "LoadTensor"
-      }
-  },
-  "3": {
     "inputs": {
       "precision": "auto",
       "mode": "human"
     },
     "class_type": "DownloadAndLoadLivePortraitModels",
     "_meta": {
-          "title": "DownloadAndLoadLivePortraitModels"
+      "title": "(Down)Load LivePortraitModels"
     }
   },
-  "4": {
+  "189": {
     "inputs": {
-      "url_or_path": "https://raw.githubusercontent.com/KwaiVGI/LivePortrait/refs/heads/main/assets/examples/source/s2.jpg"
+      "dsize": 512,
+      "scale": 2.34,
+      "vx_ratio": 0.099,
+      "vy_ratio": 0.148,
+      "face_index": 0,
+      "face_index_order": "large-small",
+      "rotate": false,
+      "pipeline": [
+        "1",
+        0
+      ],
+      "cropper": [
+        "204",
+        0
+      ],
+      "source_image": [
+        "210",
+        0
+      ]
     },
-    "class_type": "LoadImageFromUrlOrPath"
+    "class_type": "LivePortraitCropper",
+    "_meta": {
+      "title": "LivePortrait Cropper"
+    }
   },
-  "5": {
+  "190": {
     "inputs": {
       "lip_zero": false,
       "lip_zero_threshold": 0.03,
@@ -60,58 +62,67 @@ DEFAULT_WORKFLOW_JSON = '''
       "expression_friendly": false,
       "expression_friendly_multiplier": 1,
       "pipeline": [
-        "3",
+        "1",
         0
       ],
       "crop_info": [
-        "7",
+        "189",
         1
       ],
       "source_image": [
-        "4",
+        "210",
         0
       ],
       "driving_images": [
-        "2",
+        "196",
         0
       ]
     },
-    "class_type": "LivePortraitProcess"
+    "class_type": "LivePortraitProcess",
+    "_meta": {
+      "title": "LivePortrait Process"
+    }
   },
-  "6": {
+  "196": {
+    "inputs": {},
+    "class_type": "LoadTensor",
+    "_meta": {
+      "title": "LoadTensor"
+    }
+  },
+  "204": {
     "inputs": {
-      "landmarkrunner_onnx_device": "CPU",
+      "landmarkrunner_onnx_device": "torch_gpu",
       "keep_model_loaded": true
     },
-    "class_type": "LivePortraitLoadMediaPipeCropper"
+    "class_type": "LivePortraitLoadMediaPipeCropper",
+    "_meta": {
+      "title": "LivePortrait Load MediaPipeCropper"
+    }
   },
-  "7": {
+  "210": {
     "inputs": {
-      "dsize": 512,
-      "scale": 2.34,
-      "vx_ratio": 0.099,
-      "vy_ratio": 0.148,
-      "face_index": 0,
-      "face_index_order": "large-small",
-      "rotate": false,
-      "pipeline": [
-        "3",
-        0
-      ],
-      "cropper": [
-        "6",
-        0
-      ],
-      "source_image": [
-        "4",
-        0
+      "url_or_path": "https://raw.githubusercontent.com/kijai/ComfyUI-LivePortraitKJ/refs/heads/main/assets/examples/source/s7.jpg"
+    },
+    "class_type": "LoadImageFromUrlOrPath",
+    "_meta": {
+      "title": "LoadImageFromUrlOrPath"
+    }
+  },
+  "211": {
+      "inputs": {
+        "images": [
+          "190",
+          0
       ]
     },
-    "class_type": "LivePortraitCropper"
+    "class_type": "SaveTensor",
+    "_meta": {
+      "title": "SaveTensor"
+    }
   }
 }
 '''
-
 
 class ComfyUI(Pipeline):
   def __init__(self, **params):
