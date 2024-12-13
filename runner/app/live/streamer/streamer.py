@@ -27,7 +27,7 @@ class InputStatus(BaseModel):
         return _convert_timestamps(super().model_dump(**kwargs))
 
 class InferenceStatus(BaseModel):
-    """Holds metrics for the output stream"""
+    """Holds metrics for the inference process"""
     last_output_time: float | None = None
     fps: float = 0.0
 
