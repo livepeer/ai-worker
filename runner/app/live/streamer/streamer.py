@@ -43,6 +43,19 @@ class PipelineStatus(BaseModel):
         self.last_params_hash = str(hash(str(sorted(params.items()))))
         return self
 
+    def model_dump(self, **kwargs):
+        data = super().model_dump(**kwargs)
+        # Convert all fields ending with _time to milliseconds
+        for field, value in data.items():
+            if field.endswith('_time'):
+                data[field] = _timestamp_to_ms(value)
+        return data
+
+
+def _timestamp_to_ms(v: float | None) -> int | None:
+    return int(v * 1000) if v is not None else None
+
+
 class PipelineStreamer:
     def __init__(self, protocol: StreamProtocol, pipeline: str, input_timeout: int, params: dict):
         self.protocol = protocol
@@ -175,6 +188,7 @@ class PipelineStreamer:
 
     async def _emit_monitoring_event(self, event: dict):
         """Protected method to emit monitoring event with lock"""
+        event["timestamp"] = _timestamp_to_ms(time.time())
         async with self.report_status_lock:
             try:
                 await self.protocol.emit_monitoring_event(event)
@@ -213,7 +227,7 @@ class PipelineStreamer:
 
             if self.input_timeout > 0 and time_since_last_input > self.input_timeout:
                 logging.info(f"Input stream stopped for {time_since_last_input} seconds. Shutting down...")
-                await asyncio.create_task(self.stop())
+                asyncio.create_task(self.stop())
                 return
 
             gone_stale = (
@@ -235,7 +249,7 @@ class PipelineStreamer:
                 logging.warning(
                     "No output received while inputs are being sent. Restarting process."
                 )
-                await self._restart()
+                asyncio.create_task(self._restart())
                 return
 
     async def run_ingress_loop(self, done: Event):
@@ -252,9 +266,9 @@ class PipelineStreamer:
 
                 # crop the max square from the center of the image and scale to 512x512
                 # most models expect this size especially when using tensorrt
-                if frame.size != (512, 512):
+                width, height = frame.size
+                if (width, height) != (512, 512):
                     frame_array = np.array(frame)
-                    height, width = frame_array.shape[:2]
 
                     if width != height:
                         square_size = min(width, height)
@@ -292,7 +306,7 @@ class PipelineStreamer:
             await self.stop()
         except Exception:
             logging.error("Error running ingress loop", exc_info=True)
-            await self._restart()
+            asyncio.create_task(self._restart())
 
     async def run_egress_loop(self, done: Event):
         async def gen_output_frames() -> AsyncGenerator[Image.Image, None]:
@@ -328,7 +342,7 @@ class PipelineStreamer:
             await self.stop()
         except Exception:
             logging.error("Error running egress loop", exc_info=True)
-            await self._restart()
+            asyncio.create_task(self._restart())
 
     async def run_control_loop(self):
         """Consumes control messages from the protocol and updates parameters"""
