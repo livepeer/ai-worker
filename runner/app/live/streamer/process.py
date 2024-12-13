@@ -53,7 +53,6 @@ class PipelineProcess:
             logging.error("Failed to terminate process, killing")
             self.process.kill()
 
-        # Clean up queues
         for q in [self.input_queue, self.output_queue, self.param_update_queue,
                   self.error_queue, self.log_queue]:
             q.cancel_join_thread()
