@@ -251,6 +251,7 @@ class PipelineStreamer:
     async def _emit_monitoring_event(self, event: dict):
         """Protected method to emit monitoring event with lock"""
         event["timestamp"] = _timestamp_to_ms(time.time())
+        logging.info(f"Emitting monitoring event: {event}")
         async with self.report_status_lock:
             try:
                 await self.protocol.emit_monitoring_event(event)
