@@ -63,11 +63,11 @@ class PipelineStatus(BaseModel):
     input_status: InputStatus = InputStatus()
     inference_status: InferenceStatus = InferenceStatus()
 
-    def update_params(self, params: dict, update_time: float | None = None):
+    def update_params(self, params: dict, do_update_time=True):
         self.inference_status.last_params = params
         self.inference_status.last_params_hash = str(hash(str(sorted(params.items()))))
-        if update_time:
-            self.inference_status.last_params_update_time = update_time
+        if do_update_time:
+            self.inference_status.last_params_update_time = time.time()
         return self
 
     def model_dump(self, **kwargs):
@@ -93,7 +93,7 @@ class PipelineStreamer:
         self.process = None
         self.input_timeout = input_timeout  # 0 means disabled
         self.done_future = None
-        self.status = PipelineStatus(pipeline=pipeline, start_time=time.time()).update_params(params)
+        self.status = PipelineStatus(pipeline=pipeline, start_time=time.time()).update_params(params, False)
         self.control_task = None
         self.report_status_task = None
         self.report_status_lock = Lock()
@@ -189,7 +189,7 @@ class PipelineStreamer:
         self.params = params
         if self.process:
             self.process.update_params(params)
-        self.status.update_params(params, update_time=time.time())
+        self.status.update_params(params)
 
         await self._emit_monitoring_event({
             "type": "params_update",
