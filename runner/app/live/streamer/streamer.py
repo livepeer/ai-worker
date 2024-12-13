@@ -231,7 +231,8 @@ class PipelineStreamer:
             return PipelineState.DEGRADED_INPUT
 
         inference = self.status.inference_status
-        if not inference.last_output_time and current_time - self.status.start_time < 30:
+        pipeline_load_time = max(self.status.start_time, inference.last_params_update_time or 0)
+        if not inference.last_output_time and current_time - pipeline_load_time < 30:
             # 30s grace period for the pipeline to start
             return PipelineState.ONLINE
 
