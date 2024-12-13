@@ -61,7 +61,7 @@ RUN cd /comfyui/custom_nodes && \
 RUN cd /comfyui/custom_nodes && \
     git clone https://github.com/pschroedl/ComfyUI-StreamDiffusion.git && \
     cd ComfyUI-StreamDiffusion && \
-    git checkout 032cf631385454ea99772c86377c0437c34ab733 && \
+    git checkout 32f88480736e30d6c1d97b9adfe483dd265769b3 && \
     pip install -r requirements.txt
 
 # Upgrade TensorRT to 10.6.0

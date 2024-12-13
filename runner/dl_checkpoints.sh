@@ -95,6 +95,7 @@ function download_live_models() {
     huggingface-cli download yuvraj108c/Depth-Anything-Onnx --include depth_anything_vitl14.onnx --local-dir models/ComfyUI--models/Depth-Anything-Onnx
     download_sam2_checkpoints
     download_stable_diffusion_checkpoints
+    download_stable_diffusion_loras
 }
 
 function download_sam2_checkpoints() {
@@ -106,6 +107,19 @@ function download_sam2_checkpoints() {
 function download_stable_diffusion_checkpoints() {
     huggingface-cli download KBlueLeaf/kohaku-v2.1 --local-dir models/models/ComfyUI--models/checkpoints --include "*.safetensors"
     huggingface-cli download stabilityai/sd-turbo --local-dir models/models/ComfyUI--models/checkpoints --include "*.safetensors"
+
+    # ComfyUI_StreamDIffusion is loading single file safetensors from /models/checkpoints
+    wget -P models/checkpoints/ https://huggingface.co/KBlueLeaf/kohaku-v2.1/resolve/main/kohaku-v2.1.safetensors
+    wget -P models/checkpoints/ https://huggingface.co/stabilityai/sd-turbo/resolve/main/sd_turbo.safetensors
+    # chenxxiao/3dCartoonVision_v10
+    wget -P models/checkpoints https://huggingface.co/chenxxiao/3dCartoonVision_v10/resolve/main/3dCartoonVision_v10.safetensors?download=true --content-disposition
+}
+
+function download_stable_diffusion_loras() {
+# ral-dissolve-sd15 LoRA
+    wget -P models/loras https://civitai.com/api/download/models/314246?type=Model&format=SafeTensor --content-disposition
+}
+
 }
 
 function build_tensorrt_models() {
