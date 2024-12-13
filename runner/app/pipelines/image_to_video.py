@@ -5,18 +5,12 @@ from typing import List, Optional, Tuple
 
 import PIL
 import torch
-from diffusers import StableVideoDiffusionPipeline
-from huggingface_hub import file_download
-from PIL import ImageFile
-from app.pipelines.utils import (
-    SafetyChecker,
-    get_model_dir,
-    get_torch_device
-)
-
 from app.pipelines.base import Pipeline
 from app.pipelines.utils import SafetyChecker, get_model_dir, get_torch_device
 from app.utils.errors import InferenceError
+from diffusers import StableVideoDiffusionPipeline
+from huggingface_hub import file_download
+from PIL import ImageFile
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
