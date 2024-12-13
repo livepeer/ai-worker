@@ -6,6 +6,8 @@ import numpy as np
 from multiprocessing.synchronize import Event
 from typing import AsyncGenerator
 from asyncio import Lock
+import hashlib
+import json
 
 import cv2
 from PIL import Image
@@ -64,7 +66,7 @@ class PipelineStatus(BaseModel):
 
     def update_params(self, params: dict, do_update_time=True):
         self.inference_status.last_params = params
-        self.inference_status.last_params_hash = str(hash(str(sorted(params.items()))))
+        self.inference_status.last_params_hash = hashlib.md5(json.dumps(params, sort_keys=True).encode()).hexdigest()
         if do_update_time:
             self.inference_status.last_params_update_time = time.time()
         return self
