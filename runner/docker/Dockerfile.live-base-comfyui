@@ -54,7 +54,7 @@ RUN cd /comfyui/custom_nodes && \
 RUN cd /comfyui/custom_nodes && \
     git clone https://github.com/ad-astra-video/ComfyUI-Florence2-Vision.git && \
     cd ComfyUI-Florence2-Vision && \
-    git checkout 9a39b33a0f34037ee65358f151f548f3331108af && \
+    git checkout e266d882eadf2a0f6486ecb8af1bbf1c4a894656 && \
     pip install -r requirements.txt
 
 # Install ComfyUI-StreamDiffusion (https://github.com/pschroedl/ComfyUI-StreamDiffusion.git)
