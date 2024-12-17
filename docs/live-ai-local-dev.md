@@ -3,8 +3,9 @@
 1. Run MediaMTX locally:
 
     ```bash
-    docker run --rm -d --network=host bluenviron/mediamtx:latest
+    docker run --rm -d -e MTX_API=yes -e MTX_METRICS=yes --network=host bluenviron/mediamtx:latest
     ```
+    See https://github.com/bluenviron/mediamtx/blob/main/README.md#configuration for details on setting env vars for configuration if need to add auth or change the address of the api/metrics.
 
 2. Download/compile the live models to `~/.lpdData/models`
 
