@@ -286,6 +286,7 @@ class PipelineStreamer:
                     frame_count = 0
                     start_time = time.time()
             # automatically stop the streamer when the ingress ends cleanly
+            logging.info("Ingress loop ended, stopping streamer")
             await self.stop()
         except Exception:
             logging.error("Error running ingress loop", exc_info=True)
@@ -322,6 +323,7 @@ class PipelineStreamer:
         try:
             await self.protocol.egress_loop(gen_output_frames())
             # automatically stop the streamer when the egress ends cleanly
+            logging.info("Egress loop ended, stopping streamer")
             await self.stop()
         except Exception:
             logging.error("Error running egress loop", exc_info=True)

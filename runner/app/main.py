@@ -2,7 +2,7 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from app.routes import health, hardware, status
+from app.routes import health, hardware
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from app.utils.hardware import HardwareInfo
@@ -25,7 +25,6 @@ async def lifespan(app: FastAPI):
 
     app.pipeline = load_pipeline(pipeline, model_id)
     app.include_router(load_route(pipeline))
-    app.include_router(status.router)
 
     app.hardware_info_service.log_gpu_compute_info()
     logger.info(f"Started up with pipeline {app.pipeline}")

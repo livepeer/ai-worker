@@ -6,15 +6,12 @@ import sys
 import threading
 import time
 from pathlib import Path
-from typing import Any
+from pydantic import BaseModel
 import http.client
 
 from app.pipelines.base import Pipeline, HealthCheck
 from app.pipelines.utils import get_model_dir, get_torch_device
 from app.utils.errors import InferenceError
-
-# We shouldn't normally import from live, but this is just a model class
-from live.streamer.status import PipelineStatus
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +51,10 @@ class LiveVideoToVideoPipeline(Pipeline):
         except Exception as e:
             raise InferenceError(original_exception=e)
 
-    def get_status(self) -> HealthCheck:
+    def get_health(self) -> HealthCheck:
+        if not self.process:
+            return HealthCheck(status="IDLE")
+
         try:
             conn = http.client.HTTPConnection("localhost", 8888)
             conn.request("GET", "/api/status")
@@ -63,10 +63,13 @@ class LiveVideoToVideoPipeline(Pipeline):
             if response.status != 200:
                 raise ConnectionError(response.reason)
 
-            status = PipelineStatus(**json.loads(response.read().decode()))
-            if status.state == "OFFLINE":
-                return HealthCheck(status="OFFLINE")
-            return HealthCheck(status="OK")
+            # Re-declare just the field we need from PipelineStatus to avoid importing from ..live code
+            class PipelineStatus(BaseModel):
+                state: str = "OFFLINE"
+
+            pipe_status = PipelineStatus(**json.loads(response.read().decode()))
+            health_status = "ERROR" if pipe_status.state == "OFFLINE" else "OK"
+            return HealthCheck(status=health_status)
         except Exception as e:
             logger.error(f"Failed to get status", exc_info=True)
             raise ConnectionError(f"Failed to get status: {e}")

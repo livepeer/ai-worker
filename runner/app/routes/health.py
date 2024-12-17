@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 @router.get("/health/", response_model=HealthCheck, include_in_schema=False)
 def health(pipeline: Pipeline = Depends(get_pipeline)) -> HealthCheck | JSONResponse:
     try:
-        return pipeline.get_status()
+        return pipeline.get_health()
     except Exception as e:
         logger.error(f"Error retrieving pipeline status: {e}")
         return JSONResponse(
