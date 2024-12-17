@@ -11,7 +11,7 @@ import json
 
 import cv2
 from PIL import Image
-from pydantic import BaseModel
+from pydantic import BaseModel, field_serializer
 
 from .process import PipelineProcess
 from .protocol.protocol import StreamProtocol
