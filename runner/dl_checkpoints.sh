@@ -109,15 +109,12 @@ function download_stable_diffusion_checkpoints() {
     huggingface-cli download stabilityai/sd-turbo --local-dir models/ComfyUI--models/checkpoints --include "*.safetensors"
 
     # ComfyUI_StreamDIffusion is loading single file safetensors from /models/checkpoints
-    wget -P models/checkpoints/ https://huggingface.co/KBlueLeaf/kohaku-v2.1/resolve/main/kohaku-v2.1.safetensors
-    wget -P models/checkpoints/ https://huggingface.co/stabilityai/sd-turbo/resolve/main/sd_turbo.safetensors
-    # chenxxiao/3dCartoonVision_v10
-    wget -P models/checkpoints https://huggingface.co/chenxxiao/3dCartoonVision_v10/resolve/main/3dCartoonVision_v10.safetensors?download=true --content-disposition
+    huggingface-cli download pschroedl/comfystream_checkpoints --local-dir models/checkpoints --include "*.safetensors"
 }
 
 function download_stable_diffusion_loras() {
     # ral-dissolve-sd15 LoRA
-    wget -P models/loras https://civitai.com/api/download/models/314246?type=Model&format=SafeTensor --content-disposition
+    huggingface-cli download pschroedl/comfystream_loras --local-dir models/loras --include "*.safetensors"
 }
 
 function build_tensorrt_models() {
