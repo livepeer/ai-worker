@@ -32,6 +32,7 @@ class LiveVideoToVideoPipeline(Pipeline):
     def __call__(  # type: ignore
         self, *, subscribe_url: str, publish_url: str, control_url: str, events_url: str, params: dict, **kwargs
     ):
+        # TODO: Change the logic here to instead kill the running process if it exists
         if self.process:
             raise RuntimeError("Pipeline already running")
 
