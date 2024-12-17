@@ -94,8 +94,9 @@ function download_live_models() {
     huggingface-cli download microsoft/Florence-2-base-ft --include "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models/ComfyUI--models
     huggingface-cli download yuvraj108c/Depth-Anything-Onnx --include depth_anything_vitl14.onnx --local-dir models/ComfyUI--models/Depth-Anything-Onnx
     download_sam2_checkpoints
-    download_stable_diffusion_checkpoints
-    download_stable_diffusion_loras
+    download_stream_diffusion_checkpoints
+    download_stream_diffusion_loras
+    huggingface-cli download Kijai/LivePortrait_safetensors --local-dir models/ComfyUI--models/livePortrait
 }
 
 function download_sam2_checkpoints() {
@@ -104,15 +105,12 @@ function download_sam2_checkpoints() {
     huggingface-cli download facebook/sam2-hiera-large --local-dir models/ComfyUI--models/sam2--checkpoints/facebook--sam2-hiera-large
 }
 
-function download_stable_diffusion_checkpoints() {
-    huggingface-cli download KBlueLeaf/kohaku-v2.1 --local-dir models/ComfyUI--models/checkpoints --include "*.safetensors"
-    huggingface-cli download stabilityai/sd-turbo --local-dir models/ComfyUI--models/checkpoints --include "*.safetensors"
-
-    # ComfyUI_StreamDIffusion is loading single file safetensors from /models/checkpoints
+function download_stream_diffusion_checkpoints() {
+    # ComfyUI_StreamDiffusion is loading single file safetensors from /models/checkpoints
     huggingface-cli download pschroedl/comfystream_checkpoints --local-dir models/checkpoints --include "*.safetensors"
 }
 
-function download_stable_diffusion_loras() {
+function download_stream_diffusion_loras() {
     # ral-dissolve-sd15 LoRA
     huggingface-cli download pschroedl/comfystream_loras --local-dir models/loras --include "*.safetensors"
 }

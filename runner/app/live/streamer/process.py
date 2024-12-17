@@ -5,6 +5,7 @@ import multiprocessing as mp
 import queue
 import sys
 import time
+from typing import Any
 
 from PIL import Image
 
@@ -52,10 +53,10 @@ class PipelineProcess:
             logging.error("Failed to terminate process, killing")
             self.process.kill()
 
-        for q in [self.input_queue, self.output_queue, self.param_update_queue, self.error_queue, self.log_queue]:
+        for q in [self.input_queue, self.output_queue, self.param_update_queue,
+                  self.error_queue, self.log_queue]:
             q.cancel_join_thread()
             q.close()
-        self.done = None
 
     def is_done(self):
         return self.done.is_set()
@@ -158,7 +159,7 @@ class PipelineProcess:
         sys.stdout = QueueTeeStream(sys.stdout, self)
         sys.stderr = QueueTeeStream(sys.stderr, self)
 
-    def _queue_put_fifo(self, _queue: mp.Queue, item: any):
+    def _queue_put_fifo(self, _queue: mp.Queue, item: Any):
         """Helper to put an item on a queue, dropping oldest items if needed"""
         while not self.is_done():
             try:

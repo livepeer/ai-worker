@@ -2,11 +2,12 @@ import asyncio
 import logging
 import os
 import time
-import traceback
 import numpy as np
 from multiprocessing.synchronize import Event
 from typing import AsyncGenerator
 from asyncio import Lock
+import hashlib
+import json
 
 import cv2
 from PIL import Image
@@ -18,39 +19,68 @@ from .protocol.protocol import StreamProtocol
 fps_log_interval = 10
 status_report_interval = 10
 
+class InputStatus(BaseModel):
+    """Holds metrics for the input stream"""
+    last_input_time: float | None = None
+    fps: float = 0.0
+
+    def model_dump(self, **kwargs):
+        return _convert_timestamps(super().model_dump(**kwargs))
+
+class InferenceStatus(BaseModel):
+    """Holds metrics for the inference process"""
+    last_output_time: float | None = None
+    fps: float = 0.0
+
+    last_params_update_time: float | None = None
+    last_params: dict | None = None
+    last_params_hash: str | None = None
+
+    last_error_time: float | None = None
+    last_error: str | None = None
+
+    last_restart_time: float | None = None
+    last_restart_logs: list[str] | None = None
+    restart_count: int = 0
+
+    def model_dump(self, **kwargs):
+        return _convert_timestamps(super().model_dump(**kwargs))
+
+# Use a class instead of an enum since Pydantic can't handle serializing enums
+class PipelineState:
+    OFFLINE = "OFFLINE"
+    ONLINE = "ONLINE"
+    DEGRADED_INPUT = "DEGRADED_INPUT"
+    DEGRADED_INFERENCE = "DEGRADED_INFERENCE"
+
 class PipelineStatus(BaseModel):
     """Holds metrics for the pipeline streamer"""
     type: str = "status"
     pipeline: str
     start_time: float
-    last_params_update_time: float | None = None
-    last_params: dict | None = None
-    last_params_hash: str | None = None
+    state: str = PipelineState.OFFLINE
+    last_state_update_time: float | None = None
 
-    input_fps: float = 0.0
-    output_fps: float = 0.0
-    last_input_time: float | None = None
-    last_output_time: float | None = None
+    input_status: InputStatus = InputStatus()
+    inference_status: InferenceStatus = InferenceStatus()
 
-    restart_count: int = 0
-    last_restart_time: float | None = None
-    last_restart_logs: list[str] | None = None  # Will contain last N lines before restart
-    last_error: str | None = None
-    last_error_time: float | None = None
-
-    def update_params(self, params: dict):
-        self.last_params = params
-        self.last_params_hash = str(hash(str(sorted(params.items()))))
+    def update_params(self, params: dict, do_update_time=True):
+        self.inference_status.last_params = params
+        self.inference_status.last_params_hash = hashlib.md5(json.dumps(params, sort_keys=True).encode()).hexdigest()
+        if do_update_time:
+            self.inference_status.last_params_update_time = time.time()
         return self
 
     def model_dump(self, **kwargs):
-        data = super().model_dump(**kwargs)
-        # Convert all fields ending with _time to milliseconds
-        for field, value in data.items():
-            if field.endswith('_time'):
-                data[field] = _timestamp_to_ms(value)
-        return data
+        return _convert_timestamps(super().model_dump(**kwargs))
 
+
+def _convert_timestamps(data: dict) -> dict:
+    """Convert timestamp fields ending with _time to milliseconds"""
+    for field, value in data.items():
+        if field.endswith('_time'):
+            data[field] = _timestamp_to_ms(value)
+    return data
 
 def _timestamp_to_ms(v: float | None) -> int | None:
     return int(v * 1000) if v is not None else None
@@ -64,7 +94,7 @@ class PipelineStreamer:
         self.process = None
         self.input_timeout = input_timeout  # 0 means disabled
         self.done_future = None
-        self.status = PipelineStatus(pipeline=pipeline, start_time=time.time()).update_params(params)
+        self.status = PipelineStatus(pipeline=pipeline, start_time=time.time()).update_params(params, False)
         self.control_task = None
         self.report_status_task = None
         self.report_status_lock = Lock()
@@ -132,23 +162,25 @@ class PipelineStreamer:
             # don't call the full start/stop methods since we don't want to restart the protocol
             await self._stop_process()
             self._start_process()
-            self.status.restart_count += 1
-            self.status.last_restart_time = time.time()
-            self.status.last_restart_logs = restart_logs
+            self.status.inference_status.restart_count += 1
+            self.status.inference_status.last_restart_time = time.time()
+            self.status.inference_status.last_restart_logs = restart_logs
             if last_error:
-                self.status.last_error = last_error
+                error_msg, error_time = last_error
+                self.status.inference_status.last_error = error_msg
+                self.status.inference_status.last_error_time = error_time
 
             await self._emit_monitoring_event({
                 "type": "restart",
                 "pipeline": self.pipeline,
-                "restart_count": self.status.restart_count,
-                "restart_time": self.status.last_restart_time,
+                "restart_count": self.status.inference_status.restart_count,
+                "restart_time": self.status.inference_status.last_restart_time,
                 "restart_logs": restart_logs,
                 "last_error": last_error
             })
 
             logging.info(
-                f"PipelineProcess restarted. Restart count: {self.status.restart_count}"
+                f"PipelineProcess restarted. Restart count: {self.status.inference_status.restart_count}"
             )
         except Exception:
             logging.error(f"Error restarting pipeline process", exc_info=True)
@@ -158,15 +190,14 @@ class PipelineStreamer:
         self.params = params
         if self.process:
             self.process.update_params(params)
-        self.status.last_params_update_time = time.time()
         self.status.update_params(params)
 
         await self._emit_monitoring_event({
             "type": "params_update",
             "pipeline": self.pipeline,
             "params": params,
-            "params_hash": self.status.last_params_hash,
-            "update_time": self.status.last_params_update_time
+            "params_hash": self.status.inference_status.last_params_hash,
+            "update_time": self.status.inference_status.last_params_update_time
         })
 
     async def report_status_loop(self):
@@ -180,15 +211,45 @@ class PipelineStreamer:
                 await asyncio.sleep(next_report - current_time)
                 next_report += status_report_interval
 
+            new_state = self._current_state()
+            if new_state != self.status.state:
+                self.status.state = new_state
+                self.status.last_state_update_time = current_time
+                logging.info(f"Pipeline state changed to {new_state}")
+
             event = self.status.model_dump()
             # Clear the large transient fields after reporting them once
-            self.status.last_params = None
-            self.status.last_restart_logs = None
+            self.status.inference_status.last_params = None
+            self.status.inference_status.last_restart_logs = None
             await self._emit_monitoring_event(event)
+
+    def _current_state(self) -> str:
+        current_time = time.time()
+        input = self.status.input_status
+        if not input.last_input_time or current_time - input.last_input_time > 60:
+            return PipelineState.OFFLINE
+        elif current_time - input.last_input_time > 2 or input.fps < 15:
+            return PipelineState.DEGRADED_INPUT
+
+        inference = self.status.inference_status
+        pipeline_load_time = max(self.status.start_time, inference.last_params_update_time or 0)
+        if not inference.last_output_time and current_time - pipeline_load_time < 30:
+            # 30s grace period for the pipeline to start
+            return PipelineState.ONLINE
+
+        delayed_frames = not inference.last_output_time or current_time - inference.last_output_time > 5
+        low_fps = inference.fps < min(10, 0.8 * input.fps)
+        recent_restart = inference.last_restart_time and current_time - inference.last_restart_time < 60
+        recent_error = inference.last_error_time and current_time - inference.last_error_time < 15
+        if delayed_frames or low_fps or recent_restart or recent_error:
+            return PipelineState.DEGRADED_INFERENCE
+
+        return PipelineState.ONLINE
 
     async def _emit_monitoring_event(self, event: dict):
         """Protected method to emit monitoring event with lock"""
         event["timestamp"] = _timestamp_to_ms(time.time())
+        logging.info(f"Emitting monitoring event: {event}")
         async with self.report_status_lock:
             try:
                 await self.protocol.emit_monitoring_event(event)
@@ -202,11 +263,11 @@ class PipelineStreamer:
             if not self.process:
                 return
 
-            error_info = self.process.get_last_error()
-            if error_info:
-                error_msg, error_time = error_info
-                self.status.last_error = error_msg
-                self.status.last_error_time = error_time
+            last_error = self.process.get_last_error()
+            if last_error:
+                error_msg, error_time = last_error
+                self.status.inference_status.last_error = error_msg
+                self.status.inference_status.last_error_time = error_time
                 await self._emit_monitoring_event({
                     "type": "error",
                     "pipeline": self.pipeline,
@@ -215,8 +276,8 @@ class PipelineStreamer:
                 })
 
             current_time = time.time()
-            last_input_time = self.status.last_input_time or start_time
-            last_output_time = self.status.last_output_time or start_time
+            last_input_time = self.status.input_status.last_input_time or start_time
+            last_output_time = self.status.inference_status.last_output_time or start_time
             last_params_update_time = self.status.last_params_update_time or start_time
 
             time_since_last_input = current_time - last_input_time
@@ -280,14 +341,14 @@ class PipelineStreamer:
 
                 logging.debug(f"Sending input frame. Scaled from {width}x{height} to {frame.size[0]}x{frame.size[1]}")
                 self.process.send_input(frame)
-                self.status.last_input_time = time.time()  # Track time after send completes
+                self.status.input_status.last_input_time = time.time()  # Track time after send completes
 
                 # Increment frame count and measure FPS
                 frame_count += 1
                 elapsed_time = time.time() - start_time
                 if elapsed_time >= fps_log_interval:
-                    self.status.input_fps = frame_count / elapsed_time
-                    logging.info(f"Input FPS: {self.status.input_fps:.2f}")
+                    self.status.input_status.fps = frame_count / elapsed_time
+                    logging.info(f"Input FPS: {self.status.input_status.fps:.2f}")
                     frame_count = 0
                     start_time = time.time()
             # automatically stop the streamer when the ingress ends cleanly
@@ -308,7 +369,7 @@ class PipelineStreamer:
                 if not output_image:
                     break
 
-                self.status.last_output_time = time.time()  # Track time after receive completes
+                self.status.inference_status.last_output_time = time.time()  # Track time after receive completes
                 logging.debug(
                     f"Output image received out_width: {output_image.width}, out_height: {output_image.height}"
                 )
@@ -319,8 +380,8 @@ class PipelineStreamer:
                 frame_count += 1
                 elapsed_time = time.time() - start_time
                 if elapsed_time >= fps_log_interval:
-                    self.status.output_fps = frame_count / elapsed_time
-                    logging.info(f"Output FPS: {self.status.output_fps:.2f}")
+                    self.status.inference_status.fps = frame_count / elapsed_time
+                    logging.info(f"Output FPS: {self.status.inference_status.fps:.2f}")
                     frame_count = 0
                     start_time = time.time()
 
