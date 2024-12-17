@@ -37,7 +37,7 @@ async def main(*, http_port: int, stream_protocol: str, subscribe_url: str, publ
     runner = None
     try:
         await streamer.start()
-        runner = await start_http_server(http_port, streamer.update_params)
+        runner = await start_http_server(http_port, streamer)
 
         tasks: List[asyncio.Task] = []
         tasks.append(streamer.wait())
