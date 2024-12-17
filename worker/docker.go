@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -479,22 +480,42 @@ func (m *DockerManager) watchContainer(rc *RunnerContainer, borrowCtx context.Co
 			m.returnContainer(rc)
 			return
 		case <-ticker.C:
-			ctx, cancel := context.WithTimeout(context.Background(), containerWatchInterval)
-			container, err := m.dockerClient.ContainerInspect(ctx, rc.ID)
-			cancel()
-
-			if docker.IsErrNotFound(err) {
-				// skip to destroy below to update internal state
-			} else if err != nil {
-				slog.Error("Error inspecting container",
+			resp, err := http.Get(rc.Endpoint.URL + "/health")
+			if err != nil {
+				slog.Error("Error calling /health endpoint",
 					slog.String("container", rc.Name),
 					slog.String("error", err.Error()))
-				continue
-			} else if container.State.Running {
-				continue
+				m.destroyContainer(rc, false)
+				return
 			}
-			m.destroyContainer(rc, false)
-			return
+			body, err := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if err != nil {
+				slog.Error("Error reading container health check response",
+					slog.String("container", rc.Name),
+					slog.String("error", err.Error()))
+				m.destroyContainer(rc, false)
+				return
+			}
+
+			if resp.StatusCode != http.StatusOK {
+				slog.Error("Container health check failed with status code",
+					slog.String("container", rc.Name),
+					slog.Int("status_code", resp.StatusCode))
+				m.destroyContainer(rc, false)
+				return
+			}
+
+			var healthStatus struct {
+				Status string `json:"status"`
+			}
+			if err := json.Unmarshal(body, &healthStatus); err != nil || healthStatus.Status != "OK" {
+				slog.Error("Container health check failed with response",
+					slog.String("container", rc.Name),
+					slog.Any("response", healthStatus))
+				m.destroyContainer(rc, false)
+				return
+			}
 		}
 	}
 }
