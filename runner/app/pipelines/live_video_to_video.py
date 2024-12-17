@@ -112,19 +112,23 @@ class LiveVideoToVideoPipeline(Pipeline):
                 else:
                     # If process exited cleanly (return code 0) and exit the main process
                     logger.info("infer.py process exited cleanly, shutting down...")
-                # propagate the exit code to the main process
-                os._exit(return_code)
+
+                self.stop_process(is_monitor_thread=True)
+                return
 
             logger.info("infer.py process is running...")
             time.sleep(10)
 
-    def stop_process(self):
+    def stop_process(self, is_monitor_thread: bool = False):
         if self.process:
             self.process.terminate()
-        if self.monitor_thread:
+            self.process = None
+        if self.monitor_thread and not is_monitor_thread:
             self.monitor_thread.join()
+            self.monitor_thread = None
         if self.log_thread:
             self.log_thread.join()
+            self.log_thread = None
 
     def __str__(self) -> str:
         return f"VideoToVideoPipeline model_id={self.model_id}"
