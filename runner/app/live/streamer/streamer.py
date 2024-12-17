@@ -206,17 +206,20 @@ class PipelineStreamer:
                 await asyncio.sleep(next_report - current_time)
                 next_report += status_report_interval
 
-            new_state = self._current_state()
-            if new_state != self.status.state:
-                self.status.state = new_state
-                self.status.last_state_update_time = current_time
-                logging.info(f"Pipeline state changed to {new_state}")
+            event = self.get_status().model_dump()
+            await self._emit_monitoring_event(event)
 
-            event = self.status.model_dump()
             # Clear the large transient fields after reporting them once
             self.status.inference_status.last_params = None
             self.status.inference_status.last_restart_logs = None
-            await self._emit_monitoring_event(event)
+
+    def get_status(self) -> PipelineStatus:
+        new_state = self._current_state()
+        if new_state != self.status.state:
+            self.status.state = new_state
+            self.status.last_state_update_time = time.time()
+            logging.info(f"Pipeline state changed to {new_state}")
+        return self.status.model_copy()
 
     def _current_state(self) -> str:
         current_time = time.time()
