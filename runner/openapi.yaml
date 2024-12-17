@@ -1013,6 +1013,10 @@ components:
       properties:
         status:
           type: string
+          enum:
+          - OK
+          - ERROR
+          - IDLE
           title: Status
           default: OK
       type: object
