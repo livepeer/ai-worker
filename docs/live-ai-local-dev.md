@@ -244,7 +244,6 @@
             {
                     "pipeline": "live-video-to-video",
                     "model_id": "streamdiffusion",
-                    "url": "http://127.0.0.1:8037",
                     "warm": true
             }
     ]
