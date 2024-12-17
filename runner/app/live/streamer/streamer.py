@@ -24,8 +24,9 @@ class InputStatus(BaseModel):
     last_input_time: float | None = None
     fps: float = 0.0
 
-    def model_dump(self, **kwargs):
-        return _convert_timestamps(super().model_dump(**kwargs))
+    @field_serializer('last_input_time')
+    def serialize_timestamps(self, v: float | None) -> int | None:
+        return _timestamp_to_ms(v)
 
 class InferenceStatus(BaseModel):
     """Holds metrics for the inference process"""
@@ -43,8 +44,9 @@ class InferenceStatus(BaseModel):
     last_restart_logs: list[str] | None = None
     restart_count: int = 0
 
-    def model_dump(self, **kwargs):
-        return _convert_timestamps(super().model_dump(**kwargs))
+    @field_serializer('last_output_time', 'last_params_update_time', 'last_error_time', 'last_restart_time')
+    def serialize_timestamps(self, v: float | None) -> int | None:
+        return _timestamp_to_ms(v)
 
 # Use a class instead of an enum since Pydantic can't handle serializing enums
 class PipelineState:
@@ -71,16 +73,9 @@ class PipelineStatus(BaseModel):
             self.inference_status.last_params_update_time = time.time()
         return self
 
-    def model_dump(self, **kwargs):
-        return _convert_timestamps(super().model_dump(**kwargs))
-
-
-def _convert_timestamps(data: dict) -> dict:
-    """Convert timestamp fields ending with _time to milliseconds"""
-    for field, value in data.items():
-        if field.endswith('_time'):
-            data[field] = _timestamp_to_ms(value)
-    return data
+    @field_serializer('start_time', 'last_state_update_time')
+    def serialize_timestamps(self, v: float | None) -> int | None:
+        return _timestamp_to_ms(v)
 
 def _timestamp_to_ms(v: float | None) -> int | None:
     return int(v * 1000) if v is not None else None
