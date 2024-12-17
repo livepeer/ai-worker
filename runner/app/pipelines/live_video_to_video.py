@@ -7,9 +7,14 @@ import threading
 import time
 from pathlib import Path
 
+import http.client
+
 from app.pipelines.base import Pipeline
 from app.pipelines.utils import get_model_dir, get_torch_device
 from app.utils.errors import InferenceError
+
+# We shouldn't normally import from live, but this is just a model class
+from live.streamer.status import PipelineStatus
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +53,21 @@ class LiveVideoToVideoPipeline(Pipeline):
             return
         except Exception as e:
             raise InferenceError(original_exception=e)
+
+    def get_status(self) -> PipelineStatus:
+        try:
+            conn = http.client.HTTPConnection("localhost", 8888)
+            conn.request("GET", "/api/status")
+            response = conn.getresponse()
+
+            if response.status != 200:
+                raise ConnectionError(response.reason)
+
+            status_data = json.loads(response.read().decode())
+            return PipelineStatus(**status_data)
+        except Exception as e:
+            logger.error(f"Failed to get status", exc_info=True)
+            raise ConnectionError(f"Failed to get status: {e}")
 
     def start_process(self, **kwargs):
         cmd = ["python", str(self.infer_script_path)]
