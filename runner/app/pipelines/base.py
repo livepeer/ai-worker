@@ -1,6 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
+from pydantic import BaseModel
+
+class HealthCheck(BaseModel):
+    status: str = "OK"
 
 class Pipeline(ABC):
     @abstractmethod
@@ -11,3 +15,9 @@ class Pipeline(ABC):
     @abstractmethod
     def __call__(self, **kwargs) -> Any:
         raise NotImplementedError("Pipeline should implement a __call__ method")
+
+    def get_status(self) -> HealthCheck:
+        """
+        Returns a status object for the pipeline.
+        """
+        return HealthCheck(status="OK")

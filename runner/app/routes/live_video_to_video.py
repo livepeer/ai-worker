@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Annotated, Any, Dict, Tuple, Union, cast
+from typing import Annotated, Any, Dict, Tuple, Union
 
 import torch
 import traceback
@@ -16,9 +16,6 @@ from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
-
-# We shouldn't normally import from live, but this is just a model class
-from live.streamer.status import PipelineStatus
 
 router = APIRouter()
 
@@ -145,31 +142,4 @@ async def live_video_to_video(
 
     # outputs unused for now; the orchestrator is setting these
     return {'publish_url':"", 'subscribe_url': "", 'control_url': ""}
-
-@router.get(
-    "/live-video-to-video/status",
-    response_model=PipelineStatus,
-    responses={
-        status.HTTP_200_OK: {"description": "Pipeline status retrieved successfully."},
-        status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPError},
-    },
-    description="Retrieve the current status of the live video-to-video pipeline.",
-    operation_id="getLiveVideoToVideoStatus",
-    summary="Get Live Video To Video Status",
-    tags=["status"],
-)
-async def get_live_video_to_video_status(
-    pipeline: Pipeline = Depends(get_pipeline),
-):
-    try:
-        from app.pipelines.live_video_to_video import LiveVideoToVideoPipeline
-        live_pipeline = cast(LiveVideoToVideoPipeline, pipeline)
-        status = live_pipeline.get_status()
-        return status
-    except Exception as e:
-        logger.error(f"Error retrieving pipeline status: {e}")
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=http_error("Failed to retrieve pipeline status."),
-        )
 

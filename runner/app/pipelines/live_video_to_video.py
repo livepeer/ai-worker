@@ -6,10 +6,10 @@ import sys
 import threading
 import time
 from pathlib import Path
-
+from typing import Any
 import http.client
 
-from app.pipelines.base import Pipeline
+from app.pipelines.base import Pipeline, HealthCheck
 from app.pipelines.utils import get_model_dir, get_torch_device
 from app.utils.errors import InferenceError
 
@@ -54,7 +54,7 @@ class LiveVideoToVideoPipeline(Pipeline):
         except Exception as e:
             raise InferenceError(original_exception=e)
 
-    def get_status(self) -> PipelineStatus:
+    def get_status(self) -> HealthCheck:
         try:
             conn = http.client.HTTPConnection("localhost", 8888)
             conn.request("GET", "/api/status")
@@ -63,8 +63,10 @@ class LiveVideoToVideoPipeline(Pipeline):
             if response.status != 200:
                 raise ConnectionError(response.reason)
 
-            status_data = json.loads(response.read().decode())
-            return PipelineStatus(**status_data)
+            status = PipelineStatus(**json.loads(response.read().decode()))
+            if status.state == "OFFLINE":
+                return HealthCheck(status="OFFLINE")
+            return HealthCheck(status="OK")
         except Exception as e:
             logger.error(f"Failed to get status", exc_info=True)
             raise ConnectionError(f"Failed to get status: {e}")
