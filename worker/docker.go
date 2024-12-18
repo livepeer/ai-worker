@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -469,7 +470,8 @@ func (m *DockerManager) watchContainer(rc *RunnerContainer, borrowCtx context.Co
 		if r := recover(); r != nil {
 			slog.Error("Panic in container watch routine",
 				slog.String("container", rc.Name),
-				slog.Any("panic", r))
+				slog.Any("panic", r),
+				slog.String("stack", string(debug.Stack())))
 		}
 	}()
 
@@ -518,7 +520,7 @@ func (m *DockerManager) watchContainer(rc *RunnerContainer, borrowCtx context.Co
 			switch status {
 			case "IDLE":
 				if time.Since(startTime) > pipelineStartGracePeriod {
-					slog.Error("Container is idle, returning to pool", slog.String("container", rc.Name))
+					slog.Info("Container is idle, returning to pool", slog.String("container", rc.Name))
 					m.returnContainer(rc)
 					return
 				}
