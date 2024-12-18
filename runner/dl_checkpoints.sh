@@ -126,11 +126,10 @@ function build_tensorrt_models() {
     printf "\nBuilding TensorRT models...\n"
 
     # StreamDiffusion (compile a matrix of models and timesteps)
-    docker pull ${AI_RUNNER_STREAMDIFFUSION_IMAGE:-livepeer/ai-runner:live-app-streamdiffusion}
     MODELS="stabilityai/sd-turbo KBlueLeaf/kohaku-v2.1"
     TIMESTEPS="3 4" # This is basically the supported sizes for the t_index_list
     docker run --rm -v ./models:/models --gpus all -l TensorRT-engines \
-        livepeer/ai-runner:live-app-streamdiffusion \
+        ${AI_RUNNER_STREAMDIFFUSION_IMAGE:-livepeer/ai-runner:live-app-streamdiffusion} \
         bash -c "for model in $MODELS; do
                     for timestep in $TIMESTEPS; do
                         echo \"Building TensorRT engines for model=\$model timestep=\$timestep...\" && \
@@ -139,9 +138,8 @@ function build_tensorrt_models() {
                 done"
 
     # FasterLivePortrait
-    docker pull ${AI_RUNNER_LIVEPORTRAIT_IMAGE:-livepeer/ai-runner:live-app-liveportrait}
     docker run --rm -v ./models:/models --gpus all -l TensorRT-engines  \
-        livepeer/ai-runner:live-app-liveportrait \
+        ${AI_RUNNER_LIVEPORTRAIT_IMAGE:-livepeer/ai-runner:live-app-liveportrait} \
         bash -c "cd /app/app/live/FasterLivePortrait && \
                     if [ ! -f '/models/FasterLivePortrait--checkpoints/liveportrait_onnx/stitching_lip.trt' ]; then
                         echo 'Building TensorRT engines for LivePortrait models (regular)...'
@@ -157,9 +155,8 @@ function build_tensorrt_models() {
                     fi"
 
     # ComfyUI (only DepthAnything for now)
-    docker pull ${AI_RUNNER_COMFYUI_IMAGE:-livepeer/ai-runner:live-app-comfyui}
     docker run --rm -v ./models:/models --gpus all -l TensorRT-engines \
-        livepeer/ai-runner:live-app-comfyui \
+        ${AI_RUNNER_COMFYUI_IMAGE:-livepeer/ai-runner:live-app-comfyui} \
         bash -c "cd /comfyui/models/Depth-Anything-Onnx && \
                     python /comfyui/custom_nodes/ComfyUI-Depth-Anything-Tensorrt/export_trt.py && \
                     mkdir -p /comfyui/models/tensorrt/depth-anything && \
