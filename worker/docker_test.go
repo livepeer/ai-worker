@@ -684,6 +684,22 @@ func TestDockerManager_watchContainer(t *testing.T) {
 			},
 		},
 		{
+			name: "UnknownStatus",
+			mockServerSetup: func(mockServer *MockServer) {
+				mockServer.On("ServeHTTP", "GET", "/health", mock.Anything).
+					Return(200, "application/json", `{"status":"HAPPY"}`).
+					Times(2)
+			},
+		},
+		{
+			name: "BadSchema",
+			mockServerSetup: func(mockServer *MockServer) {
+				mockServer.On("ServeHTTP", "GET", "/health", mock.Anything).
+					Return(200, "application/json", `{"status":1}`).
+					Times(2)
+			},
+		},
+		{
 			name: "HTTPError",
 			mockServerSetup: func(mockServer *MockServer) {
 				mockServer.On("ServeHTTP", "GET", "/health", mock.Anything).
@@ -727,8 +743,16 @@ func TestDockerManager_watchContainer(t *testing.T) {
 			mockDockerClient.On("ContainerStop", mock.Anything, rc.Name, mock.Anything).Return(nil).Once()
 			mockDockerClient.On("ContainerRemove", mock.Anything, rc.Name, mock.Anything).Return(nil).Once()
 
-			go dockerManager.watchContainer(rc, borrowCtx)
-			time.Sleep(50 * time.Millisecond) // Ensure the ticker triggers.
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				dockerManager.watchContainer(rc, borrowCtx)
+			}()
+			select {
+			case <-done:
+			case <-time.After(50 * time.Millisecond):
+				t.Fatal("watchContainer did not return")
+			}
 
 			// Verify that the container was destroyed.
 			_, exists := dockerManager.containers[rc.Name]
