@@ -496,11 +496,6 @@ func (m *DockerManager) watchContainer(rc *RunnerContainer, borrowCtx context.Co
 			ctx, cancel := context.WithTimeout(context.Background(), containerWatchInterval)
 			health, err := rc.Client.HealthWithResponse(ctx)
 			cancel()
-			slog.Debug("Health check response",
-				slog.String("error", err.Error()),
-				slog.String("status", health.Status()),
-				slog.Any("JSON200", health.JSON200),
-				slog.String("body", string(health.Body)))
 
 			if err != nil {
 				failures++
@@ -516,6 +511,10 @@ func (m *DockerManager) watchContainer(rc *RunnerContainer, borrowCtx context.Co
 					slog.String("body", string(health.Body)))
 				continue
 			}
+			slog.Debug("Health check response",
+				slog.String("status", health.Status()),
+				slog.Any("JSON200", health.JSON200),
+				slog.String("body", string(health.Body)))
 
 			status := health.JSON200.Status
 			switch status {
