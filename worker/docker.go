@@ -517,20 +517,16 @@ func (m *DockerManager) watchContainer(rc *RunnerContainer, borrowCtx context.Co
 				continue
 			}
 
-			status := HealthCheckStatus("UNKNOWN")
-			if health.JSON200.Status != nil {
-				status = *health.JSON200.Status
-			}
-
+			status := health.JSON200.Status
 			switch status {
-			case "IDLE":
+			case IDLE:
 				if time.Since(startTime) > pipelineStartGracePeriod {
 					slog.Info("Container is idle, returning to pool", slog.String("container", rc.Name))
 					m.returnContainer(rc)
 					return
 				}
 				fallthrough
-			case "OK":
+			case OK:
 				failures = 0
 				continue
 			default:

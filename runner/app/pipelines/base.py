@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class HealthCheck(BaseModel):
-    status: Literal["OK", "ERROR", "IDLE"] = "OK"
+    status: Literal["OK", "ERROR", "IDLE"] = Field(..., description="The health status of the pipeline")
 
 class Pipeline(ABC):
     @abstractmethod
