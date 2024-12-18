@@ -6,6 +6,7 @@ import sys
 import threading
 import time
 from pathlib import Path
+from typing import IO
 from pydantic import BaseModel
 import http.client
 
@@ -68,7 +69,12 @@ class LiveVideoToVideoPipeline(Pipeline):
                 state: str = "OFFLINE"
 
             pipe_status = PipelineStatus(**json.loads(response.read().decode()))
-            health_status = "ERROR" if pipe_status.state == "OFFLINE" else "OK"
+            health_status = "OK"
+            if pipe_status.state == "OFFLINE":
+                # The infer process is supposed to exit when it goes offline, so if we get this status it means an error
+                # and the worker is allowed to kill us.
+                health_status = "ERROR"
+
             return HealthCheck(status=health_status)
         except Exception as e:
             logger.error(f"Failed to get status", exc_info=True)
@@ -87,7 +93,7 @@ class LiveVideoToVideoPipeline(Pipeline):
                 cmd.extend([f"--{kebab_key}", f"{value}"])
 
         env = os.environ.copy()
-        env["HUGGINGFACE_HUB_CACHE"] = self.model_dir
+        env["HUGGINGFACE_HUB_CACHE"] = str(self.model_dir)
 
         try:
             self.process = subprocess.Popen(
@@ -104,6 +110,10 @@ class LiveVideoToVideoPipeline(Pipeline):
 
     def monitor_process(self):
         while True:
+            if not self.process:
+                logger.info("No process to monitor")
+                return
+
             return_code = self.process.poll()
             if return_code is not None:
                 logger.info(f"infer.py process completed. Return code: {return_code}")
@@ -125,6 +135,16 @@ class LiveVideoToVideoPipeline(Pipeline):
     def stop_process(self, is_monitor_thread: bool = False):
         if self.process:
             self.process.terminate()
+            try:
+                self.process.wait(timeout=10)
+            except TimeoutError:
+                try:
+                    logger.warning("Process did not terminate in time, force killing...")
+                    self.process.kill()
+                    self.process.wait(timeout=5)
+                except Exception as e:
+                    logger.error(f"Error while force killing process: {e}")
+                    os._exit(1)
             self.process = None
         if self.monitor_thread and not is_monitor_thread:
             self.monitor_thread.join()
@@ -132,11 +152,15 @@ class LiveVideoToVideoPipeline(Pipeline):
         if self.log_thread:
             self.log_thread.join()
             self.log_thread = None
+        logger.info("Infer process stopped successfully")
 
     def __str__(self) -> str:
         return f"VideoToVideoPipeline model_id={self.model_id}"
 
 
 def log_output(f):
-    for line in f:
-        sys.stderr.write(line)
+    try:
+        for line in f:
+            sys.stderr.write(line)
+    except Exception as e:
+        logger.error(f"Error while logging process output: {e}")
