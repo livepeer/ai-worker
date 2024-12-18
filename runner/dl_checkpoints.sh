@@ -87,12 +87,12 @@ function download_all_models() {
 function download_live_models() {
     huggingface-cli download KBlueLeaf/kohaku-v2.1 --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
     huggingface-cli download stabilityai/sd-turbo --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
-    huggingface-cli download warmshao/FasterLivePortrait --local-dir models/FasterLivePortrait--checkpoints
     huggingface-cli download microsoft/Florence-2-large --include "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models/ComfyUI--models
     huggingface-cli download microsoft/Florence-2-large-ft --include "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models/ComfyUI--models
     huggingface-cli download microsoft/Florence-2-base --include "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models/ComfyUI--models
     huggingface-cli download microsoft/Florence-2-base-ft --include "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models/ComfyUI--models
     huggingface-cli download yuvraj108c/Depth-Anything-Onnx --include depth_anything_vitl14.onnx --local-dir models/ComfyUI--models/Depth-Anything-Onnx
+    huggingface-cli download warmshao/FasterLivePortrait --local-dir models/ComfyUI--models/FasterLivePortrait--checkpoints
     download_sam2_checkpoints
     download_stream_diffusion_checkpoints
     download_stream_diffusion_loras
@@ -138,21 +138,21 @@ function build_tensorrt_models() {
                 done"
 
     # FasterLivePortrait
-    docker run --rm -v ./models:/models --gpus all -l TensorRT-engines  \
-        livepeer/ai-runner:live-app-liveportrait \
-        bash -c "cd /app/app/live/FasterLivePortrait && \
-                    if [ ! -f '/models/FasterLivePortrait--checkpoints/liveportrait_onnx/stitching_lip.trt' ]; then
-                        echo 'Building TensorRT engines for LivePortrait models (regular)...'
-                        sh scripts/all_onnx2trt.sh
-                    else
-                        echo 'Regular LivePortrait TensorRT engines already exist, skipping build'
-                    fi && \
-                    if [ ! -f '/models/FasterLivePortrait--checkpoints/liveportrait_animal_onnx/stitching_lip.trt' ]; then
-                        echo 'Building TensorRT engines for LivePortrait models (animal)...'
-                        sh scripts/all_onnx2trt_animal.sh
-                    else
-                        echo 'Animal LivePortrait TensorRT engines already exist, skipping build'
-                    fi"
+    # docker run --rm -v ./models:/models --gpus all -l TensorRT-engines  \
+    #     livepeer/ai-runner:live-app-liveportrait \
+    #     bash -c "cd /app/app/live/FasterLivePortrait && \
+    #                 if [ ! -f '/models/FasterLivePortrait--checkpoints/liveportrait_onnx/stitching_lip.trt' ]; then
+    #                     echo 'Building TensorRT engines for LivePortrait models (regular)...'
+    #                     sh scripts/all_onnx2trt.sh
+    #                 else
+    #                     echo 'Regular LivePortrait TensorRT engines already exist, skipping build'
+    #                 fi && \
+    #                 if [ ! -f '/models/FasterLivePortrait--checkpoints/liveportrait_animal_onnx/stitching_lip.trt' ]; then
+    #                     echo 'Building TensorRT engines for LivePortrait models (animal)...'
+    #                     sh scripts/all_onnx2trt_animal.sh
+    #                 else
+    #                     echo 'Animal LivePortrait TensorRT engines already exist, skipping build'
+    #                 fi"
 
     # ComfyUI (only DepthAnything for now)
     docker run --rm -v ./models:/models --gpus all -l TensorRT-engines \
@@ -160,7 +160,22 @@ function build_tensorrt_models() {
         bash -c "cd /comfyui/models/Depth-Anything-Onnx && \
                     python /comfyui/custom_nodes/ComfyUI-Depth-Anything-Tensorrt/export_trt.py && \
                     mkdir -p /comfyui/models/tensorrt/depth-anything && \
-                    mv *.engine /comfyui/models/tensorrt/depth-anything"
+                    mv *.engine /comfyui/models/tensorrt/depth-anything" \
+        bash -c "cd /comfyui/models/FasterLivePortrait--checkpoints && \
+                    if [ ! -f 'liveportrait_onnx/stitching_lip.trt' ]; then
+                        echo 'Building TensorRT engines for LivePortrait models (regular)...'
+                        sh /comfyui/custom_nodes/ComfyUI-FasterLivePortrait/FasterLivePortrait/scripts/all_onnx2trt.sh
+                    else
+                        echo 'Regular LivePortrait TensorRT engines already exist, skipping build'
+                    fi && \
+                    if [ ! -f 'liveportrait_animal_onnx/stitching_lip.trt' ]; then
+                        echo 'Building TensorRT engines for LivePortrait models (animal)...'
+                        sh /comfyui/custom_nodes/ComfyUI-FasterLivePortrait/FasterLivePortrait/scripts/all_onnx2trt_animal.sh
+                    else
+                        echo 'Animal LivePortrait TensorRT engines already exist, skipping build'
+                    fi \
+                    mv *.engine /comfyui/models/tensorrt/fasterliveportrait"
+
 }
 
 # Download models with a restrictive license.

@@ -75,6 +75,12 @@ RUN cd /comfyui/custom_nodes && \
 RUN cd /comfyui/custom_nodes && \
 git clone https://github.com/tsogzark/ComfyUI-load-image-from-url.git
 
+# Install ComfyUI-FasterLivePortrait (https://github.com/emranemran/ComfyUI-FasterLivePortrait)
+RUN cd /comfyui/custom_nodes && \
+    git clone https://github.com/emranemran/ComfyUI-FasterLivePortrait && \
+    cd ComfyUI-FasterLivePortrait && \
+    pip install -r requirements.txt
+
 # Upgrade TensorRT to 10.6.0
 RUN pip uninstall -y tensorrt && \
     pip install tensorrt==10.6.0
