@@ -126,7 +126,7 @@ function build_tensorrt_models() {
     printf "\nBuilding TensorRT models...\n"
 
     # StreamDiffusion (compile a matrix of models and timesteps)
-    docker pull livepeer/ai-runner:live-app-streamdiffusion
+    docker pull ${AI_RUNNER_STREAMDIFFUSION_IMAGE:-livepeer/ai-runner:live-app-streamdiffusion}
     MODELS="stabilityai/sd-turbo KBlueLeaf/kohaku-v2.1"
     TIMESTEPS="3 4" # This is basically the supported sizes for the t_index_list
     docker run --rm -v ./models:/models --gpus all -l TensorRT-engines \
@@ -139,6 +139,7 @@ function build_tensorrt_models() {
                 done"
 
     # FasterLivePortrait
+    docker pull ${AI_RUNNER_LIVEPORTRAIT_IMAGE:-livepeer/ai-runner:live-app-liveportrait}
     docker run --rm -v ./models:/models --gpus all -l TensorRT-engines  \
         livepeer/ai-runner:live-app-liveportrait \
         bash -c "cd /app/app/live/FasterLivePortrait && \
@@ -156,7 +157,7 @@ function build_tensorrt_models() {
                     fi"
 
     # ComfyUI (only DepthAnything for now)
-    docker pull livepeer/ai-runner:live-app-comfyui
+    docker pull ${AI_RUNNER_COMFYUI_IMAGE:-livepeer/ai-runner:live-app-comfyui}
     docker run --rm -v ./models:/models --gpus all -l TensorRT-engines \
         livepeer/ai-runner:live-app-comfyui \
         bash -c "cd /comfyui/models/Depth-Anything-Onnx && \
