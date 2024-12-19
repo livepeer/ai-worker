@@ -86,9 +86,17 @@ class TrickleSubscriber:
     async def close(self):
         """Close the session when done."""
         logging.info(f"Closing {self.base_url}")
-        if self.pending_get:
-            await self.pending_get.close()
-        await self.session.close()
+        async with self.lock:
+            if self.pending_get:
+                self.pending_get.close()
+                self.pending_get = None
+            if self.session:
+                try:
+                    await self.session.close()
+                except Exception:
+                    logging.error(f"Error closing trickle subscriber", exc_info=True)
+                finally:
+                    self.session = None
 
 class Segment:
     def __init__(self, response):

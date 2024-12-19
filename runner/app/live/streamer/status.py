@@ -14,7 +14,7 @@ class InputStatus(BaseModel):
 
     @field_serializer('last_input_time')
     def serialize_timestamps(self, v: float | None) -> int | None:
-        return _timestamp_to_ms(v)
+        return timestamp_to_ms(v)
 
 class InferenceStatus(BaseModel):
     """Holds metrics for the inference process"""
@@ -34,7 +34,7 @@ class InferenceStatus(BaseModel):
 
     @field_serializer('last_output_time', 'last_params_update_time', 'last_error_time', 'last_restart_time')
     def serialize_timestamps(self, v: float | None) -> int | None:
-        return _timestamp_to_ms(v)
+        return timestamp_to_ms(v)
 
 # Use a class instead of an enum since Pydantic can't handle serializing enums
 class PipelineState:
@@ -63,7 +63,7 @@ class PipelineStatus(BaseModel):
 
     @field_serializer('start_time', 'last_state_update_time')
     def serialize_timestamps(self, v: float | None) -> int | None:
-        return _timestamp_to_ms(v)
+        return timestamp_to_ms(v)
 
-def _timestamp_to_ms(v: float | None) -> int | None:
+def timestamp_to_ms(v: float | None) -> int | None:
     return int(v * 1000) if v is not None else None

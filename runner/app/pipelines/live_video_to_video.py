@@ -4,8 +4,8 @@ import os
 import subprocess
 import sys
 import threading
-import time
 from pathlib import Path
+import time
 from typing import IO
 from pydantic import BaseModel
 import http.client
@@ -111,33 +111,36 @@ class LiveVideoToVideoPipeline(Pipeline):
     def monitor_process(self):
         while True:
             if not self.process:
-                logger.info("No process to monitor")
+                logger.error("No process to monitor")
                 return
 
-            return_code = self.process.poll()
-            if return_code is not None:
-                logger.info(f"infer.py process completed. Return code: {return_code}")
-                if return_code != 0:
-                    _, stderr = self.process.communicate()
-                    logger.error(
-                        f"infer.py process failed with return code {return_code}. Error: {stderr}"
-                    )
-                else:
-                    # If process exited cleanly (return code 0) and exit the main process
-                    logger.info("infer.py process exited cleanly, shutting down...")
+            return_code: int
+            try:
+                return_code = self.process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                logger.info("infer.py process is running...")
+                continue
+            except Exception:
+                logger.error(f"Error while waiting for infer.py process to exit", exc_info=True)
+                time.sleep(5)
+                continue
 
-                self.stop_process(is_monitor_thread=True)
-                return
+            logger.info(f"infer.py process exited, cleaning up state... Return code: {return_code}")
+            if return_code != 0:
+                _, stderr = self.process.communicate()
+                logger.error(
+                    f"infer.py process failed with return code {return_code}. Error: {stderr}"
+                )
 
-            logger.info("infer.py process is running...")
-            time.sleep(10)
+            self.stop_process(is_monitor_thread=True)
+            return
 
     def stop_process(self, is_monitor_thread: bool = False):
         if self.process:
             self.process.terminate()
             try:
                 self.process.wait(timeout=10)
-            except TimeoutError:
+            except subprocess.TimeoutExpired:
                 try:
                     logger.warning("Process did not terminate in time, force killing...")
                     self.process.kill()
@@ -158,9 +161,9 @@ class LiveVideoToVideoPipeline(Pipeline):
         return f"VideoToVideoPipeline model_id={self.model_id}"
 
 
-def log_output(f):
+def log_output(f: IO[str]):
     try:
         for line in f:
-            sys.stderr.write(line)
+            sys.stderr.write(f"[infer.py] {line}")
     except Exception as e:
         logger.error(f"Error while logging process output: {e}")

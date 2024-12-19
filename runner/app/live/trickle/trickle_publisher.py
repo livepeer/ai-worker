@@ -51,6 +51,12 @@ class TricklePublisher:
             logging.error(f"Trickle POST  exception {self.streamIdx()} - {e}")
         return None
 
+    async def _run_delete(self):
+        try:
+            await self.session.delete(self.url)
+        except Exception:
+            logging.error(f"Error sending trickle delete request", exc_info=True)
+
     async def _stream_data(self, queue):
         """Stream data from the queue for the POST request."""
         while True:
@@ -88,11 +94,19 @@ class TricklePublisher:
     async def close(self):
         """Close the session when done."""
         logging.info(f"Closing {self.url}")
-        if self.next_writer:
-            s = SegmentWriter(self.next_writer)
-            await s.close()
-        await self.session.delete(self.url)
-        await self.session.close()
+        async with self.lock:
+            if self.next_writer:
+                s = SegmentWriter(self.next_writer)
+                await s.close()
+                self.next_writer = None
+            if self.session:
+                try:
+                    await self._run_delete()
+                    await self.session.close()
+                except Exception:
+                    logging.error(f"Error closing trickle subscriber", exc_info=True)
+                finally:
+                    self.session = None
 
 class SegmentWriter:
     def __init__(self, queue: asyncio.Queue):
