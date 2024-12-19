@@ -72,9 +72,27 @@ class TextResponse(BaseModel):
     chunks: List[Chunk] = Field(..., description="The generated text chunks.")
 
 
+class LLMMessage(BaseModel):
+    role: str
+    content: str
+
+
+class LLMRequest(BaseModel):
+    messages: List[LLMMessage]
+    model_id: str = ""
+    temperature: float = 0.7
+    max_tokens: int = 256
+    top_p: float = 1.0
+    top_k: int = -1
+    stream: bool = False
+
+
 class LLMResponse(BaseModel):
     response: str
     tokens_used: int
+    id: str
+    model: str
+    created: int
 
 
 class ImageToTextResponse(BaseModel):
