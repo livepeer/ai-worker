@@ -46,11 +46,11 @@ async def llm(
                 content=http_error("Invalid bearer token"),
             )
 
-    if request.model_id != "" and request.model_id != pipeline.model_id:
+    if request.model != "" and request.model != pipeline.model_id:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=http_error(
-                f"pipeline configured with {pipeline.model_id} but called with {request.model_id}"
+                f"pipeline configured with {pipeline.model_id} but called with {request.model}"
             ),
         )
 

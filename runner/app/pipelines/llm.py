@@ -3,7 +3,6 @@ import logging
 import os
 import time
 from dataclasses import dataclass
-from functools import lru_cache
 from typing import Dict, Any, List, AsyncGenerator, Union, Optional
 
 from app.pipelines.base import Pipeline

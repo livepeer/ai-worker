@@ -79,7 +79,7 @@ class LLMMessage(BaseModel):
 
 class LLMRequest(BaseModel):
     messages: List[LLMMessage]
-    model_id: str = ""
+    model: str = ""
     temperature: float = 0.7
     max_tokens: int = 256
     top_p: float = 1.0
@@ -118,6 +118,7 @@ class LiveVideoToVideoResponse(BaseModel):
         default='',
         description="URL for subscribing to events for pipeline status and logs",
     )
+
 
 class APIError(BaseModel):
     """API error response model."""
