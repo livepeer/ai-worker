@@ -199,6 +199,18 @@ type BodyGenUpscale struct {
 	Seed *int `json:"seed,omitempty"`
 }
 
+// BodyLivePortraitLivePortraitPost defines model for Body_live_portrait_live_portrait_post.
+type BodyLivePortraitLivePortraitPost struct {
+	// DrivingVideo Uploaded driving video to guide the animation.
+	DrivingVideo openapi_types.File `json:"driving_video"`
+
+	// ModelId No model id needed as leave empty.
+	ModelId *string `json:"model_id,omitempty"`
+
+	// SourceImage Uploaded source image to animate.
+	SourceImage openapi_types.File `json:"source_image"`
+}
+
 // Chunk A chunk of text with a timestamp.
 type Chunk struct {
 	// Text The text of the chunk.
@@ -230,7 +242,7 @@ type GPUUtilizationInfo struct {
 
 // HTTPError HTTP error response model.
 type HTTPError struct {
-	// Detail Detailed error information.
+	// Detail API error response model.
 	Detail APIError `json:"detail"`
 }
 
@@ -435,6 +447,9 @@ type GenImageToTextMultipartRequestBody = BodyGenImageToText
 // GenImageToVideoMultipartRequestBody defines body for GenImageToVideo for multipart/form-data ContentType.
 type GenImageToVideoMultipartRequestBody = BodyGenImageToVideo
 
+// LivePortraitLivePortraitPostMultipartRequestBody defines body for LivePortraitLivePortraitPost for multipart/form-data ContentType.
+type LivePortraitLivePortraitPostMultipartRequestBody = BodyLivePortraitLivePortraitPost
+
 // GenLiveVideoToVideoJSONRequestBody defines body for GenLiveVideoToVideo for application/json ContentType.
 type GenLiveVideoToVideoJSONRequestBody = LiveVideoToVideoParams
 
@@ -609,6 +624,9 @@ type ClientInterface interface {
 	// GenImageToVideoWithBody request with any body
 	GenImageToVideoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// LivePortraitLivePortraitPostWithBody request with any body
+	LivePortraitLivePortraitPostWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GenLiveVideoToVideoWithBody request with any body
 	GenLiveVideoToVideoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -710,6 +728,18 @@ func (c *Client) GenImageToTextWithBody(ctx context.Context, contentType string,
 
 func (c *Client) GenImageToVideoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGenImageToVideoRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) LivePortraitLivePortraitPostWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLivePortraitLivePortraitPostRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1037,7 +1067,36 @@ func NewGenImageToVideoRequestWithBody(server string, contentType string, body i
 	return req, nil
 }
 
-// NewGenLiveVideoToVideoRequest calls the generic GenLiveVideoToVideo builder with application/json body
+// NewLivePortraitLivePortraitPostRequestWithBody generates requests for LivePortraitLivePortraitPost with any type of body
+func NewLivePortraitLivePortraitPostRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/live-portrait")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+	// NewGenLiveVideoToVideoRequest calls the generic GenLiveVideoToVideo builder with application/json body
 func NewGenLiveVideoToVideoRequest(server string, body GenLiveVideoToVideoJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
@@ -1319,6 +1378,9 @@ type ClientWithResponsesInterface interface {
 	// GenImageToVideoWithBodyWithResponse request with any body
 	GenImageToVideoWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenImageToVideoResponse, error)
 
+	// LivePortraitLivePortraitPostWithBodyWithResponse request with any body
+	LivePortraitLivePortraitPostWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LivePortraitLivePortraitPostResponse, error)
+
 	// GenLiveVideoToVideoWithBodyWithResponse request with any body
 	GenLiveVideoToVideoWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenLiveVideoToVideoResponse, error)
 
@@ -1513,6 +1575,32 @@ func (r GenImageToVideoResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GenImageToVideoResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type LivePortraitLivePortraitPostResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *VideoResponse
+	JSON400      *HTTPError
+	JSON401      *HTTPError
+	JSON422      *HTTPValidationError
+	JSON500      *HTTPError
+}
+
+// Status returns HTTPResponse.Status
+func (r LivePortraitLivePortraitPostResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r LivePortraitLivePortraitPostResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1736,6 +1824,15 @@ func (c *ClientWithResponses) GenImageToVideoWithBodyWithResponse(ctx context.Co
 		return nil, err
 	}
 	return ParseGenImageToVideoResponse(rsp)
+}
+
+// LivePortraitLivePortraitPostWithBodyWithResponse request with arbitrary body returning *LivePortraitLivePortraitPostResponse
+func (c *ClientWithResponses) LivePortraitLivePortraitPostWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LivePortraitLivePortraitPostResponse, error) {
+	rsp, err := c.LivePortraitLivePortraitPostWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseLivePortraitLivePortraitPostResponse(rsp)
 }
 
 // GenLiveVideoToVideoWithBodyWithResponse request with arbitrary body returning *GenLiveVideoToVideoResponse
@@ -2139,6 +2236,60 @@ func ParseGenImageToVideoResponse(rsp *http.Response) (*GenImageToVideoResponse,
 	return response, nil
 }
 
+// ParseLivePortraitLivePortraitPostResponse parses an HTTP response from a LivePortraitLivePortraitPostWithResponse call
+func ParseLivePortraitLivePortraitPostResponse(rsp *http.Response) (*LivePortraitLivePortraitPostResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &LivePortraitLivePortraitPostResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest VideoResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest HTTPValidationError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGenLiveVideoToVideoResponse parses an HTTP response from a GenLiveVideoToVideoWithResponse call
 func ParseGenLiveVideoToVideoResponse(rsp *http.Response) (*GenLiveVideoToVideoResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -2489,6 +2640,9 @@ type ServerInterface interface {
 	// Live Video To Video
 	// (POST /live-video-to-video)
 	GenLiveVideoToVideo(w http.ResponseWriter, r *http.Request)
+	// Live Portrait
+	// (POST /live-portrait)
+	LivePortraitLivePortraitPost(w http.ResponseWriter, r *http.Request)
 	// LLM
 	// (POST /llm)
 	GenLLM(w http.ResponseWriter, r *http.Request)
@@ -2555,6 +2709,12 @@ func (_ Unimplemented) GenImageToVideo(w http.ResponseWriter, r *http.Request) {
 // Live Video To Video
 // (POST /live-video-to-video)
 func (_ Unimplemented) GenLiveVideoToVideo(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Live Portrait
+// (POST /live-portrait)
+func (_ Unimplemented) LivePortraitLivePortraitPost(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -2701,6 +2861,23 @@ func (siw *ServerInterfaceWrapper) GenImageToVideo(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GenImageToVideo(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// LivePortraitLivePortraitPost operation middleware
+func (siw *ServerInterfaceWrapper) LivePortraitLivePortraitPost(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, HTTPBearerScopes, []string{})
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.LivePortraitLivePortraitPost(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2945,6 +3122,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/image-to-video", wrapper.GenImageToVideo)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/live-portrait", wrapper.LivePortraitLivePortraitPost)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/live-video-to-video", wrapper.GenLiveVideoToVideo)
