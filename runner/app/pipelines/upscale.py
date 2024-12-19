@@ -88,7 +88,7 @@ class UpscalePipeline(Pipeline):
         elif deepcache_enabled:
             logger.warning(
                 "DeepCache is not supported for Lightning or Turbo models. "
-                "TextToImagePipeline will NOT be optimized with DeepCache for %s",
+                "UpscalingPiepline will NOT be optimized with DeepCache for %s",
                 model_id,
             )
 

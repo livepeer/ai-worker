@@ -50,12 +50,14 @@ var containerHostPorts = map[string]string{
 	"image-to-text":       "8700",
 	"text-to-speech":      "8800",
 	"live-video-to-video": "8900",
+	"frame-interpolation": "9000",
 }
 
 // Mapping for per pipeline container images.
 var pipelineToImage = map[string]string{
 	"segment-anything-2": "livepeer/ai-runner:segment-anything-2",
 	"text-to-speech":     "livepeer/ai-runner:text-to-speech",
+	"frame-interpolation": "livepeer/ai-runner:frame-interpolation",	
 	"audio-to-text":      "livepeer/ai-runner:audio-to-text",
 }
 
