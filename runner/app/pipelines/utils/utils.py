@@ -82,6 +82,22 @@ def is_turbo_model(model_id: str) -> bool:
         True if the model is a Turbo model, False otherwise.
     """
     return re.search(r"[-_]turbo", model_id, re.IGNORECASE) is not None
+ 
+
+def is_numeric(val: Any) -> bool:
+    """Check if the given value is numeric.
+
+    Args:
+        s: Value to check.
+
+    Returns:
+        True if the value is numeric, False otherwise.
+    """
+    try:
+        float(val)
+        return True
+    except (ValueError, TypeError):
+        return False
 
 
 def split_prompt(
@@ -123,7 +139,6 @@ def split_prompt(
     )
 
     return prompt_dict
-
 
 class SafetyChecker:
     """Checks images for unsafe or inappropriate content using a pretrained model.
@@ -182,23 +197,6 @@ class SafetyChecker:
             clip_input=safety_checker_input.pixel_values.to(self._dtype),
         )
         return images, has_nsfw_concept
-
-
-def is_numeric(val: Any) -> bool:
-    """Check if the given value is numeric.
-
-    Args:
-        s: Value to check.
-
-    Returns:
-        True if the value is numeric, False otherwise.
-    """
-    try:
-        float(val)
-        return True
-    except (ValueError, TypeError):
-        return False
-
 
 class LoraLoadingError(Exception):
     """Exception raised for errors during LoRa loading."""

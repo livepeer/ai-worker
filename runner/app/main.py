@@ -20,8 +20,8 @@ async def lifespan(app: FastAPI):
     app.include_router(health.router)
     app.include_router(hardware.router)
 
-    pipeline = os.environ["PIPELINE"]
-    model_id = os.environ["MODEL_ID"]
+    pipeline = os.environ.get("PIPELINE", "")
+    model_id = os.environ.get("MODEL_ID", "")
 
     app.pipeline = load_pipeline(pipeline, model_id)
     app.include_router(load_route(pipeline))
