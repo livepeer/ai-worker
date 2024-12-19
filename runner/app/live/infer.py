@@ -15,7 +15,7 @@ from streamer import PipelineStreamer
 infer_root = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, infer_root)
 
-from params_api import start_http_server
+from api import start_http_server
 from streamer.protocol.trickle import TrickleProtocol
 from streamer.protocol.zeromq import ZeroMQProtocol
 
@@ -34,10 +34,10 @@ async def main(*, http_port: int, stream_protocol: str, subscribe_url: str, publ
 
     streamer = PipelineStreamer(protocol, pipeline, input_timeout, params or {})
 
-    runner = None
+    api = None
     try:
         await streamer.start()
-        runner = await start_http_server(http_port, streamer.update_params)
+        api = await start_http_server(http_port, streamer)
 
         tasks: List[asyncio.Task] = []
         tasks.append(streamer.wait())
@@ -51,8 +51,8 @@ async def main(*, http_port: int, stream_protocol: str, subscribe_url: str, publ
         logging.error(f"Stack trace:\n{traceback.format_exc()}")
         raise e
     finally:
-        await runner.cleanup()
         await streamer.stop()
+        await api.cleanup()
 
 
 async def block_until_signal(sigs: List[signal.Signals]):

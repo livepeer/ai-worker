@@ -4,82 +4,18 @@ import os
 import time
 import numpy as np
 from multiprocessing.synchronize import Event
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Awaitable
 from asyncio import Lock
-import hashlib
-import json
 
 import cv2
 from PIL import Image
-from pydantic import BaseModel, field_serializer
 
 from .process import PipelineProcess
 from .protocol.protocol import StreamProtocol
+from .status import PipelineStatus, PipelineState, timestamp_to_ms
 
 fps_log_interval = 10
 status_report_interval = 10
-
-class InputStatus(BaseModel):
-    """Holds metrics for the input stream"""
-    last_input_time: float | None = None
-    fps: float = 0.0
-
-    @field_serializer('last_input_time')
-    def serialize_timestamps(self, v: float | None) -> int | None:
-        return _timestamp_to_ms(v)
-
-class InferenceStatus(BaseModel):
-    """Holds metrics for the inference process"""
-    last_output_time: float | None = None
-    fps: float = 0.0
-
-    last_params_update_time: float | None = None
-    last_params: dict | None = None
-    last_params_hash: str | None = None
-
-    last_error_time: float | None = None
-    last_error: str | None = None
-
-    last_restart_time: float | None = None
-    last_restart_logs: list[str] | None = None
-    restart_count: int = 0
-
-    @field_serializer('last_output_time', 'last_params_update_time', 'last_error_time', 'last_restart_time')
-    def serialize_timestamps(self, v: float | None) -> int | None:
-        return _timestamp_to_ms(v)
-
-# Use a class instead of an enum since Pydantic can't handle serializing enums
-class PipelineState:
-    OFFLINE = "OFFLINE"
-    ONLINE = "ONLINE"
-    DEGRADED_INPUT = "DEGRADED_INPUT"
-    DEGRADED_INFERENCE = "DEGRADED_INFERENCE"
-
-class PipelineStatus(BaseModel):
-    """Holds metrics for the pipeline streamer"""
-    type: str = "status"
-    pipeline: str
-    start_time: float
-    state: str = PipelineState.OFFLINE
-    last_state_update_time: float | None = None
-
-    input_status: InputStatus = InputStatus()
-    inference_status: InferenceStatus = InferenceStatus()
-
-    def update_params(self, params: dict, do_update_time=True):
-        self.inference_status.last_params = params
-        self.inference_status.last_params_hash = hashlib.md5(json.dumps(params, sort_keys=True).encode()).hexdigest()
-        if do_update_time:
-            self.inference_status.last_params_update_time = time.time()
-        return self
-
-    @field_serializer('start_time', 'last_state_update_time')
-    def serialize_timestamps(self, v: float | None) -> int | None:
-        return _timestamp_to_ms(v)
-
-def _timestamp_to_ms(v: float | None) -> int | None:
-    return int(v * 1000) if v is not None else None
-
 
 class PipelineStreamer:
     def __init__(self, protocol: StreamProtocol, pipeline: str, input_timeout: int, params: dict):
@@ -98,8 +34,8 @@ class PipelineStreamer:
         self.done_future = asyncio.get_running_loop().create_future()
         self._start_process()
         await self.protocol.start()
-        self.control_task = asyncio.create_task(self.run_control_loop())
-        self.report_status_task = asyncio.create_task(self.report_status_loop())
+        self.control_task = run_in_background("control_loop", self.run_control_loop())
+        self.report_status_task = run_in_background("report_status_loop", self.report_status_loop())
 
     async def wait(self):
         if not self.done_future:
@@ -127,9 +63,9 @@ class PipelineStreamer:
             raise RuntimeError("PipelineProcess already started")
 
         self.process = PipelineProcess.start(self.pipeline, self.params)
-        self.ingress_task = asyncio.create_task(self.run_ingress_loop(self.process.done))
-        self.egress_task = asyncio.create_task(self.run_egress_loop(self.process.done))
-        self.monitor_task = asyncio.create_task(self.monitor_loop(self.process.done))
+        self.ingress_task = run_in_background("ingress_loop", self.run_ingress_loop(self.process.done))
+        self.egress_task = run_in_background("egress_loop", self.run_egress_loop(self.process.done))
+        self.monitor_task = run_in_background("monitor_loop", self.monitor_loop(self.process.done))
 
     async def _stop_process(self):
         if self.process:
@@ -206,17 +142,20 @@ class PipelineStreamer:
                 await asyncio.sleep(next_report - current_time)
                 next_report += status_report_interval
 
-            new_state = self._current_state()
-            if new_state != self.status.state:
-                self.status.state = new_state
-                self.status.last_state_update_time = current_time
-                logging.info(f"Pipeline state changed to {new_state}")
+            event = self.get_status().model_dump()
+            await self._emit_monitoring_event(event)
 
-            event = self.status.model_dump()
             # Clear the large transient fields after reporting them once
             self.status.inference_status.last_params = None
             self.status.inference_status.last_restart_logs = None
-            await self._emit_monitoring_event(event)
+
+    def get_status(self) -> PipelineStatus:
+        new_state = self._current_state()
+        if new_state != self.status.state:
+            self.status.state = new_state
+            self.status.last_state_update_time = time.time()
+            logging.info(f"Pipeline state changed to {new_state}")
+        return self.status.model_copy()
 
     def _current_state(self) -> str:
         current_time = time.time()
@@ -243,7 +182,7 @@ class PipelineStreamer:
 
     async def _emit_monitoring_event(self, event: dict):
         """Protected method to emit monitoring event with lock"""
-        event["timestamp"] = _timestamp_to_ms(time.time())
+        event["timestamp"] = timestamp_to_ms(time.time())
         logging.info(f"Emitting monitoring event: {event}")
         async with self.report_status_lock:
             try:
@@ -273,7 +212,7 @@ class PipelineStreamer:
             current_time = time.time()
             last_input_time = self.status.input_status.last_input_time or start_time
             last_output_time = self.status.inference_status.last_output_time or start_time
-            last_params_update_time = self.status.last_params_update_time or start_time
+            last_params_update_time = self.status.inference_status.last_params_update_time or start_time
 
             time_since_last_input = current_time - last_input_time
             time_since_last_output = current_time - last_output_time
@@ -283,7 +222,7 @@ class PipelineStreamer:
 
             if self.input_timeout > 0 and time_since_last_input > self.input_timeout:
                 logging.info(f"Input stream stopped for {time_since_last_input} seconds. Shutting down...")
-                asyncio.create_task(self.stop())
+                run_in_background("stop_from_monitor", self.stop())
                 return
 
             gone_stale = (
@@ -305,7 +244,7 @@ class PipelineStreamer:
                 logging.warning(
                     "No output received while inputs are being sent. Restarting process."
                 )
-                asyncio.create_task(self._restart())
+                run_in_background("restart_from_monitor", self._restart())
                 return
 
     async def run_ingress_loop(self, done: Event):
@@ -347,10 +286,11 @@ class PipelineStreamer:
                     frame_count = 0
                     start_time = time.time()
             # automatically stop the streamer when the ingress ends cleanly
+            logging.info("Ingress loop ended, stopping streamer")
             await self.stop()
         except Exception:
             logging.error("Error running ingress loop", exc_info=True)
-            asyncio.create_task(self._restart())
+            run_in_background("restart_from_ingress_loop", self._restart())
 
     async def run_egress_loop(self, done: Event):
         async def gen_output_frames() -> AsyncGenerator[Image.Image, None]:
@@ -383,10 +323,11 @@ class PipelineStreamer:
         try:
             await self.protocol.egress_loop(gen_output_frames())
             # automatically stop the streamer when the egress ends cleanly
+            logging.info("Egress loop ended, stopping streamer")
             await self.stop()
         except Exception:
             logging.error("Error running egress loop", exc_info=True)
-            asyncio.create_task(self._restart())
+            run_in_background("restart_from_egress_loop", self._restart())
 
     async def run_control_loop(self):
         """Consumes control messages from the protocol and updates parameters"""
@@ -400,3 +341,13 @@ class PipelineStreamer:
             # control loop it not required to be running, so we keep the streamer running
         except Exception as e:
             logging.error(f"Error in control loop", exc_info=True)
+
+
+def run_in_background(task_name: str, coro: Awaitable):
+    async def task_wrapper():
+        try:
+            await coro
+        except Exception as e:
+            logging.error(f"Error in task {task_name}", exc_info=True)
+
+    return asyncio.create_task(task_wrapper())

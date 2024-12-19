@@ -55,7 +55,7 @@ class TrickleProtocol(StreamProtocol):
 
         tasks = [self.subscribe_task, self.publish_task]
         try:
-            await asyncio.wait(tasks, timeout=30.0)
+            await asyncio.wait(tasks, timeout=10.0)
         except asyncio.TimeoutError:
             for task in tasks:
                 task.cancel()

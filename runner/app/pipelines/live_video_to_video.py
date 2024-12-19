@@ -4,10 +4,13 @@ import os
 import subprocess
 import sys
 import threading
-import time
 from pathlib import Path
+import time
+from typing import IO
+from pydantic import BaseModel
+import http.client
 
-from app.pipelines.base import Pipeline
+from app.pipelines.base import Pipeline, HealthCheck
 from app.pipelines.utils import get_model_dir, get_torch_device
 from app.utils.errors import InferenceError
 
@@ -49,6 +52,34 @@ class LiveVideoToVideoPipeline(Pipeline):
         except Exception as e:
             raise InferenceError(original_exception=e)
 
+    def get_health(self) -> HealthCheck:
+        if not self.process:
+            return HealthCheck(status="IDLE")
+
+        try:
+            conn = http.client.HTTPConnection("localhost", 8888)
+            conn.request("GET", "/api/status")
+            response = conn.getresponse()
+
+            if response.status != 200:
+                raise ConnectionError(response.reason)
+
+            # Re-declare just the field we need from PipelineStatus to avoid importing from ..live code
+            class PipelineStatus(BaseModel):
+                state: str = "OFFLINE"
+
+            pipe_status = PipelineStatus(**json.loads(response.read().decode()))
+            health_status = "OK"
+            if pipe_status.state == "OFFLINE":
+                # The infer process is supposed to exit when it goes offline, so if we get this status it means an error
+                # and the worker is allowed to kill us.
+                health_status = "ERROR"
+
+            return HealthCheck(status=health_status)
+        except Exception as e:
+            logger.error(f"Failed to get status", exc_info=True)
+            raise ConnectionError(f"Failed to get status: {e}")
+
     def start_process(self, **kwargs):
         cmd = ["python", str(self.infer_script_path)]
 
@@ -62,7 +93,7 @@ class LiveVideoToVideoPipeline(Pipeline):
                 cmd.extend([f"--{kebab_key}", f"{value}"])
 
         env = os.environ.copy()
-        env["HUGGINGFACE_HUB_CACHE"] = self.model_dir
+        env["HUGGINGFACE_HUB_CACHE"] = str(self.model_dir)
 
         try:
             self.process = subprocess.Popen(
@@ -79,35 +110,60 @@ class LiveVideoToVideoPipeline(Pipeline):
 
     def monitor_process(self):
         while True:
-            return_code = self.process.poll()
-            if return_code is not None:
-                logger.info(f"infer.py process completed. Return code: {return_code}")
-                if return_code != 0:
-                    _, stderr = self.process.communicate()
-                    logger.error(
-                        f"infer.py process failed with return code {return_code}. Error: {stderr}"
-                    )
-                else:
-                    # If process exited cleanly (return code 0) and exit the main process
-                    logger.info("infer.py process exited cleanly, shutting down...")
-                # propagate the exit code to the main process
-                os._exit(return_code)
+            if not self.process:
+                logger.error("No process to monitor")
+                return
 
-            logger.info("infer.py process is running...")
-            time.sleep(10)
+            return_code: int
+            try:
+                return_code = self.process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                logger.info("infer.py process is running...")
+                continue
+            except Exception:
+                logger.error(f"Error while waiting for infer.py process to exit", exc_info=True)
+                time.sleep(5)
+                continue
 
-    def stop_process(self):
+            logger.info(f"infer.py process exited, cleaning up state... Return code: {return_code}")
+            if return_code != 0:
+                _, stderr = self.process.communicate()
+                logger.error(
+                    f"infer.py process failed with return code {return_code}. Error: {stderr}"
+                )
+
+            self.stop_process(is_monitor_thread=True)
+            return
+
+    def stop_process(self, is_monitor_thread: bool = False):
         if self.process:
             self.process.terminate()
-        if self.monitor_thread:
+            try:
+                self.process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                try:
+                    logger.warning("Process did not terminate in time, force killing...")
+                    self.process.kill()
+                    self.process.wait(timeout=5)
+                except Exception as e:
+                    logger.error(f"Error while force killing process: {e}")
+                    os._exit(1)
+            self.process = None
+        if self.monitor_thread and not is_monitor_thread:
             self.monitor_thread.join()
+            self.monitor_thread = None
         if self.log_thread:
             self.log_thread.join()
+            self.log_thread = None
+        logger.info("Infer process stopped successfully")
 
     def __str__(self) -> str:
         return f"VideoToVideoPipeline model_id={self.model_id}"
 
 
-def log_output(f):
-    for line in f:
-        sys.stderr.write(line)
+def log_output(f: IO[str]):
+    try:
+        for line in f:
+            sys.stderr.write(f"[infer.py] {line}")
+    except Exception as e:
+        logger.error(f"Error while logging process output: {e}")

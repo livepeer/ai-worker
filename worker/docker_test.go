@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
@@ -60,6 +62,35 @@ func (m *MockDockerClient) ContainerStop(ctx context.Context, containerID string
 func (m *MockDockerClient) ContainerRemove(ctx context.Context, containerID string, options container.RemoveOptions) error {
 	args := m.Called(ctx, containerID, options)
 	return args.Error(0)
+}
+
+type MockServer struct {
+	mock.Mock
+	*httptest.Server
+}
+
+func (m *MockServer) ServeHTTP(method, path, reqBody string) (status int, contentType string, respBody string) {
+	args := m.Called(method, path, reqBody)
+	return args.Int(0), args.String(1), args.String(2)
+}
+
+func NewMockServer() *MockServer {
+	mockServer := new(MockServer)
+	mockServer.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		method, path := r.Method, r.URL.Path
+		reqBody, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		status, contentType, respBody := mockServer.ServeHTTP(method, path, string(reqBody))
+
+		w.Header().Set("Content-Type", contentType)
+		w.WriteHeader(status)
+		w.Write([]byte(respBody))
+	}))
+	return mockServer
 }
 
 // createDockerManager creates a DockerManager with a mock DockerClient.
@@ -593,21 +624,40 @@ func TestDockerManager_destroyContainer(t *testing.T) {
 }
 
 func TestDockerManager_watchContainer(t *testing.T) {
-	mockDockerClient := new(MockDockerClient)
-	dockerManager := createDockerManager(mockDockerClient)
-
 	// Override the containerWatchInterval for testing purposes.
+	originalContainerWatchInterval, originalPipelineStartGracePeriod := containerWatchInterval, pipelineStartGracePeriod
 	containerWatchInterval = 10 * time.Millisecond
+	pipelineStartGracePeriod = 0
+	defer func() {
+		containerWatchInterval, pipelineStartGracePeriod = originalContainerWatchInterval, originalPipelineStartGracePeriod
+	}()
 
-	containerID := "container1"
-	rc := &RunnerContainer{
-		Name: containerID,
-		RunnerContainerConfig: RunnerContainerConfig{
-			ID: containerID,
-		},
+	setup := func() (*MockDockerClient, *DockerManager, *MockServer, *RunnerContainer) {
+		mockDockerClient := new(MockDockerClient)
+		dockerManager := createDockerManager(mockDockerClient)
+
+		mockServer := NewMockServer()
+		mockClient, err := NewClientWithResponses(mockServer.URL)
+		require.NoError(t, err)
+
+		containerID := "container1"
+		rc := &RunnerContainer{
+			Name: containerID,
+			RunnerContainerConfig: RunnerContainerConfig{
+				ID: containerID,
+			},
+			Client: mockClient,
+		}
+
+		return mockDockerClient, dockerManager, mockServer, rc
 	}
 
 	t.Run("ReturnContainerOnContextDone", func(t *testing.T) {
+		mockDockerClient, dockerManager, mockServer, rc := setup()
+		defer mockServer.Close()
+		defer mockServer.AssertExpectations(t)
+		defer mockDockerClient.AssertNotCalled(t, "ContainerRemove", mock.Anything, rc.Name, mock.Anything)
+
 		borrowCtx, cancel := context.WithCancel(context.Background())
 
 		go dockerManager.watchContainer(rc, borrowCtx)
@@ -617,30 +667,182 @@ func TestDockerManager_watchContainer(t *testing.T) {
 		// Verify that the container was returned.
 		_, exists := dockerManager.containers[rc.Name]
 		require.True(t, exists)
+
+		mockServer.AssertNotCalled(t, "ServeHTTP", "GET", "/health", mock.Anything)
 	})
 
-	t.Run("DestroyContainerOnNotRunning", func(t *testing.T) {
+	notHealthyTestCases := []struct {
+		name            string
+		mockServerSetup func(*MockServer)
+	}{
+		{
+			name: "ErrorStatus",
+			mockServerSetup: func(mockServer *MockServer) {
+				mockServer.On("ServeHTTP", "GET", "/health", mock.Anything).
+					Return(200, "application/json", `{"status":"ERROR"}`).
+					Times(2)
+			},
+		},
+		{
+			name: "UnknownStatus",
+			mockServerSetup: func(mockServer *MockServer) {
+				mockServer.On("ServeHTTP", "GET", "/health", mock.Anything).
+					Return(200, "application/json", `{"status":"HAPPY"}`).
+					Times(2)
+			},
+		},
+		{
+			name: "BadSchema",
+			mockServerSetup: func(mockServer *MockServer) {
+				mockServer.On("ServeHTTP", "GET", "/health", mock.Anything).
+					Return(200, "application/json", `{"status":1}`).
+					Times(2)
+			},
+		},
+		{
+			name: "HTTPError",
+			mockServerSetup: func(mockServer *MockServer) {
+				mockServer.On("ServeHTTP", "GET", "/health", mock.Anything).
+					Return(500, "text/plain", "Error").
+					Times(2)
+			},
+		},
+		{
+			name: "Timeout",
+			mockServerSetup: func(mockServer *MockServer) {
+				done := make(chan time.Time)
+				go func() {
+					time.Sleep(100 * time.Millisecond)
+					close(done)
+				}()
+				mockServer.On("ServeHTTP", "GET", "/health", mock.Anything).
+					WaitUntil(done).
+					Return(200, "application/json", `{"status":"OK"}`).
+					Times(2)
+			},
+		},
+		{
+			name: "ConnectionRefused",
+			mockServerSetup: func(mockServer *MockServer) {
+				mockServer.Close()
+			},
+		},
+	}
+	for _, tt := range notHealthyTestCases {
+		t.Run("DestroyContainerOnNotHealthy_"+tt.name, func(t *testing.T) {
+			mockDockerClient, dockerManager, mockServer, rc := setup()
+			defer mockServer.Close()
+			defer mockDockerClient.AssertExpectations(t)
+			defer mockServer.AssertExpectations(t)
+
+			borrowCtx := context.Background()
+
+			tt.mockServerSetup(mockServer)
+
+			// Mock destroyContainer to verify it is called.
+			mockDockerClient.On("ContainerStop", mock.Anything, rc.Name, mock.Anything).Return(nil).Once()
+			mockDockerClient.On("ContainerRemove", mock.Anything, rc.Name, mock.Anything).Return(nil).Once()
+
+			done := make(chan struct{})
+			go func() {
+				defer close(done)
+				dockerManager.watchContainer(rc, borrowCtx)
+			}()
+			select {
+			case <-done:
+			case <-time.After(50 * time.Millisecond):
+				t.Fatal("watchContainer did not return")
+			}
+
+			// Verify that the container was destroyed.
+			_, exists := dockerManager.containers[rc.Name]
+			require.False(t, exists)
+		})
+	}
+
+	t.Run("RespectStartupGracePeriod", func(t *testing.T) {
+		pipelineStartGracePeriod = 50 * time.Millisecond
+		defer func() { pipelineStartGracePeriod = 0 }()
+
+		mockDockerClient, dockerManager, mockServer, rc := setup()
+		defer mockServer.Close()
+		defer mockDockerClient.AssertExpectations(t)
+		defer mockServer.AssertExpectations(t)
+
 		borrowCtx := context.Background()
 
-		// Mock ContainerInspect to return a non-running state.
-		mockDockerClient.On("ContainerInspect", mock.Anything, containerID).Return(types.ContainerJSON{
-			ContainerJSONBase: &types.ContainerJSONBase{
-				State: &types.ContainerState{
-					Running: false,
-				},
-			},
-		}, nil).Once()
-
-		// Mock destroyContainer to verify it is called.
-		mockDockerClient.On("ContainerStop", mock.Anything, containerID, mock.Anything).Return(nil)
-		mockDockerClient.On("ContainerRemove", mock.Anything, containerID, mock.Anything).Return(nil)
+		// Must fail twice before the watch routine gives up on it
+		mockServer.On("ServeHTTP", "GET", "/health", mock.Anything).
+			Return(200, "application/json", `{"status":"ERROR"}`).
+			Times(4) // 4 calls during the grace period (first call only after 10ms)
 
 		go dockerManager.watchContainer(rc, borrowCtx)
-		time.Sleep(50 * time.Millisecond) // Ensure the ticker triggers.
+		time.Sleep(40 * time.Millisecond) // Almost the entire grace period
+
+		// Make sure container wasn't destroyed yet
+		mockDockerClient.AssertNotCalled(t, "ContainerRemove", mock.Anything, rc.Name, mock.Anything)
+
+		// Mock destroyContainer to verify it is called.
+		mockDockerClient.On("ContainerStop", mock.Anything, rc.Name, mock.Anything).Return(nil).Once()
+		mockDockerClient.On("ContainerRemove", mock.Anything, rc.Name, mock.Anything).Return(nil).Once()
+
+		time.Sleep(30 * time.Millisecond) // Ensure we pass the grace period
 
 		// Verify that the container was destroyed.
 		_, exists := dockerManager.containers[rc.Name]
 		require.False(t, exists)
+	})
+
+	t.Run("ReturnContainerWhenIdle", func(t *testing.T) {
+		pipelineStartGracePeriod = 50 * time.Millisecond
+		defer func() { pipelineStartGracePeriod = 0 }()
+
+		mockDockerClient, dockerManager, mockServer, rc := setup()
+		defer mockServer.Close()
+		defer mockServer.AssertExpectations(t)
+		defer mockDockerClient.AssertNotCalled(t, "ContainerRemove", mock.Anything, rc.Name, mock.Anything)
+
+		borrowCtx := context.Background()
+
+		// Schedule:
+		// - Return IDLE for the first 3 times during grace period (should not return)
+		// - Then OK for the next 5 times (stayin' alive)
+		// - Then back to IDLE (should return)
+		mockServer.On("ServeHTTP", "GET", "/health", mock.Anything).
+			Return(200, "application/json", `{"status":"IDLE"}`).
+			Times(3).
+			On("ServeHTTP", "GET", "/health", mock.Anything).
+			Return(200, "application/json", `{"status":"OK"}`).
+			Times(5).
+			On("ServeHTTP", "GET", "/health", mock.Anything).
+			Return(200, "application/json", `{"status":"IDLE"}`).
+			Once() // once is enough and container should be returned immediately
+
+		startTime := time.Now()
+		sleepUntil := func(sinceStart time.Duration) {
+			dur := sinceStart - time.Since(startTime)
+			if dur > 0 {
+				time.Sleep(dur)
+			}
+		}
+		go dockerManager.watchContainer(rc, borrowCtx)
+		sleepUntil(30 * time.Millisecond) // Almost the entire grace period
+
+		// Verify that the container was not returned yet.
+		_, exists := dockerManager.containers[rc.Name]
+		require.False(t, exists)
+
+		sleepUntil(60 * time.Millisecond) // Ensure we pass the grace period and container is OK
+
+		// Verify that the container was not returned yet.
+		_, exists = dockerManager.containers[rc.Name]
+		require.False(t, exists)
+
+		sleepUntil(100 * time.Millisecond) // Ensure we pass the grace period and container is now IDLE and returned
+
+		// Verify that the container was returned.
+		_, exists = dockerManager.containers[rc.Name]
+		require.True(t, exists)
 	})
 }
 

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"runtime/debug"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -35,7 +37,9 @@ const containerRemoveTimeout = 30 * time.Second
 const containerCreatorLabel = "creator"
 const containerCreator = "ai-worker"
 
-var containerWatchInterval = 10 * time.Second
+var containerWatchInterval = 5 * time.Second
+var pipelineStartGracePeriod = 60 * time.Second
+var maxHealthCheckFailures = 2
 
 // This only works right now on a single GPU because if there is another container
 // using the GPU we stop it so we don't have to worry about having enough ports
@@ -466,35 +470,71 @@ func (m *DockerManager) watchContainer(rc *RunnerContainer, borrowCtx context.Co
 		if r := recover(); r != nil {
 			slog.Error("Panic in container watch routine",
 				slog.String("container", rc.Name),
-				slog.Any("panic", r))
+				slog.Any("panic", r),
+				slog.String("stack", string(debug.Stack())))
 		}
 	}()
 
 	ticker := time.NewTicker(containerWatchInterval)
 	defer ticker.Stop()
 
+	slog.Info("Watching container", slog.String("container", rc.Name))
+	failures := 0
+	startTime := time.Now()
 	for {
+		if failures >= maxHealthCheckFailures && time.Since(startTime) > pipelineStartGracePeriod {
+			slog.Error("Container health check failed too many times", slog.String("container", rc.Name))
+			m.destroyContainer(rc, false)
+			return
+		}
+
 		select {
 		case <-borrowCtx.Done():
 			m.returnContainer(rc)
 			return
 		case <-ticker.C:
 			ctx, cancel := context.WithTimeout(context.Background(), containerWatchInterval)
-			container, err := m.dockerClient.ContainerInspect(ctx, rc.ID)
+			health, err := rc.Client.HealthWithResponse(ctx)
 			cancel()
 
-			if docker.IsErrNotFound(err) {
-				// skip to destroy below to update internal state
-			} else if err != nil {
-				slog.Error("Error inspecting container",
+			if err != nil {
+				failures++
+				slog.Error("Error getting health for runner",
 					slog.String("container", rc.Name),
 					slog.String("error", err.Error()))
 				continue
-			} else if container.State.Running {
+			} else if health.StatusCode() != 200 {
+				failures++
+				slog.Error("Container health check failed with HTTP status code",
+					slog.String("container", rc.Name),
+					slog.Int("status_code", health.StatusCode()),
+					slog.String("body", string(health.Body)))
 				continue
 			}
-			m.destroyContainer(rc, false)
-			return
+			slog.Debug("Health check response",
+				slog.String("status", health.Status()),
+				slog.Any("JSON200", health.JSON200),
+				slog.String("body", string(health.Body)))
+
+			status := health.JSON200.Status
+			switch status {
+			case IDLE:
+				if time.Since(startTime) > pipelineStartGracePeriod {
+					slog.Info("Container is idle, returning to pool", slog.String("container", rc.Name))
+					m.returnContainer(rc)
+					return
+				}
+				fallthrough
+			case OK:
+				failures = 0
+				continue
+			default:
+				failures++
+				slog.Error("Container not healthy",
+					slog.String("container", rc.Name),
+					slog.String("status", string(status)),
+					slog.String("failures", strconv.Itoa(failures)))
+			}
 		}
 	}
 }

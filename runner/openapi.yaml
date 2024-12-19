@@ -1013,9 +1013,15 @@ components:
       properties:
         status:
           type: string
+          enum:
+          - OK
+          - ERROR
+          - IDLE
           title: Status
-          default: OK
+          description: The health status of the pipeline
       type: object
+      required:
+      - status
       title: HealthCheck
     ImageResponse:
       properties:
