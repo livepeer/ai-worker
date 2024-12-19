@@ -4,7 +4,7 @@ import json
 import os
 import subprocess
 import tempfile
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 from fastapi import UploadFile, status
@@ -72,6 +72,19 @@ class TextResponse(BaseModel):
     chunks: List[Chunk] = Field(..., description="The generated text chunks.")
 
 
+class LabelScore(BaseModel):
+    """A label and its corresponding score."""
+
+    label: Literal["negative", "neutral", "positive"]
+    score: float
+
+
+class TextSentimentAnalysisResponse(BaseModel):
+    """Response model for text sentiment analysis."""
+
+    results: list[LabelScore]
+
+
 class LLMResponse(BaseModel):
     response: str
     tokens_used: int
@@ -93,13 +106,14 @@ class LiveVideoToVideoResponse(BaseModel):
         ..., description="Destination URL of the outgoing stream to publish to"
     )
     control_url: str = Field(
-        default='',
+        default="",
         description="URL for updating the live video-to-video generation",
     )
     events_url: str = Field(
-        default='',
+        default="",
         description="URL for subscribing to events for pipeline status and logs",
     )
+
 
 class APIError(BaseModel):
     """API error response model."""
