@@ -90,7 +90,7 @@ def translate_to_gateway(openapi: dict) -> dict:
     openapi["components"]["schemas"]["VideoResponse"]["title"] = "VideoResponse"
 
     return openapi
-
+    
 
 def write_openapi(fname: str, entrypoint: str = "runner"):
     """Write OpenAPI schema to file.
@@ -107,8 +107,8 @@ def write_openapi(fname: str, entrypoint: str = "runner"):
     app.include_router(text_to_image.router)
     app.include_router(image_to_image.router)
     app.include_router(image_to_video.router)
-    app.include_router(upscale.router)
     app.include_router(audio_to_text.router)
+    app.include_router(upscale.router)
     app.include_router(segment_anything_2.router)
     app.include_router(llm.router)
     app.include_router(image_to_text.router)
