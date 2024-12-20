@@ -19,6 +19,7 @@ class PipelineProcess:
         if params:
             instance.update_params(params)
         instance.process.start()
+        instance.start_time = time.time()
         return instance
 
     def __init__(self, pipeline_name: str):
@@ -33,6 +34,7 @@ class PipelineProcess:
 
         self.done = self.ctx.Event()
         self.process = self.ctx.Process(target=self.process_loop, args=())
+        self.start_time = 0
 
     async def stop(self):
         await asyncio.to_thread(self._stop_sync)

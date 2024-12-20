@@ -198,7 +198,6 @@ class PipelineStreamer:
                 logging.error(f"Failed to emit monitoring event: {e}")
 
     async def monitor_loop(self):
-        start_time = time.time()
         while not self.stop_event.is_set():
             await asyncio.sleep(1)
             if not self.process or self.process.done.is_set():
@@ -216,6 +215,7 @@ class PipelineStreamer:
                     "time": error_time
                 })
 
+            start_time = self.process.start_time
             current_time = time.time()
             last_input_time = self.status.input_status.last_input_time or start_time
             last_output_time = self.status.inference_status.last_output_time or start_time
