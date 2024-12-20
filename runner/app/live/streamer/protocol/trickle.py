@@ -2,10 +2,9 @@ import asyncio
 import logging
 import queue
 import json
-from typing import AsyncGenerator, Optional, Callable
+from typing import AsyncGenerator, Optional
 
 from PIL import Image
-from multiprocessing.synchronize import Event
 
 from trickle import media, TricklePublisher, TrickleSubscriber
 
@@ -63,7 +62,7 @@ class TrickleProtocol(StreamProtocol):
         self.subscribe_task = None
         self.publish_task = None
 
-    async def ingress_loop(self, done: Event) -> AsyncGenerator[Image.Image, None]:
+    async def ingress_loop(self, done: asyncio.Event) -> AsyncGenerator[Image.Image, None]:
         def dequeue_jpeg():
             jpeg_bytes = self.subscribe_queue.get()
             if not jpeg_bytes:

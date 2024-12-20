@@ -34,7 +34,10 @@ class PipelineProcess:
         self.done = self.ctx.Event()
         self.process = self.ctx.Process(target=self.process_loop, args=())
 
-    def stop(self):
+    async def stop(self):
+        await asyncio.to_thread(self._stop_sync)
+
+    def _stop_sync(self):
         self.done.set()
         if not self.process.is_alive():
             logging.info("Process already not alive")

@@ -22,27 +22,40 @@ class PipelineStreamer:
         self.protocol = protocol
         self.pipeline = pipeline
         self.params = params
-        self.process = None
         self.input_timeout = input_timeout  # 0 means disabled
-        self.done_future = None
+
         self.status = PipelineStatus(pipeline=pipeline, start_time=time.time()).update_params(params, False)
+        self.stop_event = asyncio.Event()
+        self.process: PipelineProcess | None = None
+
+        self.emit_event_lock = Lock()
+        self.ingress_task = None
+        self.egress_task = None
+        self.monitor_task = None
         self.control_task = None
         self.report_status_task = None
-        self.report_status_lock = Lock()
 
     async def start(self):
-        self.done_future = asyncio.get_running_loop().create_future()
-        self._start_process()
+        if self.process:
+            raise RuntimeError("Streamer already started")
+
+        self.stop_event.clear()
+        self.process = PipelineProcess.start(self.pipeline, self.params)
         await self.protocol.start()
+        self.ingress_task = run_in_background("ingress_loop", self.run_ingress_loop())
+        self.egress_task = run_in_background("egress_loop", self.run_egress_loop())
+        self.monitor_task = run_in_background("monitor_loop", self.monitor_loop())
         self.control_task = run_in_background("control_loop", self.run_control_loop())
         self.report_status_task = run_in_background("report_status_loop", self.report_status_loop())
 
     async def wait(self):
-        if not self.done_future:
+        if not self.process:
             raise RuntimeError("Streamer not started")
-        return await self.done_future
+        return await self.stop_event.wait()
 
     async def stop(self):
+        if not self.process:
+            raise RuntimeError("Process not started")
         try:
             if self.report_status_task:
                 self.report_status_task.cancel()
@@ -51,48 +64,32 @@ class PipelineStreamer:
                 self.control_task.cancel()
                 self.control_task = None
             await self.protocol.stop()
-            await self._stop_process()
+            await self.process.stop()
+            if self.ingress_task:
+                self.ingress_task.cancel()
+                self.ingress_task = None
+            if self.egress_task:
+                self.egress_task.cancel()
+                self.egress_task = None
+            if self.monitor_task:
+                self.monitor_task.cancel()
+                self.monitor_task = None
         except Exception:
             logging.error("Error stopping streamer", exc_info=True)
         finally:
-            if self.done_future and not self.done_future.done():
-                self.done_future.set_result(None)
+            self.stop_event.set()
 
-    def _start_process(self):
-        if self.process:
-            raise RuntimeError("PipelineProcess already started")
-
-        self.process = PipelineProcess.start(self.pipeline, self.params)
-        self.ingress_task = run_in_background("ingress_loop", self.run_ingress_loop(self.process.done))
-        self.egress_task = run_in_background("egress_loop", self.run_egress_loop(self.process.done))
-        self.monitor_task = run_in_background("monitor_loop", self.monitor_loop(self.process.done))
-
-    async def _stop_process(self):
-        if self.process:
-            self.process.stop()
-            self.process = None
-
-        if self.ingress_task:
-            self.ingress_task.cancel()
-            self.ingress_task = None
-
-        if self.egress_task:
-            self.egress_task.cancel()
-            self.egress_task = None
-
-        if self.monitor_task:
-            self.monitor_task.cancel()
-            self.monitor_task = None
-
-    async def _restart(self):
+    async def _restart_process(self):
+        if not self.process:
+            raise RuntimeError("Process not started")
         try:
             # Capture logs before stopping the process
             restart_logs = self.process.get_recent_logs()
             last_error = self.process.get_last_error()
+            # don't call the full start/stop methods since we only want to restart the process
+            await self.process.stop()
 
-            # don't call the full start/stop methods since we don't want to restart the protocol
-            await self._stop_process()
-            self._start_process()
+            self.process = PipelineProcess.start(self.pipeline, self.params)
             self.status.inference_status.restart_count += 1
             self.status.inference_status.last_restart_time = time.time()
             self.status.inference_status.last_restart_logs = restart_logs
@@ -133,7 +130,7 @@ class PipelineStreamer:
 
     async def report_status_loop(self):
         next_report = time.time() + status_report_interval
-        while not self.done_future.done():
+        while not self.stop_event.is_set():
             current_time = time.time()
             if next_report <= current_time:
                 # If we lost track of the next report time, just report immediately
@@ -184,18 +181,18 @@ class PipelineStreamer:
         """Protected method to emit monitoring event with lock"""
         event["timestamp"] = timestamp_to_ms(time.time())
         logging.info(f"Emitting monitoring event: {event}")
-        async with self.report_status_lock:
+        async with self.emit_event_lock:
             try:
                 await self.protocol.emit_monitoring_event(event)
             except Exception as e:
                 logging.error(f"Failed to emit monitoring event: {e}")
 
-    async def monitor_loop(self, done: Event):
+    async def monitor_loop(self):
         start_time = time.time()
-        while not done.is_set():
+        while not self.stop_event.is_set():
             await asyncio.sleep(1)
-            if not self.process:
-                return
+            if not self.process or self.process.done.is_set():
+                continue
 
             last_error = self.process.get_last_error()
             if last_error:
@@ -244,16 +241,17 @@ class PipelineStreamer:
                 logging.warning(
                     "No output received while inputs are being sent. Restarting process."
                 )
-                run_in_background("restart_from_monitor", self._restart())
-                return
+                await self._restart_process()
 
-    async def run_ingress_loop(self, done: Event):
+    async def run_ingress_loop(self):
         frame_count = 0
         start_time = 0.0
         try:
-            async for frame in self.protocol.ingress_loop(done):
-                if done.is_set() or not self.process:
-                    return
+            async for frame in self.protocol.ingress_loop(self.stop_event):
+                if not self.process or self.process.done.is_set():
+                    # no need to sleep since we want to consume input frames as fast as possible
+                    continue
+
                 if not start_time:
                     start_time = time.time()
 
@@ -290,19 +288,23 @@ class PipelineStreamer:
             await self.stop()
         except Exception:
             logging.error("Error running ingress loop", exc_info=True)
-            run_in_background("restart_from_ingress_loop", self._restart())
+            run_in_background("stop_from_ingress_loop", self.stop())
 
-    async def run_egress_loop(self, done: Event):
+    async def run_egress_loop(self):
         async def gen_output_frames() -> AsyncGenerator[Image.Image, None]:
             frame_count = 0
             start_time = 0.0
-            while not done.is_set() and self.process:
+            while not self.stop_event.is_set():
+                if not self.process or self.process.done.is_set():
+                    await asyncio.sleep(0.05)
+                    continue
+
                 output_image = await self.process.recv_output()
+                if not output_image:
+                    continue
                 if not start_time:
                     # only start measuring output FPS after the first frame
                     start_time = time.time()
-                if not output_image:
-                    break
 
                 self.status.inference_status.last_output_time = time.time()  # Track time after receive completes
                 logging.debug(
@@ -327,7 +329,7 @@ class PipelineStreamer:
             await self.stop()
         except Exception:
             logging.error("Error running egress loop", exc_info=True)
-            run_in_background("restart_from_egress_loop", self._restart())
+            run_in_background("stop_from_egress_loop", self.stop())
 
     async def run_control_loop(self):
         """Consumes control messages from the protocol and updates parameters"""
