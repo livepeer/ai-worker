@@ -88,12 +88,9 @@ function download_live_models() {
     huggingface-cli download KBlueLeaf/kohaku-v2.1 --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
     huggingface-cli download stabilityai/sd-turbo --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
     huggingface-cli download warmshao/FasterLivePortrait --local-dir models/FasterLivePortrait--checkpoints
-    huggingface-cli download microsoft/Florence-2-large --local-dir models/ComfyUI--models/LLM/Florence-2-large --include "*.py" "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data"
-    huggingface-cli download microsoft/Florence-2-large-ft --local-dir models/ComfyUI--models/LLM/Florence-2-large-ft --include "*.py" "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data"
-    huggingface-cli download microsoft/Florence-2-base --local-dir models/ComfyUI--models/LLM/Florence-2-base --include "*.py" "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data"
-    huggingface-cli download microsoft/Florence-2-base-ft --local-dir models/ComfyUI--models/LLM/Florence-2-base-ft --include "*.py" "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data"
     huggingface-cli download yuvraj108c/Depth-Anything-Onnx --include depth_anything_vitl14.onnx --local-dir models/ComfyUI--models/Depth-Anything-Onnx
     download_sam2_checkpoints
+    download_florence2_checkpoints
     download_stream_diffusion_checkpoints
     download_stream_diffusion_loras
     huggingface-cli download Kijai/LivePortrait_safetensors --local-dir models/ComfyUI--models/livePortrait
@@ -103,6 +100,13 @@ function download_sam2_checkpoints() {
     huggingface-cli download facebook/sam2-hiera-tiny --local-dir models/ComfyUI--models/sam2--checkpoints/facebook--sam2-hiera-tiny
     huggingface-cli download facebook/sam2-hiera-small --local-dir models/ComfyUI--models/sam2--checkpoints/facebook--sam2-hiera-small
     huggingface-cli download facebook/sam2-hiera-large --local-dir models/ComfyUI--models/sam2--checkpoints/facebook--sam2-hiera-large
+}
+
+function download_florence2_checkpoints() {
+    huggingface-cli download microsoft/Florence-2-large --local-dir models/ComfyUI--models/LLM/Florence-2-large --include "*.py" "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data"
+    huggingface-cli download microsoft/Florence-2-large-ft --local-dir models/ComfyUI--models/LLM/Florence-2-large-ft --include "*.py" "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data"
+    huggingface-cli download microsoft/Florence-2-base --local-dir models/ComfyUI--models/LLM/Florence-2-base --include "*.py" "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data"
+    huggingface-cli download microsoft/Florence-2-base-ft --local-dir models/ComfyUI--models/LLM/Florence-2-base-ft --include "*.py" "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data"
 }
 
 function download_stream_diffusion_checkpoints() {
