@@ -17,8 +17,8 @@ class TrickleProtocol(StreamProtocol):
         self.publish_url = publish_url
         self.control_url = control_url
         self.events_url = events_url
-        self.subscribe_queue = queue.Queue[bytearray]()
-        self.publish_queue = queue.Queue[bytearray]()
+        self.subscribe_queue = queue.Queue[bytes | None]()
+        self.publish_queue = queue.Queue[bytes | None]()
         self.control_subscriber = None
         self.events_publisher = None
         self.subscribe_task = None
@@ -41,26 +41,29 @@ class TrickleProtocol(StreamProtocol):
             return # already stopped
 
         # send sentinel None values to stop the trickle tasks gracefully
-        self.subscribe_queue.put(None)
-        self.publish_queue.put(None)
-
+        cancel_tasks = [
+            asyncio.to_thread(self.subscribe_queue.put, None),
+            asyncio.to_thread(self.publish_queue.put, None)
+        ]
         if self.control_subscriber:
-            await self.control_subscriber.close()
-            self.control_subscriber = None
-
+            cancel_tasks.append(self.control_subscriber.close())
         if self.events_publisher:
-            await self.events_publisher.close()
-            self.events_publisher = None
+            cancel_tasks.append(self.events_publisher.close())
+        # now schedule all of them to run in background
+        cancel_tasks = [asyncio.create_task(t) for t in cancel_tasks]
 
-        tasks = [self.subscribe_task, self.publish_task]
         try:
-            await asyncio.wait(tasks, timeout=10.0)
-        except asyncio.TimeoutError:
-            for task in tasks:
-                task.cancel()
-
-        self.subscribe_task = None
-        self.publish_task = None
+            work_tasks = [self.subscribe_task, self.publish_task]
+            _, pending = await asyncio.wait(cancel_tasks + work_tasks, timeout=10)
+            # cancel all the pending work tasks, let the cancel tasks finish in background
+            for task in pending:
+                if task in work_tasks:
+                    task.cancel()
+        finally:
+            self.subscribe_task = None
+            self.publish_task = None
+            self.control_subscriber = None
+            self.events_publisher = None
 
     async def ingress_loop(self, done: asyncio.Event) -> AsyncGenerator[Image.Image, None]:
         def dequeue_jpeg():
@@ -92,8 +95,8 @@ class TrickleProtocol(StreamProtocol):
             return
         try:
             event_json = json.dumps(event)
-            async with await self.events_publisher.next() as event:
-                await event.write(event_json.encode())
+            async with await self.events_publisher.next() as writer:
+                await writer.write(event_json.encode())
         except Exception as e:
             logging.error(f"Error reporting status: {e}")
 
@@ -111,7 +114,12 @@ class TrickleProtocol(StreamProtocol):
                 if not segment or segment.eos():
                     return
 
-                params = await segment.read()
+                params = ''
+                while True:
+                    chunk = await segment.read()
+                    if not chunk:
+                        break
+                    params += chunk.decode()
                 data = json.loads(params)
                 if data == keepalive_message:
                     # Ignore periodic keepalive messages

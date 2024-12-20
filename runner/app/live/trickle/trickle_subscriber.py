@@ -129,7 +129,7 @@ class TrickleSubscriber:
                     self.session = None
 
 class Segment:
-    def __init__(self, response):
+    def __init__(self, response: aiohttp.ClientResponse):
         self.response = response
 
     def seq(self):
