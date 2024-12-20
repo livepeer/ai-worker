@@ -19,6 +19,7 @@ class PipelineProcess:
         if params:
             instance.update_params(params)
         instance.process.start()
+        instance.start_time = time.time()
         return instance
 
     def __init__(self, pipeline_name: str):
@@ -33,8 +34,12 @@ class PipelineProcess:
 
         self.done = self.ctx.Event()
         self.process = self.ctx.Process(target=self.process_loop, args=())
+        self.start_time = 0
 
-    def stop(self):
+    async def stop(self):
+        await asyncio.to_thread(self._stop_sync)
+
+    def _stop_sync(self):
         self.done.set()
         if not self.process.is_alive():
             logging.info("Process already not alive")
