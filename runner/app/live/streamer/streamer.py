@@ -77,8 +77,7 @@ class PipelineStreamer:
         for task in pending:
             task.cancel()
 
-        stop_tasks = [asyncio.create_task(t) for t in [self.protocol.stop(), self.process.stop()]]
-        await asyncio.wait(stop_tasks, return_when=asyncio.ALL_COMPLETED)
+        await asyncio.gather(self.protocol.stop(), self.process.stop(), return_exceptions=True)
 
     async def wait(self):
         if not self.process:
