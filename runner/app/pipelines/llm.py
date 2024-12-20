@@ -9,6 +9,7 @@ from app.pipelines.base import Pipeline
 from app.pipelines.utils import get_model_dir, get_max_memory
 from vllm import AsyncLLMEngine, AsyncEngineArgs, SamplingParams
 from huggingface_hub import file_download
+from transformers import AutoConfig
 
 logger = logging.getLogger(__name__)
 
@@ -70,16 +71,54 @@ class LLMPipeline(Pipeline):
         max_num_seqs = int(os.getenv("MAX_NUM_SEQS", "128"))
         max_model_len = int(os.getenv("MAX_MODEL_LEN", "8192"))
         mem_utilization = float(os.getenv("GPU_MEMORY_UTILIZATION", "0.85"))
+        tensor_parallel_size = int(os.getenv("TENSOR_PARALLEL_SIZE", "1"))
+        pipeline_parallel_size = int(os.getenv("PIPELINE_PARALLEL_SIZE", "1"))
+
         if max_num_batched_tokens < max_model_len:
             max_num_batched_tokens = max_model_len
             logger.info(
                 f"max_num_batched_tokens ({max_num_batched_tokens}) is smaller than max_model_len ({max_model_len}). This effectively limits the maximum sequence length to max_num_batched_tokens and makes vLLM reject longer sequences.")
             logger.info(f"setting 'max_model_len' to equal 'max_num_batched_tokens'")
 
-        # Get available GPU memory
-        max_memory = get_max_memory()
-        logger.info(f"Available GPU memory: {max_memory.gpu_memory}")
-        logger.info(f"Tensor parallel size: {max_memory.num_gpus}")
+    # Load config to check model compatibility
+        try:
+            config = AutoConfig.from_pretrained(self.local_model_path)
+            num_heads = config.num_attention_heads
+            num_layers = config.num_hidden_layers
+            logger.info(
+                f"Model has {num_heads} attention heads and {num_layers} layers")
+
+            # Validate tensor parallelism
+            if num_heads % tensor_parallel_size != 0:
+                raise ValueError(
+                    f"Total number of attention heads ({num_heads}) must be divisible "
+                    f"by tensor parallel size ({tensor_parallel_size})."
+                )
+
+            # Validate pipeline parallelism
+            if num_layers < pipeline_parallel_size:
+                raise ValueError(
+                    f"Pipeline parallel size ({pipeline_parallel_size}) cannot be larger "
+                    f"than number of layers ({num_layers})."
+                )
+
+            # Validate total GPU requirement
+            total_gpus_needed = tensor_parallel_size * pipeline_parallel_size
+            max_memory = get_max_memory()
+            if total_gpus_needed > max_memory.num_gpus:
+                raise ValueError(
+                    f"Total GPUs needed ({total_gpus_needed}) exceeds available GPUs "
+                    f"({max_memory.num_gpus}). Reduce tensor_parallel_size ({tensor_parallel_size}) "
+                    f"or pipeline_parallel_size ({pipeline_parallel_size})."
+                )
+
+            logger.info(f"Using tensor parallel size: {tensor_parallel_size}")
+            logger.info(f"Using pipeline parallel size: {pipeline_parallel_size}")
+            logger.info(f"Total GPUs used: {total_gpus_needed}")
+
+        except Exception as e:
+            logger.error(f"Error in parallelism configuration: {e}")
+            raise
 
         engine_args = AsyncEngineArgs(
             model=self.local_model_path,
@@ -87,7 +126,8 @@ class LLMPipeline(Pipeline):
             trust_remote_code=True,
             dtype="auto",  # This specifies BFloat16 precision, TODO: Check GPU capabilities to set best type
             kv_cache_dtype="auto",  # or "fp16" if you want to force it
-            tensor_parallel_size=max_memory.num_gpus,
+            tensor_parallel_size=tensor_parallel_size,
+            pipeline_parallel_size=pipeline_parallel_size,
             max_num_batched_tokens=max_num_batched_tokens,
             gpu_memory_utilization=mem_utilization,
             max_num_seqs=max_num_seqs,
