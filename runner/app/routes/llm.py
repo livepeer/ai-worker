@@ -101,11 +101,12 @@ async def llm(
 async def stream_generator(generator):
     try:
         async for chunk in generator:
-            if isinstance(chunk, dict):  # This is the final result
-                yield f"data: {json.dumps(chunk)}\n\n"
-                break
-            else:
-                yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+            if isinstance(chunk, dict):
+                if "choices" in chunk:
+                    # Regular streaming chunk or final chunk
+                    yield f"data: {json.dumps(chunk)}\n\n"
+                    if chunk["choices"][0].get("finish_reason") == "stop":
+                        break
         yield "data: [DONE]\n\n"
     except Exception as e:
         logger.error(f"Streaming error: {str(e)}")
