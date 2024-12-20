@@ -40,7 +40,7 @@ class ZeroMQProtocol(StreamProtocol):
     async def emit_monitoring_event(self, event: dict):
         pass  # No-op for ZeroMQ
 
-    async def control_loop(self) -> AsyncGenerator[dict, None]:
+    async def control_loop(self, done: asyncio.Event) -> AsyncGenerator[dict, None]:
         if False:
             yield {}  # Empty generator, dummy yield for proper typing
-        pass # ZeroMQ protocol does not support control messages
+        await done.wait() # ZeroMQ protocol does not support control messages so just wait for the stop event

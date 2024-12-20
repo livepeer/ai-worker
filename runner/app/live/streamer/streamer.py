@@ -328,16 +328,12 @@ class PipelineStreamer:
 
     async def run_control_loop(self):
         """Consumes control messages from the protocol and updates parameters"""
-        try:
-            async for params in self.protocol.control_loop():
-                try:
-                    await self.update_params(params)
-                except Exception as e:
-                    logging.error(f"Error updating model with control message: {e}")
-            logging.info("Control loop ended")
-            # control loop it not required to be running, so we keep the streamer running
-        except Exception as e:
-            logging.error(f"Error in control loop", exc_info=True)
+        async for params in self.protocol.control_loop(self.stop_event):
+            try:
+                await self.update_params(params)
+            except Exception as e:
+                logging.error(f"Error updating model with control message: {e}")
+        logging.info("Control loop ended")
 
 
 def run_in_background(task_name: str, coro: Awaitable):

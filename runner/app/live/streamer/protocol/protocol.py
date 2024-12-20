@@ -32,7 +32,7 @@ class StreamProtocol(ABC):
         pass
 
     @abstractmethod
-    async def control_loop(self) -> AsyncGenerator[dict, None]:
+    async def control_loop(self, done: asyncio.Event) -> AsyncGenerator[dict, None]:
         """Generator that yields control messages for updating pipeline parameters"""
         if False:
             yield {}  # dummy yield for proper typing
