@@ -26,14 +26,11 @@ class PipelineStreamer:
 
         self.status = PipelineStatus(pipeline=pipeline, start_time=time.time()).update_params(params, False)
         self.stop_event = asyncio.Event()
+        self.emit_event_lock = Lock()
         self.process: PipelineProcess | None = None
 
-        self.emit_event_lock = Lock()
-        self.ingress_task = None
-        self.egress_task = None
-        self.monitor_task = None
-        self.control_task = None
-        self.report_status_task = None
+        self.main_tasks: list[asyncio.Task] = []
+        self.tasks_supervisor_task: asyncio.Task | None = None
 
     async def start(self):
         if self.process:
@@ -42,77 +39,87 @@ class PipelineStreamer:
         self.stop_event.clear()
         self.process = PipelineProcess.start(self.pipeline, self.params)
         await self.protocol.start()
-        self.ingress_task = run_in_background("ingress_loop", self.run_ingress_loop())
-        self.egress_task = run_in_background("egress_loop", self.run_egress_loop())
-        self.monitor_task = run_in_background("monitor_loop", self.monitor_loop())
-        self.control_task = run_in_background("control_loop", self.run_control_loop())
-        self.report_status_task = run_in_background("report_status_loop", self.report_status_loop())
+
+        # We need a bunch of concurrent tasks to run the streamer. So we start them all in background and then also start
+        # a supervisor task that will stop everything if any of the main tasks return or the stop event is set.
+        self.main_tasks = [
+            run_in_background("ingress_loop", self.run_ingress_loop()),
+            run_in_background("egress_loop", self.run_egress_loop()),
+            run_in_background("monitor_loop", self.monitor_loop()),
+            run_in_background("control_loop", self.run_control_loop()),
+            run_in_background("report_status_loop", self.report_status_loop())
+        ]
+        self.tasks_supervisor_task = run_in_background("tasks_supervisor", self.tasks_supervisor())
+
+    async def tasks_supervisor(self):
+        """Supervises the main tasks and stops everything if either of them return or the stop event is set"""
+        try:
+            async def wait_for_stop():
+                await self.stop_event.wait()
+
+            tasks = self.main_tasks + [asyncio.create_task(wait_for_stop())]
+            await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+
+            await self._do_stop()
+        except Exception:
+            logging.error("Error on supervisor task", exc_info=True)
+            os._exit(1)
+
+    async def _do_stop(self):
+        """Stops all running tasks and waits for them to exit. To be called only by the supervisor task"""
+        if not self.process:
+            raise RuntimeError("Process not started")
+
+        # make sure the stop event is set and give running tasks a chance to exit cleanly
+        self.stop_event.set()
+        _, pending = await asyncio.wait(self.main_tasks, return_when=asyncio.ALL_COMPLETED, timeout=1)
+        # force cancellation of the remaining tasks
+        for task in pending:
+            task.cancel()
+
+        stop_tasks = [asyncio.create_task(t) for t in [self.protocol.stop(), self.process.stop()]]
+        await asyncio.wait(stop_tasks, return_when=asyncio.ALL_COMPLETED)
 
     async def wait(self):
         if not self.process:
             raise RuntimeError("Streamer not started")
-        return await self.stop_event.wait()
+        return await self.tasks_supervisor_task
 
-    async def stop(self):
-        if not self.process:
-            raise RuntimeError("Process not started")
-        try:
-            if self.report_status_task:
-                self.report_status_task.cancel()
-                self.report_status_task = None
-            if self.control_task:
-                self.control_task.cancel()
-                self.control_task = None
-            await self.protocol.stop()
-            await self.process.stop()
-            if self.ingress_task:
-                self.ingress_task.cancel()
-                self.ingress_task = None
-            if self.egress_task:
-                self.egress_task.cancel()
-                self.egress_task = None
-            if self.monitor_task:
-                self.monitor_task.cancel()
-                self.monitor_task = None
-        except Exception:
-            logging.error("Error stopping streamer", exc_info=True)
-        finally:
-            self.stop_event.set()
+    async def stop(self, *, timeout: float):
+        self.stop_event.set()
+        await asyncio.wait_for(self.tasks_supervisor_task, timeout)
 
     async def _restart_process(self):
         if not self.process:
             raise RuntimeError("Process not started")
-        try:
-            # Capture logs before stopping the process
-            restart_logs = self.process.get_recent_logs()
-            last_error = self.process.get_last_error()
-            # don't call the full start/stop methods since we only want to restart the process
-            await self.process.stop()
 
-            self.process = PipelineProcess.start(self.pipeline, self.params)
-            self.status.inference_status.restart_count += 1
-            self.status.inference_status.last_restart_time = time.time()
-            self.status.inference_status.last_restart_logs = restart_logs
-            if last_error:
-                error_msg, error_time = last_error
-                self.status.inference_status.last_error = error_msg
-                self.status.inference_status.last_error_time = error_time
+        # Capture logs before stopping the process
+        restart_logs = self.process.get_recent_logs()
+        last_error = self.process.get_last_error()
+        # don't call the full start/stop methods since we only want to restart the process
+        await self.process.stop()
 
-            await self._emit_monitoring_event({
-                "type": "restart",
-                "pipeline": self.pipeline,
-                "restart_count": self.status.inference_status.restart_count,
-                "restart_time": self.status.inference_status.last_restart_time,
-                "restart_logs": restart_logs,
-                "last_error": last_error
-            })
+        self.process = PipelineProcess.start(self.pipeline, self.params)
+        self.status.inference_status.restart_count += 1
+        self.status.inference_status.last_restart_time = time.time()
+        self.status.inference_status.last_restart_logs = restart_logs
+        if last_error:
+            error_msg, error_time = last_error
+            self.status.inference_status.last_error = error_msg
+            self.status.inference_status.last_error_time = error_time
 
-            logging.info(
-                f"PipelineProcess restarted. Restart count: {self.status.inference_status.restart_count}"
-            )
-        except Exception:
-            logging.error(f"Error restarting pipeline process", exc_info=True)
-            os._exit(1)
+        await self._emit_monitoring_event({
+            "type": "restart",
+            "pipeline": self.pipeline,
+            "restart_count": self.status.inference_status.restart_count,
+            "restart_time": self.status.inference_status.last_restart_time,
+            "restart_logs": restart_logs,
+            "last_error": last_error
+        })
+
+        logging.info(
+            f"PipelineProcess restarted. Restart count: {self.status.inference_status.restart_count}"
+        )
 
     async def update_params(self, params: dict):
         self.params = params
@@ -219,7 +226,7 @@ class PipelineStreamer:
 
             if self.input_timeout > 0 and time_since_last_input > self.input_timeout:
                 logging.info(f"Input stream stopped for {time_since_last_input} seconds. Shutting down...")
-                run_in_background("stop_from_monitor", self.stop())
+                self.stop_event.set()
                 return
 
             gone_stale = (
@@ -246,49 +253,43 @@ class PipelineStreamer:
     async def run_ingress_loop(self):
         frame_count = 0
         start_time = 0.0
-        try:
-            async for frame in self.protocol.ingress_loop(self.stop_event):
-                if not self.process or self.process.done.is_set():
-                    # no need to sleep since we want to consume input frames as fast as possible
-                    continue
+        async for frame in self.protocol.ingress_loop(self.stop_event):
+            if not self.process or self.process.done.is_set():
+                # no need to sleep since we want to consume input frames as fast as possible
+                continue
 
-                if not start_time:
-                    start_time = time.time()
+            if not start_time:
+                start_time = time.time()
 
-                # crop the max square from the center of the image and scale to 512x512
-                # most models expect this size especially when using tensorrt
-                width, height = frame.size
-                if (width, height) != (512, 512):
-                    frame_array = np.array(frame)
+            # crop the max square from the center of the image and scale to 512x512
+            # most models expect this size especially when using tensorrt
+            width, height = frame.size
+            if (width, height) != (512, 512):
+                frame_array = np.array(frame)
 
-                    if width != height:
-                        square_size = min(width, height)
-                        start_x = width // 2 - square_size // 2
-                        start_y = height // 2 - square_size // 2
-                        frame_array = frame_array[start_y:start_y+square_size, start_x:start_x+square_size]
+                if width != height:
+                    square_size = min(width, height)
+                    start_x = width // 2 - square_size // 2
+                    start_y = height // 2 - square_size // 2
+                    frame_array = frame_array[start_y:start_y+square_size, start_x:start_x+square_size]
 
-                    # Resize using cv2 (much faster than PIL)
-                    frame_array = cv2.resize(frame_array, (512, 512))
-                    frame = Image.fromarray(frame_array)
+                # Resize using cv2 (much faster than PIL)
+                frame_array = cv2.resize(frame_array, (512, 512))
+                frame = Image.fromarray(frame_array)
 
-                logging.debug(f"Sending input frame. Scaled from {width}x{height} to {frame.size[0]}x{frame.size[1]}")
-                self.process.send_input(frame)
-                self.status.input_status.last_input_time = time.time()  # Track time after send completes
+            logging.debug(f"Sending input frame. Scaled from {width}x{height} to {frame.size[0]}x{frame.size[1]}")
+            self.process.send_input(frame)
+            self.status.input_status.last_input_time = time.time()  # Track time after send completes
 
-                # Increment frame count and measure FPS
-                frame_count += 1
-                elapsed_time = time.time() - start_time
-                if elapsed_time >= fps_log_interval:
-                    self.status.input_status.fps = frame_count / elapsed_time
-                    logging.info(f"Input FPS: {self.status.input_status.fps:.2f}")
-                    frame_count = 0
-                    start_time = time.time()
-            # automatically stop the streamer when the ingress ends cleanly
-            logging.info("Ingress loop ended, stopping streamer")
-            await self.stop()
-        except Exception:
-            logging.error("Error running ingress loop", exc_info=True)
-            run_in_background("stop_from_ingress_loop", self.stop())
+            # Increment frame count and measure FPS
+            frame_count += 1
+            elapsed_time = time.time() - start_time
+            if elapsed_time >= fps_log_interval:
+                self.status.input_status.fps = frame_count / elapsed_time
+                logging.info(f"Input FPS: {self.status.input_status.fps:.2f}")
+                frame_count = 0
+                start_time = time.time()
+        logging.info("Ingress loop ended")
 
     async def run_egress_loop(self):
         async def gen_output_frames() -> AsyncGenerator[Image.Image, None]:
@@ -322,14 +323,8 @@ class PipelineStreamer:
                     frame_count = 0
                     start_time = time.time()
 
-        try:
-            await self.protocol.egress_loop(gen_output_frames())
-            # automatically stop the streamer when the egress ends cleanly
-            logging.info("Egress loop ended, stopping streamer")
-            await self.stop()
-        except Exception:
-            logging.error("Error running egress loop", exc_info=True)
-            run_in_background("stop_from_egress_loop", self.stop())
+        await self.protocol.egress_loop(gen_output_frames())
+        logging.info("Egress loop ended")
 
     async def run_control_loop(self):
         """Consumes control messages from the protocol and updates parameters"""

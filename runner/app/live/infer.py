@@ -51,7 +51,7 @@ async def main(*, http_port: int, stream_protocol: str, subscribe_url: str, publ
         logging.error(f"Stack trace:\n{traceback.format_exc()}")
         raise e
     finally:
-        await streamer.stop()
+        await streamer.stop(timeout=5)
         await api.cleanup()
 
 
