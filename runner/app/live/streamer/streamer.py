@@ -217,9 +217,9 @@ class PipelineStreamer:
 
             start_time = self.process.start_time
             current_time = time.time()
-            last_input_time = self.status.input_status.last_input_time or start_time
-            last_output_time = self.status.inference_status.last_output_time or start_time
-            last_params_update_time = self.status.inference_status.last_params_update_time or start_time
+            last_input_time = max(self.status.input_status.last_input_time or 0, start_time)
+            last_output_time = max(self.status.inference_status.last_output_time or 0, start_time)
+            last_params_update_time = max(self.status.inference_status.last_params_update_time or 0, start_time)
 
             time_since_last_input = current_time - last_input_time
             time_since_last_output = current_time - last_output_time
