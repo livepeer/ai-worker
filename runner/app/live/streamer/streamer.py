@@ -162,13 +162,14 @@ class PipelineStreamer:
 
     def _current_state(self) -> str:
         current_time = time.time()
-        last_input_time = self.status.input_status.last_input_time or 0
+        input = self.status.input_status
+        last_input_time = input.last_input_time or 0
         if current_time - last_input_time > 60:
             if self.stop_event.is_set() and current_time - last_input_time < 90:
                 # give ourselves a 30s grace period to shutdown
                 return PipelineState.DEGRADED_INPUT
             return PipelineState.OFFLINE
-        elif current_time - input.last_input_time > 2 or input.fps < 15:
+        elif current_time - last_input_time > 2 or input.fps < 15:
             return PipelineState.DEGRADED_INPUT
 
         inference = self.status.inference_status
