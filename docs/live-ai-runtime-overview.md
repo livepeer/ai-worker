@@ -1,17 +1,17 @@
 # Realtime AI Inference Runtime Overview
 
-## Architecture
+## Introduction
+
+The architecture consists of several key components:
+
+- **`ai-worker` library**: Embedded in `go-livepeer`, it can be run by the Orchestrator or as a separate Worker node.
+- **`ai-runner` container**: This container includes:
+  - **Runner API**: The entry point for the container, which interacts with the `ai-worker` library. It starts the `infer.py` process when the `/live-video-to-video` API is called.
+  - **`infer.py` process**: Manages the inference runtime and monitoring. It initiates a separate "Pipeline Process" using Python's `multiprocessing` library to handle the actual inference.
 
 [Miro Board](https://miro.com/app/board/uXjVL0AgKN0=/?share_link_id=516154359809)
 
 ![Architecture Overview](./assets/ai-inference-runtime-arch.jpg)
-
-There are a couple key components:
-- `ai-worker` library: Embedded in go-livepeer, ran by the Orchestrator itself or a separate Worker node.
-- `ai-runner` container, within which there are a couple processes:
-  - Runner API: Entrypoint of the container, runs the API for the `ai-worker` lib to interact with. Starts the `infer.py` process when the `/live-video-to-video` API is called.
-  - infer.py: Process that holds the most complexity for the inference runtime and monitoring. It starts a separate "Pipeline Process" to run the actual inference.
-  - This Pipeline Process, started with `multiprocessing` Python library. It's created for performance reasons, so the inference itself can run in an isolated Python environment and competes with the least other stuff going on in the process (avoids Python GIL inefficiencies).
 
 ## Startup flow
 
