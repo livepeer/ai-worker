@@ -1,12 +1,12 @@
 import logging
 import os
-from typing import Annotated
-from fastapi import APIRouter, Depends, Form, status
+import time
+from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
-from app.routes.utils import HTTPError, LLMResponse, http_error
+from app.routes.utils import HTTPError, LLMRequest, LLMResponse, http_error
 import json
 
 router = APIRouter()
@@ -33,13 +33,7 @@ RESPONSES = {
 )
 @router.post("/llm/", response_model=LLMResponse, responses=RESPONSES, include_in_schema=False)
 async def llm(
-    prompt: Annotated[str, Form()],
-    model_id: Annotated[str, Form()] = "",
-    system_msg: Annotated[str, Form()] = "",
-    temperature: Annotated[float, Form()] = 0.7,
-    max_tokens: Annotated[int, Form()] = 256,
-    history: Annotated[str, Form()] = "[]",  # We'll parse this as JSON
-    stream: Annotated[bool, Form()] = False,
+    request: LLMRequest,
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
@@ -52,50 +46,50 @@ async def llm(
                 content=http_error("Invalid bearer token"),
             )
 
-    if model_id != "" and model_id != pipeline.model_id:
+    if request.model != "" and request.model != pipeline.model_id:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=http_error(
-                f"pipeline configured with {pipeline.model_id} but called with "
-                f"{model_id}"
+                f"pipeline configured with {pipeline.model_id} but called with {request.model}"
             ),
         )
 
     try:
-        history_list = json.loads(history)
-        if not isinstance(history_list, list):
-            raise ValueError("History must be a JSON array")
-
         generator = pipeline(
-            prompt=prompt,
-            history=history_list,
-            system_msg=system_msg if system_msg else None,
-            temperature=temperature,
-            max_tokens=max_tokens
+            messages=[msg.dict() for msg in request.messages],
+            temperature=request.temperature,
+            max_tokens=request.max_tokens,
+            top_p=request.top_p,
+            top_k=request.top_k
         )
 
-        if stream:
-            return StreamingResponse(stream_generator(generator), media_type="text/event-stream")
+        if request.stream:
+            return StreamingResponse(
+                stream_generator(generator),
+                media_type="text/event-stream"
+            )
         else:
             full_response = ""
+            last_chunk = None
+
             async for chunk in generator:
                 if isinstance(chunk, dict):
-                    tokens_used = chunk["tokens_used"]
-                    break
-                full_response += chunk
+                    if "choices" in chunk:
+                        if "delta" in chunk["choices"][0]:
+                            full_response += chunk["choices"][0]["delta"].get(
+                                "content", "")
+                    last_chunk = chunk
 
-            return LLMResponse(response=full_response, tokens_used=tokens_used)
+            usage = last_chunk.get("usage", {})
 
-    except json.JSONDecodeError:
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content={"detail": "Invalid JSON format for history"}
-        )
-    except ValueError as ve:
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content={"detail": str(ve)}
-        )
+            return LLMResponse(
+                response=full_response,
+                tokens_used=usage.get("total_tokens", 0),
+                id=last_chunk.get("id", ""),
+                model=last_chunk.get("model", pipeline.model_id),
+                created=last_chunk.get("created", int(time.time()))
+            )
+
     except Exception as e:
         logger.error(f"LLM processing error: {str(e)}")
         return JSONResponse(
@@ -107,11 +101,12 @@ async def llm(
 async def stream_generator(generator):
     try:
         async for chunk in generator:
-            if isinstance(chunk, dict):  # This is the final result
-                yield f"data: {json.dumps(chunk)}\n\n"
-                break
-            else:
-                yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+            if isinstance(chunk, dict):
+                if "choices" in chunk:
+                    # Regular streaming chunk or final chunk
+                    yield f"data: {json.dumps(chunk)}\n\n"
+                    if chunk["choices"][0].get("finish_reason") == "stop":
+                        break
         yield "data: [DONE]\n\n"
     except Exception as e:
         logger.error(f"Streaming error: {str(e)}")
