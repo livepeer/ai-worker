@@ -1,5 +1,5 @@
-from app.pipelines.base import Pipeline
+from app.pipelines.base import Pipeline	
 
 
-class FrameInterpolationPipeline(Pipeline):
+class FrameInterpolationPipeline(Pipeline):	
     pass

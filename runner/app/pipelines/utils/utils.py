@@ -124,7 +124,6 @@ def split_prompt(
 
     return prompt_dict
 
-
 class SafetyChecker:
     """Checks images for unsafe or inappropriate content using a pretrained model.
 
@@ -181,6 +180,7 @@ class SafetyChecker:
             images=images_np,
             clip_input=safety_checker_input.pixel_values.to(self._dtype),
         )
+
         return images, has_nsfw_concept
 
 
