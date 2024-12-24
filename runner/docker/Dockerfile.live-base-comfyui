@@ -16,9 +16,9 @@ ENV PIP_PREFER_BINARY=1
 RUN pip install --no-cache-dir --upgrade pip==${PIP_VERSION} setuptools==69.5.1 wheel==0.43.0
 
 # Install ComfyUI custom nodes
-COPY install_comfyui_nodes.sh .
-RUN chmod +x install_comfyui_nodes.sh
-RUN ./install_comfyui_nodes.sh
+COPY install-comfyui-nodes.sh /install-comfyui-nodes.sh
+RUN chmod +x /install-comfyui-nodes.sh
+RUN /install-comfyui-nodes.sh
 
 # Upgrade TensorRT to 10.6.0
 RUN pip uninstall -y tensorrt && \
