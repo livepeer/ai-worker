@@ -138,6 +138,7 @@ class LLMPipeline(Pipeline):
 
         if use_8bit:
             engine_args.quantization = "bitsandbytes"
+            engine_args.load_format = "bitsandbytes"
             logger.info("Using 8-bit quantization")
         else:
             logger.info("Using BFloat16 precision")
