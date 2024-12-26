@@ -558,7 +558,8 @@ components:
     AudioResponse:
       properties:
         audio:
-          $ref: '#/components/schemas/MediaURL'
+          allOf:
+          - $ref: '#/components/schemas/MediaURL'
           description: The generated audio.
       type: object
       required:
@@ -918,7 +919,8 @@ components:
     HTTPError:
       properties:
         detail:
-          $ref: '#/components/schemas/APIError'
+          allOf:
+          - $ref: '#/components/schemas/APIError'
           description: Detailed error information.
       type: object
       required:
