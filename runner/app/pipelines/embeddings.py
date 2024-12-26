@@ -1,4 +1,3 @@
-# app/pipelines/embeddings.py
 import logging
 import os
 from typing import List, Union, Dict, Any, Optional
@@ -9,6 +8,7 @@ from sentence_transformers import SentenceTransformer
 from InstructorEmbedding import INSTRUCTOR
 from dataclasses import dataclass
 from enum import Enum
+from huggingface_hub import file_download
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +39,16 @@ class EmbeddingPipeline(Pipeline):
         logger.info("Initializing embedding pipeline")
 
         self.model_id = model_id
+        folder_name = file_download.repo_folder_name(
+            repo_id=model_id, repo_type="model")
+        base_path = os.path.join(get_model_dir(), folder_name)
+
+        # Find the actual model path
+        self.local_model_path = self._find_model_path(base_path)
+
+        if not self.local_model_path:
+            raise ValueError(f"Could not find model files for {model_id}")
+
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
         # Get configuration from environment
@@ -50,16 +60,15 @@ class EmbeddingPipeline(Pipeline):
 
         try:
             if self.model_type == EmbeddingModelType.SENTENCE_TRANSFORMER:
-                self.model = SentenceTransformer(model_id).to(self.device)
+                self.model = SentenceTransformer(self.local_model_path).to(self.device)
             elif self.model_type == EmbeddingModelType.INSTRUCTOR:
-                self.model = INSTRUCTOR(model_id).to(self.device)
+                self.model = INSTRUCTOR(self.local_model_path).to(self.device)
 
             logger.info(f"Model loaded successfully on {self.device}")
 
         except Exception as e:
             logger.error(f"Error loading model: {e}")
             raise
-
     async def generate(
         self,
         texts: Union[str, List[str]],
@@ -123,3 +132,13 @@ class EmbeddingPipeline(Pipeline):
 
     def __str__(self):
         return f"EmbeddingPipeline(model_id={self.model_id})"
+    
+    def _find_model_path(self, base_path):
+    # Check if the model files are directly in the base path
+        if any(file.endswith('.bin') or file.endswith('.safetensors') for file in os.listdir(base_path)):
+            return base_path
+
+        # If not, look in subdirectories
+        for root, dirs, files in os.walk(base_path):
+            if any(file.endswith('.bin') or file.endswith('.safetensors') for file in files):
+                return root

@@ -1,7 +1,5 @@
-# app/routes/embeddings.py
 import logging
 import os
-from typing import Union, List
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
