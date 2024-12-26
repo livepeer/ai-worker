@@ -5,29 +5,13 @@ from typing import Union, List
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, Field
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
 from app.routes.utils import HTTPError, http_error
+from app.routes.utils import EmbeddingRequest, EmbeddingResponse
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
-
-
-class EmbeddingRequest(BaseModel):
-    input: Union[str, List[str]] = Field(..., description="Text to embed")
-    model: str = Field("", description="Model to use")
-    instruction: Optional[str] = Field(
-        None, description="Instruction for instructor models")
-    normalize: bool = Field(True, description="Whether to normalize embeddings")
-
-
-class EmbeddingResponse(BaseModel):
-    object: str
-    data: List[Dict[str, Union[List[float], int]]]
-    model: str
-    usage: Dict[str, int]
-
 
 RESPONSES = {
     status.HTTP_200_OK: {"model": EmbeddingResponse},
