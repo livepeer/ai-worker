@@ -72,9 +72,27 @@ class TextResponse(BaseModel):
     chunks: List[Chunk] = Field(..., description="The generated text chunks.")
 
 
+class LLMMessage(BaseModel):
+    role: str
+    content: str
+
+
+class LLMRequest(BaseModel):
+    messages: List[LLMMessage]
+    model: str = ""
+    temperature: float = 0.7
+    max_tokens: int = 256
+    top_p: float = 1.0
+    top_k: int = -1
+    stream: bool = False
+
+
 class LLMResponse(BaseModel):
     response: str
     tokens_used: int
+    id: str
+    model: str
+    created: int
 
 
 class ImageToTextResponse(BaseModel):
@@ -100,6 +118,7 @@ class LiveVideoToVideoResponse(BaseModel):
         default='',
         description="URL for subscribing to events for pipeline status and logs",
     )
+
 
 class APIError(BaseModel):
     """API error response model."""
