@@ -1,9 +1,7 @@
-import io
-
+import asyncio
 import zmq.asyncio
 from PIL import Image
-from multiprocessing.synchronize import Event
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator
 
 from .protocol import StreamProtocol
 from .jpeg import to_jpeg_bytes, from_jpeg_bytes
@@ -29,7 +27,7 @@ class ZeroMQProtocol(StreamProtocol):
         self.output_socket.close()
         self.context.term()
 
-    async def ingress_loop(self, done: Event) -> AsyncGenerator[Image.Image, None]:
+    async def ingress_loop(self, done: asyncio.Event) -> AsyncGenerator[Image.Image, None]:
         while not done.is_set():
             frame_bytes = await self.input_socket.recv()
             yield from_jpeg_bytes(frame_bytes)
@@ -42,7 +40,7 @@ class ZeroMQProtocol(StreamProtocol):
     async def emit_monitoring_event(self, event: dict):
         pass  # No-op for ZeroMQ
 
-    async def control_loop(self) -> AsyncGenerator[dict, None]:
+    async def control_loop(self, done: asyncio.Event) -> AsyncGenerator[dict, None]:
         if False:
             yield {}  # Empty generator, dummy yield for proper typing
-        pass # ZeroMQ protocol does not support control messages
+        await done.wait() # ZeroMQ protocol does not support control messages so just wait for the stop event
