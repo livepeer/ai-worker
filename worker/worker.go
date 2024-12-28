@@ -51,22 +51,27 @@ type Worker struct {
 	mu                 *sync.Mutex
 }
 
-func NewWorker(defaultImage string, gpus []string, modelDir string) (*Worker, error) {
-	dockerClient, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithAPIVersionNegotiation())
-	if err != nil {
-		return nil, err
-	}
-
-	manager, err := NewDockerManager(defaultImage, gpus, modelDir, dockerClient)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Worker{
-		manager:            manager,
+func NewWorker(defaultImage string, gpus []string, modelDir string, external bool) (*Worker, error) {
+	worker := &Worker{
 		externalContainers: make(map[string]*RunnerContainer),
 		mu:                 &sync.Mutex{},
-	}, nil
+	}
+
+	if !external {
+		dockerClient, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithAPIVersionNegotiation())
+		if err != nil {
+			return nil, err
+		}
+
+		manager, err := NewDockerManager(defaultImage, gpus, modelDir, dockerClient)
+		if err != nil {
+			return nil, err
+		}
+
+		worker.manager = manager
+	}
+
+	return worker, nil
 }
 
 func (w *Worker) HardwareInformation() []HardwareInformation {

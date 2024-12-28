@@ -33,7 +33,9 @@ func main() {
 
 	modelID := "stabilityai/stable-video-diffusion-img2vid-xt"
 
-	w, err := worker.NewWorker(containerImageID, gpus, modelsDir)
+	external := false
+
+	w, err := worker.NewWorker(containerImageID, gpus, modelsDir, external)
 	if err != nil {
 		slog.Error("Error creating worker", slog.String("error", err.Error()))
 		return
