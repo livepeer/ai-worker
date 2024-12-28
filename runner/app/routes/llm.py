@@ -1,16 +1,15 @@
 import logging
 import os
-import time
+from typing import Union
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.dependencies import get_pipeline
 from app.pipelines.base import Pipeline
-from app.routes.utils import HTTPError, LLMRequest, LLMResponse, http_error
+from app.routes.utils import HTTPError, LLMRequest, LLMChoice, LLMMessage, LLMResponse, http_error
 import json
 
 router = APIRouter()
-
 logger = logging.getLogger(__name__)
 
 RESPONSES = {
@@ -20,10 +19,10 @@ RESPONSES = {
     status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPError},
 }
 
-
 @router.post(
     "/llm",
-    response_model=LLMResponse,
+    response_model=LLMResponse
+,
     responses=RESPONSES,
     operation_id="genLLM",
     description="Generate text using a language model.",
@@ -31,12 +30,13 @@ RESPONSES = {
     tags=["generate"],
     openapi_extra={"x-speakeasy-name-override": "llm"},
 )
-@router.post("/llm/", response_model=LLMResponse, responses=RESPONSES, include_in_schema=False)
+@router.post("/llm/", response_model=LLMResponse
+, responses=RESPONSES, include_in_schema=False)
 async def llm(
     request: LLMRequest,
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
-):
+) -> Union[LLMResponse, JSONResponse, StreamingResponse]:
     auth_token = os.environ.get("AUTH_TOKEN")
     if auth_token:
         if not token or token.credentials != auth_token:
@@ -71,24 +71,31 @@ async def llm(
         else:
             full_response = ""
             last_chunk = None
-
             async for chunk in generator:
-                if isinstance(chunk, dict):
-                    if "choices" in chunk:
-                        if "delta" in chunk["choices"][0]:
-                            full_response += chunk["choices"][0]["delta"].get(
-                                "content", "")
-                    last_chunk = chunk
+                if chunk.choices and chunk.choices[0].delta.content:
+                    full_response += chunk.choices[0].delta.content
+                last_chunk = chunk
 
-            usage = last_chunk.get("usage", {})
-
-            return LLMResponse(
-                response=full_response,
-                tokens_used=usage.get("total_tokens", 0),
-                id=last_chunk.get("id", ""),
-                model=last_chunk.get("model", pipeline.model_id),
-                created=last_chunk.get("created", int(time.time()))
-            )
+            if last_chunk:
+                # Return the final response with accumulated text
+                return LLMResponse(
+                    choices=[
+                        LLMChoice(
+                            message=LLMMessage(
+                                role="assistant",
+                                content=full_response
+                            ),
+                            index=0,
+                            finish_reason="stop"
+                        )
+                    ],
+                    tokens_used=last_chunk.tokens_used,
+                    id=last_chunk.id,
+                    model=last_chunk.model,
+                    created=last_chunk.created
+                )
+            else:
+                raise ValueError("No response generated")
 
     except Exception as e:
         logger.error(f"LLM processing error: {str(e)}")
@@ -101,12 +108,13 @@ async def llm(
 async def stream_generator(generator):
     try:
         async for chunk in generator:
-            if isinstance(chunk, dict):
-                if "choices" in chunk:
+            if isinstance(chunk, LLMResponse):
+                if len(chunk.choices) > 0:
                     # Regular streaming chunk or final chunk
-                    yield f"data: {json.dumps(chunk)}\n\n"
-                    if chunk["choices"][0].get("finish_reason") == "stop":
+                    yield f"data: {chunk.model_dump_json()}\n\n"
+                    if chunk.choices[0].finish_reason == "stop":
                         break
+        # Signal end of stream
         yield "data: [DONE]\n\n"
     except Exception as e:
         logger.error(f"Streaming error: {str(e)}")
