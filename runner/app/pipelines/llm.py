@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import time
+import uuid
 from dataclasses import dataclass
 from typing import Dict, Any, List, AsyncGenerator, Union, Optional
 
@@ -194,7 +195,7 @@ class LLMPipeline(Pipeline):
             frequency_penalty=config.frequency_penalty,
         )
 
-        request_id = f"chatcmpl-{int(time.time())}"
+        request_id = f"chatcmpl-{uuid.uuid4()}"
 
         results_generator = self.engine.generate(
             prompt=full_prompt, sampling_params=sampling_params, request_id=request_id)
