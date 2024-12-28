@@ -95,6 +95,21 @@ class LLMResponse(BaseModel):
     created: int
 
 
+class EmbeddingRequest(BaseModel):
+    input: Union[str, List[str]] = Field(..., description="Text to embed")
+    model: str = Field("", description="Model to use")
+    instruction: Optional[str] = Field(
+        None, description="Instruction for instructor models")
+    normalize: bool = Field(True, description="Whether to normalize embeddings")
+
+
+class EmbeddingResponse(BaseModel):
+    object: str
+    data: List[Dict[str, Union[List[float], int]]]
+    model: str
+    usage: Dict[str, int]
+
+
 class ImageToTextResponse(BaseModel):
     """Response model for text generation."""
 
