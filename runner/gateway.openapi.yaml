@@ -509,6 +509,54 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: textToSpeech
+  /image-to-image-generic:
+    post:
+      tags:
+      - generate
+      summary: Image To Image Generic
+      description: Apply image transformations to a provided image according to the choice of tasks, i.e., outpainting, inpainting, sketch2image.
+      operationId: genImageToImageGeneric
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_genImageToImageGeneric'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageResponse'
+                x-speakeasy-name-override: data
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+      x-speakeasy-name-override: imageToImageGeneric
 components:
   schemas:
     APIError:
@@ -841,6 +889,89 @@ components:
       - image
       - model_id
       title: Body_genUpscale
+    Body_genImageToImageGeneric:
+      properties:
+        prompt:
+          type: string
+          title: Prompt
+          description: Text prompt(s) to guide image generation.
+        image:
+          type: string
+          format: binary
+          title: Image
+          description: Uploaded image to modify with the pipeline.
+        mask_image:
+          type: string
+          format: binary
+          title: Mask Image
+          description: Mask image to determine which regions of an image to fill in for inpainting task.
+        model_id:
+          type: string
+          title: Model Id
+          description: Hugging Face model ID used for image generation.
+          default: ''
+        loras:
+          type: string
+          title: Loras
+          description: 'A LoRA (Low-Rank Adaptation) model and its corresponding weight
+            for image generation. Example: { "latent-consistency/lcm-lora-sdxl": 1.0,
+            "nerijs/pixel-art-xl": 1.2}.'
+          default: ''
+        strength:
+          type: number
+          title: Strength
+          description: Degree of transformation applied to the reference image (0
+            to 1).
+          default: 0.8
+        guidance_scale:
+          type: string
+          title: Guidance Scale
+          description: Encourages model to generate images closely linked to the text
+            prompt (higher values may reduce image quality).
+          default: '[6.5, 10.0]'
+        negative_prompt:
+          type: string
+          title: Negative Prompt
+          description: Text prompt(s) to guide what to exclude from image generation.
+            Ignored if guidance_scale < 1.
+          default: ''
+        safety_check:
+          type: boolean
+          title: Safety Check
+          description: Perform a safety check to estimate if generated images could
+            be offensive or harmful.
+          default: true
+        seed:
+          type: integer
+          title: Seed
+          description: Seed for random number generation.
+        num_inference_steps:
+          type: string
+          title: Num Inference Steps
+          description: Number of denoising steps. More steps usually lead to higher
+            quality images but slower inference. Modulated by strength.
+          default: '[30, 25]'
+        controlnet_conditioning_scale:
+          type: number
+          title: Controlnet Conditioning Scale
+          description: Determines how much weight to assign to the conditioning inputs.
+          default: 0.5
+        control_guidance_end:
+          type: number
+          title: Control Guidance End
+          description: The percentage of total steps at which the ControlNet stops applying.
+          default: 0.9
+        num_images_per_prompt:
+          type: integer
+          title: Num Images Per Prompt
+          description: Number of images to generate per prompt.
+          default: 1
+      type: object
+      required:
+      - prompt
+      - image
+      - model_id
+      title: Body_genImageToImageGeneric
     Chunk:
       properties:
         timestamp:

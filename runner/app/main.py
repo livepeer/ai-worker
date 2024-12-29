@@ -78,6 +78,10 @@ def load_pipeline(pipeline: str, model_id: str) -> any:
             from app.pipelines.text_to_speech import TextToSpeechPipeline
 
             return TextToSpeechPipeline(model_id)
+        case "image-to-image-generic":
+            from app.pipelines.image_to_image_generic import ImageToImageGenericPipeline
+
+            return ImageToImageGenericPipeline(model_id)
         case _:
             raise EnvironmentError(
                 f"{pipeline} is not a valid pipeline for model {model_id}"
@@ -128,6 +132,10 @@ def load_route(pipeline: str) -> any:
             from app.routes import text_to_speech
 
             return text_to_speech.router
+        case "image-to-image-generic":
+            from app.routes import image_to_image_generic
+
+            return image_to_image_generic.router
         case _:
             raise EnvironmentError(f"{pipeline} is not a valid pipeline")
 

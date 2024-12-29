@@ -206,6 +206,51 @@ type BodyGenUpscale struct {
 	Seed *int `json:"seed,omitempty"`
 }
 
+// BodyGenImageToImageGeneric defines model for Body_genImageToImageGeneric.
+type BodyGenImageToImageGeneric struct {
+	// GuidanceScale Encourages model to generate images closely linked to the text prompt (higher values may reduce image quality).
+	GuidanceScale *string `json:"guidance_scale,omitempty"`
+
+	// Image Uploaded image to modify with the pipeline.
+	Image openapi_types.File `json:"image"`
+
+	// MaskImage Mask image to determine which regions of an image to fill in for inpainting task.
+	MaskImage openapi_types.File `json:"mask_image"`
+
+	// Loras A LoRA (Low-Rank Adaptation) model and its corresponding weight for image generation. Example: { "latent-consistency/lcm-lora-sdxl": 1.0, "nerijs/pixel-art-xl": 1.2}.
+	Loras *string `json:"loras,omitempty"`
+
+	// ModelId Hugging Face model ID used for image generation.
+	ModelId *string `json:"model_id,omitempty"`
+
+	// NegativePrompt Text prompt(s) to guide what to exclude from image generation. Ignored if guidance_scale < 1.
+	NegativePrompt *string `json:"negative_prompt,omitempty"`
+
+	// NumImagesPerPrompt Number of images to generate per prompt.
+	NumImagesPerPrompt *int `json:"num_images_per_prompt,omitempty"`
+
+	// NumInferenceSteps Number of denoising steps. More steps usually lead to higher quality images but slower inference. Modulated by strength.
+	NumInferenceSteps *string `json:"num_inference_steps,omitempty"`
+
+	// Prompt Text prompt(s) to guide image generation.
+	Prompt string `json:"prompt"`
+
+	// SafetyCheck Perform a safety check to estimate if generated images could be offensive or harmful.
+	SafetyCheck *bool `json:"safety_check,omitempty"`
+
+	// Seed Seed for random number generation.
+	Seed *int `json:"seed,omitempty"`
+
+	// Strength Degree of transformation applied to the reference image (0 to 1).
+	Strength *float32 `json:"strength,omitempty"`
+
+	// Determines how much weight to assign to the conditioning inputs.
+	ControlnetConditioningScale *float32 `json:"controlnet_conditioning_scale,omitempty"`
+
+	// The percentage of total steps at which the ControlNet stops applying.
+	ControlGuidanceEnd *float32 `json:"control_guidance_end,omitempty"`
+}
+
 // Chunk A chunk of text with a timestamp.
 type Chunk struct {
 	// Text The text of the chunk.
@@ -464,6 +509,9 @@ type GenTextToSpeechJSONRequestBody = TextToSpeechParams
 // GenUpscaleMultipartRequestBody defines body for GenUpscale for multipart/form-data ContentType.
 type GenUpscaleMultipartRequestBody = BodyGenUpscale
 
+// GenImageToImageGenericMultipartRequestBody defines body for GenImageToImageGeneric for multipart/form-data ContentType.
+type GenImageToImageGenericMultipartRequestBody = BodyGenImageToImageGeneric
+
 // AsValidationErrorLoc0 returns the union data inside the ValidationError_Loc_Item as a ValidationErrorLoc0
 func (t ValidationError_Loc_Item) AsValidationErrorLoc0() (ValidationErrorLoc0, error) {
 	var body ValidationErrorLoc0
@@ -645,6 +693,9 @@ type ClientInterface interface {
 
 	// GenUpscaleWithBody request with any body
 	GenUpscaleWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GenImageToImageGenericWithBody request with any body
+	GenImageToImageGenericWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) GenAudioToTextWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -841,6 +892,18 @@ func (c *Client) GenTextToSpeech(ctx context.Context, body GenTextToSpeechJSONRe
 
 func (c *Client) GenUpscaleWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGenUpscaleRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GenImageToImageGenericWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGenImageToImageGenericRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1266,6 +1329,35 @@ func NewGenUpscaleRequestWithBody(server string, contentType string, body io.Rea
 	return req, nil
 }
 
+// NewGenImageToImageGenericRequestWithBody generates requests for GenImageToImageGeneric with any type of body
+func NewGenImageToImageGenericRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/image-to-image-generic")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -1355,6 +1447,9 @@ type ClientWithResponsesInterface interface {
 
 	// GenUpscaleWithBodyWithResponse request with any body
 	GenUpscaleWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenUpscaleResponse, error)
+
+	// GenImageToImageGenericWithBodyWithResponse request with any body
+	GenImageToImageGenericWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenImageToImageGenericResponse, error)
 }
 
 type GenAudioToTextResponse struct {
@@ -1686,6 +1781,32 @@ func (r GenUpscaleResponse) StatusCode() int {
 	return 0
 }
 
+type GenImageToImageGenericResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ImageResponse
+	JSON400      *HTTPError
+	JSON401      *HTTPError
+	JSON422      *HTTPValidationError
+	JSON500      *HTTPError
+}
+
+// Status returns HTTPResponse.Status
+func (r GenImageToImageGenericResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GenImageToImageGenericResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 // GenAudioToTextWithBodyWithResponse request with arbitrary body returning *GenAudioToTextResponse
 func (c *ClientWithResponses) GenAudioToTextWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenAudioToTextResponse, error) {
 	rsp, err := c.GenAudioToTextWithBody(ctx, contentType, body, reqEditors...)
@@ -1833,6 +1954,15 @@ func (c *ClientWithResponses) GenUpscaleWithBodyWithResponse(ctx context.Context
 		return nil, err
 	}
 	return ParseGenUpscaleResponse(rsp)
+}
+
+// GenImageToImageGenericWithBodyWithResponse request with arbitrary body returning *GenImageToImageGenericResponse
+func (c *ClientWithResponses) GenImageToImageGenericWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GenImageToImageGenericResponse, error) {
+	rsp, err := c.GenImageToImageGenericWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGenImageToImageGenericResponse(rsp)
 }
 
 // ParseGenAudioToTextResponse parses an HTTP response from a GenAudioToTextWithResponse call
@@ -2474,6 +2604,60 @@ func ParseGenUpscaleResponse(rsp *http.Response) (*GenUpscaleResponse, error) {
 	return response, nil
 }
 
+// ParseGenImageToImageGenericResponse parses an HTTP response from a GenImageToImageGenericWithResponse call
+func ParseGenImageToImageGenericResponse(rsp *http.Response) (*GenImageToImageGenericResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GenImageToImageGenericResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ImageResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest HTTPValidationError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest HTTPError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Audio To Text
@@ -2515,6 +2699,9 @@ type ServerInterface interface {
 	// Upscale
 	// (POST /upscale)
 	GenUpscale(w http.ResponseWriter, r *http.Request)
+	// Image To Image Generic
+	// (POST /image-to-image-generic)
+	GenImageToImageGeneric(w http.ResponseWriter, r *http.Request)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -2596,6 +2783,12 @@ func (_ Unimplemented) GenTextToSpeech(w http.ResponseWriter, r *http.Request) {
 // Upscale
 // (POST /upscale)
 func (_ Unimplemented) GenUpscale(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Image To Image Generic
+// (POST /image-to-image-generic)
+func (_ Unimplemented) GenImageToImageGeneric(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -2823,6 +3016,23 @@ func (siw *ServerInterfaceWrapper) GenUpscale(w http.ResponseWriter, r *http.Req
 	handler.ServeHTTP(w, r.WithContext(ctx))
 }
 
+// GenImageToImageGeneric operation middleware
+func (siw *ServerInterfaceWrapper) GenImageToImageGeneric(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	ctx = context.WithValue(ctx, HTTPBearerScopes, []string{})
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GenImageToImageGeneric(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -2974,6 +3184,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/upscale", wrapper.GenUpscale)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/image-to-image-generic", wrapper.GenImageToImageGeneric)
 	})
 
 	return r
