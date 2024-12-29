@@ -93,9 +93,11 @@ class ImageToImageGenericPipeline(Pipeline):
                 safety_checker=None,
                 **kwargs,
             ).to(torch_device)
+            self.pipeline_stage1.enable_model_cpu_offload()
             self.pipeline_stage2 = StableDiffusionXLInpaintPipeline.from_pretrained(
                 "OzzyGT/RealVisXL_V4.0_inpainting", vae=self.vae, **kwargs
             ).to(torch_device)
+            self.pipeline_stage1.enable_model_cpu_offload()
 
         elif self.task == TaskType.SKETCH_TO_IMAGE.value:
             self.controlnet = ControlNetModel.from_pretrained(model_id, **kwargs).to(
@@ -115,6 +117,7 @@ class ImageToImageGenericPipeline(Pipeline):
                 scheduler=eulera_scheduler,
                 **kwargs,
             ).to(torch_device)
+            self.pipeline.enable_model_cpu_offload()
 
         self._lora_loader = LoraLoader(self.pipeline)
 
