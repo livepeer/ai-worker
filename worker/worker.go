@@ -394,10 +394,11 @@ func (w *Worker) AudioToText(ctx context.Context, req GenAudioToTextMultipartReq
 	return resp.JSON200, nil
 }
 
-func (w *Worker) LLM(ctx context.Context, req GenLLMFormdataRequestBody) (interface{}, error) {
+func (w *Worker) LLM(ctx context.Context, req GenLLMJSONRequestBody) (interface{}, error) {
 	isStreaming := req.Stream != nil && *req.Stream
-	borrowCtx, cancel := context.WithCancel(context.Background())
-	c, err := w.borrowContainer(borrowCtx, "llm", *req.ModelId)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, err := w.borrowContainer(ctx, "llm", *req.Model)
 	if err != nil {
 		return nil, err
 	}
@@ -408,17 +409,10 @@ func (w *Worker) LLM(ctx context.Context, req GenLLMFormdataRequestBody) (interf
 		return nil, errors.New("container client is nil")
 	}
 
-	slog.Info("Container borrowed successfully", "model_id", *req.ModelId)
-
-	var buf bytes.Buffer
-	mw, err := NewLLMMultipartWriter(&buf, req)
-	if err != nil {
-		cancel()
-		return nil, err
-	}
+	slog.Info("Container borrowed successfully", "model_id", *req.Model)
 
 	if isStreaming {
-		resp, err := c.Client.GenLLMWithBody(ctx, mw.FormDataContentType(), &buf)
+		resp, err := c.Client.GenLLM(ctx, req)
 		if err != nil {
 			cancel()
 			return nil, err
@@ -427,7 +421,7 @@ func (w *Worker) LLM(ctx context.Context, req GenLLMFormdataRequestBody) (interf
 	}
 	defer cancel()
 
-	resp, err := c.Client.GenLLMWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	resp, err := c.Client.GenLLMWithResponse(ctx, req)
 	if err != nil {
 		return nil, err
 	}
