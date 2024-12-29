@@ -81,7 +81,9 @@ async def image_to_image_generic(
     ],
     mask_image: Annotated[
         UploadFile,
-        File(description="Mask image to determine which regions of an image to fill in for inpainting task."),
+        File(
+            description="Mask image to determine which regions of an image to fill in for inpainting task."
+        ),
     ] = None,
     model_id: Annotated[
         str,
@@ -192,7 +194,9 @@ async def image_to_image_generic(
     try:
         prompt = json_str_to_np_array(prompt, var_name="prompt")
         guidance_scale = json_str_to_np_array(guidance_scale, var_name="guidance_scale")
-        num_inference_steps = json_str_to_np_array(num_inference_steps, var_name="num_inference_steps")
+        num_inference_steps = json_str_to_np_array(
+            num_inference_steps, var_name="num_inference_steps"
+        )
     except ValueError as e:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,

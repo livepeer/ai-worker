@@ -166,8 +166,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--entrypoint",
         type=str,
-        choices=["gateway","runner"],
-        default=["gateway","runner"],
+        choices=["gateway", "runner"],
+        default=["gateway", "runner"],
         nargs="+",
         help=(
             "The entrypoint to generate the OpenAPI schema for, options are 'runner' "
