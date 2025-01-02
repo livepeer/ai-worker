@@ -14,12 +14,13 @@ from app.routes.utils import (
     file_exceeds_max_size,
     handle_pipeline_exception,
     http_error,
-    frames_to_data_url,
+    frames_to_video_data_url,
 )
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from PIL import ImageFile
+from app.pipelines.utils import DetectionFrame
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -51,7 +52,6 @@ RESPONSES = {
     status.HTTP_413_REQUEST_ENTITY_TOO_LARGE: {"model": HTTPError},
     status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPError},
 }
-
 
 @router.post(
     "/object-detection",
@@ -112,21 +112,25 @@ async def object_detection(
         )
 
     frames = []
-    frames_pts = []
     try:
         container = av.open(video.file, mode='r')
         stream = container.streams.video[0]
+        fps = stream.average_rate
 
         start = time.time()
         for frame in container.decode(video=0):  # Decode video frames
-            frames.append(frame.to_image())  # Convert each frame to PIL image and add to list
-            frames_pts.append(float(frame.pts * stream.time_base))
-
+            # Convert each frame to PIL image and add to list
+            frames.append(DetectionFrame(pts=frame.pts,
+                                time_base=stream.time_base,
+                                image=frame.to_image()
+                                )
+              )
+        
         container.close()
         logger.info(f"Decoded video in {time.time() - start:.2f} seconds")
     
         start = time.time()
-        annotated_frames, confidence_scores_all_frames, labels_all_frames, detection_boxes = pipeline(
+        annotated_frames, confidence_scores_all_frames, labels_all_frames, detection_boxes, pts_of_detections = pipeline(
             frames=frames,
             confidence_threshold=confidence_threshold,
             return_annotated_video=return_annotated_video,
@@ -141,30 +145,19 @@ async def object_detection(
             default_error_message="Object-detection pipeline error.",
             custom_error_config=PIPELINE_ERROR_CONFIG,
         )
-    start = time.time()
-    output_frames = []
-
+    
     # Convert the annotated frames to a data url
     if return_annotated_video:
-        encoded_frames_url = frames_to_data_url(annotated_frames)
+        start = time.time()
+        encoded_frames_url = frames_to_video_data_url(annotated_frames, fps=fps)
+        logger.info(f"Annotated frames converted to data URL in {time.time() - start:.2f} seconds, frame count: {len(annotated_frames)}")
     else:
         encoded_frames_url = ""
-
-    output_frames.append(
-        {
-            "url": encoded_frames_url,
-            "seed": 0,
-            "nsfw": False,
-        }
-    )
     
-    logger.info(f"Annotated frames converted to data URL in {time.time() - start:.2f} seconds, frame count: {len(annotated_frames)}")
-    frames = []
-    frames.append(output_frames)
     return {
-        "frames": frames,
+        "video": {"url": encoded_frames_url},
         "confidence_scores": str(confidence_scores_all_frames),
         "labels": str(labels_all_frames),
         "detection_boxes":str(detection_boxes),
-        "frames_pts":str(frames_pts),
+        "detection_pts":str(pts_of_detections),
     }

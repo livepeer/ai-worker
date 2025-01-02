@@ -100,7 +100,8 @@ class LiveVideoToVideoResponse(BaseModel):
 class ObjectDetectionResponse(BaseModel):
     """Response model for object detection."""
 
-    frames: List[List[Media]] = Field(..., description="The generated annotated video frames.")
+    video: MediaURL = Field(..., description="The annotated video.")
+
     confidence_scores: str = Field(
         ..., description="The model's confidence scores for each detected object in each frame."
     )
@@ -110,8 +111,8 @@ class ObjectDetectionResponse(BaseModel):
     detection_boxes: str = Field(
         ..., description="The model's x's and y's coordinates for each detected object in each frame."
     )
-    frames_pts: str = Field(
-        ..., description="The presentation timestamp (PTS) of each frame, indicating the exact time at which the frame should be displayed."
+    detection_pts: str = Field(
+        ..., description="The presentation timestamp (PTS) of each detection."
     )
 
 
@@ -167,7 +168,7 @@ def image_to_data_url(img: Image, format: str = "png") -> str:
     return "data:image/png;base64," + image_to_base64(img, format=format)
 
 
-def frames_to_base64(frames, format="mp4", fps=30) -> str:
+def frames_to_base64_video(frames, format="mp4", fps=30) -> str:
     """Convert a list of PIL images to a base64 encoded video.
     
     Args:
@@ -200,7 +201,7 @@ def frames_to_base64(frames, format="mp4", fps=30) -> str:
     return base64_video
 
 
-def frames_to_data_url(frames, format="mp4", fps=30) -> str:
+def frames_to_video_data_url(frames, format="mp4", fps=30) -> str:
     """Convert a list of PIL images to a data URL.
 
     Args:
@@ -211,7 +212,7 @@ def frames_to_data_url(frames, format="mp4", fps=30) -> str:
     Returns:
         The data URL for the frames.
     """
-    return "data:video/mp4;base64," + frames_to_base64(frames, format=format, fps=fps)
+    return "data:video/mp4;base64," + frames_to_base64_video(frames, format=format, fps=fps)
 
 
 def audio_to_data_url(buffer: io.BytesIO, format: str = "wav") -> str:
