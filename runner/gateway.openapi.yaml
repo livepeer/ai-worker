@@ -868,9 +868,9 @@ components:
           description: Uploaded image to modify with the pipeline.
         mask_image:
           type: string
-          format: binary
           title: Mask Image
-          description: Mask image to determine which regions of an image to fill in for inpainting task.
+          description: Mask image to determine which regions of an image to fill in for
+            inpainting task with the form HxW.
         model_id:
           type: string
           title: Model Id

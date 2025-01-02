@@ -80,9 +80,12 @@ async def image_to_image_generic(
         File(description="Uploaded image to modify with the pipeline."),
     ],
     mask_image: Annotated[
-        UploadFile,
-        File(
-            description="Mask image to determine which regions of an image to fill in for inpainting task."
+        str,
+        Form(
+            description=(
+                "Mask image to determine which regions of an image to fill in"
+                "for inpainting task with the form HxW."
+            )
         ),
     ] = None,
     model_id: Annotated[
@@ -189,7 +192,6 @@ async def image_to_image_generic(
     seeds = [seed + i for i in range(num_images_per_prompt)]
 
     image = Image.open(image.file).convert("RGB")
-    mask_image = Image.open(mask_image.file).convert("RGB") if mask_image else None
 
     try:
         prompt = json_str_to_np_array(prompt, var_name="prompt")
@@ -197,6 +199,9 @@ async def image_to_image_generic(
         num_inference_steps = json_str_to_np_array(
             num_inference_steps, var_name="num_inference_steps"
         )
+        if mask_image:
+            mask_image = json_str_to_np_array(mask_image, var_name="mask_image")
+            mask_image = Image.fromarray(mask_image)
     except ValueError as e:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,

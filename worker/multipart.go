@@ -383,29 +383,16 @@ func NewImageToImageGenericMultipartWriter(w io.Writer, req GenImageToImageGener
 		return nil, fmt.Errorf("failed to copy image to multipart request imageBytes=%v copiedBytes=%v", imageSize, copied)
 	}
 
-	if req.MaskImage != nil {
-		writer, err := mw.CreateFormFile("mask_image", req.MaskImage.Filename())
-		if err != nil {
-			return nil, err
-		}
-		maskimageSize := req.MaskImage.FileSize()
-		maskimageRdr, err := req.MaskImage.Reader()
-		if err != nil {
-			return nil, err
-		}
-		copied, err := io.Copy(writer, maskimageRdr)
-		if err != nil {
-			return nil, err
-		}
-		if copied != maskimageSize {
-			return nil, fmt.Errorf("failed to copy mask_image to multipart request maskimageBytes=%v copiedBytes=%v", maskimageSize, copied)
-		}
-
 	if err := mw.WriteField("prompt", req.Prompt); err != nil {
 		return nil, err
 	}
 	if req.ModelId != nil {
 		if err := mw.WriteField("model_id", *req.ModelId); err != nil {
+			return nil, err
+		}
+	}
+	if req.MaskImage != nil {
+		if err := mw.WriteField("mask_image", *req.MaskImage); err != nil {
 			return nil, err
 		}
 	}

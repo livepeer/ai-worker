@@ -116,8 +116,8 @@ type BodyGenImageToImageGeneric struct {
 	// Loras A LoRA (Low-Rank Adaptation) model and its corresponding weight for image generation. Example: { "latent-consistency/lcm-lora-sdxl": 1.0, "nerijs/pixel-art-xl": 1.2}.
 	Loras *string `json:"loras,omitempty"`
 
-	// MaskImage Mask image to determine which regions of an image to fill in for inpainting task.
-	MaskImage *openapi_types.File `json:"mask_image,omitempty"`
+	// MaskImage Mask image to determine which regions of an image to fill in for inpainting task with the form HxW.
+	MaskImage *string `json:"mask_image,omitempty"`
 
 	// ModelId Hugging Face model ID used for image generation.
 	ModelId string `json:"model_id"`
