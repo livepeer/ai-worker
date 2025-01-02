@@ -1,3 +1,4 @@
+import json
 import logging
 import numpy as np
 import os
@@ -44,6 +45,16 @@ class ImageToImageGenericPipeline(Pipeline):
     def __init__(self, model_id: str, task: str):
         kwargs = {"cache_dir": get_model_dir(), "torch_dtype": torch.float16}
         torch_device = get_torch_device()
+
+        # Check if the model_id is a dictionary in string format in the default value case of model_id on go livepeer side
+        if model_id.startswith("{") and model_id.endswith("}"):
+            try:
+                # Perform json parsing of the string into a dictionary
+                model_id_dict = json.loads(model_id.replace("'", '"'))  # Replace single quotes to make it JSON compliant
+                if isinstance(model_id_dict, dict) and task in model_id_dict:
+                    model_id = model_id_dict[task]
+            except json.JSONDecodeError:
+                pass
 
         folder_name = file_download.repo_folder_name(
             repo_id=model_id, repo_type="model"
