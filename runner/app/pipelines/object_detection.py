@@ -110,7 +110,7 @@ class ObjectDetectionPipeline(Pipeline):
 
                 if return_annotated_video:
                     annotated_frame = annotate_image(
-                        input_image=frame,
+                        input_image=frame.image,
                         detections=detections,
                         labels=final_labels,
                         font_size=self.font_size,
