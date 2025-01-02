@@ -653,6 +653,64 @@ func (w *Worker) LiveVideoToVideo(ctx context.Context, req GenLiveVideoToVideoJS
 	return resp.JSON200, nil
 }
 
+func (w *Worker) ImageToImageGeneric(ctx context.Context, req GenImageToImageGenericMultipartRequestBody) (*ImageResponse, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, err := w.borrowContainer(ctx, "image-to-image-generic", *req.ModelId)
+	if err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	mw, err := NewImageToImageGenericMultipartWriter(&buf, req)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.Client.GenImageToImageGenericWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.JSON400 != nil {
+		val, err := json.Marshal(resp.JSON400)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("image-to-image-generic container returned 400", slog.String("err", string(val)))
+		return nil, errors.New("image-to-image-generic container returned 400: " + resp.JSON400.Detail.Msg)
+	}
+
+	if resp.JSON401 != nil {
+		val, err := json.Marshal(resp.JSON401)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("image-to-image-generic container returned 401", slog.String("err", string(val)))
+		return nil, errors.New("image-to-image-generic container returned 401: " + resp.JSON401.Detail.Msg)
+	}
+
+	if resp.JSON422 != nil {
+		val, err := json.Marshal(resp.JSON422)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("image-to-image-generic container returned 422", slog.String("err", string(val)))
+		return nil, errors.New("image-to-image-generic container returned 422: " + string(val))
+	}
+
+	if resp.JSON500 != nil {
+		val, err := json.Marshal(resp.JSON500)
+		if err != nil {
+			return nil, err
+		}
+		slog.Error("image-to-image-generic container returned 500", slog.String("err", string(val)))
+		return nil, errors.New("image-to-image-generic container returned 500: " + resp.JSON500.Detail.Msg)
+	}
+
+	return resp.JSON200, nil
+}
+
 func (w *Worker) EnsureImageAvailable(ctx context.Context, pipeline string, modelID string) error {
 	return w.manager.EnsureImageAvailable(ctx, pipeline, modelID)
 }

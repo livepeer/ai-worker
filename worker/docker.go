@@ -44,16 +44,17 @@ var maxHealthCheckFailures = 2
 // This only works right now on a single GPU because if there is another container
 // using the GPU we stop it so we don't have to worry about having enough ports
 var containerHostPorts = map[string]string{
-	"text-to-image":       "8000",
-	"image-to-image":      "8100",
-	"image-to-video":      "8200",
-	"upscale":             "8300",
-	"audio-to-text":       "8400",
-	"llm":                 "8500",
-	"segment-anything-2":  "8600",
-	"image-to-text":       "8700",
-	"text-to-speech":      "8800",
-	"live-video-to-video": "8900",
+	"text-to-image":       		"8000",
+	"image-to-image":      		"8100",
+	"image-to-video":      		"8200",
+	"upscale":             		"8300",
+	"audio-to-text":       		"8400",
+	"llm":                 		"8500",
+	"segment-anything-2":  		"8600",
+	"image-to-text":       		"8700",
+	"text-to-speech":      		"8800",
+	"live-video-to-video":		"8900",
+	"image-to-image-generic":	"9000",
 }
 
 // Mapping for per pipeline container images.

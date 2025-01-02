@@ -363,3 +363,93 @@ func NewImageToTextMultipartWriter(w io.Writer, req GenImageToTextMultipartReque
 
 	return mw, nil
 }
+
+func NewImageToImageGenericMultipartWriter(w io.Writer, req GenImageToImageGenericMultipartRequestBody) (*multipart.Writer, error) {
+	mw := multipart.NewWriter(w)
+	writer, err := mw.CreateFormFile("image", req.Image.Filename())
+	if err != nil {
+		return nil, err
+	}
+	imageSize := req.Image.FileSize()
+	imageRdr, err := req.Image.Reader()
+	if err != nil {
+		return nil, err
+	}
+	copied, err := io.Copy(writer, imageRdr)
+	if err != nil {
+		return nil, err
+	}
+	if copied != imageSize {
+		return nil, fmt.Errorf("failed to copy image to multipart request imageBytes=%v copiedBytes=%v", imageSize, copied)
+	}
+
+	if err := mw.WriteField("prompt", req.Prompt); err != nil {
+		return nil, err
+	}
+	if req.ModelId != nil {
+		if err := mw.WriteField("model_id", *req.ModelId); err != nil {
+			return nil, err
+		}
+	}
+	if req.MaskImage != nil {
+		if err := mw.WriteField("mask_image", *req.MaskImage); err != nil {
+			return nil, err
+		}
+	}
+	if req.Loras != nil {
+		if err := mw.WriteField("loras", *req.Loras); err != nil {
+			return nil, err
+		}
+	}
+	if req.Strength != nil {
+		if err := mw.WriteField("strength", fmt.Sprintf("%f", *req.Strength)); err != nil {
+			return nil, err
+		}
+	}
+	if req.GuidanceScale != nil {
+		if err := mw.WriteField("guidance_scale", *req.GuidanceScale); err != nil {
+			return nil, err
+		}
+	}
+	if req.NegativePrompt != nil {
+		if err := mw.WriteField("negative_prompt", *req.NegativePrompt); err != nil {
+			return nil, err
+		}
+	}
+	if req.SafetyCheck != nil {
+		if err := mw.WriteField("safety_check", strconv.FormatBool(*req.SafetyCheck)); err != nil {
+			return nil, err
+		}
+	}
+	if req.Seed != nil {
+		if err := mw.WriteField("seed", strconv.Itoa(*req.Seed)); err != nil {
+			return nil, err
+		}
+	}
+	if req.NumImagesPerPrompt != nil {
+		if err := mw.WriteField("num_images_per_prompt", strconv.Itoa(*req.NumImagesPerPrompt)); err != nil {
+			return nil, err
+		}
+	}
+	if req.NumInferenceSteps != nil {
+		if err := mw.WriteField("num_inference_steps", *req.NumInferenceSteps); err != nil {
+			return nil, err
+		}
+	}
+	if req.ControlnetConditioningScale != nil {
+		if err := mw.WriteField("controlnet_conditioning_scale", fmt.Sprintf("%f", *req.ControlnetConditioningScale)); err != nil {
+			return nil, err
+		}
+	}
+	if req.ControlGuidanceEnd != nil {
+		if err := mw.WriteField("control_guidance_end", fmt.Sprintf("%f", *req.ControlGuidanceEnd)); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := mw.Close(); err != nil {
+		return nil, err
+	}
+
+	return mw, nil
+}
