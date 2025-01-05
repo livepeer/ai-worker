@@ -1124,14 +1124,10 @@ components:
       description: A URL from which media can be accessed.
     ObjectDetectionResponse:
       properties:
-        frames:
-          items:
-            items:
-              $ref: '#/components/schemas/Media'
-            type: array
-          type: array
-          title: Frames
-          description: The generated annotated video frames.
+        video:
+          allOf:
+          - $ref: '#/components/schemas/MediaURL'
+          description: The annotated video.
         confidence_scores:
           type: string
           title: Confidence Scores
@@ -1144,18 +1140,19 @@ components:
         detection_boxes:
           type: string
           title: Detection Boxes
-          description: The model's x's and y's coordinates for each detected object in each frame.
-        frames_pts:
+          description: The model's x's and y's coordinates for each detected object
+            in each frame.
+        detection_pts:
           type: string
-          title: Frames Pts
-          description: The presentation timestamp (PTS) of each frame, indicating the exact time at which the frame should be displayed.
+          title: Detection Pts
+          description: The presentation timestamp (PTS) of each detection.
       type: object
       required:
-      - frames
+      - video
       - confidence_scores
       - labels
       - detection_boxes
-      - frames_pts
+      - detection_pts
       title: ObjectDetectionResponse
       description: Response model for object detection.
     TextResponse:

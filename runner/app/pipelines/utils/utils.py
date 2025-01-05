@@ -13,6 +13,7 @@ from diffusers.pipelines.pipeline_utils import DiffusionPipeline
 from PIL import Image
 from torch import dtype as TorchDtype
 from transformers import CLIPImageProcessor
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -365,3 +366,9 @@ class LoraLoader:
         if not self.loras_enabled:
             self.pipeline.enable_lora()
             self.loras_enabled = True
+
+@dataclass
+class DetectionFrame:
+    pts: float
+    time_base: float
+    image: Image
