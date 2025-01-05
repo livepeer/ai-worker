@@ -10,17 +10,6 @@ servers:
 - url: https://livepeer.studio/api/beta/generate
   description: Livepeer Studio Gateway
 paths:
-  /health:
-    get:
-      summary: Health
-      operationId: health
-      responses:
-        '200':
-          description: Successful Response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HealthCheck'
   /text-to-image:
     post:
       tags:
@@ -330,9 +319,9 @@ paths:
       operationId: genLLM
       requestBody:
         content:
-          application/x-www-form-urlencoded:
+          application/json:
             schema:
-              $ref: '#/components/schemas/Body_genLLM'
+              $ref: '#/components/schemas/LLMRequest'
         required: true
       responses:
         '200':
@@ -520,6 +509,39 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: textToSpeech
+  /health:
+    get:
+      summary: Health
+      operationId: health
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheck'
+  /hardware/info:
+    get:
+      summary: Hardware Info
+      operationId: hardware_info
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HardwareInformation'
+  /hardware/stats:
+    get:
+      summary: Hardware Stats
+      operationId: hardware_stats
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HardwareStats'
   /object-detection:
     post:
       tags:
@@ -781,39 +803,6 @@ components:
       required:
       - image
       title: Body_genImageToVideo
-    Body_genLLM:
-      properties:
-        prompt:
-          type: string
-          title: Prompt
-        model_id:
-          type: string
-          title: Model Id
-          default: ''
-        system_msg:
-          type: string
-          title: System Msg
-          default: ''
-        temperature:
-          type: number
-          title: Temperature
-          default: 0.7
-        max_tokens:
-          type: integer
-          title: Max Tokens
-          default: 256
-        history:
-          type: string
-          title: History
-          default: '[]'
-        stream:
-          type: boolean
-          title: Stream
-          default: false
-      type: object
-      required:
-      - prompt
-      title: Body_genLLM
     Body_genObjectDetection:
       properties:
         video:
@@ -948,6 +937,66 @@ components:
       - text
       title: Chunk
       description: A chunk of text with a timestamp.
+    GPUComputeInfo:
+      properties:
+        id:
+          type: string
+          title: Id
+        name:
+          type: string
+          title: Name
+        memory_total:
+          type: integer
+          title: Memory Total
+        memory_free:
+          type: integer
+          title: Memory Free
+        major:
+          type: integer
+          title: Major
+        minor:
+          type: integer
+          title: Minor
+      type: object
+      required:
+      - id
+      - name
+      - memory_total
+      - memory_free
+      - major
+      - minor
+      title: GPUComputeInfo
+      description: Model for detailed GPU compute information.
+    GPUUtilizationInfo:
+      properties:
+        id:
+          type: string
+          title: Id
+        name:
+          type: string
+          title: Name
+        memory_total:
+          type: integer
+          title: Memory Total
+        memory_free:
+          type: integer
+          title: Memory Free
+        utilization_compute:
+          type: integer
+          title: Utilization Compute
+        utilization_memory:
+          type: integer
+          title: Utilization Memory
+      type: object
+      required:
+      - id
+      - name
+      - memory_total
+      - memory_free
+      - utilization_compute
+      - utilization_memory
+      title: GPUUtilizationInfo
+      description: Model for GPU utilization statistics.
     HTTPError:
       properties:
         detail:
@@ -968,13 +1017,59 @@ components:
           title: Detail
       type: object
       title: HTTPValidationError
+    HardwareInformation:
+      properties:
+        pipeline:
+          type: string
+          title: Pipeline
+        model_id:
+          type: string
+          title: Model Id
+        gpu_info:
+          additionalProperties:
+            $ref: '#/components/schemas/GPUComputeInfo'
+          type: object
+          title: Gpu Info
+      type: object
+      required:
+      - pipeline
+      - model_id
+      - gpu_info
+      title: HardwareInformation
+      description: Response model for GPU information.
+    HardwareStats:
+      properties:
+        pipeline:
+          type: string
+          title: Pipeline
+        model_id:
+          type: string
+          title: Model Id
+        gpu_stats:
+          additionalProperties:
+            $ref: '#/components/schemas/GPUUtilizationInfo'
+          type: object
+          title: Gpu Stats
+      type: object
+      required:
+      - pipeline
+      - model_id
+      - gpu_stats
+      title: HardwareStats
+      description: Response model for real-time GPU statistics.
     HealthCheck:
       properties:
         status:
           type: string
+          enum:
+          - OK
+          - ERROR
+          - IDLE
           title: Status
-          default: OK
+          description: The health status of the pipeline
       type: object
+      required:
+      - status
       title: HealthCheck
     ImageResponse:
       properties:
@@ -1000,6 +1095,54 @@ components:
       - text
       title: ImageToTextResponse
       description: Response model for text generation.
+    LLMMessage:
+      properties:
+        role:
+          type: string
+          title: Role
+        content:
+          type: string
+          title: Content
+      type: object
+      required:
+      - role
+      - content
+      title: LLMMessage
+    LLMRequest:
+      properties:
+        messages:
+          items:
+            $ref: '#/components/schemas/LLMMessage'
+          type: array
+          title: Messages
+        model:
+          type: string
+          title: Model
+          default: ''
+        temperature:
+          type: number
+          title: Temperature
+          default: 0.7
+        max_tokens:
+          type: integer
+          title: Max Tokens
+          default: 256
+        top_p:
+          type: number
+          title: Top P
+          default: 1.0
+        top_k:
+          type: integer
+          title: Top K
+          default: -1
+        stream:
+          type: boolean
+          title: Stream
+          default: false
+      type: object
+      required:
+      - messages
+      title: LLMRequest
     LLMResponse:
       properties:
         response:
@@ -1008,10 +1151,22 @@ components:
         tokens_used:
           type: integer
           title: Tokens Used
+        id:
+          type: string
+          title: Id
+        model:
+          type: string
+          title: Model
+        created:
+          type: integer
+          title: Created
       type: object
       required:
       - response
       - tokens_used
+      - id
+      - model
+      - created
       title: LLMResponse
     LiveVideoToVideoParams:
       properties:
@@ -1028,6 +1183,12 @@ components:
           title: Control Url
           description: URL for subscribing via Trickle protocol for updates in the
             live video-to-video generation params.
+          default: ''
+        events_url:
+          type: string
+          title: Events Url
+          description: URL for publishing events via Trickle protocol for pipeline
+            status and logs.
           default: ''
         model_id:
           type: string
@@ -1062,11 +1223,16 @@ components:
           type: string
           title: Control Url
           description: URL for updating the live video-to-video generation
+          default: ''
+        events_url:
+          type: string
+          title: Events Url
+          description: URL for subscribing to events for pipeline status and logs
+          default: ''
       type: object
       required:
       - subscribe_url
       - publish_url
-      - control_url
       title: LiveVideoToVideoResponse
       description: Response model for live video-to-video generation.
     MasksResponse:

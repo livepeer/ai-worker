@@ -1,0 +1,35 @@
+name: Run AI Worker Tests
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "worker/**"
+  pull_request:
+    paths:
+      - "worker/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        id: go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: './go.mod'
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Install dependencies
+        working-directory: worker
+        run: go mod tidy
+
+      - name: Run tests
+        working-directory: worker
+        run: go test ./...

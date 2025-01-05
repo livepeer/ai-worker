@@ -319,9 +319,9 @@ paths:
       operationId: genLLM
       requestBody:
         content:
-          application/x-www-form-urlencoded:
+          application/json:
             schema:
-              $ref: '#/components/schemas/Body_genLLM'
+              $ref: '#/components/schemas/LLMRequest'
         required: true
       responses:
         '200':
@@ -769,40 +769,6 @@ components:
       - image
       - model_id
       title: Body_genImageToVideo
-    Body_genLLM:
-      properties:
-        prompt:
-          type: string
-          title: Prompt
-        model_id:
-          type: string
-          title: Model Id
-          default: ''
-        system_msg:
-          type: string
-          title: System Msg
-          default: ''
-        temperature:
-          type: number
-          title: Temperature
-          default: 0.7
-        max_tokens:
-          type: integer
-          title: Max Tokens
-          default: 256
-        history:
-          type: string
-          title: History
-          default: '[]'
-        stream:
-          type: boolean
-          title: Stream
-          default: false
-      type: object
-      required:
-      - prompt
-      - model_id
-      title: Body_genLLM
     Body_genObjectDetection:
       properties:
         video:
@@ -984,6 +950,54 @@ components:
       - text
       title: ImageToTextResponse
       description: Response model for text generation.
+    LLMMessage:
+      properties:
+        role:
+          type: string
+          title: Role
+        content:
+          type: string
+          title: Content
+      type: object
+      required:
+      - role
+      - content
+      title: LLMMessage
+    LLMRequest:
+      properties:
+        messages:
+          items:
+            $ref: '#/components/schemas/LLMMessage'
+          type: array
+          title: Messages
+        model:
+          type: string
+          title: Model
+          default: ''
+        temperature:
+          type: number
+          title: Temperature
+          default: 0.7
+        max_tokens:
+          type: integer
+          title: Max Tokens
+          default: 256
+        top_p:
+          type: number
+          title: Top P
+          default: 1.0
+        top_k:
+          type: integer
+          title: Top K
+          default: -1
+        stream:
+          type: boolean
+          title: Stream
+          default: false
+      type: object
+      required:
+      - messages
+      title: LLMRequest
     LLMResponse:
       properties:
         response:
@@ -992,10 +1006,22 @@ components:
         tokens_used:
           type: integer
           title: Tokens Used
+        id:
+          type: string
+          title: Id
+        model:
+          type: string
+          title: Model
+        created:
+          type: integer
+          title: Created
       type: object
       required:
       - response
       - tokens_used
+      - id
+      - model
+      - created
       title: LLMResponse
     LiveVideoToVideoParams:
       properties:
@@ -1012,6 +1038,12 @@ components:
           title: Control Url
           description: URL for subscribing via Trickle protocol for updates in the
             live video-to-video generation params.
+          default: ''
+        events_url:
+          type: string
+          title: Events Url
+          description: URL for publishing events via Trickle protocol for pipeline
+            status and logs.
           default: ''
         model_id:
           type: string
@@ -1047,11 +1079,16 @@ components:
           type: string
           title: Control Url
           description: URL for updating the live video-to-video generation
+          default: ''
+        events_url:
+          type: string
+          title: Events Url
+          description: URL for subscribing to events for pipeline status and logs
+          default: ''
       type: object
       required:
       - subscribe_url
       - publish_url
-      - control_url
       title: LiveVideoToVideoResponse
       description: Response model for live video-to-video generation.
     MasksResponse:

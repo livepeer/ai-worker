@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	docker "github.com/docker/docker/client"
 )
 
 // EnvValue unmarshals JSON booleans as strings for compatibility with env variables.
@@ -50,7 +52,12 @@ type Worker struct {
 }
 
 func NewWorker(defaultImage string, gpus []string, modelDir string) (*Worker, error) {
-	manager, err := NewDockerManager(defaultImage, gpus, modelDir)
+	dockerClient, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithAPIVersionNegotiation())
+	if err != nil {
+		return nil, err
+	}
+
+	manager, err := NewDockerManager(defaultImage, gpus, modelDir, dockerClient)
 	if err != nil {
 		return nil, err
 	}
@@ -60,6 +67,27 @@ func NewWorker(defaultImage string, gpus []string, modelDir string) (*Worker, er
 		externalContainers: make(map[string]*RunnerContainer),
 		mu:                 &sync.Mutex{},
 	}, nil
+}
+
+func (w *Worker) HardwareInformation() []HardwareInformation {
+	var hardware []HardwareInformation
+	for _, rc := range w.externalContainers {
+		if rc.Hardware != nil {
+			hardware = append(hardware, *rc.Hardware)
+		} else {
+			hardware = append(hardware, HardwareInformation{})
+		}
+	}
+
+	for _, rc := range w.manager.containers {
+		if rc.Hardware != nil {
+			hardware = append(hardware, *rc.Hardware)
+		} else {
+			hardware = append(hardware, HardwareInformation{})
+		}
+	}
+
+	return hardware
 }
 
 func (w *Worker) TextToImage(ctx context.Context, req GenTextToImageJSONRequestBody) (*ImageResponse, error) {
@@ -366,10 +394,11 @@ func (w *Worker) AudioToText(ctx context.Context, req GenAudioToTextMultipartReq
 	return resp.JSON200, nil
 }
 
-func (w *Worker) LLM(ctx context.Context, req GenLLMFormdataRequestBody) (interface{}, error) {
+func (w *Worker) LLM(ctx context.Context, req GenLLMJSONRequestBody) (interface{}, error) {
 	isStreaming := req.Stream != nil && *req.Stream
-	borrowCtx, cancel := context.WithCancel(context.Background())
-	c, err := w.borrowContainer(borrowCtx, "llm", *req.ModelId)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	c, err := w.borrowContainer(ctx, "llm", *req.Model)
 	if err != nil {
 		return nil, err
 	}
@@ -380,17 +409,10 @@ func (w *Worker) LLM(ctx context.Context, req GenLLMFormdataRequestBody) (interf
 		return nil, errors.New("container client is nil")
 	}
 
-	slog.Info("Container borrowed successfully", "model_id", *req.ModelId)
-
-	var buf bytes.Buffer
-	mw, err := NewLLMMultipartWriter(&buf, req)
-	if err != nil {
-		cancel()
-		return nil, err
-	}
+	slog.Info("Container borrowed successfully", "model_id", *req.Model)
 
 	if isStreaming {
-		resp, err := c.Client.GenLLMWithBody(ctx, mw.FormDataContentType(), &buf)
+		resp, err := c.Client.GenLLM(ctx, req)
 		if err != nil {
 			cancel()
 			return nil, err
@@ -399,7 +421,7 @@ func (w *Worker) LLM(ctx context.Context, req GenLLMFormdataRequestBody) (interf
 	}
 	defer cancel()
 
-	resp, err := c.Client.GenLLMWithBodyWithResponse(ctx, mw.FormDataContentType(), &buf)
+	resp, err := c.Client.GenLLMWithResponse(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -629,6 +651,10 @@ func (w *Worker) LiveVideoToVideo(ctx context.Context, req GenLiveVideoToVideoJS
 	}
 
 	return resp.JSON200, nil
+}
+
+func (w *Worker) EnsureImageAvailable(ctx context.Context, pipeline string, modelID string) error {
+	return w.manager.EnsureImageAvailable(ctx, pipeline, modelID)
 }
 
 func (w *Worker) ObjectDetection(ctx context.Context, req GenObjectDetectionMultipartRequestBody) (*ObjectDetectionResponse, error) {
