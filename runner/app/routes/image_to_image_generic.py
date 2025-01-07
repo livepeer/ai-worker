@@ -1,6 +1,9 @@
+import base64
 import logging
+import numpy as np
 import os
 import random
+import zlib
 from typing import Annotated, Dict, Tuple, Union
 
 import torch
@@ -200,8 +203,11 @@ async def image_to_image_generic(
             num_inference_steps, var_name="num_inference_steps"
         )
         if mask_image:
-            mask_image = json_str_to_np_array(mask_image, var_name="mask_image")
-            mask_image = Image.fromarray(mask_image)
+            mask_image = base64.b64decode(mask_image)
+            mask_image = zlib.decompress(mask_image)
+            mask_image = np.frombuffer(mask_image, dtype=np.uint8)
+            mask_image = mask_image.reshape((image.size))
+            mask_image = Image.fromarray(mask_image, mode="L")
     except ValueError as e:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,

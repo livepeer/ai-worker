@@ -85,38 +85,36 @@ class ImageToImageGenericPipeline(Pipeline):
         if self.task == TaskType.INPAINTING.value:
             self.pipeline = AutoPipelineForInpainting.from_pretrained(
                 model_id, **kwargs
-            ).to(torch_device)
+            )
             self.pipeline.enable_model_cpu_offload()
 
         elif self.task == TaskType.OUTPAINTING.value:
             self.controlnet = (
                 ControlNetModel.from_pretrained(
                     model_id, torch_dtype=torch.float16, variant="fp16"
-                ).to(torch_device),
+                ),
             )
             self.vae = AutoencoderKL.from_pretrained(
                 "madebyollin/sdxl-vae-fp16-fix", torch_dtype=torch.float16
-            ).to(torch_device)
+            )
             self.pipeline_stage1 = StableDiffusionXLControlNetPipeline.from_pretrained(
                 "SG161222/RealVisXL_V4.0",
                 controlnet=self.controlnet,
                 vae=self.vae,
                 safety_checker=None,
                 **kwargs,
-            ).to(torch_device)
+            )
             self.pipeline_stage1.enable_model_cpu_offload()
             self.pipeline_stage2 = StableDiffusionXLInpaintPipeline.from_pretrained(
                 "OzzyGT/RealVisXL_V4.0_inpainting", vae=self.vae, **kwargs
-            ).to(torch_device)
+            )
             self.pipeline_stage1.enable_model_cpu_offload()
 
         elif self.task == TaskType.SKETCH_TO_IMAGE.value:
-            self.controlnet = ControlNetModel.from_pretrained(model_id, **kwargs).to(
-                torch_device
-            )
+            self.controlnet = ControlNetModel.from_pretrained(model_id, **kwargs)
             self.vae = AutoencoderKL.from_pretrained(
                 "madebyollin/sdxl-vae-fp16-fix", **kwargs
-            ).to(torch_device)
+            )
             eulera_scheduler = EulerAncestralDiscreteScheduler.from_pretrained(
                 "stabilityai/stable-diffusion-xl-base-1.0", subfolder="scheduler"
             )
@@ -127,7 +125,7 @@ class ImageToImageGenericPipeline(Pipeline):
                 safety_checker=None,
                 scheduler=eulera_scheduler,
                 **kwargs,
-            ).to(torch_device)
+            )
             self.pipeline.enable_model_cpu_offload()
 
         self._lora_loader = LoraLoader(self.pipeline)
@@ -145,8 +143,9 @@ class ImageToImageGenericPipeline(Pipeline):
     ) -> Tuple[List[PIL.Image], List[Optional[bool]]]:
         # Handle num_inference_steps and other model-specific settings
         if "num_inference_steps" in kwargs and (
-            kwargs["num_inference_steps"] is None or kwargs["num_inference_steps"] < 1
+            kwargs["num_inference_steps"] is None or any(x < 1 for x in kwargs["num_inference_steps"])
         ):
+            logger.warning("Invalid num_inference_steps found. Deleting it from kwargs.")
             del kwargs["num_inference_steps"]
 
         # Extract parameters from kwargs
@@ -190,12 +189,6 @@ class ImageToImageGenericPipeline(Pipeline):
                 self._lora_loader.load_loras(
                     loras_json
                 )  # Assuming _lora_loader is defined elsewhere
-
-        # Handle num_inference_steps and other model-specific settings
-        if "num_inference_steps" in kwargs and (
-            kwargs["num_inference_steps"] is None or kwargs["num_inference_steps"] < 1
-        ):
-            del kwargs["num_inference_steps"]
 
         # Ensure proper inference configuration based on model
         if self.task == TaskType.INPAINTING.value:
