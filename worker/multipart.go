@@ -112,6 +112,16 @@ func NewImageToVideoMultipartWriter(w io.Writer, req GenImageToVideoMultipartReq
 		return nil, fmt.Errorf("failed to copy image to multipart request imageBytes=%v copiedBytes=%v", imageSize, copied)
 	}
 
+	if req.Prompt != nil {
+		if err := mw.WriteField("prompt", req.Prompt); err != nil {
+			return nil, err
+		}
+	}
+	if req.NegativePrompt != nil {
+		if err := mw.WriteField("negative_prompt", *req.NegativePrompt); err != nil {
+			return nil, err
+		}
+	}
 	if req.ModelId != nil {
 		if err := mw.WriteField("model_id", *req.ModelId); err != nil {
 			return nil, err
@@ -154,6 +164,11 @@ func NewImageToVideoMultipartWriter(w io.Writer, req GenImageToVideoMultipartReq
 	}
 	if req.NumInferenceSteps != nil {
 		if err := mw.WriteField("num_inference_steps", strconv.Itoa(*req.NumInferenceSteps)); err != nil {
+			return nil, err
+		}
+	}
+	if req.NumFrames != nil {
+		if err := mw.WriteField("num_frames", strconv.Itoa(*req.NumFrames)); err != nil {
 			return nil, err
 		}
 	}

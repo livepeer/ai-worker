@@ -122,6 +122,12 @@ type BodyGenImageToVideo struct {
 	// Image Uploaded image to generate a video from.
 	Image openapi_types.File `json:"image"`
 
+	// Prompt Text prompt(s) to guide video generation for prompt accepting models.
+	Prompt *string `json:"prompt,omitempty"`
+
+	// NegativePrompt Text prompt(s) to guide what to exclude from video generation for prompt accepting models. Ignored if guidance_scale < 1.
+	NegativePrompt *string `json:"negative_prompt,omitempty"`
+
 	// ModelId Hugging Face model ID used for video generation.
 	ModelId *string `json:"model_id,omitempty"`
 
@@ -133,6 +139,9 @@ type BodyGenImageToVideo struct {
 
 	// NumInferenceSteps Number of denoising steps. More steps usually lead to higher quality images but slower inference. Modulated by strength.
 	NumInferenceSteps *int `json:"num_inference_steps,omitempty"`
+
+	// NumFrames The number of video frames to generate.
+	NumFrames *int `json:"num_frames,omitempty"`
 
 	// SafetyCheck Perform a safety check to estimate if generated images could be offensive or harmful.
 	SafetyCheck *bool `json:"safety_check,omitempty"`
