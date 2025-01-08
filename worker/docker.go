@@ -66,7 +66,6 @@ var pipelineToImage = map[string]string{
 
 var livePipelineToImage = map[string]string{
 	"streamdiffusion":    "livepeer/ai-runner:live-app-streamdiffusion",
-	"liveportrait":       "livepeer/ai-runner:live-app-liveportrait",
 	"comfyui":            "livepeer/ai-runner:live-app-comfyui",
 	"segment_anything_2": "livepeer/ai-runner:live-app-segment_anything_2",
 	"noop":               "livepeer/ai-runner:live-app-noop",
