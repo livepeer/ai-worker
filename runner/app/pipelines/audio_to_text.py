@@ -120,13 +120,11 @@ class AudioToTextPipeline(Pipeline):
 
     def __call__(self, audio: UploadFile, duration: float, **kwargs) -> List[File]:
         audioBytes = audio.file.read()
-
-        # Convert M4A/MP4 files for pipeline compatibility.
-        if (
-            os.path.splitext(audio.filename)[1].lower().lstrip(".")
-            in INCOMPATIBLE_EXTENSIONS
-        ):
-            audioBytes = self._audio_converter.convert(audioBytes, "mp3")
+        #re-encode audio to match pre-processing done in transformers.
+        # pipeline accepts np.ndarray and does not convert it again. String file path and bytes are converted to np.ndarray in the pipeline.
+        #https://github.com/huggingface/transformers/blob/47c29ccfaf56947d845971a439cbe75a764b63d7/src/transformers/pipelines/automatic_speech_recognition.py#L353
+        #https://github.com/huggingface/transformers/blob/47c29ccfaf56947d845971a439cbe75a764b63d7/src/transformers/pipelines/audio_utils.py#L10
+        audio_array = self._audio_converter.to_ndarray(audioBytes)
 
         # Adjust batch size and chunk length based on timestamps and duration.
         # NOTE: Done to prevent CUDA OOM errors for large audio files.
@@ -150,7 +148,7 @@ class AudioToTextPipeline(Pipeline):
         )
 
         try:
-            outputs = self.tm(audioBytes, **kwargs)
+            outputs = self.tm(audio_array, **kwargs)
             outputs.setdefault("chunks", [])
         except torch.cuda.OutOfMemoryError as e:
             raise e
