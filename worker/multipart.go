@@ -113,7 +113,7 @@ func NewImageToVideoMultipartWriter(w io.Writer, req GenImageToVideoMultipartReq
 	}
 
 	if req.Prompt != nil {
-		if err := mw.WriteField("prompt", req.Prompt); err != nil {
+		if err := mw.WriteField("prompt", *req.Prompt); err != nil {
 			return nil, err
 		}
 	}
