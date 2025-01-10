@@ -125,7 +125,7 @@ class AudioToTextPipeline(Pipeline):
         # pipeline accepts np.ndarray and does not convert it again. String file path and bytes are converted to np.ndarray in the pipeline.
         #https://github.com/huggingface/transformers/blob/47c29ccfaf56947d845971a439cbe75a764b63d7/src/transformers/pipelines/automatic_speech_recognition.py#L353
         #https://github.com/huggingface/transformers/blob/47c29ccfaf56947d845971a439cbe75a764b63d7/src/transformers/pipelines/audio_utils.py#L10
-        audio_array = self._audio_converter.to_ndarray(audioBytes)          
+        audio_array = self._audio_converter.to_ndarray(audioBytes)
 
         # Adjust batch size and chunk length based on timestamps and duration.
         # NOTE: Done to prevent CUDA OOM errors for large audio files.
