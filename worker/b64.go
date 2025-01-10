@@ -59,3 +59,14 @@ func ReadAudioB64DataUrl(url string, w io.Writer) error {
 
 	return nil
 }
+
+func ReadVideoB64DataUrl(url string, w io.Writer) error {
+	dataURL, err := dataurl.DecodeString(url)
+	if err != nil {
+		return err
+	}
+
+	w.Write(dataURL.Data)
+
+	return nil
+}

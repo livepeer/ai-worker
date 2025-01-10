@@ -54,6 +54,7 @@ var containerHostPorts = map[string]string{
 	"image-to-text":       "8700",
 	"text-to-speech":      "8800",
 	"live-video-to-video": "8900",
+	"object-detection":    "9000",
 }
 
 // Mapping for per pipeline container images.

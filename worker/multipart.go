@@ -363,3 +363,45 @@ func NewImageToTextMultipartWriter(w io.Writer, req GenImageToTextMultipartReque
 
 	return mw, nil
 }
+
+func NewObjectDetectionMultipartWriter(w io.Writer, req GenObjectDetectionMultipartRequestBody) (*multipart.Writer, error) {
+	mw := multipart.NewWriter(w)
+	writer, err := mw.CreateFormFile("video", req.Video.Filename())
+	if err != nil {
+		return nil, err
+	}
+	videoSize := req.Video.FileSize()
+	videoRdr, err := req.Video.Reader()
+	if err != nil {
+		return nil, err
+	}
+	copied, err := io.Copy(writer, videoRdr)
+	if err != nil {
+		return nil, err
+	}
+	if copied != videoSize {
+		return nil, fmt.Errorf("failed to copy video to multipart request videoBytes=%v copiedBytes=%v", videoSize, copied)
+	}
+
+	if req.ConfidenceThreshold != nil {
+		if err := mw.WriteField("confidence_threshold", fmt.Sprintf("%f", *req.ConfidenceThreshold)); err != nil {
+			return nil, err
+		}
+	}
+	if req.ModelId != nil {
+		if err := mw.WriteField("model_id", *req.ModelId); err != nil {
+			return nil, err
+		}
+	}
+	if req.ReturnAnnotatedVideo != nil {
+		if err := mw.WriteField("return_annotated_video", strconv.FormatBool(*req.ReturnAnnotatedVideo)); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := mw.Close(); err != nil {
+		return nil, err
+	}
+
+	return mw, nil
+}

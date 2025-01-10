@@ -542,6 +542,61 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HardwareStats'
+  /object-detection:
+    post:
+      tags:
+      - generate
+      summary: Object Detection
+      description: Generate annotated video(s) for object detection from the input
+        video(s)
+      operationId: genObjectDetection
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_genObjectDetection'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectDetectionResponse'
+                x-speakeasy-name-override: data
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '413':
+          description: Request Entity Too Large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+      x-speakeasy-name-override: objectDetection
 components:
   schemas:
     APIError:
@@ -748,6 +803,32 @@ components:
       required:
       - image
       title: Body_genImageToVideo
+    Body_genObjectDetection:
+      properties:
+        video:
+          type: string
+          format: binary
+          title: Video
+          description: Uploaded video to transform with the pipeline.
+        confidence_threshold:
+          type: number
+          title: Confidence Threshold
+          description: Score threshold to keep object detection predictions.
+          default: 0.6
+        model_id:
+          type: string
+          title: Model Id
+          description: Hugging Face model ID used for transformation.
+          default: ''
+        return_annotated_video:
+          type: boolean
+          title: Return Annotated Video
+          description: If true, returns annotated video url.
+          default: false
+      type: object
+      required:
+      - video
+      title: Body_genObjectDetection
     Body_genSegmentAnything2:
       properties:
         image:
@@ -1207,6 +1288,39 @@ components:
       - url
       title: MediaURL
       description: A URL from which media can be accessed.
+    ObjectDetectionResponse:
+      properties:
+        video:
+          allOf:
+          - $ref: '#/components/schemas/MediaURL'
+          description: The annotated video.
+        confidence_scores:
+          type: string
+          title: Confidence Scores
+          description: The model's confidence scores for each detected object in each
+            frame.
+        labels:
+          type: string
+          title: Labels
+          description: The model's labels for each detected object in each frame.
+        detection_boxes:
+          type: string
+          title: Detection Boxes
+          description: The model's x's and y's coordinates for each detected object
+            in each frame.
+        detection_pts:
+          type: string
+          title: Detection Pts
+          description: The presentation timestamp (PTS) of each detection.
+      type: object
+      required:
+      - video
+      - confidence_scores
+      - labels
+      - detection_boxes
+      - detection_pts
+      title: ObjectDetectionResponse
+      description: Response model for object detection.
     TextResponse:
       properties:
         text:

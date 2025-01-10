@@ -77,6 +77,9 @@ function download_all_models() {
     # Download image-to-text models.
     huggingface-cli download Salesforce/blip-image-captioning-large --include "*.safetensors" "*.json" --cache-dir models
 
+    # Download object-detection models.
+    huggingface-cli download PekingU/rtdetr_r50vd --include "*.safetensors" "*.json" --cache-dir models
+
     # Custom pipeline models.
     huggingface-cli download facebook/sam2-hiera-large --include "*.pt" "*.yaml" --cache-dir models
 
