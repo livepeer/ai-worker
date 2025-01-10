@@ -12,7 +12,6 @@ from app.pipelines.base import Pipeline
 from app.pipelines.utils import get_model_dir, get_torch_device
 from app.pipelines.utils.audio import AudioConverter
 from app.utils.errors import InferenceError
-import numpy as np
 
 logger = logging.getLogger(__name__)
 
