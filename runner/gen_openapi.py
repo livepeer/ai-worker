@@ -20,6 +20,7 @@ from app.routes import (
     text_to_image,
     text_to_speech,
     upscale,
+    image_to_image_generic,
 )
 
 logging.basicConfig(
@@ -114,6 +115,7 @@ def write_openapi(fname: str, entrypoint: str = "runner"):
     app.include_router(image_to_text.router)
     app.include_router(live_video_to_video.router)
     app.include_router(text_to_speech.router)
+    app.include_router(image_to_image_generic.router)
 
     logger.info(f"Generating OpenAPI schema for '{entrypoint}' entrypoint...")
     openapi = get_openapi(
@@ -164,8 +166,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--entrypoint",
         type=str,
-        choices=["gateway","runner"],
-        default=["gateway","runner"],
+        choices=["gateway", "runner"],
+        default=["gateway", "runner"],
         nargs="+",
         help=(
             "The entrypoint to generate the OpenAPI schema for, options are 'runner' "

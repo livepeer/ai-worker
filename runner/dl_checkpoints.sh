@@ -80,6 +80,13 @@ function download_all_models() {
     # Custom pipeline models.
     huggingface-cli download facebook/sam2-hiera-large --include "*.pt" "*.yaml" --cache-dir models
 
+    # Download image-to-image-generic models.
+    huggingface-cli download madebyollin/sdxl-vae-fp16-fix --include "*.safetensors" "*.json" --cache-dir models
+    huggingface-cli download OzzyGT/RealVisXL_V4.0_inpainting --include "*.fp16.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
+    huggingface-cli download kandinsky-community/kandinsky-2-2-decoder-inpaint --include "*.safetensors" "*.json" --cache-dir models
+    huggingface-cli download destitech/controlnet-inpaint-dreamer-sdxl --include "*.fp16.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
+    huggingface-cli download xinsir/controlnet-scribble-sdxl-1.0 --include "*.safetensors" "*.json" --cache-dir models
+
     download_live_models
 }
 
