@@ -399,12 +399,15 @@ func (w *Worker) LLM(ctx context.Context, req GenLLMJSONRequestBody) (interface{
 	ctx, cancel := context.WithCancel(ctx)
 	c, err := w.borrowContainer(ctx, "llm", *req.Model)
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 	if c == nil {
+		cancel()
 		return nil, errors.New("borrowed container is nil")
 	}
 	if c.Client == nil {
+		cancel()
 		return nil, errors.New("container client is nil")
 	}
 
