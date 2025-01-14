@@ -204,7 +204,7 @@ class LLMPipeline(Pipeline):
         input_tokens = len(tokenizer.encode(full_prompt))
         if input_tokens > self.engine_args.max_model_len:
             raise ValueError(
-                f"Input sequence length ({input_tokens}) exceeds maximum allowed ({self.engine.engine_args.max_model_len})")
+                f"Input sequence length ({input_tokens}) exceeds maximum allowed ({self.engine_args.max_model_len})")
 
         total_tokens = 0
         current_response = ""

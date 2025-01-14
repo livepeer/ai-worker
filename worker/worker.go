@@ -399,12 +399,15 @@ func (w *Worker) LLM(ctx context.Context, req GenLLMJSONRequestBody) (interface{
 	ctx, cancel := context.WithCancel(ctx)
 	c, err := w.borrowContainer(ctx, "llm", *req.Model)
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 	if c == nil {
+		cancel()
 		return nil, errors.New("borrowed container is nil")
 	}
 	if c.Client == nil {
+		cancel()
 		return nil, errors.New("container client is nil")
 	}
 
@@ -781,19 +784,21 @@ func (w *Worker) handleStreamingResponse(ctx context.Context, c *RunnerContainer
 			default:
 				line := scanner.Text()
 				data := strings.TrimPrefix(line, "data: ")
-
+				if data == "" {
+					continue
+				}
 				if data == "[DONE]" {
 					break
 				}
 
-				var llmRes *LLMResponse
-				if err := json.Unmarshal([]byte(data), llmRes); err != nil {
-					slog.Error("Error unmarshaling stream data", slog.String("err", err.Error()))
+				var llmRes LLMResponse
+				if err := json.Unmarshal([]byte(data), &llmRes); err != nil {
+					slog.Error("Error unmarshaling stream data", slog.String("err", err.Error()), slog.String("json", data))
 					continue
 				}
 
 				select {
-				case outputChan <- llmRes:
+				case outputChan <- &llmRes:
 				case <-ctx.Done():
 					return
 				}

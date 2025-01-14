@@ -101,7 +101,9 @@ async def llm(
         logger.error(f"LLM processing error: {str(e)}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"detail": "Internal server error during LLM processing."}
+            content=http_error(
+                "Internal server error during LLM processing."
+            )
         )
 
 
