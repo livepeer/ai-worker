@@ -558,8 +558,7 @@ components:
     AudioResponse:
       properties:
         audio:
-          allOf:
-          - $ref: '#/components/schemas/MediaURL'
+          $ref: '#/components/schemas/MediaURL'
           description: The generated audio.
       type: object
       required:
@@ -919,8 +918,7 @@ components:
     HTTPError:
       properties:
         detail:
-          allOf:
-          - $ref: '#/components/schemas/APIError'
+          $ref: '#/components/schemas/APIError'
           description: Detailed error information.
       type: object
       required:
@@ -1014,6 +1012,23 @@ components:
       - text
       title: ImageToTextResponse
       description: Response model for text generation.
+    LLMChoice:
+      properties:
+        index:
+          type: integer
+          title: Index
+        finish_reason:
+          type: string
+          title: Finish Reason
+          default: ''
+        delta:
+          $ref: '#/components/schemas/LLMMessage'
+        message:
+          $ref: '#/components/schemas/LLMMessage'
+      type: object
+      required:
+      - index
+      title: LLMChoice
     LLMMessage:
       properties:
         role:
@@ -1064,12 +1079,6 @@ components:
       title: LLMRequest
     LLMResponse:
       properties:
-        response:
-          type: string
-          title: Response
-        tokens_used:
-          type: integer
-          title: Tokens Used
         id:
           type: string
           title: Id
@@ -1079,14 +1088,38 @@ components:
         created:
           type: integer
           title: Created
+        tokens_used:
+          $ref: '#/components/schemas/LLMTokenUsage'
+        choices:
+          items:
+            $ref: '#/components/schemas/LLMChoice'
+          type: array
+          title: Choices
       type: object
       required:
-      - response
-      - tokens_used
       - id
       - model
       - created
+      - tokens_used
+      - choices
       title: LLMResponse
+    LLMTokenUsage:
+      properties:
+        prompt_tokens:
+          type: integer
+          title: Prompt Tokens
+        completion_tokens:
+          type: integer
+          title: Completion Tokens
+        total_tokens:
+          type: integer
+          title: Total Tokens
+      type: object
+      required:
+      - prompt_tokens
+      - completion_tokens
+      - total_tokens
+      title: LLMTokenUsage
     LiveVideoToVideoParams:
       properties:
         subscribe_url:

@@ -397,7 +397,6 @@ func (w *Worker) AudioToText(ctx context.Context, req GenAudioToTextMultipartReq
 func (w *Worker) LLM(ctx context.Context, req GenLLMJSONRequestBody) (interface{}, error) {
 	isStreaming := req.Stream != nil && *req.Stream
 	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
 	c, err := w.borrowContainer(ctx, "llm", *req.Model)
 	if err != nil {
 		return nil, err
@@ -419,8 +418,8 @@ func (w *Worker) LLM(ctx context.Context, req GenLLMJSONRequestBody) (interface{
 		}
 		return w.handleStreamingResponse(ctx, c, resp, cancel)
 	}
-	defer cancel()
 
+	defer cancel()
 	resp, err := c.Client.GenLLMWithResponse(ctx, req)
 	if err != nil {
 		return nil, err
@@ -762,25 +761,18 @@ func (w *Worker) handleNonStreamingResponse(c *RunnerContainer, resp *GenLLMResp
 	return resp.JSON200, nil
 }
 
-type LlmStreamChunk struct {
-	Chunk      string `json:"chunk,omitempty"`
-	TokensUsed int    `json:"tokens_used,omitempty"`
-	Done       bool   `json:"done,omitempty"`
-}
-
-func (w *Worker) handleStreamingResponse(ctx context.Context, c *RunnerContainer, resp *http.Response, returnContainer func()) (<-chan LlmStreamChunk, error) {
+func (w *Worker) handleStreamingResponse(ctx context.Context, c *RunnerContainer, resp *http.Response, returnContainer func()) (<-chan *LLMResponse, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
-	outputChan := make(chan LlmStreamChunk, 10)
+	outputChan := make(chan *LLMResponse, 10)
 
 	go func() {
 		defer close(outputChan)
 		defer returnContainer()
 
 		scanner := bufio.NewScanner(resp.Body)
-		totalTokens := 0
 
 		for scanner.Scan() {
 			select {
@@ -788,26 +780,22 @@ func (w *Worker) handleStreamingResponse(ctx context.Context, c *RunnerContainer
 				return
 			default:
 				line := scanner.Text()
-				if strings.HasPrefix(line, "data: ") {
-					data := strings.TrimPrefix(line, "data: ")
-					if data == "[DONE]" {
-						outputChan <- LlmStreamChunk{Chunk: "[DONE]", Done: true, TokensUsed: totalTokens}
-						return
-					}
+				data := strings.TrimPrefix(line, "data: ")
 
-					var streamData LlmStreamChunk
-					if err := json.Unmarshal([]byte(data), &streamData); err != nil {
-						slog.Error("Error unmarshaling stream data", slog.String("err", err.Error()))
-						continue
-					}
+				if data == "[DONE]" {
+					break
+				}
 
-					totalTokens += streamData.TokensUsed
+				var llmRes *LLMResponse
+				if err := json.Unmarshal([]byte(data), llmRes); err != nil {
+					slog.Error("Error unmarshaling stream data", slog.String("err", err.Error()))
+					continue
+				}
 
-					select {
-					case outputChan <- streamData:
-					case <-ctx.Done():
-						return
-					}
+				select {
+				case outputChan <- llmRes:
+				case <-ctx.Done():
+					return
 				}
 			}
 		}

@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import time
+import uuid
 from dataclasses import dataclass
 from typing import Dict, Any, List, AsyncGenerator, Union, Optional
 
@@ -10,6 +11,7 @@ from app.pipelines.utils import get_model_dir, get_max_memory
 from vllm import AsyncLLMEngine, AsyncEngineArgs, SamplingParams
 from huggingface_hub import file_download
 from transformers import AutoConfig
+from app.routes.utils import LLMResponse, LLMChoice, LLMMessage, LLMTokenUsage
 
 logger = logging.getLogger(__name__)
 
@@ -194,7 +196,7 @@ class LLMPipeline(Pipeline):
             frequency_penalty=config.frequency_penalty,
         )
 
-        request_id = f"chatcmpl-{int(time.time())}"
+        request_id = f"chatcmpl-{uuid.uuid4()}"
 
         results_generator = self.engine.generate(
             prompt=full_prompt, sampling_params=sampling_params, request_id=request_id)
@@ -219,15 +221,25 @@ class LLMPipeline(Pipeline):
                     current_response = generated_text
                     total_tokens += len(tokenizer.encode(delta))
 
-                    yield {
-                        "choices": [{
-                            "delta": {"content": delta},
-                            "finish_reason": None
-                        }],
-                        "created": int(time.time()),
-                        "model": self.model_id,
-                        "id": request_id
-                    }
+                    yield LLMResponse(
+                        choices=[
+                            LLMChoice(
+                                delta=LLMMessage(
+                                    role="assistant",
+                                    content=delta
+                                ),
+                                index=0
+                            )
+                        ],
+                        tokens_used=LLMTokenUsage(
+                            prompt_tokens=input_tokens,
+                            completion_tokens=total_tokens,
+                            total_tokens=input_tokens + total_tokens
+                        ),
+                        id=request_id,
+                        model=self.model_id,
+                        created=int(time.time())
+                    )
 
                     await asyncio.sleep(0)
 
@@ -242,20 +254,27 @@ class LLMPipeline(Pipeline):
             logger.info(f"  Generated tokens: {total_tokens}")
             generation_time = end_time - first_token_time if first_token_time else 0
             logger.info(f"  Tokens per second: {total_tokens / generation_time:.2f}")
-            yield {
-                "choices": [{
-                    "delta": {"content": ""},
-                    "finish_reason": "stop"
-                }],
-                "created": int(time.time()),
-                "model": self.model_id,
-                "id": request_id,
-                "usage": {
-                    "prompt_tokens": input_tokens,
-                    "completion_tokens": total_tokens,
-                    "total_tokens": input_tokens + total_tokens
-                }
-            }
+
+            yield LLMResponse(
+                choices=[
+                    LLMChoice(
+                        delta=LLMMessage(
+                            role="assistant",
+                            content=""
+                        ),
+                        index=0,
+                        finish_reason="stop"
+                    )
+                ],
+                tokens_used=LLMTokenUsage(
+                    prompt_tokens=input_tokens,
+                    completion_tokens=total_tokens,
+                    total_tokens=input_tokens + total_tokens
+                ),
+                id=request_id,
+                model=self.model_id,
+                created=int(time.time())
+            )
 
         except Exception as e:
             if "CUDA out of memory" in str(e):

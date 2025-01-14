@@ -77,6 +77,41 @@ class LLMMessage(BaseModel):
     content: str
 
 
+class LLMBaseChoice(BaseModel):
+    index: int
+    finish_reason: str = "" # Needs OpenAPI 3.1 support to make optional
+
+
+class LLMTokenUsage(BaseModel):
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+
+class LLMChoice(LLMBaseChoice):
+    delta: LLMMessage = None
+    message: LLMMessage = None
+
+class LLMResponse(BaseModel):
+    id: str
+    model: str
+    created: int
+    tokens_used: LLMTokenUsage
+    choices: List[LLMChoice]
+
+
+# class LLMStreamChoice(LLMBaseChoice):
+#     delta: LLMMessage
+
+# class LLMNonStreamChoice(LLMBaseChoice):
+#     message: LLMMessage
+
+# class LLMStreamResponse(LLMBaseResponse):
+#     choices: List[LLMStreamChoice]
+
+# class LLMNonStreamResponse(LLMBaseResponse):
+#     choices: List[LLMNonStreamChoice]
+
+
 class LLMRequest(BaseModel):
     messages: List[LLMMessage]
     model: str = ""
@@ -85,14 +120,6 @@ class LLMRequest(BaseModel):
     top_p: float = 1.0
     top_k: int = -1
     stream: bool = False
-
-
-class LLMResponse(BaseModel):
-    response: str
-    tokens_used: int
-    id: str
-    model: str
-    created: int
 
 
 class ImageToTextResponse(BaseModel):
