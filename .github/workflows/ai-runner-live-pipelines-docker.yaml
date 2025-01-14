@@ -166,7 +166,7 @@ jobs:
   build-noop:
     name: Build pipeline image (noop)
     needs: build-common-base
-    runs-on: [self-hosted, linux, amd64]
+    runs-on: ubuntu-20.04
     permissions:
       pull-requests: read
     steps:
