@@ -3,8 +3,10 @@ module github.com/livepeer/ai-worker/examples
 go 1.23.2
 
 require (
+	github.com/docker/docker v27.3.1+incompatible
 	github.com/livepeer/go-livepeer v0.8.2-0.20250110233908-233737d45de5
 	github.com/oapi-codegen/runtime v1.1.1
+	github.com/pebbe/zmq4 v1.2.11
 )
 
 require (
@@ -14,7 +16,6 @@ require (
 	github.com/deepmap/oapi-codegen/v2 v2.2.0 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/docker/cli v27.3.1+incompatible // indirect
-	github.com/docker/docker v27.3.1+incompatible // indirect
 	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
