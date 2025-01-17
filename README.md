@@ -43,10 +43,20 @@ Regenerate the OpenAPI specification for the AI runner's API endpoints with:
 python gen_openapi.py
 ```
 
-This creates `openapi.json`. For a YAML version, use:
-
+To correspondingly generate the Go client bindings in the go-livepeer repository,
+you should install `livepeer/go-livepeer` and run:
 ```bash
-python gen_openapi.py --type yaml
+# in the go-livepeer repo
+make ai_worker_codegen
+```
+
+Alternatively, if you want to test the client from a development version of
+`ai-runner`, you can specify a commit hash or branch to generate from:
+```bash
+# for commit `aa7ab76`
+make ai_worker_codegen REF=aa7ab76
+# for branch `test`
+make ai_worker_codegen REF=refs/heads/vg/chore/test
 ```
 
 ## Development documentation
