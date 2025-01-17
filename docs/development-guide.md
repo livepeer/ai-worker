@@ -173,14 +173,14 @@ To deploy the runner on [Modal](https://modal.com/), a serverless GPU platform, 
 
 ### Local Debugging
 
-To directly debug the AI worker, use the go scripts in the [cmd/examples](https://github.com/livepeer/go-livepeer/tree/ai-video/cmd) folder to test and debug the AI worker. Run these scripts with [Golang](https://go.dev/) or use [Vscode](https://code.visualstudio.com/) with the [golang extension](https://code.visualstudio.com/docs/languages/go) for debugging. Future updates will include tests to enhance the development pipeline.
+To debug the `ai-runner` as used from the AI worker logic in `go-livepeer`, use the go scripts in the [cmd/examples](https://github.com/livepeer/ai-worker/tree/examples) folder to test and debug the AI worker. Run these scripts with [Golang](https://go.dev/) or use [Vscode](https://code.visualstudio.com/) with the [golang extension](https://code.visualstudio.com/docs/languages/go) for debugging. Future updates will include tests to enhance the development pipeline.
 
-### Debugging within go-livepeer
+### Debugging a custom go-livepeer
 
-To debug the AI worker within the context of the [go-livepeer](https://github.com/livepeer/go-livepeer/tree/ai-video) project, replace the go module reference in the go.mod file of the go-livepeer project with the path to your local AI worker repository:
+To run the AI worker examples with a custom [go-livepeer](https://github.com/livepeer/go-livepeer) version, replace the go module reference in the [`examples/go.mod`](../examples/go.mod) file with the path to your local `go-livepeer` repository:
 
 ```bash
-go mod edit -replace github.com/livepeer/ai-worker=../path/to/ai-worker
+go mod edit -replace github.com/livepeer/go-livepeer=../path/to/go-livepeer
 ```
 
-This setup allows you to debug the AI worker package directly when running the [go-livepeer](https://github.com/livepeer/go-livepeer/tree/ai-video) software.
+This setup allows you to debug the AI worker package in `go-livepeer` when making changes to the `ai-runner` software.
