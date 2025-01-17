@@ -87,13 +87,9 @@ function download_all_models() {
 function download_live_models() {
     huggingface-cli download KBlueLeaf/kohaku-v2.1 --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
     huggingface-cli download stabilityai/sd-turbo --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
-    huggingface-cli download warmshao/FasterLivePortrait --local-dir models/FasterLivePortrait--checkpoints
-    huggingface-cli download microsoft/Florence-2-large --include "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models/ComfyUI--models
-    huggingface-cli download microsoft/Florence-2-large-ft --include "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models/ComfyUI--models
-    huggingface-cli download microsoft/Florence-2-base --include "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models/ComfyUI--models
-    huggingface-cli download microsoft/Florence-2-base-ft --include "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models/ComfyUI--models
     huggingface-cli download yuvraj108c/Depth-Anything-Onnx --include depth_anything_vitl14.onnx --local-dir models/ComfyUI--models/Depth-Anything-Onnx
     download_sam2_checkpoints
+    download_florence2_checkpoints
     download_stream_diffusion_checkpoints
     download_stream_diffusion_loras
     huggingface-cli download Kijai/LivePortrait_safetensors --local-dir models/ComfyUI--models/livePortrait
@@ -103,6 +99,13 @@ function download_sam2_checkpoints() {
     huggingface-cli download facebook/sam2-hiera-tiny --local-dir models/ComfyUI--models/sam2--checkpoints/facebook--sam2-hiera-tiny
     huggingface-cli download facebook/sam2-hiera-small --local-dir models/ComfyUI--models/sam2--checkpoints/facebook--sam2-hiera-small
     huggingface-cli download facebook/sam2-hiera-large --local-dir models/ComfyUI--models/sam2--checkpoints/facebook--sam2-hiera-large
+}
+
+function download_florence2_checkpoints() {
+    huggingface-cli download microsoft/Florence-2-large --local-dir models/ComfyUI--models/LLM/Florence-2-large --include "*.py" "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data"
+    huggingface-cli download microsoft/Florence-2-large-ft --local-dir models/ComfyUI--models/LLM/Florence-2-large-ft --include "*.py" "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data"
+    huggingface-cli download microsoft/Florence-2-base --local-dir models/ComfyUI--models/LLM/Florence-2-base --include "*.py" "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data"
+    huggingface-cli download microsoft/Florence-2-base-ft --local-dir models/ComfyUI--models/LLM/Florence-2-base-ft --include "*.py" "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data"
 }
 
 function download_stream_diffusion_checkpoints() {
@@ -140,27 +143,6 @@ function build_tensorrt_models() {
                         python app/live/StreamDiffusionWrapper/build_tensorrt.py --model-id \$model --timesteps \$timestep
                     done
                 done"
-
-    # FasterLivePortrait
-    AI_RUNNER_LIVEPORTRAIT_IMAGE=${AI_RUNNER_LIVEPORTRAIT_IMAGE:-livepeer/ai-runner:live-app-liveportrait}
-    docker pull $AI_RUNNER_LIVEPORTRAIT_IMAGE
-    # ai-worker has tags hardcoded in `var livePipelineToImage` so we need to use the same tag in here:
-    docker image tag $AI_RUNNER_LIVEPORTRAIT_IMAGE livepeer/ai-runner:live-app-liveportrait
-    docker run --rm -v ./models:/models --gpus all -l TensorRT-engines  \
-        $AI_RUNNER_LIVEPORTRAIT_IMAGE \
-        bash -c "cd /app/app/live/FasterLivePortrait && \
-                    if [ ! -f '/models/FasterLivePortrait--checkpoints/liveportrait_onnx/stitching_lip.trt' ]; then
-                        echo 'Building TensorRT engines for LivePortrait models (regular)...'
-                        sh scripts/all_onnx2trt.sh
-                    else
-                        echo 'Regular LivePortrait TensorRT engines already exist, skipping build'
-                    fi && \
-                    if [ ! -f '/models/FasterLivePortrait--checkpoints/liveportrait_animal_onnx/stitching_lip.trt' ]; then
-                        echo 'Building TensorRT engines for LivePortrait models (animal)...'
-                        sh scripts/all_onnx2trt_animal.sh
-                    else
-                        echo 'Animal LivePortrait TensorRT engines already exist, skipping build'
-                    fi"
 
     # ComfyUI (only DepthAnything for now)
     AI_RUNNER_COMFYUI_IMAGE=${AI_RUNNER_COMFYUI_IMAGE:-livepeer/ai-runner:live-app-comfyui}
@@ -238,7 +220,7 @@ echo "Starting livepeer AI subnet model downloader..."
 echo "Creating 'models' directory in the current working directory..."
 mkdir -p models
 mkdir -p models/checkpoints
-mkdir -p models/StreamDiffusion--engines models/FasterLivePortrait--checkpoints models/ComfyUI--models models/ComfyUI--models/sam2--checkpoints models/ComfyUI--models/checkpoints
+mkdir -p models/StreamDiffusion--engines models/ComfyUI--models models/ComfyUI--models/sam2--checkpoints models/ComfyUI--models/checkpoints
 
 # Ensure 'huggingface-cli' is installed.
 echo "Checking if 'huggingface-cli' is installed..."

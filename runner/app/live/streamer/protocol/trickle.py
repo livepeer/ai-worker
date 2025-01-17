@@ -2,10 +2,9 @@ import asyncio
 import logging
 import queue
 import json
-from typing import AsyncGenerator, Optional, Callable
+from typing import AsyncGenerator, Optional
 
 from PIL import Image
-from multiprocessing.synchronize import Event
 
 from trickle import media, TricklePublisher, TrickleSubscriber
 
@@ -63,7 +62,7 @@ class TrickleProtocol(StreamProtocol):
         self.subscribe_task = None
         self.publish_task = None
 
-    async def ingress_loop(self, done: Event) -> AsyncGenerator[Image.Image, None]:
+    async def ingress_loop(self, done: asyncio.Event) -> AsyncGenerator[Image.Image, None]:
         def dequeue_jpeg():
             jpeg_bytes = self.subscribe_queue.get()
             if not jpeg_bytes:
@@ -98,7 +97,7 @@ class TrickleProtocol(StreamProtocol):
         except Exception as e:
             logging.error(f"Error reporting status: {e}")
 
-    async def control_loop(self) -> AsyncGenerator[dict, None]:
+    async def control_loop(self, done: asyncio.Event) -> AsyncGenerator[dict, None]:
         if not self.control_subscriber:
             logging.warning("No control-url provided, inference won't get updates from the control trickle subscription")
             return
@@ -106,7 +105,7 @@ class TrickleProtocol(StreamProtocol):
         logging.info("Starting Control subscriber at %s", self.control_url)
         keepalive_message = {"keep": "alive"}
 
-        while True:
+        while not done.is_set():
             try:
                 segment = await self.control_subscriber.next()
                 if not segment or segment.eos():

@@ -123,6 +123,7 @@ def write_openapi(fname: str, entrypoint: str = "runner"):
         description="An application to run AI pipelines",
         routes=app.routes,
         servers=SERVERS,
+        separate_input_output_schemas=False
     )
 
     # Translate OpenAPI schema to 'gateway' side entrypoint if requested.

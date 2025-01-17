@@ -319,9 +319,9 @@ paths:
       operationId: genLLM
       requestBody:
         content:
-          application/x-www-form-urlencoded:
+          application/json:
             schema:
-              $ref: '#/components/schemas/Body_genLLM'
+              $ref: '#/components/schemas/LLMRequest'
         required: true
       responses:
         '200':
@@ -714,40 +714,6 @@ components:
       - image
       - model_id
       title: Body_genImageToVideo
-    Body_genLLM:
-      properties:
-        prompt:
-          type: string
-          title: Prompt
-        model_id:
-          type: string
-          title: Model Id
-          default: ''
-        system_msg:
-          type: string
-          title: System Msg
-          default: ''
-        temperature:
-          type: number
-          title: Temperature
-          default: 0.7
-        max_tokens:
-          type: integer
-          title: Max Tokens
-          default: 256
-        history:
-          type: string
-          title: History
-          default: '[]'
-        stream:
-          type: boolean
-          title: Stream
-          default: false
-      type: object
-      required:
-      - prompt
-      - model_id
-      title: Body_genLLM
     Body_genSegmentAnything2:
       properties:
         image:
@@ -902,19 +868,116 @@ components:
       - text
       title: ImageToTextResponse
       description: Response model for text generation.
-    LLMResponse:
+    LLMChoice:
       properties:
-        response:
-          type: string
-          title: Response
-        tokens_used:
+        index:
           type: integer
-          title: Tokens Used
+          title: Index
+        finish_reason:
+          type: string
+          title: Finish Reason
+          default: ''
+        delta:
+          allOf:
+          - $ref: '#/components/schemas/LLMMessage'
+        message:
+          allOf:
+          - $ref: '#/components/schemas/LLMMessage'
       type: object
       required:
-      - response
+      - index
+      title: LLMChoice
+    LLMMessage:
+      properties:
+        role:
+          type: string
+          title: Role
+        content:
+          type: string
+          title: Content
+      type: object
+      required:
+      - role
+      - content
+      title: LLMMessage
+    LLMRequest:
+      properties:
+        messages:
+          items:
+            $ref: '#/components/schemas/LLMMessage'
+          type: array
+          title: Messages
+        model:
+          type: string
+          title: Model
+          default: ''
+        temperature:
+          type: number
+          title: Temperature
+          default: 0.7
+        max_tokens:
+          type: integer
+          title: Max Tokens
+          default: 256
+        top_p:
+          type: number
+          title: Top P
+          default: 1.0
+        top_k:
+          type: integer
+          title: Top K
+          default: -1
+        stream:
+          type: boolean
+          title: Stream
+          default: false
+      type: object
+      required:
+      - messages
+      title: LLMRequest
+    LLMResponse:
+      properties:
+        id:
+          type: string
+          title: Id
+        model:
+          type: string
+          title: Model
+        created:
+          type: integer
+          title: Created
+        tokens_used:
+          $ref: '#/components/schemas/LLMTokenUsage'
+        choices:
+          items:
+            $ref: '#/components/schemas/LLMChoice'
+          type: array
+          title: Choices
+      type: object
+      required:
+      - id
+      - model
+      - created
       - tokens_used
+      - choices
       title: LLMResponse
+    LLMTokenUsage:
+      properties:
+        prompt_tokens:
+          type: integer
+          title: Prompt Tokens
+        completion_tokens:
+          type: integer
+          title: Completion Tokens
+        total_tokens:
+          type: integer
+          title: Total Tokens
+      type: object
+      required:
+      - prompt_tokens
+      - completion_tokens
+      - total_tokens
+      title: LLMTokenUsage
     LiveVideoToVideoParams:
       properties:
         subscribe_url:
