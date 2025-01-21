@@ -106,6 +106,123 @@ func createDockerManager(mockDockerClient *MockDockerClient) *DockerManager {
 	}
 }
 
+// copyMap returns a deep copy of the given map.
+func copyMap(m map[string]string) map[string]string {
+	copy := make(map[string]string)
+	for k, v := range m {
+		copy[k] = v
+	}
+	return copy
+}
+
+func TestOverridePipelineImages(t *testing.T) {
+	// Store the original values of the maps.
+	originalDefaultBaseImage := defaultBaseImage
+	originalPipelineToImage := copyMap(pipelineToImage)
+	originalLivePipelineToImage := copyMap(livePipelineToImage)
+
+	tests := []struct {
+		name                   string
+		inputJSON              string
+		expectedBase           string
+		expectedPipelineImages map[string]string
+		expectedLiveImages     map[string]string
+		expectError            bool
+	}{
+		{
+			name:         "ValidPipelineOverrides",
+			inputJSON:    `{"segment-anything-2": "custom-image:1.0", "text-to-speech": "speech-image:2.0"}`,
+			expectedBase: originalDefaultBaseImage,
+			expectedPipelineImages: map[string]string{
+				"segment-anything-2": "custom-image:1.0",
+				"text-to-speech":     "speech-image:2.0",
+				"audio-to-text":      originalPipelineToImage["audio-to-text"],
+			},
+			expectedLiveImages: originalLivePipelineToImage,
+			expectError:        false,
+		},
+		{
+			name:                   "OverrideBaseImage",
+			inputJSON:              "new-base-image:latest",
+			expectedBase:           "new-base-image:latest",
+			expectedPipelineImages: originalPipelineToImage,
+			expectedLiveImages:     originalLivePipelineToImage,
+			expectError:            false,
+		},
+		{
+			name:                   "OverrideBaseImageJSON",
+			inputJSON:              `{"base": "new-base-image:latest"}`,
+			expectedBase:           "new-base-image:latest",
+			expectedPipelineImages: originalPipelineToImage,
+			expectedLiveImages:     originalLivePipelineToImage,
+			expectError:            false,
+		},
+		{
+			name:                   "EmptyJSON",
+			inputJSON:              `{}`,
+			expectedBase:           originalDefaultBaseImage,
+			expectedPipelineImages: originalPipelineToImage,
+			expectedLiveImages:     originalLivePipelineToImage,
+			expectError:            false,
+		},
+		{
+			name:                   "MalformedJSON",
+			inputJSON:              `{"segment-anything-2": "custom-image:1.0"`,
+			expectedBase:           originalDefaultBaseImage,
+			expectedPipelineImages: originalPipelineToImage,
+			expectedLiveImages:     originalLivePipelineToImage,
+			expectError:            true,
+		},
+		{
+			name:                   "EmptyString",
+			inputJSON:              "",
+			expectedBase:           originalDefaultBaseImage,
+			expectedPipelineImages: originalPipelineToImage,
+			expectedLiveImages:     originalLivePipelineToImage,
+			expectError:            true,
+		},
+		{
+			name:                   "UnknownPipeline",
+			inputJSON:              `{"unknown-pipeline": "unknown-image:latest"}`,
+			expectedBase:           originalDefaultBaseImage,
+			expectedPipelineImages: originalPipelineToImage,
+			expectedLiveImages:     originalLivePipelineToImage,
+			expectError:            true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Register a cleanup function to reset state after the subtest.
+			t.Cleanup(func() {
+				defaultBaseImage = originalDefaultBaseImage
+				pipelineToImage = copyMap(originalPipelineToImage)
+				livePipelineToImage = copyMap(originalLivePipelineToImage)
+			})
+
+			// Call overridePipelineImages function with the mock data.
+			err := overridePipelineImages(tt.inputJSON)
+
+			if tt.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expectedBase, defaultBaseImage)
+
+				// Verify the expected pipeline images.
+				for pipeline, expectedImage := range tt.expectedPipelineImages {
+					require.Equal(t, expectedImage, pipelineToImage[pipeline])
+				}
+
+				// Verify the expected live pipeline images.
+				for livePipeline, expectedImage := range tt.expectedLiveImages {
+					require.Equal(t, expectedImage, livePipelineToImage[livePipeline])
+				}
+			}
+		})
+	}
+}
+
 func TestNewDockerManager(t *testing.T) {
 	mockDockerClient := new(MockDockerClient)
 
@@ -985,76 +1102,4 @@ func TestDockerWaitUntilRunning(t *testing.T) {
 		require.Contains(t, err.Error(), "timed out waiting for managed container")
 		mockDockerClient.AssertExpectations(t)
 	})
-}
-
-func TestDockerManager_overridePipelineImages(t *testing.T) {
-	mockDockerClient := new(MockDockerClient)
-	dockerManager := createDockerManager(mockDockerClient)
-
-	tests := []struct {
-		name          string
-		inputJSON     string
-		pipeline      string
-		expectedImage string
-		expectError   bool
-	}{
-		{
-			name:          "ValidOverride",
-			inputJSON:     `{"segment-anything-2": "custom-image:1.0"}`,
-			pipeline:      "segment-anything-2",
-			expectedImage: "custom-image:1.0",
-			expectError:   false,
-		},
-		{
-			name:          "MultipleOverrides",
-			inputJSON:     `{"segment-anything-2": "custom-image:1.0", "text-to-speech": "speech-image:2.0"}`,
-			pipeline:      "text-to-speech",
-			expectedImage: "speech-image:2.0",
-			expectError:   false,
-		},
-		{
-			name:          "NoOverrideFallback",
-			inputJSON:     `{"segment-anything-2": "custom-image:1.0"}`,
-			pipeline:      "streamdiffusion",
-			expectedImage: "default-image",
-			expectError:   false,
-		},
-		{
-			name:        "EmptyJSON",
-			inputJSON:   `{}`,
-			pipeline:    "segment-anything-2",
-			expectedImage: "custom-image:1.0",
-			expectError:   false,
-		},
-		{
-			name:        "MalformedJSON",
-			inputJSON:   `{"segment-anything-2": "custom-image:1.0"`,
-			pipeline:    "segment-anything-2",
-			expectError: true,
-		},
-		{
-			name:          "RegularStringInput",
-			inputJSON:     "",
-			pipeline:      "image-to-video",
-			expectedImage: "default-image",
-			expectError:   false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Call overridePipelineImages function with the mock data.
-			err := overridePipelineImages(tt.inputJSON)
-
-			if tt.expectError {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-				
-				// Verify the expected image.
-				image, _ := dockerManager.getContainerImageName(tt.pipeline, "")
-				require.Equal(t, tt.expectedImage, image)
-			}
-		})
-	}
 }
