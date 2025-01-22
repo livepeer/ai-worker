@@ -51,7 +51,7 @@ type Worker struct {
 	mu                 *sync.Mutex
 }
 
-func NewWorker(imageOverrides string, gpus []string, modelDir string) (*Worker, error) {
+func NewWorker(imageOverrides ImageOverrides, gpus []string, modelDir string) (*Worker, error) {
 	dockerClient, err := docker.NewClientWithOpts(docker.FromEnv, docker.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, err

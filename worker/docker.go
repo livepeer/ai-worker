@@ -77,42 +77,6 @@ type ImageOverrides struct {
 	Live    map[string]string `json:"live"`
 }
 
-func overridePipelineImages(imageOverrides string) error {
-	if imageOverrides == "" {
-		return fmt.Errorf("empty string is not a valid image override")
-	}
-
-	var overrides ImageOverrides
-	if err := json.Unmarshal([]byte(imageOverrides), &overrides); err != nil {
-		return fmt.Errorf("invalid JSON format for image overrides: %w", err)
-	}
-
-	// Update the default base image if provided.
-	if overrides.Default != "" {
-		defaultBaseImage = overrides.Default
-	}
-
-	// Update batch pipeline images.
-	for pipeline, image := range overrides.Batch {
-		if _, exists := pipelineToImage[pipeline]; exists {
-			pipelineToImage[pipeline] = image
-		} else {
-			return fmt.Errorf("can't override docker image for unknown batch pipeline: %s", pipeline)
-		}
-	}
-
-	// Update live pipeline images.
-	for pipeline, image := range overrides.Live {
-		if _, exists := livePipelineToImage[pipeline]; exists {
-			livePipelineToImage[pipeline] = image
-		} else {
-			return fmt.Errorf("can't override docker image for unknown live pipeline: %s", pipeline)
-		}
-	}
-
-	return nil
-}
-
 // DockerClient is an interface for the Docker client, allowing for mocking in tests.
 // NOTE: ensure any docker.Client methods used in this package are added.
 type DockerClient interface {
@@ -136,6 +100,7 @@ type DockerManager struct {
 	defaultImage string
 	gpus         []string
 	modelDir     string
+	overrides    ImageOverrides
 
 	dockerClient DockerClient
 	// gpu ID => container name
@@ -145,7 +110,7 @@ type DockerManager struct {
 	mu         *sync.Mutex
 }
 
-func NewDockerManager(imageOverrides string, gpus []string, modelDir string, client DockerClient) (*DockerManager, error) {
+func NewDockerManager(overrides ImageOverrides, gpus []string, modelDir string, client DockerClient) (*DockerManager, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), containerTimeout)
 	if err := removeExistingContainers(ctx, client); err != nil {
 		cancel()
@@ -153,17 +118,10 @@ func NewDockerManager(imageOverrides string, gpus []string, modelDir string, cli
 	}
 	cancel()
 
-	// Override pipeline images if provided.
-	if imageOverrides != "" {
-		if err := overridePipelineImages(imageOverrides); err != nil {
-			return nil, err
-		}
-	}
-
 	manager := &DockerManager{
-		defaultImage:  defaultBaseImage,
 		gpus:          gpus,
 		modelDir:      modelDir,
+		overrides:     overrides,
 		dockerClient:  client,
 		gpuContainers: make(map[string]string),
 		containers:    make(map[string]*RunnerContainer),
@@ -264,17 +222,24 @@ func (m *DockerManager) returnContainer(rc *RunnerContainer) {
 func (m *DockerManager) getContainerImageName(pipeline, modelID string) (string, error) {
 	if pipeline == "live-video-to-video" {
 		// We currently use the model ID as the live pipeline name for legacy reasons.
-		if image, ok := livePipelineToImage[modelID]; ok {
+		if image, ok := m.overrides.Live[modelID]; ok {
+			return image, nil
+		} else if image, ok := livePipelineToImage[modelID]; ok {
 			return image, nil
 		}
 		return "", fmt.Errorf("no container image found for live pipeline %s", modelID)
 	}
 
-	if image, ok := pipelineToImage[pipeline]; ok {
+	if image, ok := m.overrides.Batch[pipeline]; ok {
+		return image, nil
+	} else if image, ok := pipelineToImage[pipeline]; ok {
 		return image, nil
 	}
 
-	return m.defaultImage, nil
+	if m.overrides.Default != "" {
+		return m.overrides.Default, nil
+	}
+	return defaultBaseImage, nil
 }
 
 // HasCapacity checks if an unused managed container exists or if a GPU is available for a new container.
