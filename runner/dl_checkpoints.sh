@@ -135,7 +135,7 @@ function build_tensorrt_models() {
     docker pull $AI_RUNNER_STREAMDIFFUSION_IMAGE
     # ai-worker has tags hardcoded in `var livePipelineToImage` so we need to use the same tag in here:
     docker image tag $AI_RUNNER_STREAMDIFFUSION_IMAGE livepeer/ai-runner:live-app-streamdiffusion
-    docker run --rm -v ./models:/models --gpus all -l TensorRT-engines \
+    docker run --user $(id -u):$(id -g) --rm -v ./models:/models --gpus all -l TensorRT-engines \
         $AI_RUNNER_STREAMDIFFUSION_IMAGE \
         bash -c "for model in $MODELS; do
                     for timestep in $TIMESTEPS; do
@@ -149,7 +149,7 @@ function build_tensorrt_models() {
     docker pull $AI_RUNNER_COMFYUI_IMAGE
     # ai-worker has tags hardcoded in `var livePipelineToImage` so we need to use the same tag in here:
     docker image tag $AI_RUNNER_COMFYUI_IMAGE livepeer/ai-runner:live-app-comfyui
-    docker run --rm -v ./models:/models --gpus all -l TensorRT-engines \
+    docker run --user $(id -u):$(id -g) --rm -v ./models:/models --gpus all -l TensorRT-engines \
         $AI_RUNNER_COMFYUI_IMAGE \
         bash -c "cd /comfyui/models/Depth-Anything-Onnx && \
                     python /comfyui/custom_nodes/ComfyUI-Depth-Anything-Tensorrt/export_trt.py && \
