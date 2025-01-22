@@ -77,35 +77,34 @@ func overridePipelineImages(imageOverrides string) error {
 		return fmt.Errorf("empty string is not a valid image override")
 	}
 
+	// Handle JSON format for multiple pipeline images.
 	var imageMap map[string]string
-	if err := json.Unmarshal([]byte(imageOverrides), &imageMap); err != nil {
-		// If not JSON, check if it's a valid docker container image string.
-		if strings.ContainsAny(imageOverrides, "{}[]\",") {
-			return fmt.Errorf("invalid JSON format for image overrides: %w", err)
-		}
+	if err := json.Unmarshal([]byte(imageOverrides), &imageMap); err == nil {
+		for pipeline, image := range imageMap {
+			if pipeline == "base" {
+				defaultBaseImage = image
+				continue
+			}
 
-		// Treat it as a single image string to set the base image.
-		defaultBaseImage = imageOverrides
+			// Check and update the pipeline images.
+			if _, exists := pipelineToImage[pipeline]; exists {
+				pipelineToImage[pipeline] = image
+			} else if _, exists := livePipelineToImage[pipeline]; exists {
+				livePipelineToImage[pipeline] = image
+			} else {
+				return fmt.Errorf("can't override docker image for unknown pipeline: %s", pipeline)
+			}
+		}
 		return nil
 	}
 
-	// Successfully parsed JSON, update the mappings.
-	for pipeline, image := range imageMap {
-		if pipeline == "base" {
-			defaultBaseImage = image
-			continue
-		}
-
-		// Check and update the pipeline images.
-		if _, exists := pipelineToImage[pipeline]; exists {
-			pipelineToImage[pipeline] = image
-		} else if _, exists := livePipelineToImage[pipeline]; exists {
-			livePipelineToImage[pipeline] = image
-		} else {
-			// If the pipeline is not found in the map, throw an error.
-			return fmt.Errorf("can't override docker image for unknown pipeline: %s", pipeline)
-		}
+	// Check for invalid docker image string.
+	if strings.ContainsAny(imageOverrides, "{}[]\",") {
+		return fmt.Errorf("invalid JSON format for image overrides")
 	}
+
+	// Update the base image.
+	defaultBaseImage = imageOverrides
 	return nil
 }
 
