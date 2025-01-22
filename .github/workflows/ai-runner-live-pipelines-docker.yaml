@@ -19,14 +19,14 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ !((github.ref_type == 'branch' && github.ref_name == 'main') || github.ref_type == 'tag') }}
 
 jobs:
   build-common-base:
     name: Build common live base image
     permissions:
       pull-requests: read
-    runs-on: self-hosted
+    runs-on: [self-hosted, linux, amd64]
     steps:
       - name: Check out code
         uses: actions/checkout@v4.1.1
@@ -53,10 +53,6 @@ jobs:
           )
         run: echo "should_build=true" >> $GITHUB_OUTPUT
 
-      - name: Cleanup hosted runner
-        uses: ./.github/actions/cleanup-runner
-        if: steps.check_build.outputs.should_build == 'true'
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -81,13 +77,13 @@ jobs:
   build-pipeline-images:
     name: Build pipeline images
     needs: build-common-base
-    runs-on: self-hosted
+    runs-on: [self-hosted, linux, amd64]
     permissions:
       pull-requests: read
     strategy:
-      matrix:
-        pipeline: [streamdiffusion, comfyui, liveportrait]
       fail-fast: false
+      matrix:
+        pipeline: [streamdiffusion, comfyui]
     steps:
       - name: Check out code
         uses: actions/checkout@v4.1.1
@@ -102,12 +98,6 @@ jobs:
           files_yaml: |
             base_dockerfile:
               - runner/docker/Dockerfile.live-base-${{ matrix.pipeline }}
-            liveportrait:
-              - runner/images/**
-              - runner/requirements-liveportrait.txt
-
-      - name: Cleanup hosted runner
-        uses: ./.github/actions/cleanup-runner
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -127,11 +117,7 @@ jobs:
             github.event_name == 'pull_request' &&
             github.event.pull_request.head.repo.full_name == github.repository &&
             (
-              steps.changed-files.outputs.base_dockerfile_any_changed == 'true' ||
-              (
-                matrix.pipeline == 'liveportrait' &&
-                steps.changed-files.outputs.liveportrait_any_changed == 'true'
-              )
+              steps.changed-files.outputs.base_dockerfile_any_changed == 'true'
             )
           )
         with:

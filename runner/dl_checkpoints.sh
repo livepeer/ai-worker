@@ -15,6 +15,9 @@ function display_help() {
     echo "Options:"
     echo "  --beta  Download beta models."
     echo "  --restricted  Download models with a restrictive license."
+    echo "  --live  Download models only for the livestreaming pipelines."
+    echo "  --tensorrt  Download livestreaming models and build tensorrt models."
+    echo "  --batch  Download all models for batch processing."
     echo "  --help   Display this help message."
 }
 
@@ -84,27 +87,56 @@ function download_all_models() {
 function download_live_models() {
     huggingface-cli download KBlueLeaf/kohaku-v2.1 --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
     huggingface-cli download stabilityai/sd-turbo --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
-    huggingface-cli download warmshao/FasterLivePortrait --local-dir models/FasterLivePortrait--checkpoints
     huggingface-cli download yuvraj108c/Depth-Anything-Onnx --include depth_anything_vitl14.onnx --local-dir models/ComfyUI--models/Depth-Anything-Onnx
     download_sam2_checkpoints
+    download_florence2_checkpoints
+    download_stream_diffusion_checkpoints
+    download_stream_diffusion_loras
+    huggingface-cli download Kijai/LivePortrait_safetensors --local-dir models/ComfyUI--models/livePortrait
 }
 
 function download_sam2_checkpoints() {
-    huggingface-cli download facebook/sam2-hiera-tiny --local-dir models/sam2--checkpoints/facebook--sam2-hiera-tiny
-    huggingface-cli download facebook/sam2-hiera-small --local-dir models/sam2--checkpoints/facebook--sam2-hiera-small
-    huggingface-cli download facebook/sam2-hiera-large --local-dir models/sam2--checkpoints/facebook--sam2-hiera-large
+    huggingface-cli download facebook/sam2-hiera-tiny --local-dir models/ComfyUI--models/sam2--checkpoints/facebook--sam2-hiera-tiny
+    huggingface-cli download facebook/sam2-hiera-small --local-dir models/ComfyUI--models/sam2--checkpoints/facebook--sam2-hiera-small
+    huggingface-cli download facebook/sam2-hiera-large --local-dir models/ComfyUI--models/sam2--checkpoints/facebook--sam2-hiera-large
+}
+
+function download_florence2_checkpoints() {
+    huggingface-cli download microsoft/Florence-2-large --local-dir models/ComfyUI--models/LLM/Florence-2-large --include "*.py" "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data"
+    huggingface-cli download microsoft/Florence-2-large-ft --local-dir models/ComfyUI--models/LLM/Florence-2-large-ft --include "*.py" "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data"
+    huggingface-cli download microsoft/Florence-2-base --local-dir models/ComfyUI--models/LLM/Florence-2-base --include "*.py" "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data"
+    huggingface-cli download microsoft/Florence-2-base-ft --local-dir models/ComfyUI--models/LLM/Florence-2-base-ft --include "*.py" "*.bin" "*.json" "*.txt" --exclude ".onnx" ".onnx_data"
+}
+
+function download_stream_diffusion_checkpoints() {
+    # ComfyUI_StreamDiffusion is loading single file safetensors from /models/checkpoints
+    huggingface-cli download pschroedl/comfystream_checkpoints --local-dir models/ComfyUI--models/checkpoints --include "*.safetensors"
+}
+
+function download_stream_diffusion_loras() {
+    # ral-dissolve-sd15 LoRA
+    huggingface-cli download pschroedl/comfystream_loras --local-dir models/ComfyUI--models/loras --include "*.safetensors"
 }
 
 function build_tensorrt_models() {
     download_live_models
 
+    if [[ "$( docker ps -a -q --filter="label=TensorRT-engines" )" ]]; then
+        printf "Previous tensorrt run hasn't finished correclty. There are containers still running:\n"
+        docker ps -a --filter="label=TensorRT-engines"
+        exit 1
+    fi
     printf "\nBuilding TensorRT models...\n"
 
     # StreamDiffusion (compile a matrix of models and timesteps)
     MODELS="stabilityai/sd-turbo KBlueLeaf/kohaku-v2.1"
     TIMESTEPS="3 4" # This is basically the supported sizes for the t_index_list
-    docker run --rm -it -v ./models:/models --gpus all \
-        livepeer/ai-runner:live-app-streamdiffusion \
+    AI_RUNNER_STREAMDIFFUSION_IMAGE=${AI_RUNNER_STREAMDIFFUSION_IMAGE:-livepeer/ai-runner:live-app-streamdiffusion}
+    docker pull $AI_RUNNER_STREAMDIFFUSION_IMAGE
+    # ai-worker has tags hardcoded in `var livePipelineToImage` so we need to use the same tag in here:
+    docker image tag $AI_RUNNER_STREAMDIFFUSION_IMAGE livepeer/ai-runner:live-app-streamdiffusion
+    docker run --user $(id -u):$(id -g) --rm -v ./models:/models --gpus all -l TensorRT-engines \
+        $AI_RUNNER_STREAMDIFFUSION_IMAGE \
         bash -c "for model in $MODELS; do
                     for timestep in $TIMESTEPS; do
                         echo \"Building TensorRT engines for model=\$model timestep=\$timestep...\" && \
@@ -112,26 +144,13 @@ function build_tensorrt_models() {
                     done
                 done"
 
-    # FasterLivePortrait
-    docker run --rm -it -v ./models:/models --gpus all \
-        livepeer/ai-runner:live-app-liveportrait \
-        bash -c "cd /app/app/live/FasterLivePortrait && \
-                    if [ ! -f '/models/FasterLivePortrait--checkpoints/liveportrait_onnx/stitching_lip.trt' ]; then
-                        echo 'Building TensorRT engines for LivePortrait models (regular)...'
-                        sh scripts/all_onnx2trt.sh
-                    else
-                        echo 'Regular LivePortrait TensorRT engines already exist, skipping build'
-                    fi && \
-                    if [ ! -f '/models/FasterLivePortrait--checkpoints/liveportrait_animal_onnx/stitching_lip.trt' ]; then
-                        echo 'Building TensorRT engines for LivePortrait models (animal)...'
-                        sh scripts/all_onnx2trt_animal.sh
-                    else
-                        echo 'Animal LivePortrait TensorRT engines already exist, skipping build'
-                    fi"
-
     # ComfyUI (only DepthAnything for now)
-    docker run --rm -it -v ./models:/models --gpus all \
-        livepeer/ai-runner:live-app-comfyui \
+    AI_RUNNER_COMFYUI_IMAGE=${AI_RUNNER_COMFYUI_IMAGE:-livepeer/ai-runner:live-app-comfyui}
+    docker pull $AI_RUNNER_COMFYUI_IMAGE
+    # ai-worker has tags hardcoded in `var livePipelineToImage` so we need to use the same tag in here:
+    docker image tag $AI_RUNNER_COMFYUI_IMAGE livepeer/ai-runner:live-app-comfyui
+    docker run --user $(id -u):$(id -g) --rm -v ./models:/models --gpus all -l TensorRT-engines \
+        $AI_RUNNER_COMFYUI_IMAGE \
         bash -c "cd /comfyui/models/Depth-Anything-Onnx && \
                     python /comfyui/custom_nodes/ComfyUI-Depth-Anything-Tensorrt/export_trt.py && \
                     mkdir -p /comfyui/models/tensorrt/depth-anything && \
@@ -147,6 +166,12 @@ function download_restricted_models() {
     # Download LLM models (Warning: large model size)
     huggingface-cli download meta-llama/Meta-Llama-3.1-8B-Instruct --include "*.json" "*.bin" "*.safetensors" "*.txt" --cache-dir models
 
+}
+
+function download_batch_models() {
+    printf "\nDownloading Batch models...\n"
+
+    huggingface-cli download facebook/sam2-hiera-large --include "*.pt" "*.yaml" --cache-dir models
 }
 
 # Enable HF transfer acceleration.
@@ -177,6 +202,10 @@ do
             MODE="tensorrt"
             shift
         ;;
+        --batch)
+            MODE="batch"
+            shift
+        ;;
         --help)
             display_help
             exit 0
@@ -190,7 +219,8 @@ done
 echo "Starting livepeer AI subnet model downloader..."
 echo "Creating 'models' directory in the current working directory..."
 mkdir -p models
-mkdir -p models/StreamDiffusion--engines models/FasterLivePortrait--checkpoints models/ComfyUI--models models/sam2--checkpoints
+mkdir -p models/checkpoints
+mkdir -p models/StreamDiffusion--engines models/ComfyUI--models models/ComfyUI--models/sam2--checkpoints models/ComfyUI--models/checkpoints
 
 # Ensure 'huggingface-cli' is installed.
 echo "Checking if 'huggingface-cli' is installed..."
@@ -207,6 +237,8 @@ elif [ "$MODE" = "live" ]; then
     download_live_models
 elif [ "$MODE" = "tensorrt" ]; then
     build_tensorrt_models
+elif [ "$MODE" = "batch" ]; then
+    download_batch_models
 else
     download_all_models
 fi

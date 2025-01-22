@@ -72,9 +72,54 @@ class TextResponse(BaseModel):
     chunks: List[Chunk] = Field(..., description="The generated text chunks.")
 
 
+class LLMMessage(BaseModel):
+    role: str
+    content: str
+
+
+class LLMBaseChoice(BaseModel):
+    index: int
+    finish_reason: str = "" # Needs OpenAPI 3.1 support to make optional
+
+
+class LLMTokenUsage(BaseModel):
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+
+class LLMChoice(LLMBaseChoice):
+    delta: LLMMessage = None
+    message: LLMMessage = None
+
 class LLMResponse(BaseModel):
-    response: str
-    tokens_used: int
+    id: str
+    model: str
+    created: int
+    tokens_used: LLMTokenUsage
+    choices: List[LLMChoice]
+
+
+# class LLMStreamChoice(LLMBaseChoice):
+#     delta: LLMMessage
+
+# class LLMNonStreamChoice(LLMBaseChoice):
+#     message: LLMMessage
+
+# class LLMStreamResponse(LLMBaseResponse):
+#     choices: List[LLMStreamChoice]
+
+# class LLMNonStreamResponse(LLMBaseResponse):
+#     choices: List[LLMNonStreamChoice]
+
+
+class LLMRequest(BaseModel):
+    messages: List[LLMMessage]
+    model: str = ""
+    temperature: float = 0.7
+    max_tokens: int = 256
+    top_p: float = 1.0
+    top_k: int = -1
+    stream: bool = False
 
 
 class ImageToTextResponse(BaseModel):
@@ -100,6 +145,7 @@ class LiveVideoToVideoResponse(BaseModel):
         default='',
         description="URL for subscribing to events for pipeline status and logs",
     )
+
 
 class APIError(BaseModel):
     """API error response model."""
