@@ -71,40 +71,45 @@ var livePipelineToImage = map[string]string{
 	"noop":               "livepeer/ai-runner:live-app-noop",
 }
 
-// overridePipelineImages updates base and pipeline images with the provided overrides.
+type ImageOverrides struct {
+	Default string            `json:"default"`
+	Batch   map[string]string `json:"batch"`
+	Live    map[string]string `json:"live"`
+}
+
 func overridePipelineImages(imageOverrides string) error {
 	if imageOverrides == "" {
 		return fmt.Errorf("empty string is not a valid image override")
 	}
 
-	// Handle JSON format for multiple pipeline images.
-	var imageMap map[string]string
-	if err := json.Unmarshal([]byte(imageOverrides), &imageMap); err == nil {
-		for pipeline, image := range imageMap {
-			if pipeline == "base" {
-				defaultBaseImage = image
-				continue
-			}
+	var overrides ImageOverrides
+	if err := json.Unmarshal([]byte(imageOverrides), &overrides); err != nil {
+		return fmt.Errorf("invalid JSON format for image overrides: %w", err)
+	}
 
-			// Check and update the pipeline images.
-			if _, exists := pipelineToImage[pipeline]; exists {
-				pipelineToImage[pipeline] = image
-			} else if _, exists := livePipelineToImage[pipeline]; exists {
-				livePipelineToImage[pipeline] = image
-			} else {
-				return fmt.Errorf("can't override docker image for unknown pipeline: %s", pipeline)
-			}
+	// Update the default base image if provided.
+	if overrides.Default != "" {
+		defaultBaseImage = overrides.Default
+	}
+
+	// Update batch pipeline images.
+	for pipeline, image := range overrides.Batch {
+		if _, exists := pipelineToImage[pipeline]; exists {
+			pipelineToImage[pipeline] = image
+		} else {
+			return fmt.Errorf("can't override docker image for unknown batch pipeline: %s", pipeline)
 		}
-		return nil
 	}
 
-	// Check for invalid docker image string.
-	if strings.ContainsAny(imageOverrides, "{}[]\",") {
-		return fmt.Errorf("invalid JSON format for image overrides")
+	// Update live pipeline images.
+	for pipeline, image := range overrides.Live {
+		if _, exists := livePipelineToImage[pipeline]; exists {
+			livePipelineToImage[pipeline] = image
+		} else {
+			return fmt.Errorf("can't override docker image for unknown live pipeline: %s", pipeline)
+		}
 	}
 
-	// Update the base image.
-	defaultBaseImage = imageOverrides
 	return nil
 }
 
