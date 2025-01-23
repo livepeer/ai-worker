@@ -301,10 +301,11 @@ func TestDockerManager_returnContainer(t *testing.T) {
 
 func TestDockerManager_getContainerImageName(t *testing.T) {
 	mockDockerClient := new(MockDockerClient)
-	manager := createDockerManager(mockDockerClient)
+	dockerManager := createDockerManager(mockDockerClient)
 
 	tests := []struct {
 		name          string
+		setup         func(*DockerManager, *MockDockerClient)
 		pipeline      string
 		modelID       string
 		expectedImage string
@@ -312,6 +313,7 @@ func TestDockerManager_getContainerImageName(t *testing.T) {
 	}{
 		{
 			name:          "live-video-to-video with valid modelID",
+			setup:         func(dockerManager *DockerManager, mockDockerClient *MockDockerClient) {},
 			pipeline:      "live-video-to-video",
 			modelID:       "streamdiffusion",
 			expectedImage: "livepeer/ai-runner:live-app-streamdiffusion",
@@ -319,12 +321,14 @@ func TestDockerManager_getContainerImageName(t *testing.T) {
 		},
 		{
 			name:        "live-video-to-video with invalid modelID",
+			setup:       func(dockerManager *DockerManager, mockDockerClient *MockDockerClient) {},
 			pipeline:    "live-video-to-video",
 			modelID:     "invalid-model",
 			expectError: true,
 		},
 		{
 			name:          "valid pipeline",
+			setup:         func(dockerManager *DockerManager, mockDockerClient *MockDockerClient) {},
 			pipeline:      "text-to-speech",
 			modelID:       "",
 			expectedImage: "livepeer/ai-runner:text-to-speech",
@@ -332,16 +336,95 @@ func TestDockerManager_getContainerImageName(t *testing.T) {
 		},
 		{
 			name:          "invalid pipeline",
+			setup:         func(dockerManager *DockerManager, mockDockerClient *MockDockerClient) {},
 			pipeline:      "invalid-pipeline",
 			modelID:       "",
 			expectedImage: "default-image",
+			expectError:   false,
+		},
+		{
+			name: "override default image",
+			setup: func(dockerManager *DockerManager, mockDockerClient *MockDockerClient) {
+				dockerManager.overrides = ImageOverrides{
+					Default: "custom-image",
+				}
+			},
+			pipeline:      "",
+			modelID:       "",
+			expectedImage: "custom-image",
+			expectError:   false,
+		},
+		{
+			name: "override batch image",
+			setup: func(dockerManager *DockerManager, mockDockerClient *MockDockerClient) {
+				dockerManager.overrides = ImageOverrides{
+					Batch: map[string]string{
+						"text-to-speech": "custom-image",
+					},
+				}
+			},
+			pipeline:      "text-to-speech",
+			modelID:       "",
+			expectedImage: "custom-image",
+			expectError:   false,
+		},
+		{
+			name: "override live image",
+			setup: func(dockerManager *DockerManager, mockDockerClient *MockDockerClient) {
+				dockerManager.overrides = ImageOverrides{
+					Live: map[string]string{
+						"streamdiffusion": "custom-image",
+					},
+				}
+			},
+			pipeline:      "live-video-to-video",
+			modelID:       "streamdiffusion",
+			expectedImage: "custom-image",
+			expectError:   false,
+		},
+		{
+			name: "non-overridden batch image",
+			setup: func(dockerManager *DockerManager, mockDockerClient *MockDockerClient) {
+				dockerManager.overrides = ImageOverrides{
+					Default: "default-image",
+					Batch: map[string]string{
+						"text-to-speech": "custom-batch-image",
+					},
+					Live: map[string]string{
+						"streamdiffusion": "custom-live-image",
+					},
+				}
+			},
+			pipeline:      "audio-to-text",
+			modelID:       "",
+			expectedImage: "livepeer/ai-runner:audio-to-text",
+			expectError:   false,
+		},
+		{
+			name: "non-overridden live image",
+			setup: func(dockerManager *DockerManager, mockDockerClient *MockDockerClient) {
+				dockerManager.overrides = ImageOverrides{
+					Default: "default-image",
+					Batch: map[string]string{
+						"text-to-speech": "custom-batch-image",
+					},
+					Live: map[string]string{
+						"streamdiffusion": "custom-live-image",
+					},
+				}
+			},
+			pipeline:      "live-video-to-video",
+			modelID:       "comfyui",
+			expectedImage: "livepeer/ai-runner:live-app-comfyui",
 			expectError:   false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			image, err := manager.getContainerImageName(tt.pipeline, tt.modelID)
+			tt.setup(dockerManager, mockDockerClient)
+
+			image, err := dockerManager.getContainerImageName(tt.pipeline, tt.modelID)
 			if tt.expectError {
 				require.Error(t, err)
 				require.Equal(t, fmt.Sprintf("no container image found for live pipeline %s", tt.modelID), err.Error())
