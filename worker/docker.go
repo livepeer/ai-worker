@@ -56,7 +56,7 @@ var containerHostPorts = map[string]string{
 	"live-video-to-video": "8900",
 }
 
-// Mapping for per pipeline container images.
+// Default pipeline container image mapping to use if no overrides are provided.
 var defaultBaseImage = "livepeer/ai-runner:latest"
 var pipelineToImage = map[string]string{
 	"segment-anything-2": "livepeer/ai-runner:segment-anything-2",
@@ -97,10 +97,9 @@ var _ DockerClient = (*docker.Client)(nil)
 var dockerWaitUntilRunningFunc = dockerWaitUntilRunning
 
 type DockerManager struct {
-	defaultImage string
-	gpus         []string
-	modelDir     string
-	overrides    ImageOverrides
+	gpus      []string
+	modelDir  string
+	overrides ImageOverrides
 
 	dockerClient DockerClient
 	// gpu ID => container name

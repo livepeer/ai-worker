@@ -96,9 +96,9 @@ func NewMockServer() *MockServer {
 // createDockerManager creates a DockerManager with a mock DockerClient.
 func createDockerManager(mockDockerClient *MockDockerClient) *DockerManager {
 	return &DockerManager{
-		defaultImage:  "default-image",
 		gpus:          []string{"gpu0"},
 		modelDir:      "/models",
+		overrides:     ImageOverrides{Default: "default-image"},
 		dockerClient:  mockDockerClient,
 		gpuContainers: make(map[string]string),
 		containers:    make(map[string]*RunnerContainer),
@@ -106,131 +106,14 @@ func createDockerManager(mockDockerClient *MockDockerClient) *DockerManager {
 	}
 }
 
-// copyMap returns a deep copy of the given map.
-func copyMap(m map[string]string) map[string]string {
-	copy := make(map[string]string)
-	for k, v := range m {
-		copy[k] = v
-	}
-	return copy
-}
-
-func TestOverridePipelineImages(t *testing.T) {
-	// Store the original values of the maps.
-	originalDefaultBaseImage := defaultBaseImage
-	originalPipelineToImage := copyMap(pipelineToImage)
-	originalLivePipelineToImage := copyMap(livePipelineToImage)
-
-	tests := []struct {
-		name                   string
-		inputJSON              string
-		expectedBase           string
-		expectedPipelineImages map[string]string
-		expectedLiveImages     map[string]string
-		expectError            bool
-	}{
-		{
-			name:         "ValidPipelineOverrides",
-			inputJSON:    `{"segment-anything-2": "custom-image:1.0", "text-to-speech": "speech-image:2.0"}`,
-			expectedBase: originalDefaultBaseImage,
-			expectedPipelineImages: map[string]string{
-				"segment-anything-2": "custom-image:1.0",
-				"text-to-speech":     "speech-image:2.0",
-				"audio-to-text":      originalPipelineToImage["audio-to-text"],
-			},
-			expectedLiveImages: originalLivePipelineToImage,
-			expectError:        false,
-		},
-		{
-			name:                   "OverrideBaseImage",
-			inputJSON:              "new-base-image:latest",
-			expectedBase:           "new-base-image:latest",
-			expectedPipelineImages: originalPipelineToImage,
-			expectedLiveImages:     originalLivePipelineToImage,
-			expectError:            false,
-		},
-		{
-			name:                   "OverrideBaseImageJSON",
-			inputJSON:              `{"base": "new-base-image:latest"}`,
-			expectedBase:           "new-base-image:latest",
-			expectedPipelineImages: originalPipelineToImage,
-			expectedLiveImages:     originalLivePipelineToImage,
-			expectError:            false,
-		},
-		{
-			name:                   "EmptyJSON",
-			inputJSON:              `{}`,
-			expectedBase:           originalDefaultBaseImage,
-			expectedPipelineImages: originalPipelineToImage,
-			expectedLiveImages:     originalLivePipelineToImage,
-			expectError:            false,
-		},
-		{
-			name:                   "MalformedJSON",
-			inputJSON:              `{"segment-anything-2": "custom-image:1.0"`,
-			expectedBase:           originalDefaultBaseImage,
-			expectedPipelineImages: originalPipelineToImage,
-			expectedLiveImages:     originalLivePipelineToImage,
-			expectError:            true,
-		},
-		{
-			name:                   "EmptyString",
-			inputJSON:              "",
-			expectedBase:           originalDefaultBaseImage,
-			expectedPipelineImages: originalPipelineToImage,
-			expectedLiveImages:     originalLivePipelineToImage,
-			expectError:            true,
-		},
-		{
-			name:                   "UnknownPipeline",
-			inputJSON:              `{"unknown-pipeline": "unknown-image:latest"}`,
-			expectedBase:           originalDefaultBaseImage,
-			expectedPipelineImages: originalPipelineToImage,
-			expectedLiveImages:     originalLivePipelineToImage,
-			expectError:            true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Register a cleanup function to reset state after the subtest.
-			t.Cleanup(func() {
-				defaultBaseImage = originalDefaultBaseImage
-				pipelineToImage = copyMap(originalPipelineToImage)
-				livePipelineToImage = copyMap(originalLivePipelineToImage)
-			})
-
-			// Call overridePipelineImages function with the mock data.
-			err := overridePipelineImages(tt.inputJSON)
-
-			if tt.expectError {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-				require.Equal(t, tt.expectedBase, defaultBaseImage)
-
-				// Verify the expected pipeline images.
-				for pipeline, expectedImage := range tt.expectedPipelineImages {
-					require.Equal(t, expectedImage, pipelineToImage[pipeline])
-				}
-
-				// Verify the expected live pipeline images.
-				for livePipeline, expectedImage := range tt.expectedLiveImages {
-					require.Equal(t, expectedImage, livePipelineToImage[livePipeline])
-				}
-			}
-		})
-	}
-}
-
 func TestNewDockerManager(t *testing.T) {
 	mockDockerClient := new(MockDockerClient)
 
 	createAndVerifyManager := func() *DockerManager {
-		manager, err := NewDockerManager("default-image", []string{"gpu0"}, "/models", mockDockerClient)
+		manager, err := NewDockerManager(ImageOverrides{Default: "default-image"}, []string{"gpu0"}, "/models", mockDockerClient)
 		require.NoError(t, err)
 		require.NotNil(t, manager)
-		require.Equal(t, "default-image", manager.defaultImage)
+		require.Equal(t, "default-image", manager.overrides.Default)
 		require.Equal(t, []string{"gpu0"}, manager.gpus)
 		require.Equal(t, "/models", manager.modelDir)
 		require.Equal(t, mockDockerClient, manager.dockerClient)
@@ -617,7 +500,7 @@ func TestDockerManager_createContainer(t *testing.T) {
 	dockerManager.gpus = []string{gpu}
 	dockerManager.gpuContainers = make(map[string]string)
 	dockerManager.containers = make(map[string]*RunnerContainer)
-	dockerManager.defaultImage = containerImage
+	dockerManager.overrides.Default = containerImage
 
 	mockDockerClient.On("ContainerCreate", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(container.CreateResponse{ID: containerID}, nil)
 	mockDockerClient.On("ContainerStart", mock.Anything, containerID, mock.Anything).Return(nil)
