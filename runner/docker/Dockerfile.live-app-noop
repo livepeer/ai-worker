@@ -17,6 +17,10 @@ RUN pyenv install $PYTHON_VERSION && \
 # Upgrade pip and install required packages
 ARG PIP_VERSION=23.3.2
 
+ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+
+RUN ls /usr/local/lib && ls /usr/local/lib/pkgconfig && ls -lha /usr/local/bin && echo $PKG_CONFIG_PATH
+
 # Install any additional Python packages
 RUN pip install --no-cache-dir \
     uvicorn==0.30.0 \
@@ -29,6 +33,8 @@ RUN pip install --no-cache-dir \
     pyzmq==26.2.0 \
     nvidia-ml-py==12.560.30 \
     opencv-python==4.10.0.84 \
+    --no-binary=av \
+    av==14.0.1 \
     psutil==6.0.0
 
 # Set environment variables

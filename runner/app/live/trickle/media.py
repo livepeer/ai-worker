@@ -8,6 +8,7 @@ import subprocess
 from .trickle_subscriber import TrickleSubscriber
 from .trickle_publisher import TricklePublisher
 from .jpeg_parser import JPEGStreamParser
+from .decoder import decode_av
 from . import segmenter
 
 # target framerate
@@ -19,11 +20,10 @@ GPU=segmenter.GPU
 async def run_subscribe(subscribe_url: str, image_callback):
     # TODO add some pre-processing parameters, eg image size
     try:
-        ffmpeg = await launch_ffmpeg()
-        logging_task = asyncio.create_task(log_pipe_async(ffmpeg.stderr))
-        subscribe_task = asyncio.create_task(subscribe(subscribe_url, ffmpeg.stdin))
-        jpeg_task = asyncio.create_task(parse_jpegs(ffmpeg.stdout, image_callback))
-        await asyncio.gather(ffmpeg.wait(), logging_task, subscribe_task, jpeg_task)
+        read_fd, write_fd = os.pipe()
+        parse_task = asyncio.create_task(decode_in(read_fd, image_callback))
+        subscribe_task = asyncio.create_task(subscribe(subscribe_url, await AsyncifyFdWriter(write_fd)))
+        await asyncio.gather(subscribe_task, parse_task)
         logging.info("run_subscribe complete")
     except Exception as e:
         logging.error(f"preprocess got error {e}", e)
@@ -118,6 +118,26 @@ async def parse_jpegs(in_pipe, image_callback):
             if not chunk:
                 break
             await parser.feed(chunk)
+
+async def AsyncifyFdWriter(write_fd):
+    loop = asyncio.get_event_loop()
+    write_protocol = asyncio.StreamReaderProtocol(asyncio.StreamReader(), loop=loop)
+    write_transport, _ = await loop.connect_write_pipe( lambda: write_protocol, os.fdopen(write_fd, 'wb'))
+    writer = asyncio.StreamWriter(write_transport, write_protocol, None, loop)
+    return writer
+
+async def decode_in(in_pipe, frame_callback):
+    def decode_runner():
+        try:
+            decode_av(f"pipe:{in_pipe}", frame_callback)
+        except Exception as e:
+            logging.error(f"Decoding error {e}", exc_info=True)
+        finally:
+            os.close(in_pipe)
+            logging.info("Decoding finished")
+
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, decode_runner)
 
 def feed_ffmpeg(ffmpeg_fd, image_generator):
     while True:

@@ -67,8 +67,13 @@ class TrickleProtocol(StreamProtocol):
             jpeg_bytes = self.subscribe_queue.get()
             if not jpeg_bytes:
                 return None
+            image = jpeg_bytes['image'];
+            if not image:
+                return None
             try:
-                return from_jpeg_bytes(jpeg_bytes)
+                if image.mode != "RGBA":
+                    image = image.convert("RGBA")
+                return image
             except Exception as e:
                 logging.error(f"Error decoding JPEG: {e}")
                 raise e
