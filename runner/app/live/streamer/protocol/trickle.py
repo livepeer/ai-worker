@@ -63,23 +63,15 @@ class TrickleProtocol(StreamProtocol):
         self.publish_task = None
 
     async def ingress_loop(self, done: asyncio.Event) -> AsyncGenerator[Image.Image, None]:
-        def dequeue_jpeg():
-            jpeg_bytes = self.subscribe_queue.get()
-            if not jpeg_bytes:
+        def dequeue_frame():
+            frame = self.subscribe_queue.get()
+            if not frame:
                 return None
-            image = jpeg_bytes['image'];
-            if not image:
-                return None
-            try:
-                if image.mode != "RGBA":
-                    image = image.convert("RGBA")
-                return image
-            except Exception as e:
-                logging.error(f"Error decoding JPEG: {e}")
-                raise e
+
+            return frame
 
         while not done.is_set():
-            image = await asyncio.to_thread(dequeue_jpeg)
+            image = await asyncio.to_thread(dequeue_frame)
             if not image:
                 break
             yield image

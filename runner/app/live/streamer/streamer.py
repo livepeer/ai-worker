@@ -252,13 +252,20 @@ class PipelineStreamer:
     async def run_ingress_loop(self):
         frame_count = 0
         start_time = 0.0
-        async for frame in self.protocol.ingress_loop(self.stop_event):
+        async for av_frame in self.protocol.ingress_loop(self.stop_event):
             if not self.process or self.process.done.is_set():
                 # no need to sleep since we want to consume input frames as fast as possible
                 continue
 
             if not start_time:
                 start_time = time.time()
+
+            frame = av_frame['image']
+            if not frame:
+                continue
+
+            if frame.mode != "RGBA":
+                frame = frame.convert("RGBA")
 
             # crop the max square from the center of the image and scale to 512x512
             # most models expect this size especially when using tensorrt
