@@ -27,8 +27,8 @@ WORKDIR /comfystream
 RUN python /comfystream/src/comfystream/scripts/setup_nodes.py --workspace /ComfyUI
 
 # Upgrade TensorRT to 10.7.0
-RUN pip uninstall -y tensorrt && \
-    pip install tensorrt==10.7.0
+RUN pip uninstall tensorrt tensorrt-cu12 tensorrt-cu12-bindings tensorrt-cu12-libs && \
+    pip install tensorrt==10.7.0 tensorrt-cu12==10.7.0 tensorrt-cu12-bindings==10.7.0 tensorrt-cu12-libs==10.7.0
 
 # Set up ComfyUI workspace
 ENV COMFY_UI_WORKSPACE="/comfyui"
