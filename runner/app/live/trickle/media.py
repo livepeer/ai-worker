@@ -7,7 +7,6 @@ import subprocess
 
 from .trickle_subscriber import TrickleSubscriber
 from .trickle_publisher import TricklePublisher
-from .jpeg_parser import JPEGStreamParser
 from .decoder import decode_av
 from . import segmenter
 
@@ -56,68 +55,6 @@ async def subscribe(subscribe_url, out_pipe):
                     # stream is complete
                     out_pipe.close()
                     break
-
-async def launch_ffmpeg():
-    if GPU:
-        ffmpeg_cmd = [
-        'ffmpeg',
-	    '-loglevel', 'warning',
-	    '-hwaccel', 'cuda',
-	    '-hwaccel_output_format', 'cuda',
-        '-i', 'pipe:0',       # Read input from stdin
-	    '-an',
-	    '-vf', 'scale_cuda=w=512:h=512:force_original_aspect_ratio=decrease:force_divisible_by=2,hwdownload,format=nv12,fps={FRAMERATE}'
-	    '-c:v', 'mjpeg',
-	    '-start_number', '0',
-	    '-q:v', '1',
-        '-f', 'image2pipe',
-        'pipe:1'              # Output to stdout
-        ]
-    else:
-        ffmpeg_cmd = [
-        'ffmpeg',
-	    '-loglevel', 'warning',
-        '-i', 'pipe:0',       # Read input from stdin
-	    '-an',
-	    '-vf', f'scale=w=512:h=512:force_original_aspect_ratio=decrease:force_divisible_by=2,fps={FRAMERATE}',
-	    '-c:v', 'mjpeg',
-	    '-start_number', '0',
-	    '-q:v', '1',
-        '-f', 'image2pipe',
-        'pipe:1'              # Output to stdout
-        ]
-
-    logging.info(f"ffmpeg (input) {ffmpeg_cmd}")
-    # Launch FFmpeg process with stdin, stdout, and stderr as pipes
-    process = await asyncio.create_subprocess_exec(
-        *ffmpeg_cmd,
-        stdin=asyncio.subprocess.PIPE,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-
-    return process  # Return the process handle
-
-async def log_pipe_async(pipe):
-    """Reads from a pipe and logs each line."""
-    while True:
-        line = await pipe.readline()
-        if not line:
-            break  # Exit when the pipe is closed
-        # Decode the binary line and log it
-        logging.info(line.decode().strip())
-
-async def parse_jpegs(in_pipe, image_callback):
-    chunk_size = 32 * 1024 # read in 32kb chunks
-    with JPEGStreamParser(image_callback) as parser:
-        # TODO this does not work on asyncio streams - figure out how to
-        #      disable os buffering on readsdisable buffering on reads
-        #pipe = os.fdopen(in_pipe.fileno(), 'rb', buffering=0)
-        while True:
-            chunk = await in_pipe.read(chunk_size)
-            if not chunk:
-                break
-            await parser.feed(chunk)
 
 async def AsyncifyFdWriter(write_fd):
     loop = asyncio.get_event_loop()
