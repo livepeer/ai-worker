@@ -10,6 +10,7 @@
 	},
 	"runArgs": [
 		"--gpus=all"
+		// "--shm-size=1g" // Increase shared memory size to 1GB for GPU parallelism.
 	],
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// Configure tool-specific properties.
