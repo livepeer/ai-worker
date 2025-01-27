@@ -32,6 +32,7 @@ func NewImageToImageMultipartWriter(w io.Writer, req GenImageToImageMultipartReq
 		return nil, fmt.Errorf("failed to copy image to multipart request imageBytes=%v copiedBytes=%v", imageSize, copied)
 	}
 
+	// Handle input fields.
 	if err := mw.WriteField("prompt", req.Prompt); err != nil {
 		return nil, err
 	}
@@ -112,6 +113,7 @@ func NewImageToVideoMultipartWriter(w io.Writer, req GenImageToVideoMultipartReq
 		return nil, fmt.Errorf("failed to copy image to multipart request imageBytes=%v copiedBytes=%v", imageSize, copied)
 	}
 
+	// Handle input fields.
 	if req.ModelId != nil {
 		if err := mw.WriteField("model_id", *req.ModelId); err != nil {
 			return nil, err
@@ -184,6 +186,7 @@ func NewUpscaleMultipartWriter(w io.Writer, req GenUpscaleMultipartRequestBody) 
 		return nil, fmt.Errorf("failed to copy image to multipart request imageBytes=%v copiedBytes=%v", imageSize, copied)
 	}
 
+	// Handle input fields.
 	if err := mw.WriteField("prompt", req.Prompt); err != nil {
 		return nil, err
 	}
@@ -234,6 +237,7 @@ func NewAudioToTextMultipartWriter(w io.Writer, req GenAudioToTextMultipartReque
 		return nil, fmt.Errorf("failed to copy audio to multipart request audioBytes=%v copiedBytes=%v", audioSize, copied)
 	}
 
+	// Handle input fields.
 	if req.ModelId != nil {
 		if err := mw.WriteField("model_id", *req.ModelId); err != nil {
 			return nil, err
