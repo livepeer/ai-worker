@@ -231,7 +231,7 @@ class LLMPipeline(Pipeline):
                                 index=0
                             )
                         ],
-                        tokens_used=LLMTokenUsage(
+                        usage=LLMTokenUsage(
                             prompt_tokens=input_tokens,
                             completion_tokens=total_tokens,
                             total_tokens=input_tokens + total_tokens
@@ -266,7 +266,7 @@ class LLMPipeline(Pipeline):
                         finish_reason="stop"
                     )
                 ],
-                tokens_used=LLMTokenUsage(
+                usage=LLMTokenUsage(
                     prompt_tokens=input_tokens,
                     completion_tokens=total_tokens,
                     total_tokens=input_tokens + total_tokens
