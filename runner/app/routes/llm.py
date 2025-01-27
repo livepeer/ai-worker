@@ -89,7 +89,7 @@ async def llm(
                             finish_reason="stop"
                         )
                     ],
-                    tokens_used=last_chunk.tokens_used,
+                    usage=last_chunk.usage,
                     id=last_chunk.id,
                     model=last_chunk.model,
                     created=last_chunk.created

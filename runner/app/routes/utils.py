@@ -95,7 +95,7 @@ class LLMResponse(BaseModel):
     id: str
     model: str
     created: int
-    tokens_used: LLMTokenUsage
+    usage: LLMTokenUsage
     choices: List[LLMChoice]
 
 
