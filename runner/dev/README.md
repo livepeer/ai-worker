@@ -26,6 +26,42 @@ Leverage the [VSCode DevContainer](https://code.visualstudio.com/docs/remote/con
 
 For more, see the [VSCode documentation on DevContainers](https://code.visualstudio.com/docs/devcontainers/containers).
 
+### Debugging Locally
+
+To debug the AI runner locally, follow these steps:
+
+1. **Configure launch.json**: Add the following configuration to your `launch.json` file:
+
+   ```json
+   {
+     "version": "0.2.0",
+     "configurations": [
+       {
+         "name": "Python Debugger: LLM",
+         "type": "debugpy",
+         "request": "launch",
+         "module": "uvicorn",
+         "args": [
+           "app.main:app",
+           "--log-config",
+           "app/cfg/uvicorn_logging_config.json",
+           "--host",
+           "0.0.0.0",
+           "--port",
+           "8000"
+         ],
+         "env": {
+           "PIPELINE": "text-to-image",
+           "MODEL_ID": "SG161222/RealVisXL_V4.0_Lightning"
+         }
+       }
+     ]
+   }
+   ```
+
+2. **Set Breakpoints**: Add breakpoints to the code where you wish to pause execution.
+3. **Launch Debugger**: Press `F5` to start the debugger.
+
 ### Debugging with External Services
 
 To debug the AI runner when it operates within a container orchestrated by external services, such as [go-livepeer](https://github.com/livepeer/go-livepeer/tree/ai-video), follow these steps to attach to the container:
@@ -80,17 +116,19 @@ To debug the AI runner when it operates within a container orchestrated by exter
    }
    ```
 
-7. **Revert Changes**: After debugging, undo the debug patch.
+7. **Set Breakpoints**: Add breakpoints to the code where you wish to pause execution.
+8. **Launch Debugger**: Press `F5` to start the debugger.
+9. **Revert Changes**: After debugging, undo the debug patch.
 
    ```bash
    cd .. && git apply -R ./runner/dev/patches/debug.patch && cd runner
    ```
 
-8. **Rebuild the Image**: Execute a rebuild of the image, ensuring to exclude the debug changes.
+10. **Rebuild the Image**: Execute a rebuild of the image, ensuring to exclude the debug changes.
 
-   ```bash
-   docker build -t livepeer/ai-runner:latest .
-   ```
+```bash
+docker build -t livepeer/ai-runner:latest .
+```
 
 ### Mocking the Pipelines
 
