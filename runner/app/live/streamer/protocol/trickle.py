@@ -18,7 +18,7 @@ class TrickleProtocol(StreamProtocol):
         self.control_url = control_url
         self.events_url = events_url
         self.subscribe_queue = queue.Queue[bytearray]()
-        self.publish_queue = queue.Queue[bytearray]()
+        self.publish_queue = queue.Queue[dict]()
         self.control_subscriber = None
         self.events_publisher = None
         self.subscribe_task = None
@@ -78,8 +78,10 @@ class TrickleProtocol(StreamProtocol):
 
     async def egress_loop(self, output_frames: AsyncGenerator[Image.Image, None]):
         def enqueue_bytes(frame: Image.Image):
-            jpeg_bytes = to_jpeg_bytes(frame)
-            self.publish_queue.put(jpeg_bytes)
+            if frame:
+                self.publish_queue.put({'image': frame})
+            else:
+                self.publish_queue.put(None)
 
         async for frame in output_frames:
             await asyncio.to_thread(enqueue_bytes, frame)
