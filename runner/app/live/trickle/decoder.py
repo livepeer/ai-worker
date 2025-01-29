@@ -101,24 +101,3 @@ def decode_av(pipe_input, frame_callback, container_format=None):
 
     finally:
         container.close()
-
-# ------------------------------------------------------------------------------
-# Example usage:
-def example_callback(result_entry):
-    # This callback is invoked once per video frame (when video exists),
-    # or once per audio frame (when no video exists).
-    v_pts = result_entry["video_pts"]
-    v_time = result_entry["video_time_sec"]
-    n_audio = len(result_entry["audio_frames"])
-
-    if v_pts is not None:
-        print(
-            f"Video frame PTS={v_pts} "
-            f"(time={v_time:.3f}s), matched {n_audio} audio frames."
-        )
-    else:
-        print(f"Audio-only frame, matched {n_audio} audio frames (PTS unknown for video).")
-
-if __name__ == "__main__":
-    # Example: reading from stdin. E.g., `python script.py < inputfile`
-    decode_av(sys.stdin.buffer, example_callback, container_format="mov")
