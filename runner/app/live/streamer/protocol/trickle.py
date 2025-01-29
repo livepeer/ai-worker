@@ -6,10 +6,9 @@ from typing import AsyncGenerator, Optional
 
 from PIL import Image
 
-from trickle import media, TricklePublisher, TrickleSubscriber
+from trickle import media, TricklePublisher, TrickleSubscriber, InputFrame, OutputFrame
 
 from .protocol import StreamProtocol
-from .jpeg import to_jpeg_bytes, from_jpeg_bytes
 
 class TrickleProtocol(StreamProtocol):
     def __init__(self, subscribe_url: str, publish_url: str, control_url: Optional[str] = None, events_url: Optional[str] = None):
@@ -17,8 +16,8 @@ class TrickleProtocol(StreamProtocol):
         self.publish_url = publish_url
         self.control_url = control_url
         self.events_url = events_url
-        self.subscribe_queue = queue.Queue[bytearray]()
-        self.publish_queue = queue.Queue[dict]()
+        self.subscribe_queue = queue.Queue[InputFrame]()
+        self.publish_queue = queue.Queue[OutputFrame]()
         self.control_subscriber = None
         self.events_publisher = None
         self.subscribe_task = None
@@ -62,7 +61,7 @@ class TrickleProtocol(StreamProtocol):
         self.subscribe_task = None
         self.publish_task = None
 
-    async def ingress_loop(self, done: asyncio.Event) -> AsyncGenerator[Image.Image, None]:
+    async def ingress_loop(self, done: asyncio.Event) -> AsyncGenerator[InputFrame, None]:
         def dequeue_frame():
             frame = self.subscribe_queue.get()
             if not frame:
@@ -76,10 +75,10 @@ class TrickleProtocol(StreamProtocol):
                 break
             yield image
 
-    async def egress_loop(self, output_frames: AsyncGenerator[Image.Image, None]):
-        def enqueue_bytes(frame: Image.Image):
+    async def egress_loop(self, output_frames: AsyncGenerator[OutputFrame, None]):
+        def enqueue_bytes(frame: OutputFrame):
             if frame:
-                self.publish_queue.put({'image': frame})
+                self.publish_queue.put(frame)
             else:
                 self.publish_queue.put(None)
 

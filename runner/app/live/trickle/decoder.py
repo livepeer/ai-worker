@@ -2,6 +2,8 @@ import sys
 import av
 from PIL import Image
 
+from .frame import InputFrame
+
 def decode_av(pipe_input, frame_callback, container_format=None):
     """
     Reads from a pipe (or file-like object). If both audio and video
@@ -110,6 +112,10 @@ def decode_av(pipe_input, frame_callback, container_format=None):
                     if aframe.pts is None:
                         continue
 
+                    avframe = InputFrame.from_av_audio(aframe)
+                    frame_callback(avframe)
+                    continue
+
                     if video_stream:
                         # If we also have video, buffer the audio frames
                         audio_buffer.append((aframe, aframe.pts))
@@ -132,9 +138,9 @@ def decode_av(pipe_input, frame_callback, container_format=None):
                     if frame.pts is None:
                         continue
 
-                    video_pts = frame.pts
-                    video_time = float(video_pts * video_stream.time_base)
-                    pil_img = frame.to_image()
+                    avframe = InputFrame.from_av_video(frame)
+                    frame_callback(avframe)
+                    continue
 
                     # If there's no audio stream, we can just call the callback with empty audio
                     if not audio_stream:

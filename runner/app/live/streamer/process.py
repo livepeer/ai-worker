@@ -11,6 +11,7 @@ from PIL import Image
 
 from pipelines import load_pipeline
 
+from trickle import InputFrame, AudioFrame, VideoFrame, OutputFrame, VideoOutput, AudioOutput
 
 class PipelineProcess:
     @staticmethod
@@ -69,10 +70,10 @@ class PipelineProcess:
     def update_params(self, params: dict):
         self.param_update_queue.put(params)
 
-    def send_input(self, image: Image.Image):
-        self._queue_put_fifo(self.input_queue, image)
+    def send_input(self, frame: InputFrame):
+        self._queue_put_fifo(self.input_queue, frame)
 
-    async def recv_output(self) -> Image.Image | None:
+    async def recv_output(self) -> OutputFrame | None:
         # we cannot do a long get with timeout as that would block the asyncio
         # event loop, so we loop with nowait and sleep async instead.
         # TODO: use asyncio.to_thread instead
@@ -136,13 +137,20 @@ class PipelineProcess:
                         report_error(f"Error updating params: {e}")
 
                 try:
-                    input_image = self.input_queue.get(timeout=0.1)
+                    input_frame = self.input_queue.get(timeout=0.1)
                 except queue.Empty:
                     continue
 
                 try:
-                    output_image = pipeline.process_frame(input_image)
-                    self.output_queue.put(output_image)
+                    if isinstance(input_frame, VideoFrame):
+                        output_image = pipeline.process_frame(input_frame.image)
+                        output_frame = VideoOutput(input_frame.replace_image(output_image))
+                        self.output_queue.put(output_frame)
+                    elif isinstance(input_frame, AudioFrame):
+                        self.output_queue.put(AudioOutput([input_frame]))
+                        # TODO wire in a proper pipeline here
+                    else:
+                        report_error(f"Unsupported input frame type {type(input_frame)}")
                 except Exception as e:
                     report_error(f"Error processing frame: {e}")
         except Exception as e:

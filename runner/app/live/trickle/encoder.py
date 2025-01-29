@@ -6,6 +6,8 @@ import os
 from typing import Optional
 from fractions import Fraction
 
+from .frame import VideoOutput, AudioOutput
+
 # microseconds in a second
 US_IN_SECS=1_000_000
 GOP_SECS=3
@@ -51,6 +53,7 @@ def encode_av(
     if audio_codec:
         # Add a new stream to the output using the desired audio codec
         output_audio_stream = output_container.add_stream(audio_codec)
+        output_audio_stream.time_base = Fraction(1, US_IN_SECS)
         # Optional: set other encoding parameters, e.g.:
         # output_audio_stream.bit_rate = 128_000
         # output_audio_stream.sample_rate = input_audio_stream.codec_context.sample_rate
@@ -64,28 +67,38 @@ def encode_av(
         avframe = input_queue()
         if avframe is None:
             break
-        if avframe['image'] is None:
+
+        if isinstance(avframe, VideoOutput):
+            if not output_video_stream:
+                # received video but no video output, so drop
+                continue
+            frame = av.video.frame.VideoFrame.from_image(avframe.image)
+            frame.pts = rescale_ts(avframe.timestamp, Fraction(avframe.time_base), output_video_stream.codec_context.time_base)
+            frame.time_base = output_video_stream.codec_context.time_base
+            current = avframe.timestamp * avframe.time_base
+            if not last_kf or (current - last_kf) > GOP_SECS:
+                frame.pict_type = av.video.frame.PictureType.I
+                last_kf = current
+            encoded_packets = output_video_stream.encode(frame)
+            for ep in encoded_packets:
+                output_container.mux(ep)
             continue
-        # TODO audio
 
-        image = avframe['image']
-        if image and not output_video_stream:
-            # video is present but no video output, so drop
+        if isinstance(avframe, AudioOutput):
+            if not output_audio_stream:
+                # received audio but no audio output, so drop
+                continue
+            for af in avframe.frames:
+                frame = av.audio.frame.AudioFrame.from_ndarray(af.samples, format=af.format, layout=af.layout)
+                frame.sample_rate = af.rate
+                frame.pts = rescale_ts(af.timestamp, Fraction(af.time_base), output_audio_stream.codec_context.time_base)
+                frame.time_base = output_audio_stream.codec_context.time_base
+                encoded_packets = output_audio_stream.encode(frame)
+                for ep in encoded_packets:
+                    output_container.mux(ep)
             continue
 
-        current = datetime.datetime.now()
-        elapsed = int((current - start).total_seconds() * US_IN_SECS)
-        frame = av.video.frame.VideoFrame.from_image(image)
-        frame.pts = elapsed
-        frame.time_base = Fraction(1, US_IN_SECS)
-        if not last_kf or ((current - last_kf).total_seconds() > GOP_SECS):
-            frame.pict_type = av.video.frame.PictureType.I
-            last_kf = current
-
-        encoded_packets = output_video_stream.encode(frame)
-        for ep in encoded_packets:
-            output_container.mux(ep)
-
+        logging.warning(f"Unsupported output frame type {type(avframe)}")
 
     # After reading all packets, flush encoders
     logging.info("Stopping encoder")
@@ -101,3 +114,6 @@ def encode_av(
 
     # Close the output container to finish writing
     output_container.close()
+
+def rescale_ts(pts: int, orig_tb: Fraction, dest_tb: Fraction):
+    return int(round(float((Fraction(pts) * orig_tb) / dest_tb)))
