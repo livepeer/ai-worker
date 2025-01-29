@@ -38,7 +38,6 @@ class VideoFrame(InputFrame):
         return VideoFrame(image, self.timestamp, self.time_base)
 
 class AudioFrame(InputFrame):
-    # TODO break this down into individual fields later
     samples: np.ndarray
     format: str # av.audio.format.AudioFormat
     layout: str # av.audio.layout.AudioLayout

@@ -71,36 +71,6 @@ def decode_av(pipe_input, frame_callback, container_format=None):
 
     print(f"Audio metadata: {audio_metadata}")
 
-    # We'll store decoded audio frames in a buffer if both audio and video exist.
-    # If there's no video, we have the option to either:
-    #   (A) call the callback for each audio frame, or
-    #   (B) accumulate them and do something else.
-    # Here, we'll do (A) for the audio-only case, and the original logic if video also exists.
-    audio_buffer = []
-
-    # Helper function to create a "result entry" for calling the callback
-    def create_result_entry(
-        video_pts=None,
-        video_time=None,
-        pil_img=None,
-        matched_audio_frames=None,
-        matched_audio_pts=None
-    ):
-        return {
-            "video_pts": video_pts,
-            "video_time_sec": video_time,
-            "image": pil_img,  # None if no video
-            "audio_frames": matched_audio_frames if matched_audio_frames else [],
-            "audio_pts_list": matched_audio_pts if matched_audio_pts else [],
-            "metadata": {
-                # If we have a video frame, store width, height, etc.
-                "width": pil_img.width if pil_img else None,
-                "height": pil_img.height if pil_img else None,
-                "pict_type": str(pil_img.info.get("pict_type")) if pil_img else None,
-            },
-            "audio_metadata": audio_metadata,
-        }
-
     try:
         for packet in container.demux(streams_to_demux):
             if packet.dts is None:
@@ -116,22 +86,6 @@ def decode_av(pipe_input, frame_callback, container_format=None):
                     frame_callback(avframe)
                     continue
 
-                    if video_stream:
-                        # If we also have video, buffer the audio frames
-                        audio_buffer.append((aframe, aframe.pts))
-                    else:
-                        # If there's no video, we can call the callback immediately
-                        # for each audio frame (audio-only use case).
-                        # We set video_pts, image, etc. to None.
-                        result_entry = create_result_entry(
-                            video_pts=None,
-                            video_time=None,
-                            pil_img=None,
-                            matched_audio_frames=[aframe],
-                            matched_audio_pts=[aframe.pts],
-                        )
-                        frame_callback(result_entry)
-
             elif video_stream and packet.stream == video_stream:
                 # Decode video frames
                 for frame in packet.decode():
@@ -141,41 +95,6 @@ def decode_av(pipe_input, frame_callback, container_format=None):
                     avframe = InputFrame.from_av_video(frame)
                     frame_callback(avframe)
                     continue
-
-                    # If there's no audio stream, we can just call the callback with empty audio
-                    if not audio_stream:
-                        result_entry = create_result_entry(
-                            video_pts=video_pts,
-                            video_time=video_time,
-                            pil_img=pil_img
-                        )
-                        frame_callback(result_entry)
-                        continue
-
-                    # Otherwise, gather audio frames up to this video_pts
-                    matched_audio_frames = []
-                    leftover_audio_buffer = []
-                    for (aframe, apts) in audio_buffer:
-                        if apts <= video_pts:
-                            matched_audio_frames.append((aframe, apts))
-                        else:
-                            leftover_audio_buffer.append((aframe, apts))
-
-                    # Remove matched frames from the buffer
-                    audio_buffer = leftover_audio_buffer
-
-                    # Build the callback entry
-                    result_entry = create_result_entry(
-                        video_pts=video_pts,
-                        video_time=video_time,
-                        pil_img=pil_img,
-                        matched_audio_frames=[af[0] for af in matched_audio_frames],
-                        matched_audio_pts=[af[1] for af in matched_audio_frames],
-                    )
-                    frame_callback(result_entry)
-
-        # Optionally handle leftover audio frames if both audio and video exist
-        # and you need to associate leftover audio with the final video frame, etc.
 
     except KeyboardInterrupt:
         print("Received Ctrl-C: stopping decode gracefully...")
