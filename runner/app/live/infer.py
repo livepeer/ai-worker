@@ -22,7 +22,7 @@ from streamer.protocol.zeromq import ZeroMQProtocol
 def setup_logging(stream_id: Optional[str] = None) -> structlog.BoundLogger:
     """Setup structured logging with stream ID context"""
     
-    # Configure structlog to output JSON
+    # Configure structlog to output logfmt
     structlog.configure(
         processors=[
             # Add timestamps
@@ -33,8 +33,8 @@ def setup_logging(stream_id: Optional[str] = None) -> structlog.BoundLogger:
             structlog.processors.CallsiteParameterAdder(
                 parameters={"filename", "lineno"}
             ),
-            # Convert to JSON
-            structlog.processors.JSONRenderer()
+            # Convert to logfmt
+            structlog.processors.LogfmtRenderer()
         ],
         # Output to stderr to match current [infer.py] prefix behavior
         logger_factory=structlog.PrintLoggerFactory(sys.stderr),
