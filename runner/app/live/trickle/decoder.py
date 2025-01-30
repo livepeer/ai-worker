@@ -64,6 +64,7 @@ def decode_av(pipe_input, frame_callback, put_metadata):
     logging.info(f"Metadata: {metadata}")
     put_metadata(metadata)
 
+    reformatter = av.video.reformatter.VideoReformatter()
     try:
         for packet in container.demux():
             if packet.dts is None:
@@ -85,6 +86,12 @@ def decode_av(pipe_input, frame_callback, put_metadata):
                     if frame.pts is None:
                         continue
 
+                    w = 512
+                    h = int((512 * frame.width / frame.height) / 2) * 2 # force divisible by 2
+                    if frame.height > frame.width:
+                        h = 512
+                        w = int((512 * frame.height / frame.width) / 2) * 2
+                    frame = reformatter.reformat(frame, format='rgba', width=w, height=h)
                     avframe = InputFrame.from_av_video(frame)
                     frame_callback(avframe)
                     continue
