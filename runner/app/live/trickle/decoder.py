@@ -1,5 +1,6 @@
-import sys
 import av
+import logging
+import sys
 from PIL import Image
 
 from .frame import InputFrame
