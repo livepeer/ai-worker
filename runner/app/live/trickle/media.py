@@ -10,17 +10,19 @@ from .trickle_publisher import TricklePublisher
 from .decoder import decode_av
 from .encoder import encode_av
 
-async def run_subscribe(subscribe_url: str, image_callback):
+async def run_subscribe(subscribe_url: str, image_callback, put_metadata):
     # TODO add some pre-processing parameters, eg image size
     try:
         read_fd, write_fd = os.pipe()
-        parse_task = asyncio.create_task(decode_in(read_fd, image_callback))
+        parse_task = asyncio.create_task(decode_in(read_fd, image_callback, put_metadata))
         subscribe_task = asyncio.create_task(subscribe(subscribe_url, await AsyncifyFdWriter(write_fd)))
         await asyncio.gather(subscribe_task, parse_task)
         logging.info("run_subscribe complete")
     except Exception as e:
         logging.error(f"preprocess got error {e}", e)
         raise e
+    finally:
+        put_metadata(None) # in case decoder quit without writing anything
 
 async def subscribe(subscribe_url, out_pipe):
     async with TrickleSubscriber(url=subscribe_url) as subscriber:
@@ -57,10 +59,10 @@ async def AsyncifyFdWriter(write_fd):
     writer = asyncio.StreamWriter(write_transport, write_protocol, None, loop)
     return writer
 
-async def decode_in(in_pipe, frame_callback):
+async def decode_in(in_pipe, frame_callback, put_metadata):
     def decode_runner():
         try:
-            decode_av(f"pipe:{in_pipe}", frame_callback)
+            decode_av(f"pipe:{in_pipe}", frame_callback, put_metadata)
         except Exception as e:
             logging.error(f"Decoding error {e}", exc_info=True)
         finally:
@@ -70,7 +72,7 @@ async def decode_in(in_pipe, frame_callback):
     loop = asyncio.get_running_loop()
     await loop.run_in_executor(None, decode_runner)
 
-async def run_publish(publish_url: str, image_generator):
+async def run_publish(publish_url: str, image_generator, get_metadata):
     publisher = None
     try:
         publisher = TricklePublisher(url=publish_url, mime_type="video/mp2t")
@@ -113,7 +115,7 @@ async def run_publish(publish_url: str, image_generator):
                     live_tasks.remove(t)
             task.add_done_callback(task_done)
 
-        encode_thread = threading.Thread(target=encode_av, args=(image_generator, sync_callback))
+        encode_thread = threading.Thread(target=encode_av, args=(image_generator, sync_callback, get_metadata))
         encode_thread.start()
         logging.debug("run_publish: encoder thread started")
 

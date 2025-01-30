@@ -15,11 +15,21 @@ GOP_SECS=3
 def encode_av(
     input_queue,
     output_callback,
+    get_metadata,
     video_codec: Optional[str] ='libx264',
     audio_codec: Optional[str] ='libfdk_aac'
 ):
     logging.info("Starting encoder")
-    av.logging.set_level(logging.DEBUG)
+
+    decoded_metadata = get_metadata()
+    if not decoded_metadata:
+        logging.info("Metadata was empty, exiting encoder")
+        return
+
+    video_meta = decoded_metadata['video']
+    audio_meta = decoded_metadata['audio']
+
+    logging.info(f"Encoder recevied metadata video={video_meta is None} audio={audio_meta is None}")
 
     def custom_io_open(url: str, flags: int, options: dict):
         read_fd, write_fd = os.pipe()
@@ -35,9 +45,8 @@ def encode_av(
     output_video_stream = None
     output_audio_stream = None
 
-    if video_codec:
+    if video_meta and video_codec:
         # Add a new stream to the output using the desired video codec
-        #video_opts = { 'width':512, 'height':512, 'bf':'0' }
         video_opts = { 'width':'512', 'height':'512', 'bf':'0' }
         if video_codec == 'libx264':
             video_opts = video_opts | { 'preset':'superfast', 'tune':'zerolatency' }
@@ -50,15 +59,14 @@ def encode_av(
         # output_video_stream.height = input_video_stream.codec_context.height
         # output_video_stream.pix_fmt = 'yuv420p'  # example pix_fmt (depends on the codec)
 
-    if audio_codec:
+    if audio_meta and audio_codec:
         # Add a new stream to the output using the desired audio codec
         output_audio_stream = output_container.add_stream(audio_codec)
         output_audio_stream.time_base = Fraction(1, US_IN_SECS)
+        output_audio_stream.sample_rate = audio_meta['sample_rate'] # TODO take from inference if not passthru
+        output_audio_stream.layout = 'mono'
         # Optional: set other encoding parameters, e.g.:
         # output_audio_stream.bit_rate = 128_000
-        # output_audio_stream.sample_rate = input_audio_stream.codec_context.sample_rate
-        # output_audio_stream.channels = input_audio_stream.codec_context.channels
-        # output_audio_stream.layout = input_audio_stream.layout
 
     # Now read packets from the input, decode, then re-encode, and mux.
     start = datetime.datetime.now()
@@ -73,10 +81,10 @@ def encode_av(
                 # received video but no video output, so drop
                 continue
             frame = av.video.frame.VideoFrame.from_image(avframe.image)
-            frame.pts = rescale_ts(avframe.timestamp, Fraction(avframe.time_base), output_video_stream.codec_context.time_base)
+            frame.pts = rescale_ts(avframe.timestamp, avframe.time_base, output_video_stream.codec_context.time_base)
             frame.time_base = output_video_stream.codec_context.time_base
             current = avframe.timestamp * avframe.time_base
-            if not last_kf or (current - last_kf) > GOP_SECS:
+            if not last_kf or float(current - last_kf) >= GOP_SECS:
                 frame.pict_type = av.video.frame.PictureType.I
                 last_kf = current
             encoded_packets = output_video_stream.encode(frame)
@@ -91,7 +99,7 @@ def encode_av(
             for af in avframe.frames:
                 frame = av.audio.frame.AudioFrame.from_ndarray(af.samples, format=af.format, layout=af.layout)
                 frame.sample_rate = af.rate
-                frame.pts = rescale_ts(af.timestamp, Fraction(af.time_base), output_audio_stream.codec_context.time_base)
+                frame.pts = rescale_ts(af.timestamp, af.time_base, output_audio_stream.codec_context.time_base)
                 frame.time_base = output_audio_stream.codec_context.time_base
                 encoded_packets = output_audio_stream.encode(frame)
                 for ep in encoded_packets:
