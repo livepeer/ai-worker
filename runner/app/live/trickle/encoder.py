@@ -8,8 +8,8 @@ from fractions import Fraction
 
 from .frame import VideoOutput, AudioOutput
 
-# microseconds in a second
-US_IN_SECS=1_000_000
+# use mpegts default time base
+OUT_TIME_BASE=Fraction(1, 90_000)
 GOP_SECS=3
 
 def encode_av(
@@ -49,20 +49,14 @@ def encode_av(
         # Add a new stream to the output using the desired video codec
         video_opts = { 'width':'512', 'height':'512', 'bf':'0' }
         if video_codec == 'libx264':
-            video_opts = video_opts | { 'preset':'superfast', 'tune':'zerolatency' }
+            video_opts = video_opts | { 'preset':'superfast', 'tune':'zerolatency', 'forced-idr':'1' }
         output_video_stream = output_container.add_stream(video_codec, options=video_opts)
-        output_video_stream.time_base = Fraction(1, US_IN_SECS)
-
-        # Optional: set other encoding parameters, e.g.:
-        # output_video_stream.bit_rate = 2_000_000  # 2 Mbps
-        # output_video_stream.width = input_video_stream.codec_context.width
-        # output_video_stream.height = input_video_stream.codec_context.height
-        # output_video_stream.pix_fmt = 'yuv420p'  # example pix_fmt (depends on the codec)
+        output_video_stream.time_base = OUT_TIME_BASE
 
     if audio_meta and audio_codec:
         # Add a new stream to the output using the desired audio codec
         output_audio_stream = output_container.add_stream(audio_codec)
-        output_audio_stream.time_base = Fraction(1, US_IN_SECS)
+        output_audio_stream.time_base = OUT_TIME_BASE
         output_audio_stream.sample_rate = audio_meta['sample_rate'] # TODO take from inference if not passthru
         output_audio_stream.layout = 'mono'
         # Optional: set other encoding parameters, e.g.:
@@ -124,4 +118,6 @@ def encode_av(
     output_container.close()
 
 def rescale_ts(pts: int, orig_tb: Fraction, dest_tb: Fraction):
+    if orig_tb == dest_tb:
+        return pts
     return int(round(float((Fraction(pts) * orig_tb) / dest_tb)))
