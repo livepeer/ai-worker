@@ -19,8 +19,8 @@ from streamer.protocol.trickle import TrickleProtocol
 from streamer.protocol.zeromq import ZeroMQProtocol
 
 
-def setup_logging(stream_id: Optional[str] = None) -> structlog.BoundLogger:
-    """Setup structured logging with stream ID context"""
+def setup_logging(stream_id: Optional[str] = None, trickle_id: Optional[str] = None) -> structlog.BoundLogger:
+    """Setup structured logging with stream ID and trickle ID context"""
     
     # Configure structlog to output logfmt
     structlog.configure(
@@ -47,16 +47,18 @@ def setup_logging(stream_id: Optional[str] = None) -> structlog.BoundLogger:
         component="infer",
     )
     
-    # Bind stream_id if available
+    # Bind IDs if available
     if stream_id:
         logger = logger.bind(stream_id=stream_id)
+    if trickle_id:
+        logger = logger.bind(trickle_id=trickle_id)
     
     return logger
 
 
-def extract_stream_id(url: str) -> Optional[str]:
-    """Extract stream ID from Trickle URL.
-    Example URL format: https://172.17.0.1:8888/ai/trickle/{stream_id}-out/230
+def extract_trickle_id(url: str) -> Optional[str]:
+    """Extract trickle ID from Trickle URL.
+    Example URL format: https://172.17.0.1:8888/ai/trickle/{trickle_id}-out/230
     """
     try:
         # Split on trickle/ and take the next part
@@ -72,18 +74,18 @@ def extract_stream_id(url: str) -> Optional[str]:
 
 async def main(*, http_port: int, stream_protocol: str, subscribe_url: str, 
                publish_url: str, control_url: str, events_url: str, 
-               pipeline: str, params: dict, input_timeout: int):
+               pipeline: str, params: dict, input_timeout: int, stream_id: str):
     
-    # Extract stream ID from any of the URLs
-    stream_id = (
-        extract_stream_id(subscribe_url) or 
-        extract_stream_id(publish_url) or 
-        extract_stream_id(control_url) or 
-        extract_stream_id(events_url)
+    # Extract trickle ID from any of the URLs
+    trickle_id = (
+        extract_trickle_id(subscribe_url) or 
+        extract_trickle_id(publish_url) or 
+        extract_trickle_id(control_url) or 
+        extract_trickle_id(events_url)
     )
     
-    # Setup logging with stream ID context
-    log = setup_logging(stream_id)
+    # Setup logging with both IDs
+    log = setup_logging(stream_id=stream_id, trickle_id=trickle_id)
     
     if stream_protocol == "trickle":
         protocol = TrickleProtocol(subscribe_url, publish_url, control_url, events_url)
@@ -142,7 +144,7 @@ async def block_until_signal(sigs: List[signal.Signals]):
     loop = asyncio.get_running_loop()
     future: asyncio.Future[signal.Signals] = loop.create_future()
 
-    # Get the logger - it will have stream_id if it was set in main()
+    # Get the logger - it will have trickle_id if it was set in main()
     log = structlog.get_logger()
 
     def signal_handler(sig, _):
@@ -191,13 +193,19 @@ if __name__ == "__main__":
         help="Timeout in seconds to wait after input frames stop before shutting down. Set to 0 to disable."
     )
     parser.add_argument(
+        "--stream-id",
+        type=str,
+        default="",
+        help="The Livepeer stream ID associated with this video stream"
+    )
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help="Enable verbose (debug) logging"
     )
     args = parser.parse_args()
 
-    # Setup initial logger without stream ID
+    # Setup initial logger without IDs
     log = setup_logging()
     
     try:
@@ -220,7 +228,8 @@ if __name__ == "__main__":
                 events_url=args.events_url,
                 pipeline=args.pipeline,
                 params=params,
-                input_timeout=args.input_timeout
+                input_timeout=args.input_timeout,
+                stream_id=args.stream_id
             )
         )
         # We force an exit here to ensure that the process terminates. If any asyncio tasks or
