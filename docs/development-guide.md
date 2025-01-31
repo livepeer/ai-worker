@@ -1,24 +1,6 @@
-# Runner
+# Development Guide
 
-The AI runner is a containerized Python application responsible for processes AI inference requests on the [Livepeer AI subnet](https://explorer.livepeer.org/treasury/82843445347363563575858115586375001878287509193479217286690041153234635982713). It loads models into GPU memory and exposes a REST API other programs like the [AI worker](../README.md) can use to request AI inference requests.
-
-## Architecture
-
-A high level sketch of how the runner is used:
-
-![Architecture](./images/architecture.png)
-
-The AI runner, found in the [app](./app) directory, consists of:
-
-- **Routes**: FastAPI routes in [app/routes](./app/routes) that handle requests and delegate them to the appropriate pipeline.
-- **Pipelines**: Modules in [app/pipelines](./app/pipelines) that manage model loading, request processing, and response generation for specific AI tasks.
-
-It also includes utility scripts:
-
-- **[bench.py](./bench.py)**: Benchmarks the runner's performance.
-- **[gen_openapi.py](./gen_openapi.py)**: Generates the OpenAPI specification for the runner's API endpoints.
-- **[dl_checkpoints.sh](./dl_checkpoints.sh)**: Downloads model checkpoints from Hugging Face.
-- **[modal_app.py](./modal_app.py)**: Deploys the runner on [Modal](https://modal.com/), a serverless GPU platform.
+This document offers a comprehensive guide for configuring the development environment and debugging the [worker](/worker) component within the [AI worker](https://github.com/livepeer/ai-worker) repository.
 
 ## Running with Docker
 
@@ -51,9 +33,9 @@ The AI Runner container's runner app uses [HuggingFace](https://huggingface.co/)
 2. **Set up Hugging Face Access Token**: Generate a Hugging Face access token as per the [official guide](https://huggingface.co/docs/hub/en/security-tokens) and assign it to the `HG_TOKEN` environment variable. This token enables downloading of [private models](https://huggingface.co/docs/transformers.js/en/guides/private) from the Hugging Face model hub. Alternatively, use the Hugging Face CLI's [login command](https://huggingface.co/docs/huggingface_hub/en/guides/cli#huggingface-cli-login) to install the token.
 
    > [!IMPORTANT]
-   > The `ld_checkpoints.sh` script includes the [SVD1.1](https://huggingface.co/stabilityai/stable-video-diffusion-img2vid-xt-1-1) model. To use this model on the _AI Subnet_, visit its [page](https://huggingface.co/stabilityai/stable-video-diffusion-img2vid-xt-1-1), log in, and accept the terms.
+   > The `dl_checkpoints.sh` script includes the [SVD1.1](https://huggingface.co/stabilityai/stable-video-diffusion-img2vid-xt-1-1) model. To use this model on the _AI Subnet_, visit its [page](https://huggingface.co/stabilityai/stable-video-diffusion-img2vid-xt-1-1), log in, and accept the terms.
 
-3. **Download AI Models**: Use the [ld_checkpoints.sh](https://github.com/livepeer/ai-worker/blob/main/runner/dl_checkpoints.sh) script to download models from `aiModels.json` to `~/.lpData/models`. Run the following command in the `.lpData` directory:
+3. **Download AI Models**: Use the [dl_checkpoints.sh](https://github.com/livepeer/ai-worker/blob/main/runner/dl_checkpoints.sh) script to download models from `aiModels.json` to `~/.lpData/models`. Run the following command in the `.lpData` directory:
 
    ```bash
    curl -s https://raw.githubusercontent.com/livepeer/ai-worker/main/runner/dl_checkpoints.sh | bash -s -- --beta
@@ -187,24 +169,18 @@ To deploy the runner on [Modal](https://modal.com/), a serverless GPU platform, 
 
 5. **Deploy the Apps**: Finally, deploy the apps with `modal deploy modal_app.py`. After deployment, the web endpoints of your apps will be visible in your Modal dashboard.
 
-## OpenAPI Specification
+## Debugging
 
-Regenerate the OpenAPI specification for the AI runner's API endpoints with:
+### Local Debugging
+
+To debug the `ai-runner` as used from the AI worker logic in `go-livepeer`, use the go scripts in the [cmd/examples](https://github.com/livepeer/ai-worker/tree/examples) folder to test and debug the AI worker. Run these scripts with [Golang](https://go.dev/) or use [Vscode](https://code.visualstudio.com/) with the [golang extension](https://code.visualstudio.com/docs/languages/go) for debugging. Future updates will include tests to enhance the development pipeline.
+
+### Debugging a custom go-livepeer
+
+To run the AI worker examples with a custom [go-livepeer](https://github.com/livepeer/go-livepeer) version, replace the go module reference in the [`examples/go.mod`](../examples/go.mod) file with the path to your local `go-livepeer` repository:
 
 ```bash
-python gen_openapi.py
+go mod edit -replace github.com/livepeer/go-livepeer=../path/to/go-livepeer
 ```
 
-This creates `openapi.json`. For a YAML version, use:
-
-```bash
-python gen_openapi.py --type yaml
-```
-
-## Development documentation
-
-For more information on developing and debugging the AI runner, see the [development documentation](./dev/README.md).
-
-## Credits
-
-Based off of [this repo](https://github.com/huggingface/api-inference-community/tree/main/docker_images/diffusers).
+This setup allows you to debug the AI worker package in `go-livepeer` when making changes to the `ai-runner` software.

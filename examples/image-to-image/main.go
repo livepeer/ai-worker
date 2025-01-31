@@ -1,4 +1,4 @@
-// Package main provides a small example on how to run the 'text-to-video' pipeline using the AI worker package.
+// Package main provides a small example on how to run the 'image-to-image' pipeline using the AI worker package.
 package main
 
 import (
@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/livepeer/ai-worker/worker"
+	"github.com/livepeer/go-livepeer/ai/worker"
 	"github.com/oapi-codegen/runtime/types"
 )
 
@@ -19,7 +19,7 @@ func main() {
 	aiModelsDir := flag.String("aiModelsDir", "runner/models", "path to the models directory")
 	flag.Parse()
 
-	containerName := "image-to-video"
+	containerName := "image-to-image"
 	baseOutputPath := "output"
 
 	containerImageID := "livepeer/ai-runner:latest"
@@ -31,7 +31,7 @@ func main() {
 		return
 	}
 
-	modelID := "stabilityai/stable-video-diffusion-img2vid-xt"
+	modelID := "stabilityai/sd-turbo"
 
 	w, err := worker.NewWorker(containerImageID, gpus, modelsDir)
 	if err != nil {
@@ -58,7 +58,8 @@ func main() {
 		return
 	}
 
-	imagePath := args[1]
+	prompt := args[1]
+	imagePath := args[2]
 
 	imageBytes, err := os.ReadFile(imagePath)
 	if err != nil {
@@ -68,36 +69,29 @@ func main() {
 	imageFile := types.File{}
 	imageFile.InitFromBytes(imageBytes, imagePath)
 
-	req := worker.GenImageToVideoMultipartRequestBody{
+	req := worker.GenImageToImageMultipartRequestBody{
 		Image:   imageFile,
 		ModelId: &modelID,
+		Prompt:  prompt,
 	}
 
 	for i := 0; i < runs; i++ {
-		slog.Info("Running image-to-video", slog.Int("num", i))
+		slog.Info("Running image-to-image", slog.Int("num", i))
 
-		resp, err := w.ImageToVideo(ctx, req)
+		resp, err := w.ImageToImage(ctx, req)
 		if err != nil {
-			slog.Error("Error running image-to-video", slog.String("error", err.Error()))
+			slog.Error("Error running image-to-image", slog.String("error", err.Error()))
 			return
 		}
 
-		for j, batch := range resp.Frames {
-			dirPath := path.Join(baseOutputPath, strconv.Itoa(i)+"_"+strconv.Itoa(j))
-
-			for frameNum, media := range batch {
-				if err := os.MkdirAll(dirPath, os.ModePerm); err != nil {
-					slog.Error("Error creating dir", slog.String("dir", dirPath))
-					return
-				}
-
-				outputPath := path.Join(dirPath, strconv.Itoa(frameNum)+".png")
-				if err := worker.SaveImageB64DataUrl(media.Url, outputPath); err != nil {
-					slog.Error("Error saving b64 data url as image", slog.String("error", err.Error()))
-					return
-				}
+		for j, media := range resp.Images {
+			outputPath := path.Join(baseOutputPath, strconv.Itoa(i)+"_"+strconv.Itoa(j)+".png")
+			if err := worker.SaveImageB64DataUrl(media.Url, outputPath); err != nil {
+				slog.Error("Error saving b64 data url as image", slog.String("error", err.Error()))
+				return
 			}
-			slog.Info("Outputs written", slog.String("dirPath", dirPath))
+
+			slog.Info("Output written", slog.String("outputPath", outputPath))
 		}
 	}
 

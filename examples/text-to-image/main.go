@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/livepeer/ai-worker/worker"
+	"github.com/livepeer/go-livepeer/ai/worker"
 )
 
 func main() {
