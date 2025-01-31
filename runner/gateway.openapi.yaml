@@ -262,6 +262,50 @@ paths:
       security:
       - HTTPBearer: []
       x-speakeasy-name-override: audioToText
+  /live-portrait:
+    post:
+      summary: Live Portrait
+      description: Generate a video from a provided source image and driving video.
+      operationId: live_portrait_live_portrait_post
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_live_portrait_live_portrait_post'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoResponse'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPError'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
   /segment-anything-2:
     post:
       tags:
@@ -807,6 +851,29 @@ components:
       - image
       - model_id
       title: Body_genUpscale
+    Body_live_portrait_live_portrait_post:
+      properties:
+        source_image:
+          type: string
+          format: binary
+          title: Source Image
+          description: Uploaded source image to animate.
+        driving_video:
+          type: string
+          format: binary
+          title: Driving Video
+          description: Uploaded driving video to guide the animation.
+        model_id:
+          type: string
+          title: Model Id
+          description: No model id needed as leave empty.
+          default: ''
+      type: object
+      required:
+      - source_image
+      - driving_video
+      - model_id
+      title: Body_live_portrait_live_portrait_post
     Chunk:
       properties:
         timestamp:
@@ -827,8 +894,7 @@ components:
     HTTPError:
       properties:
         detail:
-          allOf:
-          - $ref: '#/components/schemas/APIError'
+          $ref: '#/components/schemas/APIError'
           description: Detailed error information.
       type: object
       required:

@@ -54,12 +54,14 @@ var containerHostPorts = map[string]string{
 	"image-to-text":       "8700",
 	"text-to-speech":      "8800",
 	"live-video-to-video": "8900",
+	"live-portrait":       "9000",
 }
 
 // Default pipeline container image mapping to use if no overrides are provided.
 var defaultBaseImage = "livepeer/ai-runner:latest"
 var pipelineToImage = map[string]string{
 	"segment-anything-2": "livepeer/ai-runner:segment-anything-2",
+	"live-portrait":      "livepeer/ai-runner:live-portrait",
 	"text-to-speech":     "livepeer/ai-runner:text-to-speech",
 	"audio-to-text":      "livepeer/ai-runner:audio-to-text",
 	"llm":                "livepeer/ai-runner:llm",

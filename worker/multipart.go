@@ -327,6 +327,59 @@ func NewSegmentAnything2MultipartWriter(w io.Writer, req GenSegmentAnything2Mult
 	return mw, nil
 }
 
+func NewLivePortraitMultipartWriter(w io.Writer, req LivePortraitLivePortraitPostMultipartRequestBody) (*multipart.Writer, error) {
+	mw := multipart.NewWriter(w)
+
+	// Write DrivingVideo
+	writer, err := mw.CreateFormFile("driving_video", req.DrivingVideo.Filename())
+	if err != nil {
+		return nil, err
+	}
+	videoSize := req.DrivingVideo.FileSize()
+	videoRdr, err := req.DrivingVideo.Reader()
+	if err != nil {
+		return nil, err
+	}
+	copied, err := io.Copy(writer, videoRdr)
+	if err != nil {
+		return nil, err
+	}
+	if copied != videoSize {
+		return nil, fmt.Errorf("failed to copy driving video to multipart request videoBytes=%v copiedBytes=%v", videoSize, copied)
+	}
+
+	// Write SourceImage
+	writer, err = mw.CreateFormFile("source_image", req.SourceImage.Filename())
+	if err != nil {
+		return nil, err
+	}
+	imageSize := req.SourceImage.FileSize()
+	imageRdr, err := req.SourceImage.Reader()
+	if err != nil {
+		return nil, err
+	}
+	copied, err = io.Copy(writer, imageRdr)
+	if err != nil {
+		return nil, err
+	}
+	if copied != imageSize {
+		return nil, fmt.Errorf("failed to copy source image to multipart request imageBytes=%v copiedBytes=%v", imageSize, copied)
+	}
+
+	// Write ModelId if present
+	if req.ModelId != nil {
+		if err := mw.WriteField("model_id", *req.ModelId); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := mw.Close(); err != nil {
+		return nil, err
+	}
+
+	return mw, nil
+}
+
 func NewImageToTextMultipartWriter(w io.Writer, req GenImageToTextMultipartRequestBody) (*multipart.Writer, error) {
 	mw := multipart.NewWriter(w)
 	writer, err := mw.CreateFormFile("image", req.Image.Filename())

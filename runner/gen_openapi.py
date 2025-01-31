@@ -20,6 +20,9 @@ from app.routes import (
     text_to_image,
     text_to_speech,
     upscale,
+    live_portrait,
+    llm,
+    image_to_text,
 )
 
 logging.basicConfig(
@@ -109,6 +112,7 @@ def write_openapi(fname: str, entrypoint: str = "runner"):
     app.include_router(image_to_video.router)
     app.include_router(upscale.router)
     app.include_router(audio_to_text.router)
+    app.include_router(live_portrait.router)
     app.include_router(segment_anything_2.router)
     app.include_router(llm.router)
     app.include_router(image_to_text.router)
