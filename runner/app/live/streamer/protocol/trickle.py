@@ -6,10 +6,9 @@ from typing import AsyncGenerator, Optional
 
 from PIL import Image
 
-from trickle import media, TricklePublisher, TrickleSubscriber
+from trickle import media, TricklePublisher, TrickleSubscriber, InputFrame, OutputFrame
 
 from .protocol import StreamProtocol
-from .jpeg import to_jpeg_bytes, from_jpeg_bytes
 
 class TrickleProtocol(StreamProtocol):
     def __init__(self, subscribe_url: str, publish_url: str, control_url: Optional[str] = None, events_url: Optional[str] = None):
@@ -17,19 +16,20 @@ class TrickleProtocol(StreamProtocol):
         self.publish_url = publish_url
         self.control_url = control_url
         self.events_url = events_url
-        self.subscribe_queue = queue.Queue[bytearray]()
-        self.publish_queue = queue.Queue[bytearray]()
+        self.subscribe_queue = queue.Queue[InputFrame]()
+        self.publish_queue = queue.Queue[OutputFrame]()
         self.control_subscriber = None
         self.events_publisher = None
         self.subscribe_task = None
         self.publish_task = None
 
     async def start(self):
+        metadata_queue = queue.Queue[dict]() # to pass video metadata from decoder to encoder
         self.subscribe_task = asyncio.create_task(
-            media.run_subscribe(self.subscribe_url, self.subscribe_queue.put)
+            media.run_subscribe(self.subscribe_url, self.subscribe_queue.put, metadata_queue.put)
         )
         self.publish_task = asyncio.create_task(
-            media.run_publish(self.publish_url, self.publish_queue.get)
+            media.run_publish(self.publish_url, self.publish_queue.get, metadata_queue.get)
         )
         if self.control_url and self.control_url.strip() != "":
             self.control_subscriber = TrickleSubscriber(self.control_url)
@@ -62,27 +62,26 @@ class TrickleProtocol(StreamProtocol):
         self.subscribe_task = None
         self.publish_task = None
 
-    async def ingress_loop(self, done: asyncio.Event) -> AsyncGenerator[Image.Image, None]:
-        def dequeue_jpeg():
-            jpeg_bytes = self.subscribe_queue.get()
-            if not jpeg_bytes:
+    async def ingress_loop(self, done: asyncio.Event) -> AsyncGenerator[InputFrame, None]:
+        def dequeue_frame():
+            frame = self.subscribe_queue.get()
+            if not frame:
                 return None
-            try:
-                return from_jpeg_bytes(jpeg_bytes)
-            except Exception as e:
-                logging.error(f"Error decoding JPEG: {e}")
-                raise e
+
+            return frame
 
         while not done.is_set():
-            image = await asyncio.to_thread(dequeue_jpeg)
+            image = await asyncio.to_thread(dequeue_frame)
             if not image:
                 break
             yield image
 
-    async def egress_loop(self, output_frames: AsyncGenerator[Image.Image, None]):
-        def enqueue_bytes(frame: Image.Image):
-            jpeg_bytes = to_jpeg_bytes(frame)
-            self.publish_queue.put(jpeg_bytes)
+    async def egress_loop(self, output_frames: AsyncGenerator[OutputFrame, None]):
+        def enqueue_bytes(frame: OutputFrame):
+            if frame:
+                self.publish_queue.put(frame)
+            else:
+                self.publish_queue.put(None)
 
         async for frame in output_frames:
             await asyncio.to_thread(enqueue_bytes, frame)

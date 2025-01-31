@@ -7,27 +7,22 @@ import subprocess
 
 from .trickle_subscriber import TrickleSubscriber
 from .trickle_publisher import TricklePublisher
-from .jpeg_parser import JPEGStreamParser
-from . import segmenter
+from .decoder import decode_av
+from .encoder import encode_av
 
-# target framerate
-FRAMERATE=segmenter.FRAMERATE
-
-# TODO make this better configurable
-GPU=segmenter.GPU
-
-async def run_subscribe(subscribe_url: str, image_callback):
+async def run_subscribe(subscribe_url: str, image_callback, put_metadata):
     # TODO add some pre-processing parameters, eg image size
     try:
-        ffmpeg = await launch_ffmpeg()
-        logging_task = asyncio.create_task(log_pipe_async(ffmpeg.stderr))
-        subscribe_task = asyncio.create_task(subscribe(subscribe_url, ffmpeg.stdin))
-        jpeg_task = asyncio.create_task(parse_jpegs(ffmpeg.stdout, image_callback))
-        await asyncio.gather(ffmpeg.wait(), logging_task, subscribe_task, jpeg_task)
+        read_fd, write_fd = os.pipe()
+        parse_task = asyncio.create_task(decode_in(read_fd, image_callback, put_metadata))
+        subscribe_task = asyncio.create_task(subscribe(subscribe_url, await AsyncifyFdWriter(write_fd)))
+        await asyncio.gather(subscribe_task, parse_task)
         logging.info("run_subscribe complete")
     except Exception as e:
         logging.error(f"preprocess got error {e}", e)
         raise e
+    finally:
+        put_metadata(None) # in case decoder quit without writing anything
 
 async def subscribe(subscribe_url, out_pipe):
     async with TrickleSubscriber(url=subscribe_url) as subscriber:
@@ -57,78 +52,27 @@ async def subscribe(subscribe_url, out_pipe):
                     out_pipe.close()
                     break
 
-async def launch_ffmpeg():
-    if GPU:
-        ffmpeg_cmd = [
-        'ffmpeg',
-	    '-loglevel', 'warning',
-	    '-hwaccel', 'cuda',
-	    '-hwaccel_output_format', 'cuda',
-        '-i', 'pipe:0',       # Read input from stdin
-	    '-an',
-	    '-vf', 'scale_cuda=w=512:h=512:force_original_aspect_ratio=decrease:force_divisible_by=2,hwdownload,format=nv12,fps={FRAMERATE}'
-	    '-c:v', 'mjpeg',
-	    '-start_number', '0',
-	    '-q:v', '1',
-        '-f', 'image2pipe',
-        'pipe:1'              # Output to stdout
-        ]
-    else:
-        ffmpeg_cmd = [
-        'ffmpeg',
-	    '-loglevel', 'warning',
-        '-i', 'pipe:0',       # Read input from stdin
-	    '-an',
-	    '-vf', f'scale=w=512:h=512:force_original_aspect_ratio=decrease:force_divisible_by=2,fps={FRAMERATE}',
-	    '-c:v', 'mjpeg',
-	    '-start_number', '0',
-	    '-q:v', '1',
-        '-f', 'image2pipe',
-        'pipe:1'              # Output to stdout
-        ]
+async def AsyncifyFdWriter(write_fd):
+    loop = asyncio.get_event_loop()
+    write_protocol = asyncio.StreamReaderProtocol(asyncio.StreamReader(), loop=loop)
+    write_transport, _ = await loop.connect_write_pipe( lambda: write_protocol, os.fdopen(write_fd, 'wb'))
+    writer = asyncio.StreamWriter(write_transport, write_protocol, None, loop)
+    return writer
 
-    logging.info(f"ffmpeg (input) {ffmpeg_cmd}")
-    # Launch FFmpeg process with stdin, stdout, and stderr as pipes
-    process = await asyncio.create_subprocess_exec(
-        *ffmpeg_cmd,
-        stdin=asyncio.subprocess.PIPE,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
+async def decode_in(in_pipe, frame_callback, put_metadata):
+    def decode_runner():
+        try:
+            decode_av(f"pipe:{in_pipe}", frame_callback, put_metadata)
+        except Exception as e:
+            logging.error(f"Decoding error {e}", exc_info=True)
+        finally:
+            os.close(in_pipe)
+            logging.info("Decoding finished")
 
-    return process  # Return the process handle
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, decode_runner)
 
-async def log_pipe_async(pipe):
-    """Reads from a pipe and logs each line."""
-    while True:
-        line = await pipe.readline()
-        if not line:
-            break  # Exit when the pipe is closed
-        # Decode the binary line and log it
-        logging.info(line.decode().strip())
-
-async def parse_jpegs(in_pipe, image_callback):
-    chunk_size = 32 * 1024 # read in 32kb chunks
-    with JPEGStreamParser(image_callback) as parser:
-        # TODO this does not work on asyncio streams - figure out how to
-        #      disable os buffering on readsdisable buffering on reads
-        #pipe = os.fdopen(in_pipe.fileno(), 'rb', buffering=0)
-        while True:
-            chunk = await in_pipe.read(chunk_size)
-            if not chunk:
-                break
-            await parser.feed(chunk)
-
-def feed_ffmpeg(ffmpeg_fd, image_generator):
-    while True:
-        image = image_generator()
-        if image is None:
-            logging.info("Image generator empty, leaving feed_ffmpeg")
-            break
-        os.write(ffmpeg_fd, image)
-    os.close(ffmpeg_fd)
-
-async def run_publish(publish_url: str, image_generator):
+async def run_publish(publish_url: str, image_generator, get_metadata):
     publisher = None
     try:
         publisher = TricklePublisher(url=publish_url, mime_type="video/mp2t")
@@ -149,36 +93,47 @@ async def run_publish(publish_url: str, image_generator):
                     await segment.write(data)
                 transport.close()
 
-        def sync_callback(pipe_fd, pipe_name):
-            # asyncio.connect_read_pipe expects explicit fd close
-            # so we have to manually read, detect eof, then close
-            r, w = os.pipe()
-            rf = os.fdopen(r, 'rb', buffering=0)
-            future = asyncio.run_coroutine_threadsafe(callback(rf, pipe_name), loop)
-            try:
-                while True:
-                    data = pipe_fd.read(32 * 1024)
-                    if not data:
-                        break
-                    os.write(w, data)
-                os.close(w) # streamreader is very sensitive about this
-                future.result()  # This blocks in the thread until callback completes
-                rf.close() # also closes the read end of the pipe
-            # Ensure any exceptions in the coroutine are caught
-            except Exception as e:
-                logging.error(f"Error in sync_callback: {e}")
+        def sync_callback(pipe_file, pipe_name):
+            def do_schedule():
+                schedule_callback(callback(pipe_file, pipe_name), pipe_name)
+            loop.call_soon_threadsafe(do_schedule)
 
-        ffmpeg_read_fd, ffmpeg_write_fd = os.pipe()
-        segment_thread = threading.Thread(target=segmenter.segment_reading_process, args=(ffmpeg_read_fd, sync_callback))
-        ffmpeg_feeder = threading.Thread(target=feed_ffmpeg, args=(ffmpeg_write_fd, image_generator))
-        segment_thread.start()
-        ffmpeg_feeder.start()
-        logging.debug("run_publish: ffmpeg feeder and segmenter threads started")
+        # hold tasks since `loop.create_task` is a weak reference that gets GC'd
+        # TODO use asyncio.TaskGroup once all pipelines are on Python 3.11+
+        live_tasks = set()
+        live_tasks_lock = threading.Lock()
+        def schedule_callback(coro: asyncio.coroutine, pipe_name):
+            task = loop.create_task(coro)
+            with live_tasks_lock:
+                live_tasks.add(task)
+            def task_done(t: asyncio.Task):
+                try:
+                    t.result()
+                except Exception as e:
+                    logging.error(f"Task {pipe_name} crashed: {e}")
+                with live_tasks_lock:
+                    live_tasks.remove(t)
+            task.add_done_callback(task_done)
 
+        encode_thread = threading.Thread(target=encode_av, args=(image_generator, sync_callback, get_metadata))
+        encode_thread.start()
+        logging.debug("run_publish: encoder thread started")
+
+        # Wait for encode thread to complete
         def joins():
-            segment_thread.join()
-            ffmpeg_feeder.join()
+            encode_thread.join()
         await asyncio.to_thread(joins)
+
+        # wait for IO tasks to complete
+        # TODO use asyncio.TaskGroup once all pipelines are on python 3.11+
+        while True:
+            with live_tasks_lock:
+                current_tasks = list(live_tasks)
+            if not current_tasks:
+                break  # nothing left to wait on
+            await asyncio.wait(current_tasks, return_when=asyncio.ALL_COMPLETED)
+            # loop in case another task was added while awaiting
+
         logging.info("run_publish complete")
 
     except Exception as e:

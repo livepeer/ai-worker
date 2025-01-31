@@ -12,7 +12,8 @@ deepcache==0.1.1
 safetensors==0.4.3
 scipy==1.13.0
 numpy==1.26.4
-av==12.1.0
+--no-binary=av
+av==14.0.1
 sentencepiece== 0.2.0
 bitsandbytes==0.43.3
 psutil==6.0.0

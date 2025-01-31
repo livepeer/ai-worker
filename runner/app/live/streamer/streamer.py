@@ -13,6 +13,7 @@ from PIL import Image
 from .process import PipelineProcess
 from .protocol.protocol import StreamProtocol
 from .status import PipelineStatus, PipelineState, timestamp_to_ms
+from trickle import AudioFrame, VideoFrame, OutputFrame, AudioOutput, VideoOutput
 
 fps_log_interval = 10
 status_report_interval = 10
@@ -252,13 +253,29 @@ class PipelineStreamer:
     async def run_ingress_loop(self):
         frame_count = 0
         start_time = 0.0
-        async for frame in self.protocol.ingress_loop(self.stop_event):
+        async for av_frame in self.protocol.ingress_loop(self.stop_event):
             if not self.process or self.process.done.is_set():
                 # no need to sleep since we want to consume input frames as fast as possible
                 continue
 
             if not start_time:
                 start_time = time.time()
+
+            # TODO any necessary accounting here for audio
+            if isinstance(av_frame, AudioFrame):
+                self.process.send_input(av_frame)
+                continue
+
+            if not isinstance(av_frame, VideoFrame):
+                logging.warning("Unknown frame type received, dropping")
+                continue
+
+            frame = av_frame.image
+            if not frame:
+                continue
+
+            if frame.mode != "RGBA":
+                frame = frame.convert("RGBA")
 
             # crop the max square from the center of the image and scale to 512x512
             # most models expect this size especially when using tensorrt
@@ -277,7 +294,8 @@ class PipelineStreamer:
                 frame = Image.fromarray(frame_array)
 
             logging.debug(f"Sending input frame. Scaled from {width}x{height} to {frame.size[0]}x{frame.size[1]}")
-            self.process.send_input(frame)
+            av_frame = av_frame.replace_image(frame)
+            self.process.send_input(av_frame)
             self.status.input_status.last_input_time = time.time()  # Track time after send completes
 
             # Increment frame count and measure FPS
@@ -291,7 +309,7 @@ class PipelineStreamer:
         logging.info("Ingress loop ended")
 
     async def run_egress_loop(self):
-        async def gen_output_frames() -> AsyncGenerator[Image.Image, None]:
+        async def gen_output_frames() -> AsyncGenerator[OutputFrame, None]:
             frame_count = 0
             start_time = 0.0
             while not self.stop_event.is_set():
@@ -299,9 +317,21 @@ class PipelineStreamer:
                     await asyncio.sleep(0.05)
                     continue
 
-                output_image = await self.process.recv_output()
-                if not output_image:
+                output_frame = await self.process.recv_output()
+                if not output_frame:
                     continue
+
+                # TODO accounting for audio output
+                if isinstance(output_frame, AudioOutput):
+                    yield output_frame
+                    continue
+
+                if not isinstance(output_frame, VideoOutput):
+                    logging.warning(f"Unknown output frame type {type(output_frame)}, dropping")
+                    continue
+
+                output_image = output_frame.frame.image
+
                 if not start_time:
                     # only start measuring output FPS after the first frame
                     start_time = time.time()
@@ -311,7 +341,7 @@ class PipelineStreamer:
                     f"Output image received out_width: {output_image.width}, out_height: {output_image.height}"
                 )
 
-                yield output_image
+                yield output_frame
 
                 # Increment frame count and measure FPS
                 frame_count += 1
