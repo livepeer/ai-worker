@@ -44,19 +44,19 @@ python gen_openapi.py
 ```
 
 To correspondingly generate the Go client bindings in the go-livepeer repository,
-you should install `livepeer/go-livepeer` and run:
+you should clone [`livepeer/go-livepeer`](https://github.com/livepeer/go-livepeer) and run:
 ```bash
 # in the go-livepeer repo
 make ai_worker_codegen
 ```
 
 Alternatively, if you want to test the client from a development version of
-`ai-runner`, you can specify a commit hash or branch to generate from:
+`ai-runner`, you can specify a commit hash or branch to generate from. e.g.:
 ```bash
 # for commit `aa7ab76`
 make ai_worker_codegen REF=aa7ab76
-# for branch `test`
-make ai_worker_codegen REF=refs/heads/vg/chore/test
+# for branch `vg/test`
+make ai_worker_codegen REF=refs/heads/vg/test
 ```
 
 ## Development documentation
