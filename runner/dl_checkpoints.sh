@@ -101,9 +101,7 @@ function download_live_models() {
         || (echo "failed ComfyUI setup_models.py"; return 1)
 
     docker run --rm -v ./models:/models --gpus all -l TensorRT-engines livepeer/ai-runner:live-base-comfyui \
-        bash -c "cd / && \
-                 source /miniconda3/etc/profile.d/conda.sh && conda activate comfystream && \
-                 export PYTHONPATH=\"/:$PYTHONPATH\" && \    
+        bash -c "source /miniconda3/etc/profile.d/conda.sh && conda activate comfystream && \
                  python /workspace/src/comfystream/scripts/build_trt.py \
                 --model /models/ComfyUI--models/unet/dreamshaper-8-dmd-1kstep.safetensors \
                 --out-engine /models/ComfyUI--models/tensorrt/static-dreamshaper8_SD15_$stat-b-1-h-512-w-512_00001_.engine" \
