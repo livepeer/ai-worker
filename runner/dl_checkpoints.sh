@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# ComfyUI image configuration
+AI_RUNNER_COMFYUI_IMAGE=${AI_RUNNER_COMFYUI_IMAGE:-livepeer/ai-runner:live-app-comfyui}
+
 # Checks HF_TOKEN and huggingface-cli login status and throw warning if not authenticated.
 check_hf_auth() {
     if [ -z "$HF_TOKEN" ] && [ "$(huggingface-cli whoami)" = "Not logged in" ]; then
@@ -89,7 +92,6 @@ function download_live_models() {
     huggingface-cli download stabilityai/sd-turbo --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
 
     # ComfyUI
-    AI_RUNNER_COMFYUI_IMAGE=${AI_RUNNER_COMFYUI_IMAGE:-livepeer/ai-runner:live-app-comfyui}
     # docker pull $AI_RUNNER_COMFYUI_IMAGE
     # ai-worker has tags hardcoded in `var livePipelineToImage` so we need to use the same tag in here:
     docker image tag $AI_RUNNER_COMFYUI_IMAGE livepeer/ai-runner:live-app-comfyui
