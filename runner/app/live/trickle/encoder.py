@@ -29,7 +29,7 @@ def encode_av(
     video_meta = decoded_metadata['video']
     audio_meta = decoded_metadata['audio']
 
-    logging.info(f"Encoder recevied metadata video={video_meta is None} audio={audio_meta is None}")
+    logging.info(f"Encoder recevied metadata video={video_meta is not None} audio={audio_meta is not None}")
 
     def custom_io_open(url: str, flags: int, options: dict):
         read_fd, write_fd = os.pipe()
@@ -47,7 +47,7 @@ def encode_av(
 
     if video_meta and video_codec:
         # Add a new stream to the output using the desired video codec
-        video_opts = { 'width':'512', 'height':'512', 'bf':'0' }
+        video_opts = { 'video_size':'512x512', 'bf':'0' }
         if video_codec == 'libx264':
             video_opts = video_opts | { 'preset':'superfast', 'tune':'zerolatency', 'forced-idr':'1' }
         output_video_stream = output_container.add_stream(video_codec, options=video_opts)
