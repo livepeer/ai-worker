@@ -9,7 +9,7 @@ This folder contains Dockerfiles for pipelines supported by the Livepeer AI netw
 
 All pipeline-specific containers are built on top of the base container found in the main [runner](../) folder and on [Docker Hub](https://hub.docker.com/r/livepeer/ai-runner). The base container includes the minimum dependencies to run any pipeline, while pipeline-specific containers add the necessary dependencies for their respective pipelines. This structure allows for faster build times, less dependency bloat, and easier maintenance.
 
-### Steps to Build a Pipeline-Specific Container
+### To build a pipeline-specific container (non-ComfyUI)
 
 To build a pipeline-specific container, you need to build the base container first. The base container is tagged as `base`, and the pipeline-specific container is built from the Dockerfile in the pipeline-specific folder. For example, to build the `segment-anything-2` pipeline-specific container, follow these steps:
 
@@ -35,33 +35,43 @@ To build a pipeline-specific container, you need to build the base container fir
 
    This command builds the `segment-anything-2` pipeline-specific container using the Dockerfile located at [docker/Dockerfile.segment_anything_2](docker/Dockerfile.segment_anything_2) and tags it as `livepeer/ai-runner:segment-anything-2`.
 
-### ComfyStream integration with Depth-Anything
+### To build the ComfyUI based pipeline
 
-1. Build Docker image
-```
-export PIPELINE=comfyui
-docker build -t livepeer/ai-runner:live-base -f docker/Dockerfile.live-base .
-docker build -t livepeer/ai-runner:live-base-${PIPELINE} -f docker/Dockerfile.live-base-${PIPELINE} .
-docker build -t livepeer/ai-runner:live-app-${PIPELINE} -f docker/Dockerfile.live-app__PIPELINE__ --build-arg PIPELINE=${PIPELINE} .
+We provide a convenient build script that simplifies the build and run process. The script is located at `runner/build.sh` and supports multiple operations:
+
+```bash
+./build.sh [command]
 ```
 
-2. Download Depth Anything model
-```
-./dl_checkpoints --live
+Available commands:
+- `base` - Build only the base ComfyUI image
+- `app` - Build only the application image
+- `models` - Download required model checkpoints and build TensorRT engines
+- `run` - Run the ComfyUI container
+- `all` - Execute all build steps in sequence (recommended for first-time setup)
+
+For a complete first-time setup, simply run:
+
+```bash
+cd ai-worker/runner
+./build.sh all
 ```
 
-3. Build Depth Anything Engine
-```
-./dl_checkpoints --tensorrt
+This will:
+1. Build the base ComfyUI image
+2. Build the application image
+3. Download required model checkpoints
+4. Build TensorRT engines
+
+Once built, you can start the container anytime with:
+
+```bash
+./build.sh run
 ```
 
-4. Start Docker container
+This will start the container with all necessary configurations, including GPU support, port mapping (8000), and required environment variables.
 
-```
-docker run -it --rm --name video-to-video --gpus all -p 8000:8000 -v ./models:/models -e PIPELINE=live-video-to-video -e MODEL_ID=comfyui livepeer/ai-runner:live-app-comfyui
-```
-
-### Noop pipeline for local testing (works on Darwin as well)
+### To build the no-op pipeline for local testing (works on Darwin as well)
 
 1. Build Docker images
 ```
