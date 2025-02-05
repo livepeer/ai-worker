@@ -5,6 +5,8 @@ from PIL import Image
 
 from .frame import InputFrame
 
+MAX_FRAMERATE=24
+
 def decode_av(pipe_input, frame_callback, put_metadata):
     """
     Reads from a pipe (or file-like object).
@@ -63,6 +65,8 @@ def decode_av(pipe_input, frame_callback, put_metadata):
     put_metadata(metadata)
 
     reformatter = av.video.reformatter.VideoReformatter()
+    frame_interval = 1.0 / MAX_FRAMERATE
+    next_pts_time = 0.0
     try:
         for packet in container.demux():
             if packet.dts is None:
@@ -83,6 +87,19 @@ def decode_av(pipe_input, frame_callback, put_metadata):
                 for frame in packet.decode():
                     if frame.pts is None:
                         continue
+
+                    # drop frames that come in too fast
+                    # TODO also check timing relative to wall clock
+                    pts_time = frame.time
+                    if pts_time < next_pts_time:
+                        # frame is too early, so drop it
+                        continue
+                    if pts_time > next_pts_time + frame_interval:
+                        # frame is delayed, so reset based on frame pts
+                        next_pts_time = pts_time + frame_interval
+                    else:
+                        # not delayed, so use prev pts to allow more jitter
+                        next_pts_time = next_pts_time + frame_interval
 
                     w = 512
                     h = int((512 * frame.height / frame.width) / 2) * 2 # force divisible by 2
