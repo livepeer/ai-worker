@@ -102,7 +102,8 @@ async def run_publish(publish_url: str, image_generator, get_metadata):
         # TODO use asyncio.TaskGroup once all pipelines are on Python 3.11+
         live_tasks = set()
         live_tasks_lock = threading.Lock()
-        def schedule_callback(coro: asyncio.coroutine, pipe_name):
+
+        def schedule_callback(coro, pipe_name):
             task = loop.create_task(coro)
             with live_tasks_lock:
                 live_tasks.add(task)
