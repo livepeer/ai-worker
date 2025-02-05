@@ -6,7 +6,7 @@ from typing import AsyncGenerator, Optional
 
 from PIL import Image
 
-from trickle import media, TricklePublisher, TrickleSubscriber, InputFrame, OutputFrame
+from trickle import media, TricklePublisher, TrickleSubscriber, InputFrame, OutputFrame, AudioFrame, AudioOutput
 
 from .protocol import StreamProtocol
 
@@ -74,6 +74,11 @@ class TrickleProtocol(StreamProtocol):
             image = await asyncio.to_thread(dequeue_frame)
             if not image:
                 break
+            # TEMP: Put audio immediately into the publish queue
+            # TODO: Remove once there is ComfyUI audio support
+            if isinstance(image, AudioFrame):
+                self.publish_queue.put(AudioOutput([image]))
+                continue
             yield image
 
     async def egress_loop(self, output_frames: AsyncGenerator[OutputFrame, None]):
