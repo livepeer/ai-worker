@@ -12,10 +12,11 @@ from app.routes.utils import (
     http_error,
     handle_pipeline_exception,
 )
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Header
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
+from app.log import request_id_var
 
 router = APIRouter()
 
@@ -108,7 +109,9 @@ async def live_video_to_video(
     params: LiveVideoToVideoParams,
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
+    requestID: str = Header(None),
 ):
+    request_id_var.set(requestID)
     auth_token = os.environ.get("AUTH_TOKEN")
     if auth_token:
         if not token or token.credentials != auth_token:

@@ -13,6 +13,7 @@ import http.client
 from app.pipelines.base import Pipeline, HealthCheck
 from app.pipelines.utils import get_model_dir, get_torch_device
 from app.utils.errors import InferenceError
+from app.routes.live_video_to_video import request_id_var
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,7 @@ class LiveVideoToVideoPipeline(Pipeline):
             raise RuntimeError("Pipeline already running")
 
         try:
-            logger.info(f"Starting stream, subscribe={subscribe_url} publish={publish_url}, control={control_url}, events={events_url}")
+            logging.info(f"Starting stream, subscribe={subscribe_url} publish={publish_url}, control={control_url}, events={events_url}")
             self.start_process(
                 pipeline=self.model_id,  # we use the model_id as the pipeline name for now
                 http_port=8888,
@@ -46,6 +47,7 @@ class LiveVideoToVideoPipeline(Pipeline):
                 control_url=control_url,
                 events_url=events_url,
                 initial_params=json.dumps(params),
+                request_id=request_id_var.get(),
                 # TODO: set torch device from self.torch_device
             )
             return
