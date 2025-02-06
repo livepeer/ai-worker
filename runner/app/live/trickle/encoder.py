@@ -65,6 +65,7 @@ def encode_av(
     # Now read packets from the input, decode, then re-encode, and mux.
     start = datetime.datetime.now()
     last_kf = None
+    video_received = False
     while True:
         avframe = input_queue()
         if avframe is None:
@@ -84,11 +85,18 @@ def encode_av(
             encoded_packets = output_video_stream.encode(frame)
             for ep in encoded_packets:
                 output_container.mux(ep)
+            video_received = True
             continue
 
         if isinstance(avframe, AudioOutput):
             if not output_audio_stream:
                 # received audio but no audio output, so drop
+                continue
+            if output_video_stream and not video_received:
+                # Wait until we receive video to start sending audio
+                # because video could be extremely delayed and we don't
+                # want to send out audio-only segments since that confuses
+                # downstream tools
                 continue
             for af in avframe.frames:
                 frame = av.audio.frame.AudioFrame.from_ndarray(af.samples, format=af.format, layout=af.layout)
