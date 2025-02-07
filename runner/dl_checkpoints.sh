@@ -88,9 +88,6 @@ function download_all_models() {
 
 # Download models only for the live-video-to-video pipeline.
 function download_live_models() {
-    huggingface-cli download KBlueLeaf/kohaku-v2.1 --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
-    huggingface-cli download stabilityai/sd-turbo --include "*.safetensors" "*.json" "*.txt" --exclude ".onnx" ".onnx_data" --cache-dir models
-
     # ComfyUI models
     if ! docker image inspect $AI_RUNNER_COMFYUI_IMAGE >/dev/null 2>&1; then
         echo "ERROR: ComfyUI base image $AI_RUNNER_COMFYUI_IMAGE not found"
@@ -115,25 +112,6 @@ function build_tensorrt_models() {
         exit 1
     fi
     printf "\nBuilding TensorRT models...\n"
-
-    # StreamDiffusion (compile a matrix of models and timesteps)
-    MODELS="stabilityai/sd-turbo KBlueLeaf/kohaku-v2.1"
-    TIMESTEPS="3 4" # This is basically the supported sizes for the t_index_list
-    AI_RUNNER_STREAMDIFFUSION_IMAGE=${AI_RUNNER_STREAMDIFFUSION_IMAGE:-livepeer/ai-runner:live-app-streamdiffusion}
-    docker pull $AI_RUNNER_STREAMDIFFUSION_IMAGE
-    # ai-worker has tags hardcoded in `var livePipelineToImage` so we need to use the same tag in here:
-    docker image tag $AI_RUNNER_STREAMDIFFUSION_IMAGE livepeer/ai-runner:live-app-streamdiffusion
-    docker run --rm -v ./models:/models --gpus all -l TensorRT-engines $AI_RUNNER_STREAMDIFFUSION_IMAGE \
-        bash -c "for model in $MODELS; do
-                    for timestep in $TIMESTEPS; do
-                        echo \"Building TensorRT engines for model=\$model timestep=\$timestep...\" && \
-                        python app/live/StreamDiffusionWrapper/build_tensorrt.py --model-id \$model --timesteps \$timestep
-                    done
-                done
-                adduser $(id -u -n)
-                chown -R $(id -u -n):$(id -g -n) /models
-                " \
-        || (echo "failed streamdiffusion tensorrt"; return 1)
 
     # Depth-Anything-Tensorrt
     docker run --rm -v ./models:/models --gpus all -l TensorRT-engines $AI_RUNNER_COMFYUI_IMAGE \
