@@ -20,7 +20,7 @@ from streamer.protocol.trickle import TrickleProtocol
 from streamer.protocol.zeromq import ZeroMQProtocol
 
 
-async def main(*, http_port: int, stream_protocol: str, subscribe_url: str, publish_url: str, control_url: str, events_url: str, pipeline: str, params: dict, input_timeout: int, request_id: str):
+async def main(*, http_port: int, stream_protocol: str, subscribe_url: str, publish_url: str, control_url: str, events_url: str, pipeline: str, params: dict, input_timeout: int, request_id: str, stream_id: str):
     if stream_protocol == "trickle":
         protocol = TrickleProtocol(subscribe_url, publish_url, control_url, events_url)
     elif stream_protocol == "zeromq":
@@ -32,7 +32,7 @@ async def main(*, http_port: int, stream_protocol: str, subscribe_url: str, publ
     else:
         raise ValueError(f"Unsupported protocol: {stream_protocol}")
 
-    streamer = PipelineStreamer(protocol, pipeline, input_timeout, params or {}, request_id)
+    streamer = PipelineStreamer(protocol, pipeline, input_timeout, params or {}, request_id, stream_id)
 
     api = None
     try:
@@ -114,6 +114,12 @@ if __name__ == "__main__":
         default="",
         help="The Livepeer request ID associated with this video stream"
     )
+    parser.add_argument(
+        "--stream-id",
+        type=str,
+        default="",
+        help="The Livepeer stream ID"
+    )
     args = parser.parse_args()
     try:
         params = json.loads(args.initial_params)
@@ -123,25 +129,11 @@ if __name__ == "__main__":
 
     log_level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(
-        format='%(asctime)s %(levelname)-8s request_id=' + args.request_id + ' %(message)s',
+        format=f"%(asctime)s %(levelname)-8s request_id={args.request_id} stream_id={args.stream_id} %(message)s",
         level=log_level,
         datefmt='%Y-%m-%d %H:%M:%S')
     if args.verbose:
         os.environ['VERBOSE_LOGGING'] = '1' # enable verbose logging in subprocesses
-
-    # formatter = logging.Formatter(
-    #     '%(asctime)s %(levelname)-8s request_id=%(request_id)s %(message)s',
-    #     defaults={"request_id": ""},
-    #     datefmt='%Y-%m-%d %H:%M:%S'
-    # )
-    # handler = logging.StreamHandler()
-    # handler.setFormatter(formatter)
-    # handler.setLevel(log_level)
-    # logger = logging.getLogger()  # Root logger
-    # logger.setLevel(log_level)
-    # logger.addHandler(handler)
-    # logger.addFilter(ContextFilter())  # Attach the filter to all loggers
-    # logging_config.request_id = args.request_id
 
     try:
         asyncio.run(
@@ -155,7 +147,8 @@ if __name__ == "__main__":
                 pipeline=args.pipeline,
                 params=params,
                 input_timeout=args.input_timeout,
-                request_id=args.request_id
+                request_id=args.request_id,
+                stream_id=args.stream_id
             )
         )
         # We force an exit here to ensure that the process terminates. If any asyncio tasks or

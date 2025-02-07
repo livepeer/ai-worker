@@ -8,13 +8,12 @@ from fastapi.routing import APIRoute
 from app.utils.hardware import HardwareInfo
 from app.log import config_logging
 
+config_logging()
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    config_logging()
-
     # Create application wide hardware info service.
     app.hardware_info_service = HardwareInfo()
 

@@ -15,15 +15,15 @@ from trickle import InputFrame, AudioFrame, VideoFrame, OutputFrame, VideoOutput
 
 class PipelineProcess:
     @staticmethod
-    def start(pipeline_name: str, params: dict, request_id: str):
-        instance = PipelineProcess(pipeline_name, request_id)
+    def start(pipeline_name: str, params: dict, request_id: str, stream_id: str):
+        instance = PipelineProcess(pipeline_name, request_id, stream_id)
         if params:
             instance.update_params(params)
         instance.process.start()
         instance.start_time = time.time()
         return instance
 
-    def __init__(self, pipeline_name: str, request_id: str):
+    def __init__(self, pipeline_name: str, request_id: str, stream_id: str):
         self.pipeline_name = pipeline_name
         self.ctx = mp.get_context("spawn")
 
@@ -37,6 +37,7 @@ class PipelineProcess:
         self.process = self.ctx.Process(target=self.process_loop, args=())
         self.start_time = 0
         self.request_id = request_id
+        self.stream_id = stream_id
 
     async def stop(self):
         await asyncio.to_thread(self._stop_sync)
@@ -161,12 +162,12 @@ class PipelineProcess:
 
         level = logging.DEBUG if os.environ.get('VERBOSE_LOGGING') == '1' else logging.INFO
         logging.basicConfig(
-            format='%(asctime)s %(levelname)-8s request_id=' + self.request_id + ' %(message)s',
+            format=f"%(asctime)s %(levelname)-8s request_id={self.request_id} stream_id={self.stream_id} %(message)s",
             level=level,
             datefmt='%Y-%m-%d %H:%M:%S')
 
         queue_handler = LogQueueHandler(self)
-        queue_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)-8s request_id=' + self.request_id + ' %(message)s'))
+        queue_handler.setFormatter(logging.Formatter(f"%(asctime)s %(levelname)-8s request_id={self.request_id} stream_id={self.stream_id} %(message)s"))
         logging.getLogger().addHandler(queue_handler)
 
         # Tee stdout and stderr to our log queue while preserving original output
