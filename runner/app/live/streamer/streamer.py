@@ -47,8 +47,11 @@ class PipelineStreamer:
             run_in_background("ingress_loop", self.run_ingress_loop()),
             run_in_background("egress_loop", self.run_egress_loop()),
             run_in_background("monitor_loop", self.monitor_loop()),
-            run_in_background("control_loop", self.run_control_loop()),
             run_in_background("report_status_loop", self.report_status_loop())
+        ]
+        # auxiliary tasks that are not critical to the supervisor, but which we want to run
+        self.auxiliary_tasks = [
+            run_in_background("control_loop", self.run_control_loop())
         ]
         self.tasks_supervisor_task = run_in_background("tasks_supervisor", self.tasks_supervisor())
 
@@ -73,7 +76,7 @@ class PipelineStreamer:
 
         # make sure the stop event is set and give running tasks a chance to exit cleanly
         self.stop_event.set()
-        _, pending = await asyncio.wait(self.main_tasks, return_when=asyncio.ALL_COMPLETED, timeout=1)
+        _, pending = await asyncio.wait(self.main_tasks + self.auxiliary_tasks, return_when=asyncio.ALL_COMPLETED, timeout=1)
         # force cancellation of the remaining tasks
         for task in pending:
             task.cancel()
