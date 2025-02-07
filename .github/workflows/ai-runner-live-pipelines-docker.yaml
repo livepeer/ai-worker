@@ -83,7 +83,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        pipeline: [streamdiffusion, comfyui]
+        pipeline: [comfyui]
     steps:
       - name: Check out code
         uses: actions/checkout@v4.1.1
