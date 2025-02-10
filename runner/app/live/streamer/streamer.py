@@ -19,7 +19,7 @@ fps_log_interval = 10
 status_report_interval = 10
 
 class PipelineStreamer:
-    def __init__(self, protocol: StreamProtocol, pipeline: str, input_timeout: int, params: dict):
+    def __init__(self, protocol: StreamProtocol, pipeline: str, input_timeout: int, params: dict, request_id: str, stream_id: str):
         self.protocol = protocol
         self.pipeline = pipeline
         self.params = params
@@ -32,13 +32,15 @@ class PipelineStreamer:
 
         self.main_tasks: list[asyncio.Task] = []
         self.tasks_supervisor_task: asyncio.Task | None = None
+        self.request_id = request_id
+        self.stream_id = stream_id
 
     async def start(self):
         if self.process:
             raise RuntimeError("Streamer already started")
 
         self.stop_event.clear()
-        self.process = PipelineProcess.start(self.pipeline, self.params)
+        self.process = PipelineProcess.start(self.pipeline, self.params, self.request_id, self.stream_id)
         await self.protocol.start()
 
         # We need a bunch of concurrent tasks to run the streamer. So we start them all in background and then also start
@@ -102,7 +104,7 @@ class PipelineStreamer:
         # don't call the full start/stop methods since we only want to restart the process
         await self.process.stop()
 
-        self.process = PipelineProcess.start(self.pipeline, self.params)
+        self.process = PipelineProcess.start(self.pipeline, self.params, self.request_id, self.stream_id)
         self.status.inference_status.restart_count += 1
         self.status.inference_status.last_restart_time = time.time()
         self.status.inference_status.last_restart_logs = restart_logs

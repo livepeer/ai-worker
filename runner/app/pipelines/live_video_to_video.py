@@ -13,9 +13,7 @@ import http.client
 from app.pipelines.base import Pipeline, HealthCheck
 from app.pipelines.utils import get_model_dir, get_torch_device
 from app.utils.errors import InferenceError
-
-logger = logging.getLogger(__name__)
-
+from app.log import request_id_var, stream_id_var
 
 class LiveVideoToVideoPipeline(Pipeline):
     def __init__(self, model_id: str):
@@ -37,7 +35,7 @@ class LiveVideoToVideoPipeline(Pipeline):
             raise RuntimeError("Pipeline already running")
 
         try:
-            logger.info(f"Starting stream, subscribe={subscribe_url} publish={publish_url}, control={control_url}, events={events_url}")
+            logging.info(f"Starting stream, subscribe={subscribe_url} publish={publish_url}, control={control_url}, events={events_url}")
             self.start_process(
                 pipeline=self.model_id,  # we use the model_id as the pipeline name for now
                 http_port=8888,
@@ -46,6 +44,8 @@ class LiveVideoToVideoPipeline(Pipeline):
                 control_url=control_url,
                 events_url=events_url,
                 initial_params=json.dumps(params),
+                request_id=request_id_var.get(),
+                stream_id=stream_id_var.get(),
                 # TODO: set torch device from self.torch_device
             )
             return
@@ -77,7 +77,7 @@ class LiveVideoToVideoPipeline(Pipeline):
 
             return HealthCheck(status=health_status)
         except Exception as e:
-            logger.error(f"Failed to get status", exc_info=True)
+            logging.error(f"Failed to get status", exc_info=True)
             raise ConnectionError(f"Failed to get status: {e}")
 
     def start_process(self, **kwargs):
@@ -111,24 +111,24 @@ class LiveVideoToVideoPipeline(Pipeline):
     def monitor_process(self):
         while True:
             if not self.process:
-                logger.error("No process to monitor")
+                logging.error("No process to monitor")
                 return
 
             return_code: int
             try:
                 return_code = self.process.wait(timeout=10)
             except subprocess.TimeoutExpired:
-                logger.info("infer.py process is running...")
+                logging.info("infer.py process is running...")
                 continue
             except Exception:
-                logger.error(f"Error while waiting for infer.py process to exit", exc_info=True)
+                logging.error(f"Error while waiting for infer.py process to exit", exc_info=True)
                 time.sleep(5)
                 continue
 
-            logger.info(f"infer.py process exited, cleaning up state... Return code: {return_code}")
+            logging.info(f"infer.py process exited, cleaning up state... Return code: {return_code}")
             if return_code != 0:
                 _, stderr = self.process.communicate()
-                logger.error(
+                logging.error(
                     f"infer.py process failed with return code {return_code}. Error: {stderr}"
                 )
 
@@ -142,11 +142,11 @@ class LiveVideoToVideoPipeline(Pipeline):
                 self.process.wait(timeout=10)
             except subprocess.TimeoutExpired:
                 try:
-                    logger.warning("Process did not terminate in time, force killing...")
+                    logging.warning("Process did not terminate in time, force killing...")
                     self.process.kill()
                     self.process.wait(timeout=5)
                 except Exception as e:
-                    logger.error(f"Error while force killing process: {e}")
+                    logging.error(f"Error while force killing process: {e}")
                     os._exit(1)
             self.process = None
         if self.monitor_thread and not is_monitor_thread:
@@ -155,7 +155,7 @@ class LiveVideoToVideoPipeline(Pipeline):
         if self.log_thread:
             self.log_thread.join()
             self.log_thread = None
-        logger.info("Infer process stopped successfully")
+        logging.info("Infer process stopped successfully")
 
     def __str__(self) -> str:
         return f"VideoToVideoPipeline model_id={self.model_id}"
@@ -166,4 +166,4 @@ def log_output(f: IO[str]):
         for line in f:
             sys.stderr.write(f"[infer.py] {line}")
     except Exception as e:
-        logger.error(f"Error while logging process output: {e}")
+        logging.error(f"Error while logging process output: {e}")
