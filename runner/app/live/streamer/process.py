@@ -13,6 +13,10 @@ from pipelines import load_pipeline
 
 from trickle import InputFrame, AudioFrame, VideoFrame, OutputFrame, VideoOutput, AudioOutput
 
+from app.log import config_logging
+
+config_logging()
+
 class PipelineProcess:
     @staticmethod
     def start(pipeline_name: str, params: dict, request_id: str, stream_id: str):
