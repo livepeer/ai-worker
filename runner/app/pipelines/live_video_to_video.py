@@ -163,6 +163,6 @@ class LiveVideoToVideoPipeline(Pipeline):
 def log_output(f: IO[str]):
     try:
         for line in f:
-            sys.stderr.write(f"[infer.py] {line}")
+            sys.stderr.write(line)
     except Exception as e:
         logging.error(f"Error while logging process output: {e}")
