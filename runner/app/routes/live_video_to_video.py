@@ -16,7 +16,6 @@ from fastapi import APIRouter, Depends, status, Header
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
-from app.log import request_id_var, stream_id_var
 
 router = APIRouter()
 
@@ -112,8 +111,6 @@ async def live_video_to_video(
     requestID: str = Header(None),
     streamID: str = Header(None),
 ):
-    request_id_var.set(requestID)
-    stream_id_var.set(streamID)
     auth_token = os.environ.get("AUTH_TOKEN")
     if auth_token:
         if not token or token.credentials != auth_token:
@@ -133,7 +130,7 @@ async def live_video_to_video(
         )
 
     try:
-        pipeline(**params.model_dump())
+        pipeline(**params.model_dump(), request_id=requestID, stream_id=streamID)
     except Exception as e:
         if isinstance(e, torch.cuda.OutOfMemoryError):
             torch.cuda.empty_cache()

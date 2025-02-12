@@ -7,15 +7,10 @@ import sys
 import time
 from typing import Any
 
-from PIL import Image
-
 from pipelines import load_pipeline
-
+from log import config_logging
 from trickle import InputFrame, AudioFrame, VideoFrame, OutputFrame, VideoOutput, AudioOutput
 
-from app.log import config_logging
-
-config_logging()
 
 class PipelineProcess:
     @staticmethod
@@ -165,14 +160,10 @@ class PipelineProcess:
     def _setup_logging(self):
 
         level = logging.DEBUG if os.environ.get('VERBOSE_LOGGING') == '1' else logging.INFO
-        logging.basicConfig(
-            format=f"%(asctime)s %(levelname)-8s request_id={self.request_id} stream_id={self.stream_id} %(message)s",
-            level=level,
-            datefmt='%Y-%m-%d %H:%M:%S')
-
+        logger = config_logging(log_level=level, request_id=self.request_id, stream_id=self.stream_id)
         queue_handler = LogQueueHandler(self)
-        queue_handler.setFormatter(logging.Formatter(f"%(asctime)s %(levelname)-8s request_id={self.request_id} stream_id={self.stream_id} %(message)s"))
-        logging.getLogger().addHandler(queue_handler)
+        queue_handler.setFormatter(logger.handlers[0].formatter)
+        logger.addHandler(queue_handler)
 
         # Tee stdout and stderr to our log queue while preserving original output
         sys.stdout = QueueTeeStream(sys.stdout, self)

@@ -6,7 +6,7 @@ from app.routes import health, hardware
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from app.utils.hardware import HardwareInfo
-from app.log import config_logging
+from app.live.log import config_logging
 
 config_logging()
 logger = logging.getLogger(__name__)

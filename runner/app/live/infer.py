@@ -16,6 +16,7 @@ infer_root = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, infer_root)
 
 from api import start_http_server
+from log import config_logging
 from streamer.protocol.trickle import TrickleProtocol
 from streamer.protocol.zeromq import ZeroMQProtocol
 
@@ -127,11 +128,7 @@ if __name__ == "__main__":
         logging.error(f"Error parsing --initial-params: {e}")
         sys.exit(1)
 
-    log_level = logging.DEBUG if args.verbose else logging.INFO
-    logging.basicConfig(
-        format=f"%(asctime)s %(levelname)-8s request_id={args.request_id} stream_id={args.stream_id} %(message)s",
-        level=log_level,
-        datefmt='%Y-%m-%d %H:%M:%S')
+    config_logging(log_level=logging.DEBUG if args.verbose else logging.INFO, request_id=args.request_id, stream_id=args.stream_id)
     if args.verbose:
         os.environ['VERBOSE_LOGGING'] = '1' # enable verbose logging in subprocesses
 

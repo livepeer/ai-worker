@@ -13,7 +13,6 @@ import http.client
 from app.pipelines.base import Pipeline, HealthCheck
 from app.pipelines.utils import get_model_dir, get_torch_device
 from app.utils.errors import InferenceError
-from app.log import request_id_var, stream_id_var
 
 class LiveVideoToVideoPipeline(Pipeline):
     def __init__(self, model_id: str):
@@ -29,7 +28,7 @@ class LiveVideoToVideoPipeline(Pipeline):
 
 
     def __call__(  # type: ignore
-        self, *, subscribe_url: str, publish_url: str, control_url: str, events_url: str, params: dict, **kwargs
+        self, *, subscribe_url: str, publish_url: str, control_url: str, events_url: str, params: dict, request_id: str, stream_id: str, **kwargs
     ):
         if self.process:
             raise RuntimeError("Pipeline already running")
@@ -44,8 +43,8 @@ class LiveVideoToVideoPipeline(Pipeline):
                 control_url=control_url,
                 events_url=events_url,
                 initial_params=json.dumps(params),
-                request_id=request_id_var.get(),
-                stream_id=stream_id_var.get(),
+                request_id=request_id,
+                stream_id=stream_id,
                 # TODO: set torch device from self.torch_device
             )
             return
