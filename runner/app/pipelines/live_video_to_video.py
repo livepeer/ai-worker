@@ -34,7 +34,7 @@ class LiveVideoToVideoPipeline(Pipeline):
             raise RuntimeError("Pipeline already running")
 
         try:
-            logging.info(f"Starting stream, subscribe={subscribe_url} publish={publish_url}, control={control_url}, events={events_url}")
+            logging.info(f"Starting stream, subscribe={subscribe_url}, publish={publish_url}, control={control_url}, events={events_url}")
             self.start_process(
                 pipeline=self.model_id,  # we use the model_id as the pipeline name for now
                 http_port=8888,
