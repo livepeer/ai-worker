@@ -6,14 +6,14 @@ from app.routes import health, hardware
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from app.utils.hardware import HardwareInfo
+from app.live.log import config_logging
 
+config_logging()
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    config_logging()
-
     # Create application wide hardware info service.
     app.hardware_info_service = HardwareInfo()
 
@@ -130,14 +130,6 @@ def load_route(pipeline: str) -> any:
             return text_to_speech.router
         case _:
             raise EnvironmentError(f"{pipeline} is not a valid pipeline")
-
-
-def config_logging():
-    logging.basicConfig(
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        level=logging.INFO,
-        force=True,
-    )
 
 
 def use_route_names_as_operation_ids(app: FastAPI) -> None:

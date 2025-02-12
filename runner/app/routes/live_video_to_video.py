@@ -12,7 +12,7 @@ from app.routes.utils import (
     http_error,
     handle_pipeline_exception,
 )
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Header
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
@@ -108,6 +108,8 @@ async def live_video_to_video(
     params: LiveVideoToVideoParams,
     pipeline: Pipeline = Depends(get_pipeline),
     token: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
+    requestID: str = Header(None),
+    streamID: str = Header(None),
 ):
     auth_token = os.environ.get("AUTH_TOKEN")
     if auth_token:
@@ -128,7 +130,7 @@ async def live_video_to_video(
         )
 
     try:
-        pipeline(**params.model_dump())
+        pipeline(**params.model_dump(), request_id=requestID, stream_id=streamID)
     except Exception as e:
         if isinstance(e, torch.cuda.OutOfMemoryError):
             torch.cuda.empty_cache()

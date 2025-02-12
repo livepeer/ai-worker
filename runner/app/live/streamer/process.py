@@ -7,23 +7,22 @@ import sys
 import time
 from typing import Any
 
-from PIL import Image
-
 from pipelines import load_pipeline
-
+from log import config_logging
 from trickle import InputFrame, AudioFrame, VideoFrame, OutputFrame, VideoOutput, AudioOutput
+
 
 class PipelineProcess:
     @staticmethod
-    def start(pipeline_name: str, params: dict):
-        instance = PipelineProcess(pipeline_name)
+    def start(pipeline_name: str, params: dict, request_id: str, stream_id: str):
+        instance = PipelineProcess(pipeline_name, request_id, stream_id)
         if params:
             instance.update_params(params)
         instance.process.start()
         instance.start_time = time.time()
         return instance
 
-    def __init__(self, pipeline_name: str):
+    def __init__(self, pipeline_name: str, request_id: str, stream_id: str):
         self.pipeline_name = pipeline_name
         self.ctx = mp.get_context("spawn")
 
@@ -36,6 +35,8 @@ class PipelineProcess:
         self.done = self.ctx.Event()
         self.process = self.ctx.Process(target=self.process_loop, args=())
         self.start_time = 0
+        self.request_id = request_id
+        self.stream_id = stream_id
 
     async def stop(self):
         await asyncio.to_thread(self._stop_sync)
@@ -159,14 +160,10 @@ class PipelineProcess:
     def _setup_logging(self):
 
         level = logging.DEBUG if os.environ.get('VERBOSE_LOGGING') == '1' else logging.INFO
-        logging.basicConfig(
-            format='%(asctime)s %(levelname)-8s %(message)s',
-            level=level,
-            datefmt='%Y-%m-%d %H:%M:%S')
-
+        logger = config_logging(log_level=level, request_id=self.request_id, stream_id=self.stream_id)
         queue_handler = LogQueueHandler(self)
-        queue_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)-8s %(message)s'))
-        logging.getLogger().addHandler(queue_handler)
+        queue_handler.setFormatter(logger.handlers[0].formatter)
+        logger.addHandler(queue_handler)
 
         # Tee stdout and stderr to our log queue while preserving original output
         sys.stdout = QueueTeeStream(sys.stdout, self)
