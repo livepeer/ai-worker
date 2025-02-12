@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=livepeer/comfyui-base:latest
+ARG BASE_IMAGE=livepeer/comfyui-base:0.0.1
 FROM ${BASE_IMAGE}
 
 # -----------------------------------------------------------------------------
