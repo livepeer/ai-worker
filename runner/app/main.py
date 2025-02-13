@@ -7,10 +7,13 @@ from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from app.utils.hardware import HardwareInfo
 from app.live.log import config_logging
+from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
+from starlette.responses import Response
 
 config_logging()
 logger = logging.getLogger(__name__)
 
+VERSION = Counter('version', 'Runner version', ['app', 'version'])
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -28,6 +31,8 @@ async def lifespan(app: FastAPI):
 
     app.hardware_info_service.log_gpu_compute_info()
     logger.info(f"Started up with pipeline {app.pipeline}")
+
+    VERSION.labels(app="ai-runner", version=os.getenv("GIT_SHA", "unknown")).inc()
 
     yield
 
@@ -139,3 +144,8 @@ def use_route_names_as_operation_ids(app: FastAPI) -> None:
 
 
 app = FastAPI(lifespan=lifespan)
+
+@app.get("/metrics")
+async def metrics():
+    """Expose Prometheus metrics."""
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)

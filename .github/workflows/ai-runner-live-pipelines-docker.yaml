@@ -153,6 +153,7 @@ jobs:
           file: docker/Dockerfile.live-app__PIPELINE__
           build-args: |
             PIPELINE=${{ matrix.pipeline }}
+            GIT_SHA=$(git rev-parse HEAD)
           cache-from: type=registry,ref=livepeerci/build:cache
           cache-to: type=registry,ref=livepeerci/build:cache,mode=max
 
