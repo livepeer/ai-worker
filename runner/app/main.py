@@ -145,7 +145,7 @@ def use_route_names_as_operation_ids(app: FastAPI) -> None:
 
 app = FastAPI(lifespan=lifespan)
 
-@app.get("/metrics")
+@app.get("/metrics", include_in_schema=False)
 async def metrics():
     """Expose Prometheus metrics."""
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
