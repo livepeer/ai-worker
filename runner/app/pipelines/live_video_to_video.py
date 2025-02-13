@@ -39,31 +39,39 @@ class LiveVideoToVideoPipeline(Pipeline):
         if not self.process:
             raise RuntimeError("Pipeline process not running")
 
-        try:
-            conn = http.client.HTTPConnection("localhost", 8888)
-            conn.request(
-                "POST",
-                "/api/live-video-to-video",
-                json.dumps(
-                    {
-                        "subscribe_url": subscribe_url,
-                        "publish_url": publish_url,
-                        "control_url": control_url,
-                        "events_url": events_url,
-                        "params": params,
-                        "request_id": request_id,
-                        "stream_id": stream_id,
-                    }
-                ),
-            )
-            response = conn.getresponse()
-            if response.status != 200:
-                raise ConnectionError(response.reason)
+        max_retries = 10
+        thrown_ex = None
+        for attempt in range(max_retries):
+            try:
+                conn = http.client.HTTPConnection("localhost", 8888)
+                conn.request(
+                    "POST",
+                    "/api/live-video-to-video",
+                    json.dumps(
+                        {
+                            "subscribe_url": subscribe_url,
+                            "publish_url": publish_url,
+                            "control_url": control_url,
+                            "events_url": events_url,
+                            "params": params,
+                            "request_id": request_id,
+                            "stream_id": stream_id,
+                        }
+                    ),
+                    headers={"Content-Type": "application/json"},
+                )
+                response = conn.getresponse()
+                if response.status != 200:
+                    continue
 
-            logging.info("Stream started successfully")
-        except Exception as e:
-            logging.error("Failed to start stream", exc_info=True)
-            raise InferenceError(original_exception=e)
+                logging.info("Stream started successfully")
+                break  # Break out of the retry loop on success
+            except Exception as e:
+                thrown_ex = e
+                logging.error(f"Attempt {attempt + 1} failed", exc_info=True)
+                time.sleep(1)
+
+        raise InferenceError(original_exception=thrown_ex)
 
     def get_health(self) -> HealthCheck:
         if not self.process:
