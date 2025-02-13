@@ -170,12 +170,15 @@ class PipelineStreamer:
         current_time = time.time()
         input = self.status.input_status
         last_input_time = input.last_input_time or 0
-        if current_time - last_input_time > 60:
-            if self.stop_event.is_set() and current_time - last_input_time < 90:
+        time_since_last_input = current_time - last_input_time
+        if time_since_last_input > 60:
+            if self.stop_event.is_set() and time_since_last_input < 90:
                 # give ourselves a 30s grace period to shutdown
+                logging.info(f"Detected DEGRADED_INPUT during shutdown: time_since_last_input={time_since_last_input:.1f}s")
                 return PipelineState.DEGRADED_INPUT
             return PipelineState.OFFLINE
-        elif current_time - last_input_time > 2 or input.fps < 15:
+        elif time_since_last_input > 2 or input.fps < 15:
+            logging.info(f"Detected DEGRADED_INPUT: time_since_last_input={time_since_last_input:.1f}s, fps={input.fps}")
             return PipelineState.DEGRADED_INPUT
 
         inference = self.status.inference_status
