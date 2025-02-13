@@ -55,11 +55,11 @@ class StartStreamParams(BaseModel):
     ]
     request_id: Annotated[
         str,
-        Field(..., description="Unique identifier for the request."),
+        Field(default="", description="Unique identifier for the request."),
     ]
     stream_id: Annotated[
         str,
-        Field(..., description="Unique identifier for the stream."),
+        Field(default="", description="Unique identifier for the stream."),
     ]
 
 

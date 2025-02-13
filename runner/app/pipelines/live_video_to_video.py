@@ -62,6 +62,7 @@ class LiveVideoToVideoPipeline(Pipeline):
                 )
                 response = conn.getresponse()
                 if response.status != 200:
+                    time.sleep(1)
                     continue
 
                 logging.info("Stream started successfully")
