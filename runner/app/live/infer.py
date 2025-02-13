@@ -35,27 +35,31 @@ async def main(
     request_id: str,
     stream_id: str,
 ):
-    if stream_protocol == "trickle":
-        protocol = TrickleProtocol(subscribe_url, publish_url, control_url, events_url)
-    elif stream_protocol == "zeromq":
-        if events_url:
-            logging.warning("ZeroMQ protocol does not support event streaming")
-        if control_url:
-            logging.warning("ZeroMQ protocol does not support control messages")
-        protocol = ZeroMQProtocol(subscribe_url, publish_url)
-    else:
-        raise ValueError(f"Unsupported protocol: {stream_protocol}")
-
     process = ProcessGuardian(pipeline, params or {})
-    streamer = PipelineStreamer(protocol, input_timeout, process, request_id, stream_id)
+    # Only initialize the streamer if we have a protocol and URLs to connect to
+    streamer = None
+    if stream_protocol and subscribe_url and publish_url:
+        if stream_protocol == "trickle":
+            protocol = TrickleProtocol(
+                subscribe_url, publish_url, control_url, events_url
+            )
+        elif stream_protocol == "zeromq":
+            protocol = ZeroMQProtocol(subscribe_url, publish_url)
+        else:
+            raise ValueError(f"Unsupported protocol: {stream_protocol}")
+        streamer = PipelineStreamer(
+            protocol, input_timeout, process, request_id, stream_id
+        )
 
     api = None
     try:
-        await streamer.start()
-        api = await start_http_server(http_port, streamer)
+        if streamer:
+            await streamer.start(params)
+        api = await start_http_server(http_port, process, streamer)
 
         tasks: List[asyncio.Task] = []
-        tasks.append(asyncio.create_task(streamer.wait()))
+        if streamer:
+            tasks.append(asyncio.create_task(streamer.wait()))
         tasks.append(
             asyncio.create_task(block_until_signal([signal.SIGINT, signal.SIGTERM]))
         )
@@ -66,8 +70,10 @@ async def main(
         logging.error(f"Stack trace:\n{traceback.format_exc()}")
         raise e
     finally:
-        await streamer.stop(timeout=5)
-        await api.cleanup()
+        if streamer:
+            await streamer.stop(timeout=5)
+        if api:
+            await api.cleanup()
 
 
 async def block_until_signal(sigs: List[signal.Signals]):
@@ -107,13 +113,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--subscribe-url",
         type=str,
-        required=True,
         help="URL to subscribe for the input frames (trickle). For zeromq this is the input socket address",
     )
     parser.add_argument(
         "--publish-url",
         type=str,
-        required=True,
         help="URL to publish output frames (trickle). For zeromq this is the output socket address",
     )
     parser.add_argument(

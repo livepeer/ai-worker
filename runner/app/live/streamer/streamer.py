@@ -103,11 +103,14 @@ class PipelineStreamer:
             raise RuntimeError("Streamer not started")
         return await self.tasks_supervisor_task
 
+    def is_running(self):
+        return self.tasks_supervisor_task is not None
+
     async def stop(self, *, timeout: float):
         if not self.tasks_supervisor_task:
             raise RuntimeError("Streamer not started")
         self.stop_event.set()
-        await asyncio.wait_for(self.tasks_supervisor_task, timeout)
+        await asyncio.wait_for(asyncio.shield(self.tasks_supervisor_task), timeout)
 
     async def report_status_loop(self):
         next_report = time.time() + status_report_interval

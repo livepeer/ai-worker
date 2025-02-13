@@ -9,6 +9,10 @@ from .status import PipelineState, PipelineStatus
 
 
 class ProcessGuardian:
+    """
+    This class is responsible for keeping a pipeline process alive and monitoring its status.
+    It also handles the streaming of input and output frames to the pipeline.
+    """
     def __init__(
         self,
         pipeline: str,
