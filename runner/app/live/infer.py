@@ -75,6 +75,7 @@ async def main(
             await streamer.stop(timeout=5)
         if api:
             await api.cleanup()
+        await process.stop()
 
 
 async def block_until_signal(sigs: List[signal.Signals]):
