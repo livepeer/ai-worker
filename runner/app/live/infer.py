@@ -53,6 +53,7 @@ async def main(
 
     api = None
     try:
+        await process.start()
         if streamer:
             await streamer.start(params)
         api = await start_http_server(http_port, process, streamer)
