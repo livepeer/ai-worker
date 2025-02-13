@@ -22,38 +22,54 @@ class LiveVideoToVideoPipeline(Pipeline):
         self.infer_script_path = (
             Path(__file__).parent.parent / "live" / "infer.py"
         )
-        self.process = None
-        self.monitor_thread = None
-        self.log_thread = None
+        try:
+            logging.info("Starting pipeline process")
+            self.start_process(
+                pipeline=self.model_id,  # we use the model_id as the pipeline name for now
+                http_port=8888,
+                # TODO: set torch device from self.torch_device
+            )
+        except Exception as e:
+            raise InferenceError(original_exception=e)
 
 
     def __call__(  # type: ignore
         self, *, subscribe_url: str, publish_url: str, control_url: str, events_url: str, params: dict, request_id: str, stream_id: str, **kwargs
     ):
-        if self.process:
-            raise RuntimeError("Pipeline already running")
+        if not self.process:
+            raise RuntimeError("Pipeline process not running")
 
         try:
-            logging.info(f"Starting stream, subscribe={subscribe_url}, publish={publish_url}, control={control_url}, events={events_url}")
-            self.start_process(
-                pipeline=self.model_id,  # we use the model_id as the pipeline name for now
-                http_port=8888,
-                subscribe_url=subscribe_url,
-                publish_url=publish_url,
-                control_url=control_url,
-                events_url=events_url,
-                initial_params=json.dumps(params),
-                request_id=request_id,
-                stream_id=stream_id,
-                # TODO: set torch device from self.torch_device
+            conn = http.client.HTTPConnection("localhost", 8888)
+            conn.request(
+                "POST",
+                "/api/live-video-to-video",
+                json.dumps(
+                    {
+                        "subscribe_url": subscribe_url,
+                        "publish_url": publish_url,
+                        "control_url": control_url,
+                        "events_url": events_url,
+                        "params": params,
+                        "request_id": request_id,
+                        "stream_id": stream_id,
+                    }
+                ),
             )
-            return
+            response = conn.getresponse()
+            if response.status != 200:
+                raise ConnectionError(response.reason)
+
+            logging.info("Stream started successfully")
         except Exception as e:
+            logging.error("Failed to start stream", exc_info=True)
             raise InferenceError(original_exception=e)
 
     def get_health(self) -> HealthCheck:
         if not self.process:
-            return HealthCheck(status="IDLE")
+            # The infer process is supposed to be always running, so if it's
+            # gone it means an ERROR and the worker is allowed to kill us.
+            return HealthCheck(status="ERROR")
 
         try:
             conn = http.client.HTTPConnection("localhost", 8888)
@@ -68,13 +84,9 @@ class LiveVideoToVideoPipeline(Pipeline):
                 state: str = "OFFLINE"
 
             pipe_status = PipelineStatus(**json.loads(response.read().decode()))
-            health_status = "OK"
-            if pipe_status.state == "OFFLINE":
-                # The infer process is supposed to exit when it goes offline, so if we get this status it means an error
-                # and the worker is allowed to kill us.
-                health_status = "ERROR"
-
-            return HealthCheck(status=health_status)
+            return HealthCheck(
+                status="IDLE" if pipe_status.state == "OFFLINE" else "OK"
+            )
         except Exception as e:
             logging.error(f"Failed to get status", exc_info=True)
             raise ConnectionError(f"Failed to get status: {e}")
