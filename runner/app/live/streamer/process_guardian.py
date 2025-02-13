@@ -57,9 +57,7 @@ class ProcessGuardian:
     ):
         if not self.process:
             raise RuntimeError("Process not running")
-        self.status = PipelineStatus(
-            pipeline=self.pipeline, start_time=self.status.start_time
-        )
+        self.status = PipelineStatus(pipeline=self.pipeline, start_time=time.time())
         self.monitoring_callback = monitoring_callback
         self.process.reset_stream(request_id, stream_id)
         await self.update_params(params)
