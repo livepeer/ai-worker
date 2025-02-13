@@ -26,7 +26,8 @@ class ProcessGuardian:
 
     async def start(self):
         # Start the pipeline process and initialize timing
-        self.process = PipelineProcess.start(self.pipeline, self.params)
+        # TODO: Fix contextual logging on request_id and stream_id
+        self.process = PipelineProcess.start(self.pipeline, self.params, "", "")
         if self.process is None:
             raise RuntimeError("Failed to start PipelineProcess")
         # Launch the monitor loop as a background task
@@ -159,7 +160,8 @@ class ProcessGuardian:
         # don't call the full start/stop methods since we only want to restart the process
         await self.process.stop()
 
-        self.process = PipelineProcess.start(self.pipeline, self.params)
+        # TODO: Fix contextual logging on request_id and stream_id
+        self.process = PipelineProcess.start(self.pipeline, self.params, "", "")
         self.status.inference_status.restart_count += 1
         self.status.inference_status.last_restart_time = time.time()
         self.status.inference_status.last_restart_logs = restart_logs
