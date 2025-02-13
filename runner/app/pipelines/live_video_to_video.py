@@ -54,8 +54,8 @@ class LiveVideoToVideoPipeline(Pipeline):
                             "control_url": control_url,
                             "events_url": events_url,
                             "params": params,
-                            "request_id": request_id,
-                            "stream_id": stream_id,
+                            "request_id": request_id or "",
+                            "stream_id": stream_id or "",
                         }
                     ),
                     headers={"Content-Type": "application/json"},
