@@ -42,6 +42,8 @@ class LiveVideoToVideoPipeline(Pipeline):
         max_retries = 10
         thrown_ex = None
         for attempt in range(max_retries):
+            if attempt > 0:
+                time.sleep(1)
             try:
                 conn = http.client.HTTPConnection("localhost", 8888)
                 conn.request(
@@ -62,15 +64,13 @@ class LiveVideoToVideoPipeline(Pipeline):
                 )
                 response = conn.getresponse()
                 if response.status != 200:
-                    time.sleep(1)
                     continue
 
                 logging.info("Stream started successfully")
-                break  # Break out of the retry loop on success
+                return {} # Return an empty success response
             except Exception as e:
                 thrown_ex = e
                 logging.error(f"Attempt {attempt + 1} failed", exc_info=True)
-                time.sleep(1)
 
         raise InferenceError(original_exception=thrown_ex)
 
