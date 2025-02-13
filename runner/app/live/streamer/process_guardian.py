@@ -30,8 +30,7 @@ class ProcessGuardian:
 
     async def start(self):
         # Start the pipeline process and initialize timing
-        # TODO: Fix contextual logging on request_id and stream_id
-        self.process = PipelineProcess.start(self.pipeline, self.params, "", "")
+        self.process = PipelineProcess.start(self.pipeline, self.params)
         if self.process is None:
             raise RuntimeError("Failed to start PipelineProcess")
         # Launch the monitor loop as a background task
@@ -50,12 +49,19 @@ class ProcessGuardian:
             self.process = None
 
     async def reset_stream(
-        self, params: dict, monitoring_callback: Callable[[dict], Awaitable[None]]
+        self,
+        request_id: str,
+        stream_id: str,
+        params: dict,
+        monitoring_callback: Callable[[dict], Awaitable[None]],
     ):
+        if not self.process:
+            raise RuntimeError("Process not running")
         self.status = PipelineStatus(
             pipeline=self.pipeline, start_time=self.status.start_time
         )
         self.monitoring_callback = monitoring_callback
+        self.process.reset_stream(request_id, stream_id)
         await self.update_params(params)
 
     def send_input(self, frame: InputFrame):
@@ -82,9 +88,10 @@ class ProcessGuardian:
         return output
 
     async def update_params(self, params: dict):
+        if not self.process:
+            raise RuntimeError("Process not running")
         self.params = params
-        if self.process:
-            self.process.update_params(params)
+        self.process.update_params(params)
         self.status.update_params(params)
 
         await self.monitoring_callback(
@@ -164,8 +171,7 @@ class ProcessGuardian:
         # don't call the full start/stop methods since we only want to restart the process
         await self.process.stop()
 
-        # TODO: Fix contextual logging on request_id and stream_id
-        self.process = PipelineProcess.start(self.pipeline, self.params, "", "")
+        self.process = PipelineProcess.start(self.pipeline, self.params)
         self.status.inference_status.restart_count += 1
         self.status.inference_status.last_restart_time = time.time()
         self.status.inference_status.last_restart_logs = restart_logs

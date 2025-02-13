@@ -42,7 +42,9 @@ class PipelineStreamer:
         if self.tasks_supervisor_task:
             raise RuntimeError("Streamer already started")
 
-        await self.process.reset_stream(params, self._emit_monitoring_event)
+        await self.process.reset_stream(
+            self.request_id, self.stream_id, params, self._emit_monitoring_event
+        )
 
         self.stop_event.clear()
         await self.protocol.start()

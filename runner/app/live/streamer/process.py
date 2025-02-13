@@ -8,21 +8,21 @@ import time
 from typing import Any
 
 from pipelines import load_pipeline
-from log import config_logging
+from log import config_logging, config_logging_fields
 from trickle import InputFrame, AudioFrame, VideoFrame, OutputFrame, VideoOutput, AudioOutput
 
 
 class PipelineProcess:
     @staticmethod
-    def start(pipeline_name: str, params: dict, request_id: str, stream_id: str):
-        instance = PipelineProcess(pipeline_name, request_id, stream_id)
+    def start(pipeline_name: str, params: dict):
+        instance = PipelineProcess(pipeline_name)
         if params:
             instance.update_params(params)
         instance.process.start()
         instance.start_time = time.time()
         return instance
 
-    def __init__(self, pipeline_name: str, request_id: str, stream_id: str):
+    def __init__(self, pipeline_name: str):
         self.pipeline_name = pipeline_name
         self.ctx = mp.get_context("spawn")
 
@@ -34,9 +34,7 @@ class PipelineProcess:
 
         self.done = self.ctx.Event()
         self.process = self.ctx.Process(target=self.process_loop, args=())
-        self.start_time = 0
-        self.request_id = request_id
-        self.stream_id = stream_id
+        self.start_time = 0.0
 
     async def stop(self):
         await asyncio.to_thread(self._stop_sync)
@@ -70,6 +68,10 @@ class PipelineProcess:
 
     def update_params(self, params: dict):
         self.param_update_queue.put(params)
+
+    def reset_stream(self, request_id: str, stream_id: str):
+        # We internally use the param update queue to reset the logging configs
+        self.param_update_queue.put({"request_id": request_id, "stream_id": stream_id})
 
     def send_input(self, frame: InputFrame):
         self._queue_put_fifo(self.input_queue, frame)
@@ -129,10 +131,15 @@ class PipelineProcess:
                     raise
 
             while not self.is_done():
-                if not self.param_update_queue.empty():
+                while not self.param_update_queue.empty():
                     params = self.param_update_queue.get_nowait()
                     try:
-                        pipeline.update_params(**params)
+                        if params.request_id and params.stream_id:
+                            self._reset_logging_fields(
+                                params.request_id, params.stream_id
+                            )
+                        else:
+                            pipeline.update_params(**params)
                         logging.info(f"Updated params: {params}")
                     except Exception as e:
                         report_error(f"Error updating params: {e}")
@@ -158,16 +165,23 @@ class PipelineProcess:
             report_error(f"Error in process run method: {e}")
 
     def _setup_logging(self):
-
-        level = logging.DEBUG if os.environ.get('VERBOSE_LOGGING') == '1' else logging.INFO
-        logger = config_logging(log_level=level, request_id=self.request_id, stream_id=self.stream_id)
+        level = (
+            logging.DEBUG if os.environ.get("VERBOSE_LOGGING") == "1" else logging.INFO
+        )
+        logger = config_logging(log_level=level)
         queue_handler = LogQueueHandler(self)
-        queue_handler.setFormatter(logger.handlers[0].formatter)
+        config_logging_fields(queue_handler, "", "")
         logger.addHandler(queue_handler)
+
+        self.queue_handler = queue_handler
 
         # Tee stdout and stderr to our log queue while preserving original output
         sys.stdout = QueueTeeStream(sys.stdout, self)
         sys.stderr = QueueTeeStream(sys.stderr, self)
+
+    def _reset_logging_fields(self, request_id: str, stream_id: str):
+        config_logging(request_id=request_id, stream_id=stream_id)
+        config_logging_fields(self.queue_handler, request_id, stream_id)
 
     def _queue_put_fifo(self, _queue: mp.Queue, item: Any):
         """Helper to put an item on a queue, dropping oldest items if needed"""

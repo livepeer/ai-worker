@@ -13,6 +13,7 @@ from typing import Annotated, Dict
 
 from streamer import PipelineStreamer, ProcessGuardian
 from streamer.protocol.trickle import TrickleProtocol
+from streamer.process import config_logging
 
 TEMP_SUBDIR = "infer_temp"
 MAX_FILE_AGE = 86400  # 1 day
@@ -122,6 +123,8 @@ async def handle_start_stream(request: web.Request):
 
         params_data = await parse_request_data(request, temp_dir)
         params = StartStreamParams(**params_data)
+
+        config_logging(request_id=params.request_id, stream_id=params.stream_id)
 
         protocol = TrickleProtocol(
             params.subscribe_url,
