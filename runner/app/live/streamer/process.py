@@ -134,15 +134,20 @@ class PipelineProcess:
                 while not self.param_update_queue.empty():
                     params = self.param_update_queue.get_nowait()
                     try:
-                        if params.request_id and params.stream_id:
+                        logging.info(f"PipelineProcess: Processing parameter update from queue: {params}")
+                        if isinstance(params, dict) and "request_id" in params and "stream_id" in params:
+                            logging.info(f"PipelineProcess: Resetting logging fields with request_id={params['request_id']}, stream_id={params['stream_id']}")
                             self._reset_logging_fields(
-                                params.request_id, params.stream_id
+                                params["request_id"], params["stream_id"]
                             )
                         else:
+                            logging.info(f"PipelineProcess: Updating pipeline parameters")
                             pipeline.update_params(**params)
-                        logging.info(f"Updated params: {params}")
+                            logging.info(f"PipelineProcess: Successfully applied params to pipeline: {params}")
                     except Exception as e:
-                        report_error(f"Error updating params: {e}")
+                        error_msg = f"Error updating params: {str(e)}"
+                        logging.error(error_msg, exc_info=True)
+                        report_error(error_msg)
 
                 try:
                     input_frame = self.input_queue.get(timeout=0.1)

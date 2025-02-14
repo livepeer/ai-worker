@@ -91,6 +91,7 @@ class ProcessGuardian:
         if not self.process:
             raise RuntimeError("Process not running")
         self.params = params
+        logging.info(f"ProcessGuardian: Queuing parameter update with hash={self.status.inference_status.last_params_hash}, params={params}")
         self.process.update_params(params)
         self.status.update_params(params)
 
@@ -103,6 +104,7 @@ class ProcessGuardian:
                 "update_time": self.status.inference_status.last_params_update_time,
             }
         )
+        logging.info(f"ProcessGuardian: Parameter update queued and monitoring callback completed. Hash={self.status.inference_status.last_params_hash}")
 
     def get_status(self, clear_transient: bool = False) -> PipelineStatus:
         new_state = self._current_state()
