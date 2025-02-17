@@ -59,14 +59,14 @@ async def main(
                 await streamer.start(params)
             api = await start_http_server(http_port, process, streamer)
 
-            tasks: List[asyncio.Task] = []
-            if streamer:
-                tasks.append(asyncio.create_task(streamer.wait()))
-            tasks.append(
-                asyncio.create_task(block_until_signal([signal.SIGINT, signal.SIGTERM]))
-            )
+        tasks: List[asyncio.Task] = []
+        if streamer:
+            tasks.append(asyncio.create_task(streamer.wait()))
+        tasks.append(
+            asyncio.create_task(block_until_signal([signal.SIGINT, signal.SIGTERM]))
+        )
 
-            await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+        await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
     except Exception as e:
         logging.error(f"Error starting socket handler or HTTP server: {e}")
         logging.error(f"Stack trace:\n{traceback.format_exc()}")
