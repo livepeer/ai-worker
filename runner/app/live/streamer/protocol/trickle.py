@@ -83,10 +83,7 @@ class TrickleProtocol(StreamProtocol):
 
     async def egress_loop(self, output_frames: AsyncGenerator[OutputFrame, None]):
         def enqueue_bytes(frame: OutputFrame):
-            if frame:
-                self.publish_queue.put(frame)
-            else:
-                self.publish_queue.put(None)
+            self.publish_queue.put(frame)
 
         async for frame in output_frames:
             await asyncio.to_thread(enqueue_bytes, frame)

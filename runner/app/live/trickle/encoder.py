@@ -1,12 +1,13 @@
 import asyncio
 import av
+import time
 import datetime
 import logging
 import os
 from typing import Optional
 from fractions import Fraction
 
-from .frame import VideoOutput, AudioOutput
+from .frame import VideoOutput, AudioOutput, InputFrame
 
 # use mpegts default time base
 OUT_TIME_BASE=Fraction(1, 90_000)
@@ -75,6 +76,8 @@ def encode_av(
             if not output_video_stream:
                 # received video but no video output, so drop
                 continue
+            avframe.log_timestamps["frame_end"] = time.time()
+            log_frame_timestamps("Video", avframe.frame)
             frame = av.video.frame.VideoFrame.from_image(avframe.image)
             frame.pts = rescale_ts(avframe.timestamp, avframe.time_base, output_video_stream.codec_context.time_base)
             frame.time_base = output_video_stream.codec_context.time_base
@@ -99,6 +102,8 @@ def encode_av(
                 # downstream tools
                 continue
             for af in avframe.frames:
+                af.log_timestamps["frame_end"] = time.time()
+                log_frame_timestamps("Audio", af)
                 frame = av.audio.frame.AudioFrame.from_ndarray(af.samples, format=af.format, layout=af.layout)
                 frame.sample_rate = af.rate
                 frame.pts = rescale_ts(af.timestamp, af.time_base, output_audio_stream.codec_context.time_base)
@@ -129,3 +134,17 @@ def rescale_ts(pts: int, orig_tb: Fraction, dest_tb: Fraction):
     if orig_tb == dest_tb:
         return pts
     return int(round(float((Fraction(pts) * orig_tb) / dest_tb)))
+
+
+def log_frame_timestamps(frame_type: str, frame: InputFrame):
+    ts = frame.log_timestamps
+    
+    def log_duration(start_key: str, end_key: str):
+        if start_key in ts and end_key in ts:
+            duration = ts[end_key] - ts[start_key]
+            logging.debug(f"{frame_type} {start_key} to {end_key} took {duration}s")
+    
+    log_duration('frame_init', 'pre_process_frame')
+    log_duration('pre_process_frame', 'post_process_frame')
+    log_duration('post_process_frame', 'frame_end')
+    log_duration('frame_init', 'frame_end')

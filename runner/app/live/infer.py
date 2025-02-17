@@ -16,7 +16,7 @@ infer_root = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, infer_root)
 
 from api import start_http_server
-from log import config_logging
+from log import config_logging, log_timing
 from streamer.protocol.trickle import TrickleProtocol
 from streamer.protocol.zeromq import ZeroMQProtocol
 
@@ -53,19 +53,20 @@ async def main(
 
     api = None
     try:
-        await process.start()
-        if streamer:
-            await streamer.start(params)
-        api = await start_http_server(http_port, process, streamer)
+        with log_timing("[infer.py]: ProcessGuardian started successfully in"):
+            await process.start()
+            if streamer:
+                await streamer.start(params)
+            api = await start_http_server(http_port, process, streamer)
 
-        tasks: List[asyncio.Task] = []
-        if streamer:
-            tasks.append(asyncio.create_task(streamer.wait()))
-        tasks.append(
-            asyncio.create_task(block_until_signal([signal.SIGINT, signal.SIGTERM]))
-        )
+            tasks: List[asyncio.Task] = []
+            if streamer:
+                tasks.append(asyncio.create_task(streamer.wait()))
+            tasks.append(
+                asyncio.create_task(block_until_signal([signal.SIGINT, signal.SIGTERM]))
+            )
 
-        await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+            await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
     except Exception as e:
         logging.error(f"Error starting socket handler or HTTP server: {e}")
         logging.error(f"Stack trace:\n{traceback.format_exc()}")

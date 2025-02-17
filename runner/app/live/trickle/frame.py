@@ -12,6 +12,7 @@ class InputFrame:
 
     timestamp: int
     time_base: int
+    log_timestamps: dict[str, float] = {}
 
     def __init__(self):
         self.timestamp = av.AV_NOPTS_VALUE
@@ -28,14 +29,14 @@ class InputFrame:
 class VideoFrame(InputFrame):
     image: Image.Image
 
-    def __init__(self, image: Image.Image, timestamp: int, time_base: int):
+    def __init__(self, image: Image.Image, timestamp: int, time_base: int, log_timestamps: dict[str, float] = {}):
         self.image = image
         self.timestamp = timestamp
         self.time_base = time_base
-
+        self.log_timestamps = log_timestamps
     # Returns a copy of an existing VideoFrame with its image replaced
     def replace_image(self, image: Image.Image):
-        return VideoFrame(image, self.timestamp, self.time_base)
+        return VideoFrame(image, self.timestamp, self.time_base, self.log_timestamps)
 
 class AudioFrame(InputFrame):
     samples: np.ndarray
@@ -74,6 +75,10 @@ class VideoOutput(OutputFrame):
     @property
     def time_base(self):
         return self.frame.time_base
+
+    @property
+    def log_timestamps(self):
+        return self.frame.log_timestamps
 
 class AudioOutput(OutputFrame):
     frames: List[AudioFrame]
