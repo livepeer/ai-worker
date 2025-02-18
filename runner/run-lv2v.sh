@@ -1,15 +1,15 @@
 #!/bin/bash
 set -ex
 
-# if [ $# -lt 2 ]; then
-#     echo "Usage: $0 <input_room> <output_room>"
-#     exit 1
-# fi
+if [ $# -lt 2 ]; then
+    echo "Usage: $0 <input_room> <output_room>"
+    exit 1
+fi
 
-# INPUT_ROOM=$1
-# OUTPUT_ROOM=$2
-PIPELINE=${3:-noop}
-PORT=${4:-8000}
+INPUT_ROOM=$1
+OUTPUT_ROOM=$2
+PIPELINE=${3:-streamdiffusion}
+PORT=${4:-9000}
 
 # Build images, this will be quick if everything is cached
 docker build -t livepeer/ai-runner:live-base -f docker/Dockerfile.live-base .
@@ -44,16 +44,9 @@ echo "Starting pipeline from ${INPUT_ROOM} to ${OUTPUT_ROOM}..."
 
 set -x
 
-sleep 2
-
-curl --location 'http://127.0.0.1:8000/live-video-to-video/' \
---header 'Content-Type: application/json' \
---header 'requestID: your-request-id' \
---header 'streamID: your-stream-id' \
---data '{
-  "subscribe_url": "http://172.17.0.1:3389/sample",
-  "publish_url": "http://172.17.0.1:3389/sample-out"
-}'
+curl -vvv http://localhost:${PORT}/live-video-to-video/ \
+  -H 'Content-Type: application/json' \
+  -d "{\"publish_url\":\"https://wwgcyxykwg9dys.transfix.ai/trickle/${OUTPUT_ROOM}\",\"subscribe_url\":\"https://wwgcyxykwg9dys.transfix.ai/trickle/${INPUT_ROOM}\"}"
 
 # let docker container take over
 wait $DOCKER_PID
