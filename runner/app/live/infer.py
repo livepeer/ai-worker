@@ -53,7 +53,7 @@ async def main(
 
     api = None
     try:
-        with log_timing("[infer.py]: ProcessGuardian started successfully in"):
+        with log_timing("ProcessGuardian started successfully"):
             await process.start()
             if streamer:
                 await streamer.start(params)
@@ -158,13 +158,14 @@ if __name__ == "__main__":
         logging.error(f"Error parsing --initial-params: {e}")
         sys.exit(1)
 
+    if args.verbose:
+        os.environ["VERBOSE_LOGGING"] = "1"  # enable verbose logging in subprocesses
+
     config_logging(
-        log_level=logging.DEBUG if args.verbose else logging.INFO,
+        log_level=logging.DEBUG if os.getenv("VERBOSE_LOGGING")=="1" else logging.INFO,
         request_id=args.request_id,
         stream_id=args.stream_id,
     )
-    if args.verbose:
-        os.environ["VERBOSE_LOGGING"] = "1"  # enable verbose logging in subprocesses
 
     try:
         asyncio.run(

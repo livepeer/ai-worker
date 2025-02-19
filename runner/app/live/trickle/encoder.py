@@ -142,7 +142,7 @@ def log_frame_timestamps(frame_type: str, frame: InputFrame):
     def log_duration(start_key: str, end_key: str):
         if start_key in ts and end_key in ts:
             duration = ts[end_key] - ts[start_key]
-            logging.debug(f"{frame_type} {start_key} to {end_key} took {duration}s")
+            logging.debug(f"frame_type={frame_type} start_tag={start_key} end_tag={end_key} duration_s={duration}s")
     
     log_duration('frame_init', 'pre_process_frame')
     log_duration('pre_process_frame', 'post_process_frame')

@@ -119,12 +119,12 @@ class PipelineProcess:
                 report_error(f"Error getting params: {e}")
 
             try:
-                with log_timing("PipelineProcess: Pipeline loaded successfully in"):
+                with log_timing("PipelineProcess: Pipeline loaded successfully"):
                     pipeline = load_pipeline(self.pipeline_name, **params)
             except Exception as e:
                 report_error(f"Error loading pipeline: {e}")
                 try:
-                    with log_timing("PipelineProcess: Pipeline loaded with default params in"):
+                    with log_timing("PipelineProcess: Pipeline loaded successfully with default params"):
                         pipeline = load_pipeline(self.pipeline_name)
                 except Exception as e:
                     report_error(f"Error loading pipeline with default params: {e}")

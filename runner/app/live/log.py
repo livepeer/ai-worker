@@ -45,5 +45,5 @@ def log_timing(operation_name: str):
         yield
     finally:
         duration = time.time() - start_time
-        logger.info(f"{operation_name} duration={duration}s")
+        logger.info(f"operation={operation_name} duration_s={duration}s")
 
