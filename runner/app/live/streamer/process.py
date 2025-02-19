@@ -8,7 +8,7 @@ import time
 from typing import Any
 
 from pipelines import load_pipeline
-from log import config_logging, config_logging_fields
+from log import config_logging, config_logging_fields, log_timing
 from trickle import InputFrame, AudioFrame, VideoFrame, OutputFrame, VideoOutput, AudioOutput
 
 
@@ -119,13 +119,13 @@ class PipelineProcess:
                 report_error(f"Error getting params: {e}")
 
             try:
-                pipeline = load_pipeline(self.pipeline_name, **params)
-                logging.info("Pipeline loaded successfully")
+                with log_timing("PipelineProcess: Pipeline loaded successfully"):
+                    pipeline = load_pipeline(self.pipeline_name, **params)
             except Exception as e:
                 report_error(f"Error loading pipeline: {e}")
                 try:
-                    pipeline = load_pipeline(self.pipeline_name)
-                    logging.info("Pipeline loaded with default params")
+                    with log_timing("PipelineProcess: Pipeline loaded successfully with default params"):
+                        pipeline = load_pipeline(self.pipeline_name)
                 except Exception as e:
                     report_error(f"Error loading pipeline with default params: {e}")
                     raise
@@ -156,7 +156,9 @@ class PipelineProcess:
 
                 try:
                     if isinstance(input_frame, VideoFrame):
+                        input_frame.log_timestamps["pre_process_frame"] = time.time()
                         output_image = pipeline.process_frame(input_frame.image)
+                        input_frame.log_timestamps["post_process_frame"] = time.time()
                         output_frame = VideoOutput(input_frame.replace_image(output_image))
                         self.output_queue.put(output_frame)
                     elif isinstance(input_frame, AudioFrame):
