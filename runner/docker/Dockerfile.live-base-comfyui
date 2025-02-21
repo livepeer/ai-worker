@@ -1,8 +1,4 @@
-<<<<<<< Updated upstream
-ARG BASE_IMAGE=livepeer/comfyui-base:0.0.1
-=======
 ARG BASE_IMAGE=livepeer/comfyui-base:0.0.2-ai-runner
->>>>>>> Stashed changes
 FROM ${BASE_IMAGE}
 
 # -----------------------------------------------------------------------------
@@ -75,19 +71,11 @@ RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 # -----------------------------------------------------------------------------
 
 # Set up ComfyUI workspace
-<<<<<<< Updated upstream
-ENV COMFY_UI_WORKSPACE="/ComfyUI"
-ENV PYTHONPATH=/ComfyUI:${PYTHONPATH}
-RUN mkdir -p /ComfyUI
-RUN rm -rf /ComfyUI/models && ln -s /models/ComfyUI--models /ComfyUI/models
-RUN rm -rf /ComfyUI/output && ln -s /models/ComfyUI--output /ComfyUI/output
-=======
 ENV COMFY_UI_WORKSPACE="/workspace/ComfyUI"
 ENV PYTHONPATH=/workspace/ComfyUI:${PYTHONPATH}
 RUN mkdir -p /workspace/ComfyUI
 RUN rm -rf /workspace/ComfyUI/models && ln -s /models/ComfyUI--models /workspace/ComfyUI/models
 RUN rm -rf /workspace/ComfyUI/output && ln -s /models/ComfyUI--output /workspace/ComfyUI/output
->>>>>>> Stashed changes
 
 # Ensure all the next RUN commands are run in the comfystream conda environment
 RUN echo "source /workspace/miniconda3/etc/profile.d/conda.sh && conda activate comfystream" >> /conda_activate.sh && \
