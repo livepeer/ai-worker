@@ -106,6 +106,7 @@ async def parse_request_data(request: web.Request, temp_dir: str) -> Dict:
 
 async def handle_start_stream(request: web.Request):
     try:
+        stream_request_timestamp = int(time.time() * 1000)
         process = cast(ProcessGuardian, request.app["process"])
         prev_streamer = cast(PipelineStreamer, request.app["streamer"])
         if prev_streamer and prev_streamer.is_running():
@@ -142,6 +143,10 @@ async def handle_start_stream(request: web.Request):
 
         await streamer.start(params.params)
         request.app["streamer"] = streamer
+        await protocol.emit_monitoring_event({
+            "type": "runner_receive_stream_request",
+            "timestamp": stream_request_timestamp,
+        })
 
         return web.Response(text="Stream started successfully")
     except Exception as e:

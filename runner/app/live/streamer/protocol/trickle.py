@@ -26,10 +26,10 @@ class TrickleProtocol(StreamProtocol):
     async def start(self):
         metadata_queue = queue.Queue[dict]() # to pass video metadata from decoder to encoder
         self.subscribe_task = asyncio.create_task(
-            media.run_subscribe(self.subscribe_url, self.subscribe_queue.put, metadata_queue.put)
+            media.run_subscribe(self.subscribe_url, self.subscribe_queue.put, metadata_queue.put, self.emit_monitoring_event)
         )
         self.publish_task = asyncio.create_task(
-            media.run_publish(self.publish_url, self.publish_queue.get, metadata_queue.get)
+            media.run_publish(self.publish_url, self.publish_queue.get, metadata_queue.get, self.emit_monitoring_event)
         )
         if self.control_url and self.control_url.strip() != "":
             self.control_subscriber = TrickleSubscriber(self.control_url)

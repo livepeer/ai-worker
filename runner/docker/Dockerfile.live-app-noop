@@ -35,7 +35,8 @@ RUN pip install --no-cache-dir \
     opencv-python==4.10.0.84 \
     --no-binary=av \
     av==14.0.1 \
-    psutil==6.0.0
+    psutil==6.0.0 \
+    prometheus_client>=0.21.1
 
 # Set environment variables
 ENV MAX_WORKERS=1

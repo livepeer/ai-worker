@@ -1,3 +1,4 @@
+import time
 import aiohttp
 import asyncio
 import logging
@@ -10,12 +11,12 @@ from .trickle_publisher import TricklePublisher
 from .decoder import decode_av
 from .encoder import encode_av
 
-async def run_subscribe(subscribe_url: str, image_callback, put_metadata):
+async def run_subscribe(subscribe_url: str, image_callback, put_metadata, monitoring_callback):
     # TODO add some pre-processing parameters, eg image size
     try:
         read_fd, write_fd = os.pipe()
         parse_task = asyncio.create_task(decode_in(read_fd, image_callback, put_metadata))
-        subscribe_task = asyncio.create_task(subscribe(subscribe_url, await AsyncifyFdWriter(write_fd)))
+        subscribe_task = asyncio.create_task(subscribe(subscribe_url, await AsyncifyFdWriter(write_fd), monitoring_callback))
         await asyncio.gather(subscribe_task, parse_task)
         logging.info("run_subscribe complete")
     except Exception as e:
@@ -24,15 +25,19 @@ async def run_subscribe(subscribe_url: str, image_callback, put_metadata):
     finally:
         put_metadata(None) # in case decoder quit without writing anything
 
-async def subscribe(subscribe_url, out_pipe):
+async def subscribe(subscribe_url, out_pipe, monitoring_callback):
     async with TrickleSubscriber(url=subscribe_url) as subscriber:
         logging.info(f"launching subscribe loop for {subscribe_url}")
+        first_segment = False
         while True:
             segment = None
             try:
                 segment = await subscriber.next()
                 if not segment:
                     break # complete
+                if not first_segment:
+                    await monitoring_callback({"type": "runner_receive_first_ingest_segment", "timestamp": int(time.time() * 1000)})
+                    first_segment = True
                 while True:
                     chunk = await segment.read()
                     if not chunk:
@@ -72,7 +77,7 @@ async def decode_in(in_pipe, frame_callback, put_metadata):
     loop = asyncio.get_running_loop()
     await loop.run_in_executor(None, decode_runner)
 
-async def run_publish(publish_url: str, image_generator, get_metadata):
+async def run_publish(publish_url: str, image_generator, get_metadata, monitoring_callback):
     publisher = None
     try:
         publisher = TricklePublisher(url=publish_url, mime_type="video/mp2t")
@@ -80,6 +85,7 @@ async def run_publish(publish_url: str, image_generator, get_metadata):
         loop = asyncio.get_running_loop()
         async def callback(pipe_file, pipe_name):
             # trickle publish a segment with the contents of `pipe_file`
+            first_segment = False
             async with await publisher.next() as segment:
                 # convert pipe_fd into an asyncio friendly StreamReader
                 reader = asyncio.StreamReader()
@@ -91,6 +97,9 @@ async def run_publish(publish_url: str, image_generator, get_metadata):
                     if not data:
                         break
                     await segment.write(data)
+                    if not first_segment:
+                        await monitoring_callback({"type": "runner_send_first_processed_segment", "timestamp": int(time.time() * 1000)})
+                        first_segment = True
                 transport.close()
 
         def sync_callback(pipe_file, pipe_name):
