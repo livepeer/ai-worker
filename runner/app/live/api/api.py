@@ -146,7 +146,7 @@ async def handle_start_stream(request: web.Request):
         await protocol.emit_monitoring_event({
             "type": "runner_receive_stream_request",
             "timestamp": stream_request_timestamp,
-        })
+        }, queue_event_type="stream_trace")
 
         return web.Response(text="Stream started successfully")
     except Exception as e:

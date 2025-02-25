@@ -26,18 +26,22 @@ async def run_subscribe(subscribe_url: str, image_callback, put_metadata, monito
         put_metadata(None) # in case decoder quit without writing anything
 
 async def subscribe(subscribe_url, out_pipe, monitoring_callback):
+    first_segment = True
+
     async with TrickleSubscriber(url=subscribe_url) as subscriber:
         logging.info(f"launching subscribe loop for {subscribe_url}")
-        first_segment = False
         while True:
             segment = None
             try:
                 segment = await subscriber.next()
                 if not segment:
                     break # complete
-                if not first_segment:
-                    await monitoring_callback({"type": "runner_receive_first_ingest_segment", "timestamp": int(time.time() * 1000)})
-                    first_segment = True
+                if first_segment:
+                    first_segment = False
+                    await monitoring_callback({
+                        "type": "runner_receive_first_ingest_segment",
+                        "timestamp": int(time.time() * 1000)
+                    }, queue_event_type="stream_trace")
                 while True:
                     chunk = await segment.read()
                     if not chunk:
@@ -78,14 +82,16 @@ async def decode_in(in_pipe, frame_callback, put_metadata):
     await loop.run_in_executor(None, decode_runner)
 
 async def run_publish(publish_url: str, image_generator, get_metadata, monitoring_callback):
+    first_segment = True
+
     publisher = None
     try:
         publisher = TricklePublisher(url=publish_url, mime_type="video/mp2t")
 
         loop = asyncio.get_running_loop()
         async def callback(pipe_file, pipe_name):
+            nonlocal first_segment
             # trickle publish a segment with the contents of `pipe_file`
-            first_segment = False
             async with await publisher.next() as segment:
                 # convert pipe_fd into an asyncio friendly StreamReader
                 reader = asyncio.StreamReader()
@@ -97,9 +103,12 @@ async def run_publish(publish_url: str, image_generator, get_metadata, monitorin
                     if not data:
                         break
                     await segment.write(data)
-                    if not first_segment:
-                        await monitoring_callback({"type": "runner_send_first_processed_segment", "timestamp": int(time.time() * 1000)})
-                        first_segment = True
+                    if first_segment:
+                        first_segment = False
+                        await monitoring_callback({
+                            "type": "runner_send_first_processed_segment",
+                            "timestamp": int(time.time() * 1000)
+                        }, queue_event_type="stream_trace")
                 transport.close()
 
         def sync_callback(pipe_file, pipe_name):

@@ -88,11 +88,11 @@ class TrickleProtocol(StreamProtocol):
         async for frame in output_frames:
             await asyncio.to_thread(enqueue_bytes, frame)
 
-    async def emit_monitoring_event(self, event: dict):
+    async def emit_monitoring_event(self, event: dict, queue_event_type: str = "ai_stream_events"):
         if not self.events_publisher:
             return
         try:
-            event_json = json.dumps(event)
+            event_json = json.dumps({"event": event, "queue_event_type": queue_event_type})
             async with await self.events_publisher.next() as event:
                 await event.write(event_json.encode())
         except Exception as e:
