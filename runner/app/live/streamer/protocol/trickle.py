@@ -26,10 +26,10 @@ class TrickleProtocol(StreamProtocol):
     async def start(self):
         metadata_queue = queue.Queue[dict]() # to pass video metadata from decoder to encoder
         self.subscribe_task = asyncio.create_task(
-            media.run_subscribe(self.subscribe_url, self.subscribe_queue.put, metadata_queue.put)
+            media.run_subscribe(self.subscribe_url, self.subscribe_queue.put, metadata_queue.put, self.emit_monitoring_event)
         )
         self.publish_task = asyncio.create_task(
-            media.run_publish(self.publish_url, self.publish_queue.get, metadata_queue.get)
+            media.run_publish(self.publish_url, self.publish_queue.get, metadata_queue.get, self.emit_monitoring_event)
         )
         if self.control_url and self.control_url.strip() != "":
             self.control_subscriber = TrickleSubscriber(self.control_url)
@@ -88,11 +88,11 @@ class TrickleProtocol(StreamProtocol):
         async for frame in output_frames:
             await asyncio.to_thread(enqueue_bytes, frame)
 
-    async def emit_monitoring_event(self, event: dict):
+    async def emit_monitoring_event(self, event: dict, queue_event_type: str = "ai_stream_events"):
         if not self.events_publisher:
             return
         try:
-            event_json = json.dumps(event)
+            event_json = json.dumps({"event": event, "queue_event_type": queue_event_type})
             async with await self.events_publisher.next() as event:
                 await event.write(event_json.encode())
         except Exception as e:
