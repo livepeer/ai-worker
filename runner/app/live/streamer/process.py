@@ -37,10 +37,12 @@ class PipelineProcess:
         self.start_time = 0.0
 
     async def stop(self):
-        await asyncio.to_thread(self._stop_sync)
+        self._stop_sync()
 
     def _stop_sync(self):
         self.done.set()
+        time.sleep(2) # wait for the pipeline to stop
+
         if not self.process.is_alive():
             logging.info("Process already not alive")
             return
