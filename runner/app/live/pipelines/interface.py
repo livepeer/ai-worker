@@ -46,3 +46,10 @@ class Pipeline(ABC):
             **params: Implementation-specific parameters
         """
         pass
+
+    async def stop(self):
+        """Stop the pipeline.
+
+        Called once when the pipeline is no longer needed.
+        """
+        pass
