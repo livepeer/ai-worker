@@ -24,7 +24,6 @@ class PipelineProcess:
 
     def __init__(self, pipeline_name: str):
         self.pipeline_name = pipeline_name
-        self.pipeline = None
         self.ctx = mp.get_context("spawn")
 
         self.input_queue = self.ctx.Queue(maxsize=5)
@@ -38,8 +37,6 @@ class PipelineProcess:
         self.start_time = 0.0
 
     async def stop(self):
-        if self.pipeline:
-            await self.pipeline.stop()
         await asyncio.to_thread(self._stop_sync)
 
     def _stop_sync(self):
@@ -123,12 +120,12 @@ class PipelineProcess:
 
             try:
                 with log_timing("PipelineProcess: Pipeline loaded successfully"):
-                    self.pipeline = load_pipeline(self.pipeline_name, **params)
+                    pipeline = load_pipeline(self.pipeline_name, **params)
             except Exception as e:
                 report_error(f"Error loading pipeline: {e}")
                 try:
                     with log_timing("PipelineProcess: Pipeline loaded successfully with default params"):
-                        self.pipeline = load_pipeline(self.pipeline_name)
+                        pipeline = load_pipeline(self.pipeline_name)
                 except Exception as e:
                     report_error(f"Error loading pipeline with default params: {e}")
                     raise
@@ -145,7 +142,7 @@ class PipelineProcess:
                             )
                         else:
                             logging.info(f"PipelineProcess: Updating pipeline parameters")
-                            self.pipeline.update_params(**params)
+                            pipeline.update_params(**params)
                             logging.info(f"PipelineProcess: Successfully applied params to pipeline: {params}")
                     except Exception as e:
                         error_msg = f"Error updating params: {str(e)}"
@@ -160,7 +157,7 @@ class PipelineProcess:
                 try:
                     if isinstance(input_frame, VideoFrame):
                         input_frame.log_timestamps["pre_process_frame"] = time.time()
-                        output_image = self.pipeline.process_frame(input_frame.image)
+                        output_image = pipeline.process_frame(input_frame.image)
                         input_frame.log_timestamps["post_process_frame"] = time.time()
                         output_frame = VideoOutput(input_frame.replace_image(output_image))
                         self.output_queue.put(output_frame)
@@ -171,6 +168,7 @@ class PipelineProcess:
                         report_error(f"Unsupported input frame type {type(input_frame)}")
                 except Exception as e:
                     report_error(f"Error processing frame: {e}")
+            asyncio.get_event_loop().run_until_complete(pipeline.stop())
         except Exception as e:
             report_error(f"Error in process run method: {e}")
 
