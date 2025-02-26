@@ -6,6 +6,7 @@ import queue
 import sys
 import time
 from typing import Any
+import torch
 
 from pipelines import load_pipeline
 from log import config_logging, config_logging_fields, log_timing
@@ -89,17 +90,25 @@ class PipelineProcess:
                 continue
         return None
 
-    def get_recent_logs(self, n=10) -> list[str]:
+    def get_recent_logs(self, n=None) -> list[str]:
+        """Get recent logs from the subprocess. If n is None, get all available logs."""
         logs = []
         while not self.log_queue.empty():
             try:
                 logs.append(self.log_queue.get_nowait())
             except queue.Empty:
                 break
-        return logs[-n:]  # Return last n logs
+        return logs[-n:] if n is not None else logs  # Only limit if n is specified
 
     def process_loop(self):
         self._setup_logging()
+
+        # Ensure CUDA environment is available inside the subprocess.
+        # Multiprocessing (spawn mode) does not inherit environment variables by default,
+        # causing `torch.cuda.current_device()` checks in ComfyUI's model_management.py to fail.
+        # Explicitly setting `CUDA_VISIBLE_DEVICES` ensures the spawned process recognizes the GPU.
+        if torch.cuda.is_available():
+            os.environ["CUDA_VISIBLE_DEVICES"] = str(torch.cuda.current_device())
 
         def report_error(error_msg: str):
             error_event = {
