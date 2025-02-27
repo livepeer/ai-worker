@@ -37,20 +37,20 @@ class PipelineProcess:
         self.start_time = 0.0
 
     async def stop(self):
-        await asyncio.to_thread(self._stop_sync)
+        self._stop_sync()
 
     def _stop_sync(self):
         self.done.set()
+
         if not self.process.is_alive():
             logging.info("Process already not alive")
             return
 
         logging.info("Terminating pipeline process")
-        self.process.terminate()
 
         stopped = False
         try:
-            self.process.join(timeout=5)
+            self.process.join(timeout=10)
             stopped = True
         except Exception as e:
             logging.error(f"Process join error: {e}")
@@ -100,6 +100,7 @@ class PipelineProcess:
 
     def process_loop(self):
         self._setup_logging()
+        pipeline = None
 
         def report_error(error_msg: str):
             error_event = {
@@ -170,6 +171,15 @@ class PipelineProcess:
                     report_error(f"Error processing frame: {e}")
         except Exception as e:
             report_error(f"Error in process run method: {e}")
+        finally:
+            self._cleanup_pipeline(pipeline)
+
+    def _cleanup_pipeline(self, pipeline):
+        if pipeline is not None:
+            try:
+                asyncio.get_event_loop().run_until_complete(pipeline.stop())
+            except Exception as e:
+                logging.error(f"Error stopping pipeline: {e}")
 
     def _setup_logging(self):
         level = (
