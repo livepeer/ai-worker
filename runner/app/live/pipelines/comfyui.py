@@ -297,8 +297,3 @@ class ComfyUI(Pipeline):
         logging.info(f"ComfyUI Pipeline Prompt: {new_params.prompt}")
         self.client.set_prompt(new_params.prompt)
         self.params = new_params
-
-    #TODO: This is a hack to stop the ComfyStreamClient. Use the comfystream api to stop the client in 0.0.2
-    async def stop(self):
-        if self.client.comfy_client.is_running:
-            await self.client.comfy_client.__aexit__(None, None, None)
