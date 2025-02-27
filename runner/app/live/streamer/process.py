@@ -37,6 +37,7 @@ class PipelineProcess:
         self.start_time = 0.0
 
     async def stop(self):
+        #TODO: syncrounous call might be blocking, figure out a better way
         self._stop_sync()
 
     def _stop_sync(self):
