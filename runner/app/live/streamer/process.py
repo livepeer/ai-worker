@@ -41,18 +41,16 @@ class PipelineProcess:
 
     def _stop_sync(self):
         self.done.set()
-        time.sleep(2) # wait for the pipeline to stop
 
         if not self.process.is_alive():
             logging.info("Process already not alive")
             return
 
         logging.info("Terminating pipeline process")
-        self.process.terminate()
 
         stopped = False
         try:
-            self.process.join(timeout=5)
+            self.process.join(timeout=10)
             stopped = True
         except Exception as e:
             logging.error(f"Process join error: {e}")
