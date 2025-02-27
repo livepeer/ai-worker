@@ -29,9 +29,6 @@ COPY bench.py /app/bench.py
 
 WORKDIR /app
 
-# Remove ComfyUI Manager node, because it is not needed for this application and it takes 10s additional time to start up
-RUN test -d /workspace/ComfyUI/custom_nodes/ComfyUI-Manager && rm -r /workspace/ComfyUI/custom_nodes/ComfyUI-Manager || true
-
 ARG GIT_SHA
 ENV GIT_SHA=$GIT_SHA
 
