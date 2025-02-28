@@ -29,13 +29,6 @@ COPY bench.py /app/bench.py
 
 WORKDIR /app
 
-# Dirty hack to remove excessive logging before this PR is merged
-# https://github.com/hiddenswitch/ComfyUI/pull/28
-RUN sed -i 's/logging.info(f"Loaded {to_load}")//' /miniconda3/envs/comfystream/lib/python3.11/site-packages/comfy/model_management.py
-
-# Remove ComfyUI Manager node, because it is not needed for this application and it takes 10s additional time to start up
-RUN rm -r /ComfyUI/custom_nodes/ComfyUI-Manager
-
 ARG GIT_SHA
 ENV GIT_SHA=$GIT_SHA
 
