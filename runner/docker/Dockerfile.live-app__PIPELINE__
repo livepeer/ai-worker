@@ -39,4 +39,4 @@ RUN rm -r /ComfyUI/custom_nodes/ComfyUI-Manager
 ARG GIT_SHA
 ENV GIT_SHA=$GIT_SHA
 
-CMD ["uvicorn", "app.main:app", "--log-config", "app/cfg/uvicorn_logging_config.json", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--log-config", "app/cfg/uvicorn_logging_config.json", "--host", "", "--port", "8000"]
