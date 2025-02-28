@@ -55,4 +55,4 @@ COPY images/ /app/images
 COPY bench.py /app/bench.py
 COPY example_data/ /app/example_data
 
-CMD ["uvicorn", "app.main:app", "--log-config", "app/cfg/uvicorn_logging_config.json", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--log-config", "app/cfg/uvicorn_logging_config.json", "--host", "", "--port", "8000"]

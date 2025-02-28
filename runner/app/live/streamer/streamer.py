@@ -138,13 +138,13 @@ class PipelineStreamer:
                 )
                 self.stop_event.set()
 
-    async def _emit_monitoring_event(self, event: dict):
+    async def _emit_monitoring_event(self, event: dict, queue_event_type: str = "ai_stream_events"):
         """Protected method to emit monitoring event with lock"""
         event["timestamp"] = timestamp_to_ms(time.time())
         logging.info(f"Emitting monitoring event: {event}")
         async with self.emit_event_lock:
             try:
-                await self.protocol.emit_monitoring_event(event)
+                await self.protocol.emit_monitoring_event(event, queue_event_type)
             except Exception as e:
                 logging.error(f"Failed to emit monitoring event: {e}")
 
