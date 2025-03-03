@@ -100,8 +100,8 @@ function download_live_models() {
   # ai-worker has tags hardcoded in `var livePipelineToImage` so we need to use the same tag in here:
   docker image tag $AI_RUNNER_COMFYUI_IMAGE livepeer/ai-runner:live-app-comfyui
   docker run --rm -v ./models:/models --gpus all -l ComfyUI-Setup-Models $AI_RUNNER_COMFYUI_IMAGE \
-    bash -c "cd /comfystream && \
-                 python src/comfystream/scripts/setup_models.py --workspace /ComfyUI && \
+    bash -c "cd /workspace/comfystream && \
+                 python src/comfystream/scripts/setup_models.py --workspace /workspace/ComfyUI && \
                  adduser $(id -u -n) && \
                  chown -R $(id -u -n):$(id -g -n) /models" ||
     (
@@ -122,8 +122,8 @@ function build_tensorrt_models() {
 
   # Depth-Anything-Tensorrt
   docker run --rm -v ./models:/models --gpus all -l TensorRT-engines $AI_RUNNER_COMFYUI_IMAGE \
-    bash -c "cd /ComfyUI/models/tensorrt/depth-anything && \
-                python /ComfyUI/custom_nodes/ComfyUI-Depth-Anything-Tensorrt/export_trt.py && \
+    bash -c "cd /workspace/ComfyUI/models/tensorrt/depth-anything && \
+                python /workspace/ComfyUI/custom_nodes/ComfyUI-Depth-Anything-Tensorrt/export_trt.py && \
                 adduser $(id -u -n) && \
                 chown -R $(id -u -n):$(id -g -n) /models" ||
     (
@@ -134,11 +134,11 @@ function build_tensorrt_models() {
   # Dreamshaper-8-Dmd-1kstep
   # TODO: Remove the script download with curl. It should already come in the base image once eliteprox/comfystream#1 is merged.
   docker run --rm -v ./models:/models --gpus all -l TensorRT-engines $AI_RUNNER_COMFYUI_IMAGE \
-    bash -c "cd /comfystream/src/comfystream/scripts && \
+    bash -c "cd /workspace/comfystream/src/comfystream/scripts && \
                  curl -O https://raw.githubusercontent.com/pschroedl/comfystream/refs/heads/10_29/build_trt/src/comfystream/scripts/build_trt.py && \
                  python ./build_trt.py \
-                --model /ComfyUI/models/unet/dreamshaper-8-dmd-1kstep.safetensors \
-                --out-engine /ComfyUI/output/tensorrt/static-dreamshaper8_SD15_\\\$stat-b-1-h-512-w-512_00001_.engine && \
+                --model /workspace/ComfyUI/models/unet/dreamshaper-8-dmd-1kstep.safetensors \
+                --out-engine /workspace/ComfyUI/output/tensorrt/static-dreamshaper8_SD15_\\\$stat-b-1-h-512-w-512_00001_.engine && \
                  adduser $(id -u -n) && \
                  chown -R $(id -u -n):$(id -g -n) /models" ||
     (
