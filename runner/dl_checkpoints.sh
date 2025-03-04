@@ -5,7 +5,7 @@
 # ComfyUI image configuration
 AI_RUNNER_COMFYUI_IMAGE=${AI_RUNNER_COMFYUI_IMAGE:-livepeer/ai-runner:live-app-comfyui}
 
-docker pull "${AI_RUNNER_COMFYUI_IMAGE}"
+# docker pull "${AI_RUNNER_COMFYUI_IMAGE}"
 
 # Checks HF_TOKEN and huggingface-cli login status and throw warning if not authenticated.
 check_hf_auth() {
@@ -121,21 +121,24 @@ function build_tensorrt_models() {
   printf "\nBuilding TensorRT models...\n"
 
   # Depth-Anything-Tensorrt
-  docker run --rm -v ./models:/workspace/ComfyUI/models/ --gpus all -l TensorRT-engines $AI_RUNNER_COMFYUI_IMAGE \
-    bash -c "cd /workspace/ComfyUI/models/tensorrt/depth-anything && \
-                python /workspace/ComfyUI/custom_nodes/ComfyUI-Depth-Anything-Tensorrt/export_trt.py && \
-                adduser $(id -u -n) && \
-                chown -R $(id -u -n):$(id -g -n) /models" ||
-    (
-      echo "failed ComfyUI Depth-Anything-Tensorrt"
-      return 1
-    )
+  # docker run --rm -v ./models:/workspace/ComfyUI/models/ --gpus all -l TensorRT-engines $AI_RUNNER_COMFYUI_IMAGE \
+  #   bash -c "cd /workspace/ComfyUI/models/tensorrt/depth-anything && \
+  #               python /workspace/ComfyUI/custom_nodes/ComfyUI-Depth-Anything-Tensorrt/export_trt.py && \
+  #               adduser $(id -u -n) && \
+  #               chown -R $(id -u -n):$(id -g -n) /models" ||
+  #   (
+  #     echo "failed ComfyUI Depth-Anything-Tensorrt"
+  #     return 1
+  #   )
 
   # Dreamshaper-8-Dmd-1kstep
   # TODO: Remove the script download with curl. It should already come in the base image once eliteprox/comfystream#1 is merged.
+  printf $AI_RUNNER_COMFYUI_IMAGE
+  docker run --rm -it $AI_RUNNER_COMFYUI_IMAGE bash
   docker run --rm -v ./models:/workspace/ComfyUI/models/ --gpus all -l TensorRT-engines $AI_RUNNER_COMFYUI_IMAGE \
     bash -c "cd /workspace/comfystream/src/comfystream/scripts && \
                  curl -O https://raw.githubusercontent.com/pschroedl/comfystream/refs/heads/10_29/build_trt/src/comfystream/scripts/build_trt.py && \
+                 pip install git+https://github.com/hiddenswitch/ComfyUI.git@ce3583ad42c024b8f060d0002cbe20c265da6dc8 && \
                  python ./build_trt.py \
                 --model /workspace/ComfyUI/models/unet/dreamshaper-8-dmd-1kstep.safetensors \
                 --out-engine /workspace/ComfyUI/output/tensorrt/static-dreamshaper8_SD15_\\\$stat-b-1-h-512-w-512_00001_.engine && \
