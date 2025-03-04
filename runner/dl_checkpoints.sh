@@ -99,7 +99,7 @@ function download_live_models() {
   fi
   # ai-worker has tags hardcoded in `var livePipelineToImage` so we need to use the same tag in here:
   docker image tag $AI_RUNNER_COMFYUI_IMAGE livepeer/ai-runner:live-app-comfyui
-  docker run --rm -v ./models:/workspace/ComfyUI/models/ --gpus all -l ComfyUI-Setup-Models $AI_RUNNER_COMFYUI_IMAGE \
+  docker run --rm -v ./models:/models --gpus all -l ComfyUI-Setup-Models $AI_RUNNER_COMFYUI_IMAGE \
     bash -c "cd /workspace/comfystream && \
                  python src/comfystream/scripts/setup_models.py --workspace /workspace/ComfyUI && \
                  adduser $(id -u -n) && \
@@ -121,7 +121,7 @@ function build_tensorrt_models() {
   printf "\nBuilding TensorRT models...\n"
 
   # Depth-Anything-Tensorrt
-  docker run --rm -v ./models:/workspace/ComfyUI/models/ --gpus all -l TensorRT-engines $AI_RUNNER_COMFYUI_IMAGE \
+  docker run --rm -v ./models:/models --gpus all -l TensorRT-engines $AI_RUNNER_COMFYUI_IMAGE \
     bash -c "cd /workspace/ComfyUI/models/tensorrt/depth-anything && \
                 python /workspace/ComfyUI/custom_nodes/ComfyUI-Depth-Anything-Tensorrt/export_trt.py && \
                 adduser $(id -u -n) && \
@@ -133,8 +133,7 @@ function build_tensorrt_models() {
 
   # Dreamshaper-8-Dmd-1kstep
   # TODO: Remove the script download with curl. It should already come in the base image once eliteprox/comfystream#1 is merged.
-  # docker run --rm -it $AI_RUNNER_COMFYUI_IMAGE bash
-  docker run --rm -v ./models:/workspace/ComfyUI/models/ --gpus all -l TensorRT-engines $AI_RUNNER_COMFYUI_IMAGE \
+  docker run --rm -v ./models:/models --gpus all -l TensorRT-engines $AI_RUNNER_COMFYUI_IMAGE \
     bash -c "cd /workspace/comfystream/src/comfystream/scripts && \
                  curl -O https://raw.githubusercontent.com/yondonfu/comfystream/535c71a6f665bc1169d07cddd4e2b3cf4edd5a82/src/comfystream/scripts/build_trt.py && \
                  python ./build_trt.py \
